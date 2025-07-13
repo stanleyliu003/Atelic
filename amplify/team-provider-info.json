@@ -1,0 +1,42 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-amplifybackend-dev-e7348-authRole",
+      "UnauthRoleArn": "arn:aws:iam::036284794661:role/amplify-amplifybackend-dev-e7348-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::036284794661:role/amplify-amplifybackend-dev-e7348-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+      "UnauthRoleName": "amplify-amplifybackend-dev-e7348-unauthRole",
+      "StackName": "amplify-amplifybackend-dev-e7348",
+      "StackId": "arn:aws:cloudformation:us-east-1:036284794661:stack/amplify-amplifybackend-dev-e7348/064d5f90-4846-11f0-9581-0afffd03a6d5",
+      "AmplifyAppId": "di3vqm2fsgqsv"
+    },
+    "categories": {
+      "function": {
+        "GetRoute": {
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/GetRoute-3068477a6a69624e4c77-build.zip"
+        },
+        "OptimizeRoute": {
+          "googleRoutesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/OptimizeRoute-6f4c5a53587875543764-build.zip"
+        },
+        "getLocationCoordinates": {
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/getLocationCoordinates-6a4a6e745755754a7532-build.zip"
+        },
+        "wishlistAnalyzer": {
+          "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw",
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/wishlistAnalyzer-75516367625877316430-build.zip"
+        }
+      },
+      "auth": {
+        "amplifybackend59ccdbf8": {}
+      }
+    }
+  }
+}
