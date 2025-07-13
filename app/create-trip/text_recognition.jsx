@@ -1,12 +1,10 @@
 import { Colors } from '../../constants/Colors';
-import { generateClient } from '@aws-amplify/api';
+import { API, graphqlOperation } from 'aws-amplify';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
-
-const client = generateClient();
 
 export default function text_recognition() {
     const router = useRouter();
@@ -27,27 +25,24 @@ export default function text_recognition() {
         }
         try {
             setIsLoading(true);
-            // Use the modular client to call the GraphQL API
-            const result = await client.graphql({
-                query: `
-                    query AnalyzeWishlist($wishlist_text: String!) {
-                        analyzeWishlist(wishlist_text: $wishlist_text) {
-                            wishlist_activities {
-                                name
-                                lat
-                                lng
-                                rating
-                                user_ratings_total
-                                formatted_address
-                                types
-                                place_id
-                                photo_reference
-                            }
+            // Use the Gen 1 API to call the GraphQL API
+            const result = await API.graphql(graphqlOperation(`
+                query AnalyzeWishlist($wishlist_text: String!) {
+                    analyzeWishlist(wishlist_text: $wishlist_text) {
+                        wishlist_activities {
+                            name
+                            lat
+                            lng
+                            rating
+                            user_ratings_total
+                            formatted_address
+                            types
+                            place_id
+                            photo_reference
                         }
                     }
-                `,
-                variables: { wishlist_text: wishlist_text_raw }
-            });
+                }
+            `, { wishlist_text: wishlist_text_raw }));
             
             // Extract and print the activities array with proper null checking
             const activities = result?.data?.analyzeWishlist?.wishlist_activities || [];

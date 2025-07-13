@@ -36,6 +36,9 @@
       },
       "auth": {
         "amplifybackend59ccdbf8": {}
+      },
+      "api": {
+        "WishListAPI": {}
       }
     }
   }

@@ -1,6 +1,6 @@
 import { Colors } from '../../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { signUp } from 'aws-amplify/auth';
+import { Auth } from 'aws-amplify';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -9,11 +9,11 @@ export default function SignUp() {
   const navigation=useNavigation();
   const router=useRouter();
 
-  const [email,setEmail]=useState();
-  const [password,setPassword]=useState();
-  const [fullName,setFullName]=useState();
+  const [email,setEmail]=useState('');
+  const [password,setPassword]=useState('');
+  const [fullName,setFullName]=useState('');
   const [error, setError] = useState('');
-  //useState() is a react tool uses to set the value of the X
+  const [isLoading, setIsLoading] = useState(false);
 
    useEffect(()=>{
        navigation.setOptions({
@@ -24,25 +24,59 @@ export default function SignUp() {
    //creating a new method
    const OnCreateAccount = async () => {
      setError('');
+     setIsLoading(true);
+     
      if (!email || !password || !fullName) {
        setError('Please fill out all fields.');
+       setIsLoading(false);
        return;
      }
+
+     // Basic email validation
+     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+     if (!emailRegex.test(email)) {
+       setError('Please enter a valid email address.');
+       setIsLoading(false);
+       return;
+     }
+
+     // Password validation (minimum 8 characters as per Cognito config)
+     if (password.length < 8) {
+       setError('Password must be at least 8 characters long.');
+       setIsLoading(false);
+       return;
+     }
+
      try {
-       await signUp({
+       const result = await Auth.signUp({
          username: email,
          password,
-         options: {
-           userAttributes: {
-             email,
-             name: fullName,
-           },
+         attributes: {
+           email,
+           name: fullName,
          },
        });
-       // Optionally, navigate to a confirmation screen or sign-in
-       router.replace('/authorization/sign-in');
+
+       if (result.user) {
+         // User is automatically signed in
+         router.replace('(tabs)/create_new_trip');
+       } else {
+         // User needs to confirm their email
+         setError('Please check your email for a confirmation code to complete your registration.');
+         // You could navigate to a confirmation screen here
+         // router.replace('/authorization/confirm-signup');
+       }
      } catch (err) {
-       setError(err.message || 'Sign up failed.');
+       console.error('Sign up error:', err);
+       if (err.name === 'UsernameExistsException') {
+         setError('An account with this email already exists. Please sign in instead.');
+       } else if (err.name === 'InvalidPasswordException') {
+         setError('Password does not meet requirements. Please use at least 8 characters.');
+       } else {
+         setError(err.message || 'Sign up failed. Please try again.');
+       }
+     } finally {
+       setIsLoading(false);
      }
    };
 
@@ -80,6 +114,7 @@ export default function SignUp() {
       <TextInput 
       style={styles.input}
       placeholder='Enter Full Name'
+      value={fullName}
       onChangeText={(value)=>setFullName(value)} 
       />
     </View>
@@ -94,7 +129,10 @@ export default function SignUp() {
       <TextInput 
       style={styles.input}
       placeholder='Enter Email'
+      value={email}
       onChangeText={(value)=>setEmail(value)}
+      keyboardType="email-address"
+      autoCapitalize="none"
       />
     </View>
 
@@ -107,47 +145,56 @@ export default function SignUp() {
       }}>Password</Text>
       <TextInput 
       style={styles.input}
-      placeholder='Enter Password'
+      placeholder='Enter Password (min 8 characters)'
+      value={password}
       onChangeText={(value)=>setPassword(value)}
+      secureTextEntry={true}
+      autoCapitalize="none"
       />
     </View>
 
     {/* Error Message */}
     {error ? (
-      <Text style={{ color: 'red', marginTop: 10, textAlign: 'center' }}>{error}</Text>
+      <Text style={{ color: 'red', marginTop: 10, textAlign: 'center', fontFamily: 'outfit' }}>{error}</Text>
     ) : null}
 
     {/* Create Account Button */}
       <View> 
         <TouchableOpacity
         onPress={OnCreateAccount}
+        disabled={isLoading}
         style ={{
           padding:20,
-          backgroundColor:Colors.PRIMARY,
+          backgroundColor: isLoading ? Colors.GRAY : Colors.PRIMARY,
           borderRadius:15, //rounded corners
-          marginTop:50
+          marginTop:50,
+          opacity: isLoading ? 0.7 : 1
         }}>
        <Text style = {{
            color:Colors.WHITE,
            textAlign:'center',
-       }}> Create Account</Text>
+           fontFamily: 'outfit'
+       }}> {isLoading ? 'Creating Account...' : 'Create Account'}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Sign In Button */}
       <View> 
         <TouchableOpacity 
+        onPress={()=>router.replace('/authorization/sign-in')}
         style ={{
           padding:20,
           backgroundColor:Colors.WHITE,
           borderRadius:15, //rounded corners
           marginTop:20,
-          borderWidth:1
+          borderWidth:1,
+          borderColor: Colors.PRIMARY
         }}>
        <Text style = {{
            color:Colors.PRIMARY,
            textAlign:'center',
-       }}> Sign In </Text>
+           fontFamily: 'outfit'
+       }}> Already have an account? Sign In </Text>
         </TouchableOpacity>
       </View>
 
@@ -161,6 +208,7 @@ const styles = StyleSheet.create({
       borderWidth:1,
       borderRadius:15,
       borderColor:Colors.GRAY,
-      fontFamily:'outfit'
+      fontFamily:'outfit',
+      marginTop: 5
   }
 })

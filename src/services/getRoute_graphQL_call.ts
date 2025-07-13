@@ -1,4 +1,4 @@
-import { generateClient } from '@aws-amplify/api';
+import { API, graphqlOperation } from 'aws-amplify';
 import { getRoute } from '../graphql/queries';
 import { Activity } from '../types/activity.types';
 import { decodePolyline } from '../utils/polyline';
@@ -17,7 +17,6 @@ export interface RouteData {
 }
 
 export async function fetchRoutePolyline(activities: Activity[]): Promise<RouteData> {
-  const client = generateClient();
   const waypoints = activities
     .filter(a => a.lat != null && a.lng != null && a.place_id)
     .map(a => ({ place_id: a.place_id!, lat: a.lat!, lng: a.lng! }));
@@ -31,10 +30,7 @@ export async function fetchRoutePolyline(activities: Activity[]): Promise<RouteD
     };
   }
 
-  const result = await client.graphql({
-    query: getRoute,
-    variables: { waypoints }
-  });
+  const result = await API.graphql(graphqlOperation(getRoute, { waypoints }));
 
   const routeData = (result as any)?.data?.getRoute;
   if (!routeData) {

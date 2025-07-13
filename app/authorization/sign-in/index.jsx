@@ -1,18 +1,18 @@
 import { Colors } from '../../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { signIn } from 'aws-amplify/auth';
+import { Auth } from 'aws-amplify';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-export default function SignUp() {
+export default function SignIn() {
   const navigation=useNavigation();
   const router=useRouter();
 
-  const [username,setUsername]=useState();
-  const [password,setPassword]=useState();
+  const [username,setUsername]=useState('');
+  const [password,setPassword]=useState('');
   const [error, setError] = useState('');
-  //useState() is a react tool uses to set the value of the X
+  const [isLoading, setIsLoading] = useState(false);
 
    useEffect(()=>{
        navigation.setOptions({
@@ -22,19 +22,47 @@ export default function SignUp() {
 
   const OnSignIn = async () => {
     setError('');
+    setIsLoading(true);
+    
     if (!username || !password) {
       setError('Please enter both username and password.');
+      setIsLoading(false);
       return;
     }
+
     try {
-      await signIn({ username, password });
-      // Redirect to main app or tabs
-      router.replace('(tabs)/create_new_trip');
+      const user = await Auth.signIn(username, password);
+      
+      if (user) {
+        // Redirect to main app or tabs
+        router.replace('(tabs)/create_new_trip');
+      } else {
+        // Handle additional steps like MFA if needed
+        setError('Additional verification required.');
+      }
     } catch (err) {
-      setError(err.message || 'Sign in failed.');
+      console.error('Sign in error:', err);
+      
+      if (err.name === 'UserNotConfirmedException') {
+        // User exists but is not confirmed - offer to resend confirmation
+        try {
+          await Auth.resendSignUp(username);
+          setError('Account not confirmed. A new confirmation code has been sent to your email. Please check your email and try signing up again, or contact support if you need help.');
+        } catch (resendErr) {
+          console.error('Resend confirmation failed:', resendErr);
+          setError('Account not confirmed. Please try signing up again or contact support.');
+        }
+      } else if (err.name === 'NotAuthorizedException') {
+        setError('Incorrect username or password.');
+      } else if (err.name === 'UserNotFoundException') {
+        setError('No account found with this email. Please create an account first.');
+      } else {
+        setError(err.message || 'Sign in failed. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
-
 
   return (
     <View style={{
@@ -59,94 +87,84 @@ export default function SignUp() {
         marginTop:20
       }}>Welcome back, you've been missed!</Text>
     
-    {/* Name */}
+    {/* Email/Username */}
     <View style={{
       marginTop:30
     }}>
       <Text style={{
         fontFamily:'outfit'
-      }}>Username</Text>
+      }}>Email</Text>
       <TextInput 
       style={styles.input}
-      placeholder='Enter Username'
+      placeholder='Enter Email'
+      value={username}
       onChangeText={(value)=>setUsername(value)} 
+      keyboardType="email-address"
+      autoCapitalize="none"
       />
     </View>
 
      {/* Password */}
     <View style={{
-      marginTop:30
+      marginTop:20
     }}>
       <Text style={{
         fontFamily:'outfit'
       }}>Password</Text>
       <TextInput 
       secureTextEntry={true}
-      type="password"
       style={styles.input}
       placeholder='Enter Password'
+      value={password}
       onChangeText={(value)=>setPassword(value)}
+      autoCapitalize="none"
       />
     </View>
 
       {/* Error Message */}
       {error ? (
-        <Text style={{ color: 'red', marginTop: 10, textAlign: 'center' }}>{error}</Text>
+        <Text style={{ color: 'red', marginTop: 10, textAlign: 'center', fontFamily: 'outfit' }}>{error}</Text>
       ) : null}
 
       {/* Sign In Button */}
       <View> 
         <TouchableOpacity
         onPress={OnSignIn}
+        disabled={isLoading}
         style ={{
           padding:20,
-          backgroundColor:Colors.PRIMARY,
+          backgroundColor: isLoading ? Colors.GRAY : Colors.PRIMARY,
           borderRadius:15, //rounded corners
-          marginTop:50
+          marginTop:50,
+          opacity: isLoading ? 0.7 : 1
         }}>
        <Text style = {{
            color:Colors.WHITE,
            textAlign:'center',
-       }}> Sign In </Text>
+           fontFamily: 'outfit'
+       }}> {isLoading ? 'Signing In...' : 'Sign In'}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Create Account Button */}
       <View> 
         <TouchableOpacity 
-        onPress={()=>router.replace('authorization/sign-up')}
+        onPress={()=>router.replace('/authorization/sign-up')}
         style ={{
           padding:20,
           backgroundColor:Colors.WHITE,
           borderRadius:15, //rounded corners
           marginTop:20,
-          borderWidth:1
+          borderWidth:1,
+          borderColor: Colors.PRIMARY
         }}>
        <Text style = {{
            color:Colors.PRIMARY,
            textAlign:'center',
-       }}> Create Account </Text>
+           fontFamily: 'outfit'
+       }}> Don't have an account? Create Account </Text>
         </TouchableOpacity>
       </View>
-
-      {/* Go to Tabs Button */}
-      <View> 
-        <TouchableOpacity 
-        onPress={()=>router.replace('(tabs)/create_new_trip')}
-        style ={{
-          padding:20,
-          backgroundColor:Colors.WHITE,
-          borderRadius:15, //rounded corners
-          marginTop:20,
-          borderWidth:1
-        }}>
-       <Text style = {{
-           color:Colors.PRIMARY,
-           textAlign:'center',
-       }}> Go to Tabs </Text>
-        </TouchableOpacity>
-      </View>
-       
 
     </View>
   )
@@ -158,6 +176,7 @@ const styles = StyleSheet.create({
       borderWidth:1,
       borderRadius:15,
       borderColor:Colors.GRAY,
-      fontFamily:'outfit'
+      fontFamily:'outfit',
+      marginTop: 5
   }
 })

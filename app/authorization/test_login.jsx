@@ -1,6 +1,6 @@
 import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { signUp } from 'aws-amplify/auth';
+import { Auth } from 'aws-amplify';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -34,21 +34,18 @@ export default function TestLogin() {
     try {
       console.log('Attempting to sign up with:', { email, fullName });
       
-      const { isSignUpComplete, userId, nextStep } = await signUp({
+      const result = await Auth.signUp({
         username: email,
         password,
-        options: {
-          userAttributes: {
-            email,
-            name: fullName,
-          },
-          autoSignIn: true,
+        attributes: {
+          email,
+          name: fullName,
         },
       });
 
-      console.log('Sign up result:', { isSignUpComplete, userId, nextStep });
+      console.log('Sign up result:', result);
 
-      if (isSignUpComplete) {
+      if (result.user) {
         Alert.alert(
           'Success!',
           'Account created successfully! You are now signed in.',
@@ -62,10 +59,10 @@ export default function TestLogin() {
             }
           ]
         );
-      } else if (nextStep.signUpStep === 'CONFIRM_SIGN_UP') {
+      } else if (result.userSub) {
         Alert.alert(
-          'Email Verification Required',
-          'Please check your email and click the verification link to complete registration.',
+          'Account Created',
+          'Your account has been created successfully! You can now sign in.',
           [
             {
               text: 'OK',

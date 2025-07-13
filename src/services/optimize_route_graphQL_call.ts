@@ -1,4 +1,4 @@
-import { generateClient } from '@aws-amplify/api';
+import { API, graphqlOperation } from 'aws-amplify';
 import { optimizeRoute } from '../graphql/mutations';
 import { Activity } from '../types/activity.types';
 
@@ -16,13 +16,10 @@ export async function fetchOptimizedRoute(activities: Activity[]): Promise<{ res
     return { result: optimizeRouteCache[hash], wasCached: true };
   }
   console.log(`[OPTIMIZE ROUTE CACHE] Fetching new optimized route for hash: ${hash}`);
-  const client = generateClient();
+  
   // Only send place_id, name, lat, lng
   const activityInputs = activities.map(({ place_id, name, lat, lng }) => ({ place_id, name, lat, lng }));
-  const result = await client.graphql({
-    query: optimizeRoute,
-    variables: { activities: activityInputs },
-  });
+  const result = await API.graphql(graphqlOperation(optimizeRoute, { activities: activityInputs }));
   const optimized = (result as any)?.data?.optimizeRoute || [];
   optimizeRouteCache[hash] = optimized;
   return { result: optimized, wasCached: false };

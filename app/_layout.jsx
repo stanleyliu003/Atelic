@@ -5,7 +5,15 @@ import { CreateTripProvider } from '../context/CreateTripContext';
 import awsconfig from '../src/aws-exports'; // adjust path if needed
 import { View, Text } from 'react-native';
 
-Amplify.configure(awsconfig);
+// Configure Amplify with React Native adapter
+Amplify.configure({
+  ...awsconfig,
+  // Add React Native specific configuration
+  Analytics: {
+    disabled: true,
+  },
+});
+
 console.log('Amplify configured')
 
 export default function RootLayout() {
