@@ -1,4 +1,4 @@
-import { Colors } from '@/constants/Colors';
+import { Colors } from '../../../constants/Colors';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RouteLeg } from '../../services/getRoute_graphQL_call';

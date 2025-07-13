@@ -1,4 +1,4 @@
-import { Colors } from '@/constants/Colors';
+import { Colors } from '../../constants/Colors';
 import { generateClient } from '@aws-amplify/api';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter } from 'expo-router';

@@ -1,4 +1,4 @@
-import { Colors } from '@/constants/Colors';
+import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useLocalSearchParams } from 'expo-router';
 import { Image, StyleSheet, Text, View } from 'react-native';

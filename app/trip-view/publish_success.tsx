@@ -1,4 +1,4 @@
-import { Colors } from '@/constants/Colors';
+import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';

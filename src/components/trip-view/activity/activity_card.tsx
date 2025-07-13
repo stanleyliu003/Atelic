@@ -1,4 +1,4 @@
-import { Colors } from '@/constants/Colors';
+import { Colors } from '../../../../constants/Colors';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import React from 'react';
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';

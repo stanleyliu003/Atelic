@@ -1,4 +1,4 @@
-import { Colors } from '@/constants/Colors';
+import { Colors } from '../constants/Colors';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -25,7 +25,7 @@ export default function Login() {
 
   return (
     <View>
-        <Image source = {require('/Users/stanleycliu/Desktop/Atelic_App_Dev/Atelic_Stable/assets/images/multiethnic-friends-having-fun-walking-on-city-street---group-1.webp')}
+        <Image source = {require('../assets/images/multiethnic-friends-having-fun-walking-on-city-street---group-1.webp')}
             style={{
                 width:'100%',
                 height:500

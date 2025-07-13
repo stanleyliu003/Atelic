@@ -1,4 +1,4 @@
-import { Colors } from '@/constants/Colors';
+import { Colors } from '../../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
