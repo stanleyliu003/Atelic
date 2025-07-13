@@ -13,7 +13,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "AtelicStable"
+      "bundleIdentifier": "AtelicStable",
+      "deploymentTarget": "16.0" 
     },
     "android": {
       "adaptiveIcon": {

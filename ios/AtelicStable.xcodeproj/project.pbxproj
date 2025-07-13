@@ -14,7 +14,7 @@
 		96905EF65AED1B983A6B3ABC /* libPods-AtelicStable.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-AtelicStable.a */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		0BED6C3B42E1445896ACF8A3 /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BC44E33E4C64D77B8FAED94 /* noop-file.swift */; };
+		DCD97785C10D42029A6041A3 /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B9E239860F648F68A8D758A /* noop-file.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,8 +31,8 @@
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-AtelicStable/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		4BC44E33E4C64D77B8FAED94 /* noop-file.swift */ = {isa = PBXFileReference; name = "noop-file.swift"; path = "AtelicStable/noop-file.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; explicitFileType = undefined; includeInIndex = 0; };
-		48B460A6403347168B377061 /* AtelicStable-Bridging-Header.h */ = {isa = PBXFileReference; name = "AtelicStable-Bridging-Header.h"; path = "AtelicStable/AtelicStable-Bridging-Header.h"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; explicitFileType = undefined; includeInIndex = 0; };
+		3B9E239860F648F68A8D758A /* noop-file.swift */ = {isa = PBXFileReference; name = "noop-file.swift"; path = "AtelicStable/noop-file.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; explicitFileType = undefined; includeInIndex = 0; };
+		16744A65457A4C70846CCC20 /* AtelicStable-Bridging-Header.h */ = {isa = PBXFileReference; name = "AtelicStable-Bridging-Header.h"; path = "AtelicStable/AtelicStable-Bridging-Header.h"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,8 +57,8 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				13B07FB71A68108700A75B9A /* main.m */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				4BC44E33E4C64D77B8FAED94 /* noop-file.swift */,
-				48B460A6403347168B377061 /* AtelicStable-Bridging-Header.h */,
+				3B9E239860F648F68A8D758A /* noop-file.swift */,
+				16744A65457A4C70846CCC20 /* AtelicStable-Bridging-Header.h */,
 			);
 			name = AtelicStable;
 			sourceTree = "<group>";
@@ -198,7 +198,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				676462771F9846919BFA2070 /* AtelicStable-Bridging-Header.h in Resources */,
+				1D2E1059CA414395B7FAB5A3 /* AtelicStable-Bridging-Header.h in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -274,7 +274,7 @@
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,
-				0BED6C3B42E1445896ACF8A3 /* noop-file.swift in Sources */,
+				DCD97785C10D42029A6041A3 /* noop-file.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
