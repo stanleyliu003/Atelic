@@ -1,4 +1,4 @@
-import { Colors } from '../../../constants/Colors';
+import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Auth } from 'aws-amplify';
 import { useNavigation, useRouter } from 'expo-router';
@@ -48,6 +48,7 @@ export default function SignUp() {
      }
 
      try {
+       console.log('Signing up with full name:', fullName);
        const result = await Auth.signUp({
          username: email,
          password,
@@ -56,16 +57,10 @@ export default function SignUp() {
            name: fullName,
          },
        });
+       console.log('Sign up result:', result);
 
-       if (result.user) {
-         // User is automatically signed in
-         router.replace('(tabs)/create_new_trip');
-       } else {
-         // User needs to confirm their email
-         setError('Please check your email for a confirmation code to complete your registration.');
-         // You could navigate to a confirmation screen here
-         // router.replace('/authorization/confirm-signup');
-       }
+       // Redirect to confirm sign up page with email param
+       router.replace('/authorization/confirm_sign-up_index?email=' + encodeURIComponent(result.user.username));
      } catch (err) {
        console.error('Sign up error:', err);
        if (err.name === 'UsernameExistsException') {
@@ -181,7 +176,7 @@ export default function SignUp() {
       {/* Sign In Button */}
       <View> 
         <TouchableOpacity 
-        onPress={()=>router.replace('/authorization/sign-in')}
+        onPress={()=>router.replace('/authorization/sign-in_index')}
         style ={{
           padding:20,
           backgroundColor:Colors.WHITE,

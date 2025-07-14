@@ -31,7 +31,7 @@ export default function Login() {
            }}>Atelic is an AI platform that helps users easily organize their trip itineraries and optimize their activity routes</Text>
            
            <TouchableOpacity style = {styles.button}
-                onPress={()=>router.push('/authorization/sign-in')}
+                onPress={()=>router.push('/authorization/sign-in_index')}
                 //onPress={()=>router.push('/create-trip/text_recognition')}
                 //onPress={()=>router.push('trip-view/map_directions_test_screen')}
                 

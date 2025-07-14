@@ -2,11 +2,29 @@ import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useLocalSearchParams } from 'expo-router';
 import { Image, StyleSheet, Text, View } from 'react-native';
+import { Auth } from 'aws-amplify';
+import { useEffect, useState } from 'react';
 
 export default function Profile() {
   const params = useLocalSearchParams();
   const photoReference = params.photoReference || '';
   const dayCount = parseInt(params.dayCount, 10) || 1;
+
+  const [fullName, setFullName] = useState('');
+
+  useEffect(() => {
+    Auth.currentAuthenticatedUser()
+      .then(user => {
+        console.log('Authenticated user object:', user);
+        const name = user.attributes?.name || '';
+        setFullName(name);
+        console.log('Full name received:', name);
+      })
+      .catch((err) => {
+        setFullName('');
+        console.log('Error fetching user:', err);
+      });
+  }, []);
 
   const getDayCountText = () => {
     if (dayCount === 1) return '1 day';
@@ -25,6 +43,16 @@ export default function Profile() {
         <Text style={styles.headerText}>Profile</Text>
         <FontAwesome name="user-circle" size={40} color="black" />
       </View>
+
+      {/* Welcome Back Full Name */}
+      {fullName ? (
+        <Text style={{
+          fontFamily: 'outfit-bold',
+          fontSize: 24,
+          marginTop: 10,
+          color: Colors.PRIMARY
+        }}>Welcome back, {fullName}!</Text>
+      ) : null}
 
       {/* Trip Summary (if params present) */}
       {(photoReference || params.dayCount) && (

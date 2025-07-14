@@ -1,4 +1,4 @@
-import { Colors } from '../../../constants/Colors';
+import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Auth } from 'aws-amplify';
 import { useNavigation, useRouter } from 'expo-router';
@@ -33,25 +33,19 @@ export default function SignIn() {
     try {
       const user = await Auth.signIn(username, password);
       
-      if (user) {
-        // Redirect to main app or tabs
+      if (user.challengeName === 'USER_UNCONFIRMED') {
+        // User is not confirmed, redirect to confirm-signup
+        router.replace('/authorization/confirm_sign-up_index?email=' + encodeURIComponent(username));
+      } else if (user.signInUserSession) {
+        // Successful sign in
         router.replace('(tabs)/create_new_trip');
       } else {
-        // Handle additional steps like MFA if needed
-        setError('Additional verification required.');
+        setError('Sign in failed. Please try again.');
       }
     } catch (err) {
-      console.error('Sign in error:', err);
-      
-      if (err.name === 'UserNotConfirmedException') {
-        // User exists but is not confirmed - offer to resend confirmation
-        try {
-          await Auth.resendSignUp(username);
-          setError('Account not confirmed. A new confirmation code has been sent to your email. Please check your email and try signing up again, or contact support if you need help.');
-        } catch (resendErr) {
-          console.error('Resend confirmation failed:', resendErr);
-          setError('Account not confirmed. Please try signing up again or contact support.');
-        }
+      if (err.code === 'UserNotConfirmedException') {
+        // User exists but is not confirmed
+        router.replace('/authorization/confirm_sign-up_index?email=' + encodeURIComponent(username));
       } else if (err.name === 'NotAuthorizedException') {
         setError('Incorrect username or password.');
       } else if (err.name === 'UserNotFoundException') {
@@ -149,7 +143,7 @@ export default function SignIn() {
       {/* Create Account Button */}
       <View> 
         <TouchableOpacity 
-        onPress={()=>router.replace('/authorization/sign-up')}
+        onPress={()=>router.replace('/authorization/sign-up_index')}
         style ={{
           padding:20,
           backgroundColor:Colors.WHITE,

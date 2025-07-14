@@ -1,36 +1,82 @@
 {
   "version": "1",
   "cognitoConfig": {
-    "identityPoolName": "amplifybackend59ccdbf8_identitypool_59ccdbf8",
-    "allowUnauthenticatedIdentities": false,
     "resourceNameTruncated": "amplif59ccdbf8",
     "userPoolName": "amplifybackend59ccdbf8_userpool_59ccdbf8",
-    "autoVerifiedAttributes": [],
+    "autoVerifiedAttributes": [
+      "email"
+    ],
     "mfaConfiguration": "OFF",
-    "mfaTypes": [],
+    "mfaTypes": [
+      "SMS Text Message"
+    ],
     "smsAuthenticationMessage": "Your authentication code is {####}",
-    "smsVerificationMessage": "Your verification code is {####}",
-    "emailVerificationSubject": "Your verification code",
-    "emailVerificationMessage": "Your verification code is {####}",
-    "defaultPasswordPolicy": false,
-    "passwordPolicyMinLength": 8,
+    "smsVerificationMessage": "Your SMS verification message must include '{####}'",
+    "emailVerificationSubject": "Your Atelic Verification Code",
+    "emailVerificationMessage": "Welcome to Atelic! To get started, enter your verification code in the app: {####}",
+    "defaultPasswordPolicy": true,
+    "passwordPolicyMinLength": "8",
     "passwordPolicyCharacters": [],
-    "requiredAttributes": [],
+    "requiredAttributes": [
+      "email"
+    ],
     "aliasAttributes": [],
     "userpoolClientGenerateSecret": false,
-    "userpoolClientRefreshTokenValidity": 30,
-    "userpoolClientWriteAttributes": [],
-    "userpoolClientReadAttributes": [],
+    "userpoolClientRefreshTokenValidity": "30",
+    "userpoolClientWriteAttributes": [
+      "birthdate",
+      "gender",
+      "name",
+      "phone_number",
+      "picture",
+      "profile",
+      "email"
+    ],
+    "userpoolClientReadAttributes": [
+      "birthdate",
+      "email",
+      "gender",
+      "name",
+      "phone_number",
+      "picture",
+      "profile",
+      "email_verified"
+    ],
     "userpoolClientLambdaRole": "amplif59ccdbf8_userpoolclient_lambda_role",
-    "userpoolClientSetAttributes": false,
+    "userpoolClientSetAttributes": true,
     "sharedId": "59ccdbf8",
     "resourceName": "amplifybackend59ccdbf8",
-    "authSelections": "identityPoolAndUserPool",
-    "useDefault": "default",
-    "usernameAttributes": ["email"],
+    "authSelections": "userPoolOnly",
+    "useDefault": "manual",
+    "usernameAttributes": [
+      "email"
+    ],
     "userPoolGroupList": [],
     "serviceName": "Cognito",
     "usernameCaseSensitive": false,
-    "useEnabledMfas": false
+    "useEnabledMfas": true,
+    "authRoleArn": {
+      "Fn::GetAtt": [
+        "AuthRole",
+        "Arn"
+      ]
+    },
+    "unauthRoleArn": {
+      "Fn::GetAtt": [
+        "UnauthRole",
+        "Arn"
+      ]
+    },
+    "breakCircularDependency": true,
+    "dependsOn": [],
+    "userPoolGroups": false,
+    "adminQueries": false,
+    "triggers": {},
+    "hostedUI": false,
+    "parentStack": {
+      "Ref": "AWS::StackId"
+    },
+    "permissions": [],
+    "authProviders": []
   }
 }

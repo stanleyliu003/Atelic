@@ -10,7 +10,6 @@ export type AmplifyDependentResourcesAttributes = {
     "amplifybackend59ccdbf8": {
       "AppClientID": "string",
       "AppClientIDWeb": "string",
-      "CreatedSNSRole": "string",
       "UserPoolArn": "string",
       "UserPoolId": "string",
       "UserPoolName": "string"
@@ -25,6 +24,13 @@ export type AmplifyDependentResourcesAttributes = {
       "Region": "string"
     },
     "OptimizeRoute": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
+    "amplifybackend59ccdbf8PreSignup": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",

@@ -40,15 +40,23 @@
       "dependsOn": [],
       "frontendAuthConfig": {
         "mfaConfiguration": "OFF",
-        "mfaTypes": [],
+        "mfaTypes": [
+          "SMS"
+        ],
         "passwordProtectionSettings": {
           "passwordPolicyCharacters": [],
-          "passwordPolicyMinLength": 8
+          "passwordPolicyMinLength": "8"
         },
-        "signupAttributes": [],
+        "signupAttributes": [
+          "EMAIL"
+        ],
         "socialProviders": [],
-        "usernameAttributes": ["EMAIL"],
-        "verificationMechanisms": []
+        "usernameAttributes": [
+          "EMAIL"
+        ],
+        "verificationMechanisms": [
+          "EMAIL"
+        ]
       },
       "providerPlugin": "awscloudformation",
       "service": "Cognito"
@@ -96,6 +104,20 @@
           ],
           "category": "api",
           "resourceName": "WishListAPI"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "amplifybackend59ccdbf8PreSignup": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -177,6 +199,22 @@
         {
           "category": "function",
           "resourceName": "OptimizeRoute"
+        }
+      ]
+    },
+    "AMPLIFY_function_amplifybackend59ccdbf8PreSignup_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "amplifybackend59ccdbf8PreSignup"
+        }
+      ]
+    },
+    "AMPLIFY_function_amplifybackend59ccdbf8PreSignup_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "amplifybackend59ccdbf8PreSignup"
         }
       ]
     },
