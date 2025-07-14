@@ -15,14 +15,11 @@ export default function Profile() {
   useEffect(() => {
     Auth.currentAuthenticatedUser()
       .then(user => {
-        console.log('Authenticated user object:', user);
         const name = user.attributes?.name || '';
         setFullName(name);
-        console.log('Full name received:', name);
       })
       .catch((err) => {
         setFullName('');
-        console.log('Error fetching user:', err);
       });
   }, []);
 
@@ -47,9 +44,9 @@ export default function Profile() {
       {/* Welcome Back Full Name */}
       {fullName ? (
         <Text style={{
-          fontFamily: 'outfit-bold',
+          fontFamily: 'outfit',
           fontSize: 24,
-          marginTop: 10,
+          marginTop: 30,
           color: Colors.PRIMARY
         }}>Welcome back, {fullName}!</Text>
       ) : null}

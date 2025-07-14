@@ -3,7 +3,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Auth } from 'aws-amplify';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function SignUp() {
   const navigation=useNavigation();
@@ -14,6 +15,9 @@ export default function SignUp() {
   const [fullName,setFullName]=useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [birthdate, setBirthdate] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [gender, setGender] = useState('');
 
    useEffect(()=>{
        navigation.setOptions({
@@ -26,7 +30,7 @@ export default function SignUp() {
      setError('');
      setIsLoading(true);
      
-     if (!email || !password || !fullName) {
+     if (!email || !password || !fullName || !birthdate || !gender) {
        setError('Please fill out all fields.');
        setIsLoading(false);
        return;
@@ -48,16 +52,16 @@ export default function SignUp() {
      }
 
      try {
-       console.log('Signing up with full name:', fullName);
        const result = await Auth.signUp({
          username: email,
          password,
          attributes: {
            email,
            name: fullName,
+           birthdate,
+           gender,
          },
        });
-       console.log('Sign up result:', result);
 
        // Redirect to confirm sign up page with email param
        router.replace('/authorization/confirm_sign-up_index?email=' + encodeURIComponent(result.user.username));
@@ -101,7 +105,8 @@ export default function SignUp() {
 
     {/* Enter Full Name */}
     <View style={{
-      marginTop:30
+      marginTop:30,
+      marginBottom:5
     }}>
       <Text style={{
         fontFamily:'outfit'
@@ -116,7 +121,8 @@ export default function SignUp() {
 
     {/* Enter Email */}
     <View style={{
-      marginTop:20
+      marginTop:20,
+      marginBottom:5
     }}>
       <Text style={{
         fontFamily:'outfit'
@@ -131,9 +137,95 @@ export default function SignUp() {
       />
     </View>
 
+    {/* Enter Birthdate */}
+    <View style={{
+      marginTop:20,
+      marginBottom:5
+    }}>
+      <Text style={{
+        fontFamily:'outfit'
+      }}>Birthdate</Text>
+      <TouchableOpacity
+        style={[styles.input, { justifyContent: 'center' }]}
+        onPress={() => setShowDatePicker(true)}
+      >
+        <Text style={{ color: birthdate ? Colors.PRIMARY : Colors.GRAY, fontFamily: 'outfit' }}>
+          {birthdate ? birthdate : 'Select Birthdate'}
+        </Text>
+      </TouchableOpacity>
+      {showDatePicker && (
+        <>
+          <DateTimePicker
+            value={birthdate
+              ? new Date(
+                  Number(birthdate.split('-')[0]),
+                  Number(birthdate.split('-')[1]) - 1,
+                  Number(birthdate.split('-')[2])
+                )
+              : new Date(2000, 0, 1)
+            }
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            maximumDate={new Date()}
+            onChange={(event, selectedDate) => {
+              if (selectedDate) {
+                const yyyy = selectedDate.getFullYear();
+                const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(selectedDate.getDate()).padStart(2, '0');
+                setBirthdate(`${yyyy}-${mm}-${dd}`);
+              }
+              if (Platform.OS === 'android') {
+                setShowDatePicker(false);
+              }
+            }}
+          />
+          {Platform.OS === 'ios' && (
+            <TouchableOpacity
+              style={{ marginTop: 10, alignSelf: 'center', padding: 10, backgroundColor: Colors.PRIMARY, borderRadius: 10 }}
+              onPress={() => setShowDatePicker(false)}
+            >
+              <Text style={{ color: Colors.WHITE, fontFamily: 'outfit' }}>Done</Text>
+            </TouchableOpacity>
+          )}
+        </>
+      )}
+    </View>
+
+    {/* Select Gender */}
+    <View style={{
+      marginTop: 20,
+      marginBottom:5
+    }}>
+      <Text style={{
+        fontFamily: 'outfit'
+      }}>Gender</Text>
+      <View style={{ marginTop: 5, alignItems: 'center', justifyContent: 'center' }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity
+            style={[styles.genderButton, gender === 'male' && styles.genderButtonSelected]}
+            onPress={() => setGender('male')}
+          >
+            <Text style={{ color: gender === 'male' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Male</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.genderButton, gender === 'female' && styles.genderButtonSelected]}
+            onPress={() => setGender('female')}
+          >
+            <Text style={{ color: gender === 'female' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Female</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.genderButton, gender === 'other' && styles.genderButtonSelected]}
+            onPress={() => setGender('other')}
+          >
+            <Text style={{ color: gender === 'other' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Other</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </View>
+
     {/* Enter Password */}
     <View style={{
-      marginTop:20
+      marginTop:20,
     }}>
       <Text style={{
         fontFamily:'outfit'
@@ -173,26 +265,6 @@ export default function SignUp() {
         </TouchableOpacity>
       </View>
 
-      {/* Sign In Button */}
-      <View> 
-        <TouchableOpacity 
-        onPress={()=>router.replace('/authorization/sign-in_index')}
-        style ={{
-          padding:20,
-          backgroundColor:Colors.WHITE,
-          borderRadius:15, //rounded corners
-          marginTop:20,
-          borderWidth:1,
-          borderColor: Colors.PRIMARY
-        }}>
-       <Text style = {{
-           color:Colors.PRIMARY,
-           textAlign:'center',
-           fontFamily: 'outfit'
-       }}> Already have an account? Sign In </Text>
-        </TouchableOpacity>
-      </View>
-
     </View>
   )
 }
@@ -205,5 +277,18 @@ const styles = StyleSheet.create({
       borderColor:Colors.GRAY,
       fontFamily:'outfit',
       marginTop: 5
-  }
+  },
+  genderButton: {
+    flex: 1,
+    padding: 15,
+    borderWidth: 1,
+    borderRadius: 15,
+    borderColor: Colors.PRIMARY,
+    marginRight: 10,
+    backgroundColor: Colors.WHITE,
+    alignItems: 'center',
+  },
+  genderButtonSelected: {
+    backgroundColor: Colors.PRIMARY,
+  },
 })
