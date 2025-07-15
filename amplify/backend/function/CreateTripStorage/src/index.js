@@ -1,5 +1,8 @@
-const AWS = require('aws-sdk');
-const dynamo = new AWS.DynamoDB.DocumentClient();
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
+
+const client = new DynamoDBClient();
+const docClient = DynamoDBDocumentClient.from(client);
 
 exports.handler = async (event) => {
   console.log('Received event:', JSON.stringify(event));
@@ -29,7 +32,7 @@ exports.handler = async (event) => {
   };
 
   try {
-    await dynamo.put(params).promise();
+    await docClient.send(new PutCommand(params));
     return { tripId: input.tripId };
   } catch (error) {
     console.error('DynamoDB put error:', error);
