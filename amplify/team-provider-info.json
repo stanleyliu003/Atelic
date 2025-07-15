@@ -34,10 +34,6 @@
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
           "s3Key": "amplify-builds/wishlistAnalyzer-75516367625877316430-build.zip"
         },
-        "amplifybackend59ccdbf8PreSignup": {
-          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/amplifybackend59ccdbf8PreSignup-584c33664666556d3136-build.zip"
-        },
         "CreateTripStorage": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
           "s3Key": "amplify-builds/CreateTripStorage-56433156466643396738-build.zip"

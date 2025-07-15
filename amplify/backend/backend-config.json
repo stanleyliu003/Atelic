@@ -128,20 +128,6 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
-    "amplifybackend59ccdbf8PreSignup": {
-      "build": true,
-      "dependsOn": [
-        {
-          "attributes": [
-            "UserPoolId"
-          ],
-          "category": "auth",
-          "resourceName": "amplifybackend59ccdbf8"
-        }
-      ],
-      "providerPlugin": "awscloudformation",
-      "service": "Lambda"
-    },
     "getLocationCoordinates": {
       "build": true,
       "dependsOn": [],
@@ -234,22 +220,6 @@
         {
           "category": "function",
           "resourceName": "OptimizeRoute"
-        }
-      ]
-    },
-    "AMPLIFY_function_amplifybackend59ccdbf8PreSignup_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "amplifybackend59ccdbf8PreSignup"
-        }
-      ]
-    },
-    "AMPLIFY_function_amplifybackend59ccdbf8PreSignup_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "amplifybackend59ccdbf8PreSignup"
         }
       ]
     },

@@ -37,13 +37,6 @@ export type AmplifyDependentResourcesAttributes = {
       "Name": "string",
       "Region": "string"
     },
-    "amplifybackend59ccdbf8PreSignup": {
-      "Arn": "string",
-      "LambdaExecutionRole": "string",
-      "LambdaExecutionRoleArn": "string",
-      "Name": "string",
-      "Region": "string"
-    },
     "getLocationCoordinates": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
