@@ -345,7 +345,7 @@ export default function TripViewMain() {
                                 });
                             }}
                         >
-                            <Text style={styles.publishButtonText}>Publish Trip</Text>
+                            <Text style={styles.publishButtonText}>Save Trip</Text>
                         </TouchableOpacity>
                     );
                 }

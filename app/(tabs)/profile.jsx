@@ -73,10 +73,6 @@ export default function Profile() {
           </View>
         </View>
       )}
-      {/*userTrips?.length==0? //if user length is 0, redirect to myTrips
-         <StartNewTripCard/>
-         :null
-      */}
     </View>
   )
 }
