@@ -20,6 +20,17 @@ export const CreateTripProvider = ({ children }) => {
     const [wishlistText, setWishlistText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
+    // Store polylines per day: { [dayNumber]: encodedPolyline }
+    const [dayPolylines, setDayPolylines] = useState({});
+
+    // Setter for a day's polyline
+    const setDayPolyline = (dayNumber, encodedPolyline) => {
+        setDayPolylines(prev => ({
+            ...prev,
+            [dayNumber]: encodedPolyline,
+        }));
+    };
+
     const updateActivities = (newActivities) => {
         setActivities(newActivities);
     };
@@ -40,6 +51,7 @@ export const CreateTripProvider = ({ children }) => {
         setActivities([]);
         setWishlistText('');
         setTripId(null); // Clear tripId when clearing trip data
+        setDayPolylines({}); // Clear polylines as well
     };
 
     // Helper to generate and set a new tripId (UUID)
@@ -60,7 +72,9 @@ export const CreateTripProvider = ({ children }) => {
         removeActivities,
         updateWishlistText,
         setIsLoading,
-        clearTripData
+        clearTripData,
+        dayPolylines,
+        setDayPolyline,
     };
 
     return (

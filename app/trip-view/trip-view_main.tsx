@@ -4,6 +4,7 @@ import { useNavigation, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
+import { encodePolyline } from '../../src/utils/polyline';
 import { DaySchedule, TabBar, WishlistActivities } from '../../src/components/trip-view';
 import { TripMapView } from '../../src/components/trip-view/map_view';
 import { TransferActivitiesModal } from '../../src/components/trip-view/transfer_activities_modal';
@@ -18,7 +19,7 @@ import { Activity, TabType } from '../../src/types/activity.types';
 export default function TripViewMain() {
     const router = useRouter();
     const navigation = useNavigation();
-    const { activities, removeActivities } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -129,6 +130,12 @@ export default function TripViewMain() {
             if (cached && cached.activitiesHash === activitiesHash) {
                 setRouteData(cached.routeData);
                 setRouteLoading(false);
+                // Store encoded polyline in context if available
+                if (cached.routeData.polyline && cached.routeData.polyline.length > 1) {
+                    const dayNumber = parseInt(activeTab.replace('day', ''));
+                    const encoded = encodePolyline(cached.routeData.polyline);
+                    setDayPolyline(dayNumber, encoded);
+                }
                 return;
             }
             const newRouteData = await fetchRoutePolyline(currentTabActivities);
@@ -138,6 +145,12 @@ export default function TripViewMain() {
                 activitiesHash,
                 routeData: newRouteData,
             };
+            // Store encoded polyline in context if available
+            if (newRouteData.polyline && newRouteData.polyline.length > 1) {
+                const dayNumber = parseInt(activeTab.replace('day', ''));
+                const encoded = encodePolyline(newRouteData.polyline);
+                setDayPolyline(dayNumber, encoded);
+            }
             setRouteLoading(false);
         };
         fetchRoute();

@@ -25,4 +25,40 @@ export function decodePolyline(encoded: string): { latitude: number, longitude: 
     poly.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
   }
   return poly;
+}
+
+// Encode an array of { latitude, longitude } to a polyline string
+export function encodePolyline(coordinates: { latitude: number, longitude: number }[]): string {
+  let lastLat = 0;
+  let lastLng = 0;
+  let result = '';
+
+  for (const point of coordinates) {
+    let lat = Math.round(point.latitude * 1e5);
+    let lng = Math.round(point.longitude * 1e5);
+    let dLat = lat - lastLat;
+    let dLng = lng - lastLng;
+    result += encodeSignedNumber(dLat) + encodeSignedNumber(dLng);
+    lastLat = lat;
+    lastLng = lng;
+  }
+  return result;
+}
+
+function encodeSignedNumber(num: number): string {
+  let sgnNum = num << 1;
+  if (num < 0) {
+    sgnNum = ~sgnNum;
+  }
+  return encodeNumber(sgnNum);
+}
+
+function encodeNumber(num: number): string {
+  let encodeString = '';
+  while (num >= 0x20) {
+    encodeString += String.fromCharCode((0x20 | (num & 0x1f)) + 63);
+    num >>= 5;
+  }
+  encodeString += String.fromCharCode(num + 63);
+  return encodeString;
 } 
