@@ -19,7 +19,7 @@ import { Activity, TabType } from '../../src/types/activity.types';
 export default function TripViewMain() {
     const router = useRouter();
     const navigation = useNavigation();
-    const { activities, removeActivities, setDayPolyline } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -268,6 +268,27 @@ export default function TripViewMain() {
         }
     }, [shouldScrollToActive]);
 
+    // Serialize trip data for saving
+    const saveTrip = () => {
+        // Gather days and their activities
+        const days = Object.keys(dayActivities).map(dayNumber => ({
+            dayNumber: Number(dayNumber),
+            activities: dayActivities[dayNumber].activities,
+            encodedPolyline: dayPolylines[dayNumber] || null,
+        }));
+        // Gather wishlist activities (not assigned to any day)
+        const dayActivityIds = days.flatMap(day => day.activities.map(a => a.place_id)).filter(Boolean);
+        const wishlist = (activities || []).filter((activity) => !activity.place_id || !dayActivityIds.includes(activity.place_id));
+        // Compose trip data object
+        const tripData = {
+            tripId,
+            days,
+            wishlist,
+        };
+        // For now, just log the data (replace with GraphQL mutation later)
+        console.log('Serialized trip data to save:', tripData);
+    };
+
     useEffect(() => {
         navigation.setOptions({
           headerShown: false
@@ -342,13 +363,13 @@ export default function TripViewMain() {
                         <TouchableOpacity 
                             style={styles.publishButton}
                             onPress={() => {
+                                saveTrip();
                                 // Get the last activity data to pass to the success page
                                 const dayCount = getDayCount();
                                 const lastDayActivities = getDayActivities(dayCount);
                                 const lastActivity = lastDayActivities && lastDayActivities.length > 0 
                                     ? lastDayActivities[lastDayActivities.length - 1] 
                                     : null;
-                                
                                 router.push({
                                     pathname: '/trip-view/publish_success',
                                     params: {
