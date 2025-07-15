@@ -23,6 +23,10 @@
     "storageTripStorageArn": {
       "Type": "String",
       "Default": "storageTripStorageArn"
+    },
+    "storageTripStorageStreamArn": {
+      "Type": "String",
+      "Default": "storageTripStorageStreamArn"
     }
   },
   "Conditions": {
@@ -77,6 +81,15 @@
             },
             "REGION": {
               "Ref": "AWS::Region"
+            },
+            "STORAGE_TRIPSTORAGE_NAME": {
+              "Ref": "storageTripStorageName"
+            },
+            "STORAGE_TRIPSTORAGE_ARN": {
+              "Ref": "storageTripStorageArn"
+            },
+            "STORAGE_TRIPSTORAGE_STREAMARN": {
+              "Ref": "storageTripStorageStreamArn"
             }
           }
         },
@@ -179,6 +192,60 @@
                 "dynamodb:PutItem",
                 "dynamodb:UpdateItem",
                 "dynamodb:DeleteItem"
+              ],
+              "Resource": [
+                {
+                  "Ref": "storageTripStorageArn"
+                },
+                {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      {
+                        "Ref": "storageTripStorageArn"
+                      },
+                      "index/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "AmplifyResourcesPolicy": {
+      "DependsOn": [
+        "LambdaExecutionRole"
+      ],
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "amplify-lambda-execution-policy",
+        "Roles": [
+          {
+            "Ref": "LambdaExecutionRole"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:Put*",
+                "dynamodb:Create*",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PartiQLInsert",
+                "dynamodb:Get*",
+                "dynamodb:BatchGetItem",
+                "dynamodb:List*",
+                "dynamodb:Describe*",
+                "dynamodb:Scan",
+                "dynamodb:Query",
+                "dynamodb:PartiQLSelect",
+                "dynamodb:Update*",
+                "dynamodb:RestoreTable*",
+                "dynamodb:PartiQLUpdate"
               ],
               "Resource": [
                 {
