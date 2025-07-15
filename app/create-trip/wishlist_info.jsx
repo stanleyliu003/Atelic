@@ -12,6 +12,8 @@ export default function WishlistInfo() {
     
     // State for selected activities - initialize with all activities selected
     const [selectedActivities, setSelectedActivities] = useState([]);
+    // Loading state for create trip
+    const [loading, setLoading] = useState(false);
 
     // Initialize all activities as selected when component mounts or activities change
     useEffect(() => {
@@ -35,6 +37,7 @@ export default function WishlistInfo() {
 
     // Handle create trip button press
     const handleCreateTrip = () => {
+        setLoading(true);
         // Filter activities to only include selected ones
         const selectedActivitiesList = activities.filter(activity => 
             activity.place_id && selectedActivities.includes(activity.place_id)
@@ -43,8 +46,11 @@ export default function WishlistInfo() {
         // Update the context with only selected activities
         updateActivities(selectedActivitiesList);
         
-        // Navigate to trip view
-        router.push('/trip-view/trip-view_main');
+        // Simulate async navigation for better UX (remove if not needed)
+        setTimeout(() => {
+            router.push('/trip-view/trip-view_main');
+            setLoading(false);
+        }, 500);
     };
 
     return (
@@ -71,12 +77,12 @@ export default function WishlistInfo() {
           onPress={handleCreateTrip}
           style={[
             styles.createTripButton,
-            selectedActivities.length === 0 && styles.disabledButton
+            (selectedActivities.length === 0 || loading) && styles.disabledButton
           ]}
-          disabled={selectedActivities.length === 0}
+          disabled={selectedActivities.length === 0 || loading}
         >
           <Text style={styles.createTripButtonText}>
-            Create Trip
+            {loading ? 'Creating Trip...' : 'Create Trip'}
           </Text>
         </TouchableOpacity>
       </View>
