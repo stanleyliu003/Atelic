@@ -64,10 +64,16 @@
      createTrip(input: CreateTripInput!): Trip @function(name: "CreateTripStorage-${env}")
    }
 
-   input CreateTripInput {
-     tripId: String!
-     days: [DayInput!]!
-     wishlist: [ActivityInput!]!
+   input ActivityInput {
+     place_id: String!
+     name: String!
+     lat: Float!
+     lng: Float!
+     rating: Float
+     types: [String]
+     photo_reference: String
+     formatted_address: String
+     user_ratings_total: Int
    }
 
    input DayInput {
@@ -76,9 +82,8 @@
      encodedPolyline: String
    }
 
-   input ActivityInput {
-     place_id: String!
-     name: String!
-     lat: Float!
-     lng: Float!
+   input CreateTripInput {
+     tripId: String!
+     days: [DayInput!]!
+     wishlist: [ActivityInput!]!
    }
