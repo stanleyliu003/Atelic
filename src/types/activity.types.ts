@@ -45,4 +45,19 @@ export type ActivityDayAssignment = {
   activityId: string;
   dayNumber: number;
   position?: number; // For ordering within the day
+};
+
+// New type for day with encoded polyline
+export type DayWithPolyline = {
+  dayNumber: number;
+  activities: Activity[];
+  encodedPolyline?: string; // Store the encoded polyline for the day's route
+};
+
+// New type for the full trip data model
+export type TripData = {
+  tripId: string;
+  days: DayWithPolyline[];
+  wishlist: Activity[];
+  wishlistText: string;
 }; 

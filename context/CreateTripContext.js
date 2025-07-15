@@ -1,4 +1,5 @@
 import { createContext, useContext, useState } from "react";
+import { v4 as uuidv4 } from 'uuid';
 
 // Define the shape of our context data
 const CreateTripContext = createContext();
@@ -14,6 +15,7 @@ export const useCreateTrip = () => {
 
 // Provider component
 export const CreateTripProvider = ({ children }) => {
+    const [tripId, setTripId] = useState(null); // Add tripId state
     const [activities, setActivities] = useState([]);
     const [wishlistText, setWishlistText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -37,9 +39,20 @@ export const CreateTripProvider = ({ children }) => {
     const clearTripData = () => {
         setActivities([]);
         setWishlistText('');
+        setTripId(null); // Clear tripId when clearing trip data
+    };
+
+    // Helper to generate and set a new tripId (UUID)
+    const generateTripId = () => {
+        const newId = uuidv4();
+        setTripId(newId);
+        return newId;
     };
 
     const value = {
+        tripId,
+        setTripId,
+        generateTripId, // Expose helper to generate a new tripId
         activities,
         wishlistText,
         isLoading,

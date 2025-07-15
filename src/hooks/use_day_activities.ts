@@ -1,32 +1,39 @@
 import { useCallback, useState } from 'react';
-import { Activity, DayActivities } from '../types/activity.types';
+import { Activity, DayWithPolyline } from '../types/activity.types';
 
 export function useDayActivities() {
-  const [dayActivities, setDayActivities] = useState<DayActivities>({
-    1: [], // Start with Day 1 empty
+  const [dayActivities, setDayActivities] = useState<{ [dayNumber: number]: DayWithPolyline }>({
+    1: { dayNumber: 1, activities: [], encodedPolyline: undefined },
   });
 
   const addActivityToDay = useCallback((activity: Activity, dayNumber: number) => {
     setDayActivities(prev => ({
       ...prev,
-      [dayNumber]: [...(prev[dayNumber] || []), activity],
+      [dayNumber]: {
+        ...prev[dayNumber],
+        activities: [...(prev[dayNumber]?.activities || []), activity],
+      },
     }));
   }, []);
 
   const removeActivityFromDay = useCallback((activityId: string, dayNumber: number) => {
     setDayActivities(prev => ({
       ...prev,
-      [dayNumber]: (prev[dayNumber] || []).filter(activity => activity.place_id !== activityId),
+      [dayNumber]: {
+        ...prev[dayNumber],
+        activities: (prev[dayNumber]?.activities || []).filter(activity => activity.place_id !== activityId),
+      },
     }));
   }, []);
 
   const removeActivitiesFromAllDays = useCallback((activityIds: string[]) => {
     setDayActivities(prev => {
-      const newDayActivities: DayActivities = {};
-      Object.entries(prev).forEach(([day, acts]) => {
-        newDayActivities[Number(day)] = acts.filter(act => 
-          !act.place_id || !activityIds.includes(act.place_id)
-        );
+      const newDayActivities: { [dayNumber: number]: DayWithPolyline } = {};
+      Object.entries(prev).forEach(([day, dayObj]) => {
+        newDayActivities[Number(day)] = {
+          ...dayObj,
+          activities: dayObj.activities.filter(act => !act.place_id || !activityIds.includes(act.place_id)),
+        };
       });
       return newDayActivities;
     });
@@ -34,62 +41,75 @@ export function useDayActivities() {
 
   const transferActivitiesToDay = useCallback((activities: Activity[], dayNumber: number) => {
     setDayActivities(prev => {
-      // Get the place_ids of activities to transfer
       const transferIds = activities.map(a => a.place_id).filter(Boolean);
-      // Remove these activities from all days
-      const newDayActivities: DayActivities = {};
-      Object.entries(prev).forEach(([day, acts]) => {
-        newDayActivities[Number(day)] = acts.filter(act => !transferIds.includes(act.place_id));
+      const newDayActivities: { [dayNumber: number]: DayWithPolyline } = {};
+      Object.entries(prev).forEach(([day, dayObj]) => {
+        newDayActivities[Number(day)] = {
+          ...dayObj,
+          activities: dayObj.activities.filter(act => !transferIds.includes(act.place_id)),
+        };
       });
-      // Add them to the target day
-      newDayActivities[dayNumber] = [
-        ...(newDayActivities[dayNumber] || []),
-        ...activities
-      ];
+      newDayActivities[dayNumber] = {
+        ...newDayActivities[dayNumber],
+        activities: [
+          ...(newDayActivities[dayNumber]?.activities || []),
+          ...activities,
+        ],
+      };
       return newDayActivities;
     });
   }, []);
 
   const transferActivitiesToWishlist = useCallback((activityIds: string[], dayNumber: number) => {
     setDayActivities(prev => {
-      const dayActivities = prev[dayNumber] || [];
-      const activitiesToTransfer = dayActivities.filter(activity => 
-        activity.place_id && activityIds.includes(activity.place_id)
-      );
-      
+      const dayObj = prev[dayNumber] || { dayNumber, activities: [] };
       return {
         ...prev,
-        [dayNumber]: dayActivities.filter(activity => 
-          !activity.place_id || !activityIds.includes(activity.place_id)
-        ),
+        [dayNumber]: {
+          ...dayObj,
+          activities: dayObj.activities.filter(activity => !activity.place_id || !activityIds.includes(activity.place_id)),
+        },
       };
     });
-    
-    // Return the activities that were transferred (for wishlist management)
-    return dayActivities[dayNumber]?.filter(activity => 
-      activity.place_id && activityIds.includes(activity.place_id)
-    ) || [];
+    return dayActivities[dayNumber]?.activities.filter(activity => activity.place_id && activityIds.includes(activity.place_id)) || [];
   }, [dayActivities]);
 
   const getDayActivities = useCallback((dayNumber: number): Activity[] => {
-    return dayActivities[dayNumber] || [];
+    return dayActivities[dayNumber]?.activities || [];
   }, [dayActivities]);
 
   const getAllDayActivities = useCallback((): Activity[] => {
-    return Object.values(dayActivities).flat();
+    return Object.values(dayActivities).flatMap(dayObj => dayObj.activities);
   }, [dayActivities]);
 
   const reorderDayActivities = useCallback((dayNumber: number, newOrder: Activity[]) => {
     setDayActivities(prev => ({
       ...prev,
-      [dayNumber]: newOrder,
+      [dayNumber]: {
+        ...prev[dayNumber],
+        activities: newOrder,
+      },
+    }));
+  }, []);
+
+  const setDayPolyline = useCallback((dayNumber: number, encodedPolyline: string) => {
+    setDayActivities(prev => ({
+      ...prev,
+      [dayNumber]: {
+        ...prev[dayNumber],
+        encodedPolyline,
+      },
     }));
   }, []);
 
   const clearDay = useCallback((dayNumber: number) => {
     setDayActivities(prev => ({
       ...prev,
-      [dayNumber]: [],
+      [dayNumber]: {
+        ...prev[dayNumber],
+        activities: [],
+        encodedPolyline: undefined,
+      },
     }));
   }, []);
 
@@ -101,26 +121,22 @@ export function useDayActivities() {
     const newDayNumber = getDayCount() + 1;
     setDayActivities(prev => ({
       ...prev,
-      [newDayNumber]: [],
+      [newDayNumber]: { dayNumber: newDayNumber, activities: [], encodedPolyline: undefined },
     }));
     return newDayNumber;
   }, [getDayCount]);
 
   return {
-    // State
     dayActivities,
-    
-    // Actions
     addActivityToDay,
     removeActivityFromDay,
     removeActivitiesFromAllDays,
     transferActivitiesToDay,
     transferActivitiesToWishlist,
     reorderDayActivities,
+    setDayPolyline,
     clearDay,
     addNewDay,
-    
-    // Utilities
     getDayActivities,
     getAllDayActivities,
     getDayCount,

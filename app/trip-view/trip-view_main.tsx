@@ -85,7 +85,7 @@ export default function TripViewMain() {
         if (tab === 'wishlist') {
             // Filter out activities that are already in days
             const dayActivityIds = Object.values(dayActivities)
-                .flat()
+                .flatMap(dayObj => dayObj.activities)
                 .map((activity: Activity) => activity.place_id)
                 .filter(Boolean);
             
