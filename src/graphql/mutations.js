@@ -17,6 +17,31 @@ export const optimizeRoute = /* GraphQL */ `
     }
   }
 `;
+export const createTrip = /* GraphQL */ `
+  mutation CreateTrip($input: CreateTripInput!) {
+    createTrip(input: $input) {
+      tripId
+      days {
+        dayNumber
+        encodedPolyline
+        __typename
+      }
+      wishlist {
+        name
+        lat
+        lng
+        rating
+        user_ratings_total
+        formatted_address
+        types
+        place_id
+        photo_reference
+        __typename
+      }
+      __typename
+    }
+  }
+`;
 export const createWishlistAnalysis = /* GraphQL */ `
   mutation CreateWishlistAnalysis(
     $input: CreateWishlistAnalysisInput!
@@ -101,13 +126,6 @@ export const deleteWishlistAnalysis = /* GraphQL */ `
       createdAt
       updatedAt
       __typename
-    }
-  }
-`;
-export const createTrip = /* GraphQL */ `
-  mutation CreateTrip($input: CreateTripInput!) {
-    createTrip(input: $input) {
-      tripId
     }
   }
 `;

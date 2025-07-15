@@ -47,8 +47,33 @@
      lng: Float!
    }
 
+   type Trip {
+     tripId: String!
+     days: [Day!]!
+     wishlist: [Activity!]!
+   }
+
+   type Day {
+     dayNumber: Int!
+     activities: [Activity!]!
+     encodedPolyline: String
+   }
+
    type Mutation {
      optimizeRoute(activities: [ActivityInput!]!): [Activity] @function(name: "OptimizeRoute-${env}")
+     createTrip(input: CreateTripInput!): Trip @function(name: "CreateTripStorage-${env}")
+   }
+
+   input CreateTripInput {
+     tripId: String!
+     days: [DayInput!]!
+     wishlist: [ActivityInput!]!
+   }
+
+   input DayInput {
+     dayNumber: Int!
+     activities: [ActivityInput!]!
+     encodedPolyline: String
    }
 
    input ActivityInput {
