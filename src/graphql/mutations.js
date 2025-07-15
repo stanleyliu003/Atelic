@@ -104,3 +104,10 @@ export const deleteWishlistAnalysis = /* GraphQL */ `
     }
   }
 `;
+export const createTrip = /* GraphQL */ `
+  mutation CreateTrip($input: CreateTripInput!) {
+    createTrip(input: $input) {
+      tripId
+    }
+  }
+`;

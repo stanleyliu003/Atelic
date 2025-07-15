@@ -15,6 +15,8 @@ import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
 import { fetchRoutePolyline, RouteData } from '../../src/services/getRoute_graphQL_call';
 import { fetchOptimizedRoute } from '../../src/services/optimize_route_graphQL_call';
 import { Activity, TabType } from '../../src/types/activity.types';
+import { API, graphqlOperation } from 'aws-amplify';
+import { createTrip } from '../../src/graphql/mutations';
 
 export default function TripViewMain() {
     const router = useRouter();
@@ -269,7 +271,7 @@ export default function TripViewMain() {
     }, [shouldScrollToActive]);
 
     // Serialize trip data for saving
-    const saveTrip = () => {
+    const saveTrip = async () => {
         // Gather days and their activities
         const days = Object.keys(dayActivities).map(dayNumber => ({
             dayNumber: Number(dayNumber),
@@ -285,8 +287,14 @@ export default function TripViewMain() {
             days,
             wishlist,
         };
-        // For now, just log the data (replace with GraphQL mutation later)
-        console.log('Serialized trip data to save:', tripData);
+        try {
+            const result = await API.graphql(
+                graphqlOperation(createTrip, { input: tripData })
+            );
+            console.log('Trip saved:', result);
+        } catch (error) {
+            console.error('Error saving trip:', error);
+        }
     };
 
     useEffect(() => {
