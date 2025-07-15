@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "api": {
+      "WishListAPI": [
+        "Query",
+        "Mutation"
+      ]
+    },
+    "storage": {
+      "WishlistAnalysis:@model(appsync)": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  },
+  "lambdaLayers": [],
+  "environmentVariableList": [
+    {
+      "cloudFormationParameterName": "googleRoutesApiKey",
+      "environmentVariableName": "GOOGLE_ROUTES_API_KEY"
+    }
+  ]
+}

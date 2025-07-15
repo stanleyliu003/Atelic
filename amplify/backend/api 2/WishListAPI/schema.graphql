@@ -1,0 +1,59 @@
+   type WishlistAnalysis @model @auth(rules: [{ allow: public }]) {
+     id: ID!
+     wishlist_text: String!
+     timestamp: AWSDateTime!
+     analysis: String
+     status: String
+     activities: [Activity]
+   }
+
+   type Activity {
+     name: String!
+     lat: Float
+     lng: Float
+     rating: Float
+     user_ratings_total: Int
+     formatted_address: String
+     types: [String]
+     place_id: String
+     photo_reference: String
+   }
+
+   type WishlistAnalysisResult {
+     wishlist_activities: [Activity]
+   }
+
+   type RouteLeg {
+     distance: Int
+     duration: String
+     polyline: String
+   }
+
+   type RouteResult {
+     polyline: String
+     totalDistance: Int
+     totalDuration: String
+     legs: [RouteLeg]
+   }
+
+   type Query {
+     analyzeWishlist(wishlist_text: String!): WishlistAnalysisResult @function(name: "wishlistAnalyzer-dev")
+     getRoute(waypoints: [WaypointInput!]!): RouteResult @function(name: "GetRoute-dev")
+   }
+
+   input WaypointInput {
+     place_id: String!
+     lat: Float!
+     lng: Float!
+   }
+
+   type Mutation {
+     optimizeRoute(activities: [ActivityInput!]!): [Activity] @function(name: "OptimizeRoute-${env}")
+   }
+
+   input ActivityInput {
+     place_id: String!
+     name: String!
+     lat: Float!
+     lng: Float!
+   }

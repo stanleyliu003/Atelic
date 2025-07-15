@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "api": {
+      "WishListAPI": [
+        "Query",
+        "Mutation"
+      ]
+    },
+    "function": {
+      "wishlistAnalyzer": [
+        "create",
+        "read",
+        "update"
+      ],
+      "getLocationCoordinates": [
+        "create",
+        "read",
+        "update"
+      ]
+    },
+    "storage": {
+      "WishlistAnalysis:@model(appsync)": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  },
+  "lambdaLayers": [],
+  "environmentVariableList": [
+    {
+      "cloudFormationParameterName": "googlePlacesApiKey",
+      "environmentVariableName": "GOOGLE_PLACES_API_KEY"
+    }
+  ]
+}

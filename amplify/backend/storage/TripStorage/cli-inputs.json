@@ -1,0 +1,14 @@
+{
+  "resourceName": "TripStorage",
+  "tableName": "Trips",
+  "partitionKey": {
+    "fieldName": "userID",
+    "fieldType": "string"
+  },
+  "sortKey": {
+    "fieldName": "tripID",
+    "fieldType": "string"
+  },
+  "gsi": [],
+  "triggerFunctions": []
+}

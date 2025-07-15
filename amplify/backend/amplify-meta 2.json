@@ -1,0 +1,264 @@
+{
+  "providers": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-amplifybackend-dev-e7348-authRole",
+      "UnauthRoleArn": "arn:aws:iam::036284794661:role/amplify-amplifybackend-dev-e7348-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::036284794661:role/amplify-amplifybackend-dev-e7348-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+      "UnauthRoleName": "amplify-amplifybackend-dev-e7348-unauthRole",
+      "StackName": "amplify-amplifybackend-dev-e7348",
+      "StackId": "arn:aws:cloudformation:us-east-1:036284794661:stack/amplify-amplifybackend-dev-e7348/064d5f90-4846-11f0-9581-0afffd03a6d5",
+      "AmplifyAppId": "di3vqm2fsgqsv"
+    }
+  },
+  "auth": {
+    "amplifybackend59ccdbf8": {
+      "customAuth": false,
+      "dependsOn": [],
+      "frontendAuthConfig": {
+        "mfaConfiguration": "OFF",
+        "mfaTypes": [
+          "SMS"
+        ],
+        "passwordProtectionSettings": {
+          "passwordPolicyMinLength": "8",
+          "passwordPolicyCharacters": []
+        },
+        "signupAttributes": [
+          "EMAIL"
+        ],
+        "socialProviders": [],
+        "usernameAttributes": [
+          "EMAIL"
+        ],
+        "verificationMechanisms": [
+          "PHONE_NUMBER"
+        ]
+      },
+      "providerPlugin": "awscloudformation",
+      "service": "Cognito",
+      "output": {
+        "UserPoolId": "us-east-1_2M50vby9O",
+        "AppClientIDWeb": "5mtuki3e43cmsvt0ni9sqmhet3",
+        "AppClientID": "4cqu5mf6p3joalu3nhatfe2efr",
+        "IdentityPoolId": "us-east-1:d3789049-8530-4fa5-8e02-9408a22a63bf",
+        "UserPoolArn": "arn:aws:cognito-idp:us-east-1:036284794661:userpool/us-east-1_2M50vby9O",
+        "IdentityPoolName": "amplifybackend59ccdbf8_identitypool_59ccdbf8__dev",
+        "UserPoolName": "amplifybackend59ccdbf8_userpool_59ccdbf8",
+        "CreatedSNSRole": "arn:aws:iam::036284794661:role/sns59ccdbf8e7348-dev"
+      },
+      "lastPushTimeStamp": "2025-07-13T16:21:16.797Z",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-dev-e7348-deployment/amplify-cfn-templates/auth/amplifybackend59ccdbf8-cloudformation-template.json",
+        "logicalId": "authamplifybackend59ccdbf8"
+      },
+      "lastPushDirHash": "GyssW6fFxW3PTYir1WP8xXhGe1M="
+    }
+  },
+  "api": {
+    "WishListAPI": {
+      "service": "AppSync",
+      "providerPlugin": "awscloudformation",
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        }
+      ],
+      "output": {
+        "authConfig": {
+          "defaultAuthentication": {
+            "authenticationType": "API_KEY",
+            "apiKeyConfig": {
+              "apiKeyExpirationDays": 365,
+              "apiKeyExpirationDate": "2026-07-07T12:30:35.329Z",
+              "description": "API Key #2"
+            }
+          },
+          "additionalAuthenticationProviders": [
+            {
+              "authenticationType": "AMAZON_COGNITO_USER_POOLS",
+              "userPoolConfig": {
+                "userPoolId": "authamplifybackend59ccdbf8"
+              }
+            }
+          ]
+        },
+        "GraphQLAPIIdOutput": "zmoovmm7abblfgmymospzybazq",
+        "GraphQLAPIEndpointOutput": "https://6tzgrcfzabdcbkwnww7wcoyq3a.appsync-api.us-east-1.amazonaws.com/graphql",
+        "GraphQLAPIKeyOutput": "da2-veym3ui36jdufd4gy5qlpotcy4"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-dev-e7348-deployment/amplify-cfn-templates/api/cloudformation-template.json",
+        "logicalId": "apiWishListAPI"
+      },
+      "lastPushTimeStamp": "2025-07-13T16:21:16.180Z",
+      "lastPushDirHash": "12D9FnF0PCiEUqGiCSx03TjuPqs="
+    }
+  },
+  "function": {
+    "wishlistAnalyzer": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "dependsOn": [
+        {
+          "category": "api",
+          "resourceName": "WishListAPI",
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ]
+        },
+        {
+          "category": "function",
+          "resourceName": "getLocationCoordinates",
+          "attributes": [
+            "Name"
+          ]
+        }
+      ],
+      "lastBuildTimeStamp": "2025-07-07T12:18:39.800Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2025-07-07T12:18:39.894Z",
+      "distZipFilename": "wishlistAnalyzer-75516367625877316430-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+        "s3Key": "amplify-builds/wishlistAnalyzer-75516367625877316430-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-dev-e7348-deployment/amplify-cfn-templates/function/wishlistAnalyzer-cloudformation-template.json",
+        "logicalId": "functionwishlistAnalyzer"
+      },
+      "lastPushTimeStamp": "2025-07-13T16:21:16.183Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole6253b02e-dev",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:wishlistAnalyzer-dev",
+        "Name": "wishlistAnalyzer-dev",
+        "LambdaExecutionRole": "amplifybackendLambdaRole6253b02e-dev"
+      },
+      "lastPushDirHash": "J8Fm/KX9sGbuksOH/0410baDucE="
+    },
+    "getLocationCoordinates": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2025-07-12T13:15:39.029Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2025-07-12T13:15:39.058Z",
+      "distZipFilename": "getLocationCoordinates-6a4a6e745755754a7532-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+        "s3Key": "amplify-builds/getLocationCoordinates-6a4a6e745755754a7532-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-dev-e7348-deployment/amplify-cfn-templates/function/getLocationCoordinates-cloudformation-template.json",
+        "logicalId": "functiongetLocationCoordinates"
+      },
+      "lastPushTimeStamp": "2025-07-13T16:21:16.185Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole910be44f-dev",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:getLocationCoordinates-dev",
+        "Name": "getLocationCoordinates-dev",
+        "LambdaExecutionRole": "amplifybackendLambdaRole910be44f-dev"
+      },
+      "lastPushDirHash": "02l0Mk305ZSQGeK4d/Evr6UVpww=",
+      "dependsOn": []
+    },
+    "GetRoute": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "dependsOn": [
+        {
+          "category": "api",
+          "resourceName": "WishListAPI",
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ]
+        },
+        {
+          "category": "function",
+          "resourceName": "wishlistAnalyzer",
+          "attributes": [
+            "Name"
+          ]
+        },
+        {
+          "category": "function",
+          "resourceName": "getLocationCoordinates",
+          "attributes": [
+            "Name"
+          ]
+        }
+      ],
+      "lastBuildTimeStamp": "2025-07-01T12:31:32.155Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2025-07-01T12:31:32.167Z",
+      "distZipFilename": "GetRoute-3068477a6a69624e4c77-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+        "s3Key": "amplify-builds/GetRoute-3068477a6a69624e4c77-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-dev-e7348-deployment/amplify-cfn-templates/function/GetRoute-cloudformation-template.json",
+        "logicalId": "functionGetRoute"
+      },
+      "lastPushTimeStamp": "2025-07-13T16:21:16.187Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole17b9ea04-dev",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:GetRoute-dev",
+        "Name": "GetRoute-dev",
+        "LambdaExecutionRole": "amplifybackendLambdaRole17b9ea04-dev"
+      },
+      "lastPushDirHash": "3mG99ctp3OD44NZWh6vSbhRvK0Y="
+    },
+    "OptimizeRoute": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "dependsOn": [
+        {
+          "category": "api",
+          "resourceName": "WishListAPI",
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ]
+        }
+      ],
+      "lastBuildTimeStamp": "2025-07-12T13:15:39.555Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2025-07-12T13:15:39.570Z",
+      "distZipFilename": "OptimizeRoute-6f4c5a53587875543764-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+        "s3Key": "amplify-builds/OptimizeRoute-6f4c5a53587875543764-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-dev-e7348-deployment/amplify-cfn-templates/function/OptimizeRoute-cloudformation-template.json",
+        "logicalId": "functionOptimizeRoute"
+      },
+      "lastPushTimeStamp": "2025-07-13T16:21:16.188Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole59e880d3-dev",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:OptimizeRoute-dev",
+        "Name": "OptimizeRoute-dev",
+        "LambdaExecutionRole": "amplifybackendLambdaRole59e880d3-dev"
+      },
+      "lastPushDirHash": "rl7wNrf+w6yTFtSokQLQr1td5nc="
+    }
+  }
+}
