@@ -48,7 +48,7 @@ export default function WishlistInfo() {
         
         // Simulate async navigation for better UX (remove if not needed)
         setTimeout(() => {
-            router.push('/trip-view/trip-view_main');
+        router.push('/trip-view/trip-view_main');
             setLoading(false);
         }, 500);
     };

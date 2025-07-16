@@ -45,7 +45,7 @@ export type ActivityDayAssignment = {
   activityId: string;
   dayNumber: number;
   position?: number; // For ordering within the day
-};
+}; 
 
 // New type for day with encoded polyline
 export type DayWithPolyline = {

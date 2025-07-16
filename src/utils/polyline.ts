@@ -25,7 +25,7 @@ export function decodePolyline(encoded: string): { latitude: number, longitude: 
     poly.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
   }
   return poly;
-}
+} 
 
 // Encode an array of { latitude, longitude } to a polyline string
 export function encodePolyline(coordinates: { latitude: number, longitude: number }[]): string {
