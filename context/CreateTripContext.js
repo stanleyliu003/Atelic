@@ -17,6 +17,7 @@ export const useCreateTrip = () => {
 export const CreateTripProvider = ({ children }) => {
     // const [tripId, setTripId] = useState(null); // Commented out for now
     const [tripId, setTripId] = useState('test-trip-id'); // Use fixed tripId for testing
+    console.log('[CreateTripContext] tripId initialized:', tripId);
     const [activities, setActivities] = useState([]);
     const [wishlistText, setWishlistText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -48,11 +49,17 @@ export const CreateTripProvider = ({ children }) => {
         setWishlistText(text);
     };
 
+    const setTripIdWithLog = (id) => {
+        console.log('[CreateTripContext] setTripId called with:', id);
+        setTripId(id);
+    };
+
     const clearTripData = () => {
         setActivities([]);
         setWishlistText('');
         setTripId('test-trip-id'); // Reset to fixed tripId for testing
         setDayPolylines({}); // Clear polylines as well
+        console.log('[CreateTripContext] clearTripData called, tripId reset to test-trip-id');
     };
 
     // Helper to generate and set a new tripId (UUID)
@@ -64,7 +71,7 @@ export const CreateTripProvider = ({ children }) => {
 
     const value = {
         tripId,
-        setTripId,
+        setTripId: setTripIdWithLog,
         // generateTripId, // Commented out for now
         activities,
         wishlistText,

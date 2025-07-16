@@ -1,15 +1,4 @@
-/* Amplify Params - DO NOT EDIT
-	API_WISHLISTAPI_GRAPHQLAPIENDPOINTOUTPUT
-	API_WISHLISTAPI_GRAPHQLAPIIDOUTPUT
-	API_WISHLISTAPI_GRAPHQLAPIKEYOUTPUT
-	API_WISHLISTAPI_WISHLISTANALYSISTABLE_ARN
-	API_WISHLISTAPI_WISHLISTANALYSISTABLE_NAME
-	ENV
-	REGION
-	STORAGE_TRIPSTORAGE_ARN
-	STORAGE_TRIPSTORAGE_NAME
-	STORAGE_TRIPSTORAGE_STREAMARN
-Amplify Params - DO NOT EDIT *//*
+/*
 Copyright 2017 - 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the License. A copy of the License is located at
     http://aws.amazon.com/apache2.0/
@@ -164,7 +153,6 @@ app.get(path + '/object' + hashKeyPath + sortKeyPath, async function(req, res) {
   }
 });
 
-
 /************************************
 * HTTP put method for insert object *
 *************************************/
@@ -248,6 +236,28 @@ app.delete(path + '/object' + hashKeyPath + sortKeyPath, async function(req, res
   } catch (err) {
     res.statusCode = 500;
     res.json({error: err, url: req.url});
+  }
+});
+
+// Add endpoint to retrieve all trips for a given userID
+app.get('/trips/:userID', async function(req, res) {
+  const userID = req.params.userID;
+  const params = {
+    TableName: tableName,
+    KeyConditionExpression: '#userID = :userID',
+    ExpressionAttributeNames: {
+      '#userID': 'userID',
+    },
+    ExpressionAttributeValues: {
+      ':userID': userID,
+    },
+  };
+  try {
+    const data = await ddbDocClient.send(new QueryCommand(params));
+    res.json(data.Items);
+  } catch (err) {
+    res.statusCode = 500;
+    res.json({ error: 'Could not retrieve trips: ' + err.message });
   }
 });
 

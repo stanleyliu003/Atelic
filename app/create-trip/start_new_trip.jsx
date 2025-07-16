@@ -19,7 +19,7 @@ export default function StartNewTripCard() {
     <Ionicons name="location-sharp" size={30} color="black" />
     <Text style={{
         fontSize: 20,
-        fontFamily:'outfit'
+        fontFamily:'outfit',
     }}>
       No trips planned yet 
     </Text>

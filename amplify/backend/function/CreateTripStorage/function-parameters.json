@@ -1,11 +1,24 @@
 {
   "lambdaLayers": [],
   "permissions": {
+    "api": {
+      "WishListAPI": [
+        "Query",
+        "Mutation"
+      ]
+    },
     "storage": {
       "TripStorage": [
         "create",
         "read",
-        "update"
+        "update",
+        "delete"
+      ],
+      "WishlistAnalysis:@model(appsync)": [
+        "create",
+        "read",
+        "update",
+        "delete"
       ]
     }
   }

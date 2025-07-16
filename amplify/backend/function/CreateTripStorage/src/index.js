@@ -16,24 +16,34 @@ exports.handler = async (event) => {
     throw new Error('Missing tripId in input');
   }
 
+  console.log('input:', input);
+  console.log('userId:', userId);
+
   // Compose the item to store
   const item = {
-    userId,
-    tripId: input.tripId,
+    userID: userId,
+    tripID: input.tripId,
     days: input.days,
     wishlist: input.wishlist,
     createdAt: new Date().toISOString(),
   };
 
+  console.log('item to put:', item);
+
   // Store in DynamoDB
   const params = {
-    TableName: 'Trips', // Update if your table name is different
+    TableName: 'Trips-dev',
     Item: item,
   };
 
   try {
     await docClient.send(new PutCommand(params));
-    return { tripId: input.tripId };
+    // Return a Trip object as required by the GraphQL schema
+    return {
+      tripId: input.tripId,
+      days: input.days || [],
+      wishlist: input.wishlist || [],
+    };
   } catch (error) {
     console.error('DynamoDB put error:', error);
     throw new Error('Failed to save trip');

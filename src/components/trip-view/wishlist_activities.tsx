@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity } from '../types/activity.types';
+import { Activity } from '../../types/activity.types';
 import { ActivityList } from './activity/activity_list';
 
 interface WishlistActivitiesProps {

@@ -11,6 +11,7 @@ export default function text_recognition() {
     const navigation=useNavigation();
     const { updateActivities, updateWishlistText, setIsLoading } = useCreateTrip();
     const [wishlist_text_raw,setWishlistText]=useState();
+    const [loading, setLoading] = useState(false);
 
     useEffect(()=>{
         navigation.setOptions({
@@ -24,6 +25,7 @@ export default function text_recognition() {
             return;
         }
         try {
+            setLoading(true);
             setIsLoading(true);
             // Use the Gen 1 API to call the GraphQL API
             const result = await API.graphql(graphqlOperation(`
@@ -66,6 +68,7 @@ export default function text_recognition() {
             }
         } finally {
             setIsLoading(false);
+            setLoading(false);
         }
 
     }
@@ -106,15 +109,18 @@ export default function text_recognition() {
         onPress={OnWishListInput}
         style ={{
           padding:20,
-          backgroundColor:Colors.PRIMARY,
+          backgroundColor:loading ? Colors.GRAY : Colors.PRIMARY,
+          opacity: loading ? 0.6 : 1,
           borderRadius:15, //rounded corners
           marginTop:50
-        }}>
+        }}
+        disabled={loading}
+        >
        <Text style = {{
-           color:Colors.WHITE,
+           color: Colors.WHITE,
            textAlign:'center',
            fontFamily:'outfit-bold',
-       }}> Create Wishlist</Text>
+       }}> {loading ? 'Creating Wishlist...' : 'Create Wishlist'}</Text>
         </TouchableOpacity>
       </View>
 

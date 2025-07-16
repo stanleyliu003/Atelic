@@ -1,6 +1,16 @@
 [
   {
-    "Action": [],
-    "Resource": []
+    "Effect": "Allow",
+    "Action": [
+      "dynamodb:PutItem",
+      "dynamodb:GetItem",
+      "dynamodb:Query",
+      "dynamodb:UpdateItem",
+      "dynamodb:DeleteItem"
+    ],
+    "Resource": [
+      "arn:aws:dynamodb:us-east-1:036284794661:table/Trips-dev",
+      "arn:aws:dynamodb:us-east-1:036284794661:table/Trips-dev/index/*"
+    ]
   }
 ]

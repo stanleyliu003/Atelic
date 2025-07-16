@@ -47,7 +47,10 @@
      lng: Float!
    }
 
-   type Trip {
+    type Trip
+    @model
+    @auth(rules: [{ allow: owner, ownerField: "userID" }]) {
+     userID: String!
      tripId: String!
      days: [Day!]!
      wishlist: [Activity!]!
@@ -61,7 +64,6 @@
 
    type Mutation {
      optimizeRoute(activities: [ActivityInput!]!): [Activity] @function(name: "OptimizeRoute-${env}")
-     createTrip(input: CreateTripInput!): Trip @function(name: "CreateTripStorage-${env}")
    }
 
    input ActivityInput {
