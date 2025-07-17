@@ -1,0 +1,11 @@
+[
+  {
+    "Action": [
+      "cognito-idp:AdminConfirmSignUp",
+      "cognito-idp:AdminUpdateUserAttributes"
+    ],
+    "Resource": [
+      "arn:aws:cognito-idp:*:*:userpool/*"
+    ]
+  }
+]
