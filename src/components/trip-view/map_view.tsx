@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import MapView, { Marker, Polyline, Region } from 'react-native-maps';
 import { getMarkerColor } from '../../constants/mapColors';
 import { Activity, TabType } from '../../types/activity.types';
+import AntDesign from '@expo/vector-icons/AntDesign';
 
 interface MapViewProps {
   activities: Activity[];
@@ -48,6 +49,15 @@ export function TripMapView({
   // Get the marker color based on the active tab
   const markerColor = getMarkerColor(activeTab);
 
+  // Handle invite collaborators button press
+  const handleInviteCollaborators = () => {
+    Alert.alert(
+      'Invite Collaborators',
+      'Feature Coming Soon',
+      [{ text: 'OK', style: 'default' }]
+    );
+  };
+
   // Prepare markers
   const dynamicMarkers = useMemo(() => {
     if (!activities || activities.length === 0) {
@@ -68,8 +78,53 @@ export function TripMapView({
       }));
   }, [activities, markerColor, selectedActivities]);
 
-  // Calculate the region to center on the first activity
+  // Calculate the region to show all markers
   const getRegionForActivities = (): Region => {
+    if (dynamicMarkers.length === 0) {
+      return {
+        latitude: 39.95,
+        longitude: -75.16,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      };
+    }
+
+    if (dynamicMarkers.length === 1) {
+      return {
+        latitude: dynamicMarkers[0].coordinate.latitude,
+        longitude: dynamicMarkers[0].coordinate.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      };
+    }
+
+    // Calculate bounds for multiple markers
+    const latitudes = dynamicMarkers.map(marker => marker.coordinate.latitude);
+    const longitudes = dynamicMarkers.map(marker => marker.coordinate.longitude);
+    
+    const minLat = Math.min(...latitudes);
+    const maxLat = Math.max(...latitudes);
+    const minLng = Math.min(...longitudes);
+    const maxLng = Math.max(...longitudes);
+
+    const latDelta = (maxLat - minLat) * 1.2; // Add 20% padding
+    const lngDelta = (maxLng - minLng) * 1.2; // Add 20% padding
+
+    // Ensure minimum delta values for zoom
+    const minDelta = 0.01;
+    const finalLatDelta = Math.max(latDelta, minDelta);
+    const finalLngDelta = Math.max(lngDelta, minDelta);
+
+    return {
+      latitude: (minLat + maxLat) / 2,
+      longitude: (minLng + maxLng) / 2,
+      latitudeDelta: finalLatDelta,
+      longitudeDelta: finalLngDelta,
+    };
+  };
+
+  // Calculate the region to center on the first activity
+  const getRegionForSingleActivity = (): Region => {
     if (dynamicMarkers.length > 0) {
       return {
         latitude: dynamicMarkers[0].coordinate.latitude,
@@ -86,15 +141,21 @@ export function TripMapView({
     };
   };
 
+  // Use different region calculation based on tab type
+  const getInitialRegion = (): Region => {
+    // For all tabs (wishlist and day tabs), show all markers
+    return getRegionForActivities();
+  };
+
   // Center the map on the first marker, or a default location if no markers exist
   const initialRegion: Region = useMemo(() => {
-    return getRegionForActivities();
-  }, []);
+    return getInitialRegion();
+  }, [activeTab, dynamicMarkers]);
 
-  // Animate to the first activity when activities or activeTab changes
+  // Animate to show all activities when activities or activeTab changes
   useEffect(() => {
     if (mapRef.current && dynamicMarkers.length > 0) {
-      const newRegion = getRegionForActivities();
+      const newRegion = getInitialRegion();
       mapRef.current.animateToRegion(newRegion, 1000); // 1 second animation
     }
   }, [activities, activeTab, dynamicMarkers]);
@@ -129,6 +190,15 @@ export function TripMapView({
           />
         )}
       </MapView>
+      
+      {/* Invite collaborators button overlay */}
+      <TouchableOpacity 
+        style={styles.shareButton} 
+        onPress={handleInviteCollaborators}
+        activeOpacity={0.7}
+      >
+        <AntDesign name="adduser" size={24} color="black" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -137,6 +207,7 @@ const styles = StyleSheet.create({
   mapContainer: {
     height: '33%',
     width: '100%',
+    position: 'relative',
   },
   map: {
     flex: 1,
@@ -166,5 +237,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: 'outfit-bold',
     fontWeight: 'bold',
+  },
+  shareButton: {
+    position: 'absolute',
+    top: 63,
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });
