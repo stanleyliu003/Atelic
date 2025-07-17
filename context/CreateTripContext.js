@@ -52,11 +52,19 @@ export const CreateTripProvider = ({ children }) => {
         days.forEach(day => {
             activitiesByDay[day.dayNumber] = { activities: day.activities };
         });
+        console.log('[CONTEXT] setAllDayActivities called. New value:', activitiesByDay);
         setDayActivities(activitiesByDay);
+    };
+
+    // Direct setter for dayActivities (if used elsewhere)
+    const setDayActivitiesWithLog = (newVal) => {
+        console.log('[CONTEXT] setDayActivities called. New value:', newVal);
+        setDayActivities(newVal);
     };
 
     // Restore all trip state from a trip object
     const restoreTripFromObject = (trip) => {
+        console.log('[CONTEXT] restoreTripFromObject called with:', trip);
         setTripId(trip.tripId);
         updateActivities(trip.wishlist);
         setAllDayActivities(trip.days);
@@ -84,14 +92,6 @@ export const CreateTripProvider = ({ children }) => {
         setTripId(id);
     };
 
-    const clearTripData = () => {
-        setActivities([]);
-        setWishlistText('');
-        setTripId('test-trip-id'); // Reset to fixed tripId for testing
-        setDayPolylines({}); // Clear polylines as well
-        console.log('[CreateTripContext] clearTripData called, tripId reset to test-trip-id');
-    };
-
     // Helper to generate and set a new tripId (UUID)
     // const generateTripId = () => {
     //     const newId = uuidv4();
@@ -110,13 +110,13 @@ export const CreateTripProvider = ({ children }) => {
         removeActivities,
         updateWishlistText,
         setIsLoading,
-        clearTripData,
         dayPolylines,
         setDayPolyline,
         setAllDayPolylines,
         dayActivities,
         setAllDayActivities,
         restoreTripFromObject,
+        setDayActivities: setDayActivitiesWithLog,
     };
 
     return (

@@ -1,52 +1,55 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { Activity, DayWithPolyline } from '../types/activity.types';
+import { useCreateTrip } from '../../context/CreateTripContext';
 
 export function useDayActivities() {
-  const [dayActivities, setDayActivities] = useState<{ [dayNumber: number]: DayWithPolyline }>({
-    1: { dayNumber: 1, activities: [], encodedPolyline: undefined },
-  });
+  const {
+    dayActivities,
+    setAllDayActivities,
+    setDayActivities,
+  } = useCreateTrip();
 
   const addActivityToDay = useCallback((activity: Activity, dayNumber: number) => {
-    setDayActivities(prev => ({
+    setDayActivities((prev: any) => ({
       ...prev,
       [dayNumber]: {
         ...prev[dayNumber],
         activities: [...(prev[dayNumber]?.activities || []), activity],
       },
     }));
-  }, []);
+  }, [setDayActivities]);
 
   const removeActivityFromDay = useCallback((activityId: string, dayNumber: number) => {
-    setDayActivities(prev => ({
+    setDayActivities((prev: any) => ({
       ...prev,
       [dayNumber]: {
         ...prev[dayNumber],
-        activities: (prev[dayNumber]?.activities || []).filter(activity => activity.place_id !== activityId),
+        activities: (prev[dayNumber]?.activities || []).filter((activity: Activity) => activity.place_id !== activityId),
       },
     }));
-  }, []);
+  }, [setDayActivities]);
 
   const removeActivitiesFromAllDays = useCallback((activityIds: string[]) => {
-    setDayActivities(prev => {
+    setDayActivities((prev: any) => {
       const newDayActivities: { [dayNumber: number]: DayWithPolyline } = {};
-      Object.entries(prev).forEach(([day, dayObj]) => {
+      Object.entries(prev).forEach(([day, dayObj]: any) => {
         newDayActivities[Number(day)] = {
           ...dayObj,
-          activities: dayObj.activities.filter(act => !act.place_id || !activityIds.includes(act.place_id)),
+          activities: dayObj.activities.filter((act: Activity) => !act.place_id || !activityIds.includes(act.place_id)),
         };
       });
       return newDayActivities;
     });
-  }, []);
+  }, [setDayActivities]);
 
   const transferActivitiesToDay = useCallback((activities: Activity[], dayNumber: number) => {
-    setDayActivities(prev => {
+    setDayActivities((prev: any) => {
       const transferIds = activities.map(a => a.place_id).filter(Boolean);
       const newDayActivities: { [dayNumber: number]: DayWithPolyline } = {};
-      Object.entries(prev).forEach(([day, dayObj]) => {
+      Object.entries(prev).forEach(([day, dayObj]: any) => {
         newDayActivities[Number(day)] = {
           ...dayObj,
-          activities: dayObj.activities.filter(act => !transferIds.includes(act.place_id)),
+          activities: dayObj.activities.filter((act: Activity) => !transferIds.includes(act.place_id)),
         };
       });
       newDayActivities[dayNumber] = {
@@ -58,52 +61,53 @@ export function useDayActivities() {
       };
       return newDayActivities;
     });
-  }, []);
+  }, [setDayActivities]);
 
   const transferActivitiesToWishlist = useCallback((activityIds: string[], dayNumber: number) => {
-    setDayActivities(prev => {
+    setDayActivities((prev: any) => {
       const dayObj = prev[dayNumber] || { dayNumber, activities: [] };
       return {
         ...prev,
         [dayNumber]: {
           ...dayObj,
-          activities: dayObj.activities.filter(activity => !activity.place_id || !activityIds.includes(activity.place_id)),
+          activities: dayObj.activities.filter((activity: Activity) => !activity.place_id || !activityIds.includes(activity.place_id)),
         },
       };
     });
-    return dayActivities[dayNumber]?.activities.filter(activity => activity.place_id && activityIds.includes(activity.place_id)) || [];
-  }, [dayActivities]);
+    return dayActivities[dayNumber]?.activities.filter((activity: Activity) => activity.place_id && activityIds.includes(activity.place_id)) || [];
+  }, [setDayActivities, dayActivities]);
 
   const getDayActivities = useCallback((dayNumber: number): Activity[] => {
     return dayActivities[dayNumber]?.activities || [];
   }, [dayActivities]);
 
   const getAllDayActivities = useCallback((): Activity[] => {
-    return Object.values(dayActivities).flatMap(dayObj => dayObj.activities);
+    return Object.values(dayActivities)
+      .flatMap(dayObj => Array.isArray((dayObj as any).activities) ? (dayObj as any).activities : []);
   }, [dayActivities]);
 
   const reorderDayActivities = useCallback((dayNumber: number, newOrder: Activity[]) => {
-    setDayActivities(prev => ({
+    setDayActivities((prev: any) => ({
       ...prev,
       [dayNumber]: {
         ...prev[dayNumber],
         activities: newOrder,
       },
     }));
-  }, []);
+  }, [setDayActivities]);
 
   const setDayPolyline = useCallback((dayNumber: number, encodedPolyline: string) => {
-    setDayActivities(prev => ({
+    setDayActivities((prev: any) => ({
       ...prev,
       [dayNumber]: {
         ...prev[dayNumber],
         encodedPolyline,
       },
     }));
-  }, []);
+  }, [setDayActivities]);
 
   const clearDay = useCallback((dayNumber: number) => {
-    setDayActivities(prev => ({
+    setDayActivities((prev: any) => ({
       ...prev,
       [dayNumber]: {
         ...prev[dayNumber],
@@ -111,7 +115,7 @@ export function useDayActivities() {
         encodedPolyline: undefined,
       },
     }));
-  }, []);
+  }, [setDayActivities]);
 
   const getDayCount = useCallback(() => {
     return Object.keys(dayActivities).length;
@@ -119,12 +123,12 @@ export function useDayActivities() {
 
   const addNewDay = useCallback(() => {
     const newDayNumber = getDayCount() + 1;
-    setDayActivities(prev => ({
+    setDayActivities((prev: any) => ({
       ...prev,
       [newDayNumber]: { dayNumber: newDayNumber, activities: [], encodedPolyline: undefined },
     }));
     return newDayNumber;
-  }, [getDayCount]);
+  }, [getDayCount, setDayActivities]);
 
   return {
     dayActivities,

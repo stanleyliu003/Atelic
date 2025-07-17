@@ -91,7 +91,7 @@ export default function TripViewMain() {
         if (tab === 'wishlist') {
             // Filter out activities that are already in days
             const dayActivityIds = Object.values(dayActivities)
-                .flatMap(dayObj => dayObj.activities)
+                .flatMap(dayObj => Array.isArray((dayObj as any).activities) ? (dayObj as any).activities : [])
                 .map((activity: Activity) => activity.place_id)
                 .filter(Boolean);
             
@@ -317,10 +317,24 @@ export default function TripViewMain() {
                 const saved = await (window as any).getLastSavedTrip?.(); // placeholder for your loading logic
                 if (saved) {
                     restoreTripFromObject(saved);
+                    // Log restored dayActivities
+                    setTimeout(() => {
+                        console.log('[RESTORE] dayActivities after restore:', dayActivities);
+                    }, 500); // Delay to allow state update
                 }
             })();
         }
     }, [restoreTrip, restoreTripFromObject]);
+
+    // Log getDayActivities for each day
+    useEffect(() => {
+        if (dayActivities) {
+            Object.keys(dayActivities).forEach(dayNumber => {
+                const acts = getDayActivities(Number(dayNumber));
+                console.log(`[DEBUG] getDayActivities(${dayNumber}):`, acts);
+            });
+        }
+    }, [dayActivities]);
 
     return (
         <View style={styles.container}>
