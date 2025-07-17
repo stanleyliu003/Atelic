@@ -24,6 +24,8 @@ export const CreateTripProvider = ({ children }) => {
 
     // Store polylines per day: { [dayNumber]: encodedPolyline }
     const [dayPolylines, setDayPolylines] = useState({});
+    // Add dayActivities state for restoring days
+    const [dayActivities, setDayActivities] = useState({});
 
     // Setter for a day's polyline
     const setDayPolyline = (dayNumber, encodedPolyline) => {
@@ -31,6 +33,34 @@ export const CreateTripProvider = ({ children }) => {
             ...prev,
             [dayNumber]: encodedPolyline,
         }));
+    };
+
+    // Setter for all day polylines at once
+    const setAllDayPolylines = (days) => {
+        const polylines = {};
+        days.forEach(day => {
+            if (day.encodedPolyline) {
+                polylines[day.dayNumber] = day.encodedPolyline;
+            }
+        });
+        setDayPolylines(polylines);
+    };
+
+    // Setter for all day activities at once
+    const setAllDayActivities = (days) => {
+        const activitiesByDay = {};
+        days.forEach(day => {
+            activitiesByDay[day.dayNumber] = { activities: day.activities };
+        });
+        setDayActivities(activitiesByDay);
+    };
+
+    // Restore all trip state from a trip object
+    const restoreTripFromObject = (trip) => {
+        setTripId(trip.tripId);
+        updateActivities(trip.wishlist);
+        setAllDayActivities(trip.days);
+        setAllDayPolylines(trip.days);
     };
 
     const updateActivities = (newActivities) => {
@@ -83,6 +113,10 @@ export const CreateTripProvider = ({ children }) => {
         clearTripData,
         dayPolylines,
         setDayPolyline,
+        setAllDayPolylines,
+        dayActivities,
+        setAllDayActivities,
+        restoreTripFromObject,
     };
 
     return (

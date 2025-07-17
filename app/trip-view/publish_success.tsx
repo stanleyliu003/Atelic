@@ -2,7 +2,8 @@ import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function PublishSuccess() {
     const router = useRouter();
@@ -61,7 +62,11 @@ export default function PublishSuccess() {
                     style={styles.shareTripButton}
                     onPress={() => {
                         // TODO: Implement share functionality
-                        alert('Share trip functionality coming soon!');
+                        Alert.alert(
+                            'Share Trip',
+                            'Feature Coming Soon',
+                            [{ text: 'OK', style: 'default' }]
+                          );
                     }}
                 >
                     <Text style={styles.shareTripButtonText}>Share Trip</Text>

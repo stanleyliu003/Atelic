@@ -1,9 +1,10 @@
 import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useLocalSearchParams } from 'expo-router';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { Auth } from 'aws-amplify';
 import { useEffect, useState } from 'react';
+import { router } from 'expo-router';
 
 export default function Profile() {
   const params = useLocalSearchParams();
@@ -53,7 +54,18 @@ export default function Profile() {
 
       {/* Trip Summary (if params present) */}
       {(photoReference || params.dayCount) && (
-        <View style={styles.tripSummaryContainer}>
+        <TouchableOpacity
+          style={styles.tripSummaryContainer}
+          onPress={() => {
+            // Navigate back to trip-view_main with a restore flag
+            // This will trigger the useEffect in trip-view_main to restore the trip
+            // from the context or storage.
+            router.push({
+              pathname: '/trip-view/trip-view_main',
+              params: { restoreTrip: 'true' }
+            });
+          }}
+        >
           {/* Top left quadrant image */}
           {photoReference ? (
             <Image
@@ -71,7 +83,7 @@ export default function Profile() {
               {getDayCountText()} trip to [Placeholder]
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
       )}
     </View>
   )
@@ -100,6 +112,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginTop: 30,
     marginBottom: 30,
+    borderRadius: 1,
   },
   tripSummaryImage: {
     width: 120,

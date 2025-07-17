@@ -1,6 +1,6 @@
 import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useNavigation, useRouter } from 'expo-router';
+import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
@@ -17,11 +17,14 @@ import { fetchOptimizedRoute } from '../../src/services/optimize_route_graphQL_c
 import { Activity, TabType } from '../../src/types/activity.types';
 import { API, graphqlOperation } from 'aws-amplify';
 import { createTrip } from '../../src/graphql/mutations';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function TripViewMain() {
     const router = useRouter();
     const navigation = useNavigation();
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines } = useCreateTrip();
+    const params = useLocalSearchParams();
+    const { restoreTrip } = params;
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -292,6 +295,8 @@ export default function TripViewMain() {
                 graphqlOperation(createTrip, { input: tripData })
             );
             console.log('Trip saved:', result);
+            setTripId(tripData.tripId); // Update tripId in context after successful save
+            await AsyncStorage.setItem('lastSavedTrip', JSON.stringify(tripData));
         } catch (error) {
             console.error('Error saving trip:', error);
         }
@@ -302,6 +307,20 @@ export default function TripViewMain() {
           headerShown: false
         });
     }, []);
+
+    useEffect(() => {
+        if (restoreTrip) {
+            (async () => {
+                // Example: load from AsyncStorage or other storage
+                // For now, let's assume you have a function to get the saved trip
+                // Replace this with your actual loading logic
+                const saved = await (window as any).getLastSavedTrip?.(); // placeholder for your loading logic
+                if (saved) {
+                    restoreTripFromObject(saved);
+                }
+            })();
+        }
+    }, [restoreTrip, restoreTripFromObject]);
 
     return (
         <View style={styles.container}>
