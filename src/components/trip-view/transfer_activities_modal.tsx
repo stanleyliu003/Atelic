@@ -33,7 +33,7 @@ export const TransferActivitiesModal: React.FC<TransferActivitiesModalProps> = (
         <View style={styles.modalContent}>
           {/* X Close Button */}
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Ionicons name="close" size={17.5} color="#222" />
+            <Ionicons name="close" size={26.25} color="#222" />
           </TouchableOpacity>
           <Text style={styles.modalTitle}>Where do you want to move these activities?</Text>
           <FlatList
@@ -85,13 +85,13 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: 10,
+    right: 10,
     zIndex: 10,
     backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
+    borderRadius: 15, // 1.5x of 10
+    width: 30, // 1.5x of 20
+    height: 30, // 1.5x of 20
     alignItems: 'center',
     justifyContent: 'center',
   },

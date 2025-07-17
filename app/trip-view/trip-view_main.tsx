@@ -335,7 +335,11 @@ export default function TripViewMain() {
             <TripMapView 
                 activities={getActivitiesForTab(activeTab)} 
                 activeTab={activeTab}
-                routeCoordinates={activeTab.startsWith('day') ? routeData.polyline : []}
+                routeCoordinates={
+                  activeTab.startsWith('day') && getActivitiesForTab(activeTab).length > 0
+                    ? routeData.polyline
+                    : []
+                }
                 routeLoading={routeLoading}
                 selectedActivities={selectedActivities}
             />
