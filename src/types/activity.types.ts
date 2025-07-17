@@ -7,6 +7,7 @@ export type Activity = {
   rating?: number;
   types?: string[];
   photo_reference?: string;
+  formatted_address?: string;
 };
 
 // Tab type for navigation between wishlist and different days

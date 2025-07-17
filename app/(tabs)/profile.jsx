@@ -5,11 +5,13 @@ import { Image, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { Auth } from 'aws-amplify';
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
+import { useCreateTrip } from '../../context/CreateTripContext';
 
 export default function Profile() {
   const params = useLocalSearchParams();
   const photoReference = params.photoReference || '';
   const dayCount = parseInt(params.dayCount, 10) || 1;
+  const { activities, createdAt } = useCreateTrip();
 
   const [fullName, setFullName] = useState('');
 
@@ -23,6 +25,15 @@ export default function Profile() {
         setFullName('');
       });
   }, []);
+
+  // Find the activity with the matching photo_reference
+  const activity = activities.find((a) => a.photo_reference === photoReference);
+  // Extract country from formatted_address (last comma-separated part)
+  let country = '';
+  if (activity && activity.formatted_address) {
+    const parts = activity.formatted_address.split(',');
+    country = parts[parts.length - 1].trim();
+  }
 
   const getDayCountText = () => {
     if (dayCount === 1) return '1 day';
@@ -46,7 +57,7 @@ export default function Profile() {
       {fullName ? (
         <Text style={{
           fontFamily: 'outfit',
-          fontSize: 24,
+          fontSize: 22,
           marginTop: 30,
           color: Colors.PRIMARY
         }}>Welcome back, {fullName}!</Text>
@@ -80,8 +91,13 @@ export default function Profile() {
           )}
           <View style={styles.tripSummaryTextContainer}>
             <Text style={styles.tripSummaryText}>
-              {getDayCountText()} trip to [Placeholder]
+              {getDayCountText()} Trip{country ? ` to ${country}` : ''}
             </Text>
+            {createdAt && (
+              <Text style={styles.tripSummaryDate}>
+                {`Created on: ${new Date(createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}`}
+              </Text>
+            )}
           </View>
         </TouchableOpacity>
       )}
@@ -110,7 +126,7 @@ const styles = StyleSheet.create({
   tripSummaryContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 30,
+    marginTop: 40,
     marginBottom: 30,
     borderRadius: 1,
   },
@@ -134,8 +150,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tripSummaryText: {
-    fontFamily: 'outfit-bold',
-    fontSize: 24,
+    fontFamily: 'outfit-medium',
+    marginTop: 40,
+    fontSize: 22,
     color: Colors.PRIMARY,
+  },
+  tripSummaryDate: {
+    fontFamily: 'outfit',
+    fontSize: 15,
+    color: Colors.GRAY,
+    marginTop: 6,
   },
 });

@@ -4,14 +4,25 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCreateTrip } from '../../context/CreateTripContext';
 
 export default function PublishSuccess() {
     const router = useRouter();
     const params = useLocalSearchParams();
+    const { activities } = useCreateTrip();
     
     // Extract data from navigation parameters
     const dayCount = parseInt(params.dayCount as string) || 1;
     const photoReference = params.lastActivityPhotoRef as string;
+
+    // Find the activity with the matching photo_reference
+    const activity = activities.find((a) => a.photo_reference === photoReference);
+    // Extract country from formatted_address (last comma-separated part)
+    let country = '';
+    if (activity && activity.formatted_address) {
+        const parts = activity.formatted_address.split(',');
+        country = parts[parts.length - 1].trim();
+    }
 
     const getDayCountText = () => {
         if (dayCount === 1) return '1 day';
@@ -51,7 +62,7 @@ export default function PublishSuccess() {
                 {/* Congratulations Message */}
                 <View style={styles.messageContainer}>
                     <Text style={styles.congratulationsText}>
-                        Congratulations, you've made a {getDayCountText()} trip!
+                        Congratulations, you've made a {getDayCountText()} trip{country ? ` to ${country}` : ''}!
                     </Text>
                 </View>
             </View>

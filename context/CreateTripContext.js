@@ -17,9 +17,10 @@ export const useCreateTrip = () => {
 export const CreateTripProvider = ({ children }) => {
     // const [tripId, setTripId] = useState(null); // Commented out for now
     const [tripId, setTripId] = useState('test-trip-id'); // Use fixed tripId for testing
-    const [activities, setActivities] = useState([]);
+    const [activities, setActivities] = useState([]); // Each activity now supports formatted_address
     const [wishlistText, setWishlistText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [createdAt, setCreatedAt] = useState(null);
 
     // Store polylines per day: { [dayNumber]: encodedPolyline }
     const [dayPolylines, setDayPolylines] = useState({});
@@ -123,6 +124,8 @@ export const CreateTripProvider = ({ children }) => {
         restoreTripFromObject,
         setDayActivities: setDayActivitiesWithLog,
         resetTrip,
+        createdAt,
+        setCreatedAt,
     };
 
     return (

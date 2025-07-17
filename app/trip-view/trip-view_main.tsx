@@ -24,7 +24,7 @@ export default function TripViewMain() {
     const navigation = useNavigation();
     const params = useLocalSearchParams();
     const { restoreTrip } = params;
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -285,10 +285,16 @@ export default function TripViewMain() {
         const dayActivityIds = days.flatMap(day => day.activities.map(a => a.place_id)).filter(Boolean);
         const wishlist = (activities || []).filter((activity) => !activity.place_id || !dayActivityIds.includes(activity.place_id));
         // Compose trip data object
+        let tripCreatedAt = createdAt;
+        if (!tripCreatedAt) {
+            tripCreatedAt = new Date().toISOString();
+            setCreatedAt(tripCreatedAt);
+        }
         const tripData = {
             tripId,
             days,
             wishlist,
+            createdAt: tripCreatedAt,
         };
         // Commented out GraphQL save trip call
         // const result = await API.graphql(
