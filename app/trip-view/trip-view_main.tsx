@@ -290,16 +290,12 @@ export default function TripViewMain() {
             days,
             wishlist,
         };
-        try {
-            const result = await API.graphql(
-                graphqlOperation(createTrip, { input: tripData })
-            );
-            console.log('Trip saved:', result);
-            setTripId(tripData.tripId); // Update tripId in context after successful save
-            await AsyncStorage.setItem('lastSavedTrip', JSON.stringify(tripData));
-        } catch (error) {
-            console.error('Error saving trip:', error);
-        }
+        // Commented out GraphQL save trip call
+        // const result = await API.graphql(
+        //     graphqlOperation(createTrip, { input: tripData })
+        // );
+        setTripId(tripData.tripId); // Update tripId in context after successful save
+        await AsyncStorage.setItem('lastSavedTrip', JSON.stringify(tripData));
     };
 
     useEffect(() => {
@@ -319,7 +315,6 @@ export default function TripViewMain() {
                     restoreTripFromObject(saved);
                     // Log restored dayActivities
                     setTimeout(() => {
-                        console.log('[RESTORE] dayActivities after restore:', dayActivities);
                     }, 500); // Delay to allow state update
                 }
             })();
@@ -331,7 +326,6 @@ export default function TripViewMain() {
         if (dayActivities) {
             Object.keys(dayActivities).forEach(dayNumber => {
                 const acts = getDayActivities(Number(dayNumber));
-                console.log(`[DEBUG] getDayActivities(${dayNumber}):`, acts);
             });
         }
     }, [dayActivities]);

@@ -9,7 +9,7 @@ import { useCreateTrip } from '../../context/CreateTripContext';
 export default function text_recognition() {
     const router = useRouter();
     const navigation=useNavigation();
-    const { updateActivities, updateWishlistText, setIsLoading } = useCreateTrip();
+    const { updateActivities, updateWishlistText, setIsLoading, resetTrip } = useCreateTrip();
     const [wishlist_text_raw,setWishlistText]=useState();
     const [loading, setLoading] = useState(false);
 
@@ -74,6 +74,10 @@ export default function text_recognition() {
     }
     //nesting multiple actions into one function ONLY if user fills out certain criteria
 
+    const handleCreateWishlist = () => {
+        resetTrip();
+        OnWishListInput();
+    };
 
   return (
 
@@ -106,7 +110,7 @@ export default function text_recognition() {
     {/* Create Wishlist Button */}
       <View> 
         <TouchableOpacity
-        onPress={OnWishListInput}
+        onPress={handleCreateWishlist}
         style ={{
           padding:20,
           backgroundColor:loading ? Colors.GRAY : Colors.PRIMARY,
