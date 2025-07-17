@@ -437,7 +437,31 @@ export default function TripViewMain() {
                 onClose={() => setIsModalVisible(false)}
             />
 
-            <TouchableOpacity style={styles.backButton} onPress={() => router.push('/create-trip/wishlist_info')}>
+            <TouchableOpacity 
+                style={styles.backButton} 
+                onPress={() => {
+                    if (restoreTrip) {
+                        // Get last activity photoReference and dayCount
+                        const dayCountVal = getDayCount();
+                        let lastActivityPhotoRef = '';
+                        if (dayCountVal > 0) {
+                            const lastDayActivities = getDayActivities(dayCountVal);
+                            if (lastDayActivities && lastDayActivities.length > 0) {
+                                lastActivityPhotoRef = lastDayActivities[lastDayActivities.length - 1]?.photo_reference || '';
+                            }
+                        }
+                        router.push({
+                            pathname: '/profile',
+                            params: {
+                                photoReference: lastActivityPhotoRef,
+                                dayCount: dayCountVal.toString(),
+                            }
+                        });
+                    } else {
+                        router.push('/create-trip/wishlist_info');
+                    }
+                }}
+            >
                 <Ionicons name="arrow-back-circle-sharp" size={40} color={Colors.PRIMARY} />
             </TouchableOpacity>
         </View>
