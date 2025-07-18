@@ -4,7 +4,8 @@
     "slug": "Atelic_Stable",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/Atelic_Logo.png",
+    
     "userInterfaceStyle": "light",
     "scheme": "atelicstable",
     "splash": {
