@@ -35,7 +35,8 @@ export const TransferActivitiesModal: React.FC<TransferActivitiesModalProps> = (
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Ionicons name="close" size={26.25} color="#222" />
           </TouchableOpacity>
-          <Text style={styles.modalTitle}>Where do you want to move these activities?</Text>
+          <Text style={styles.modalTitle}>
+          Where do you want to move these activities?</Text>
           <FlatList
             data={daysArray}
             horizontal
