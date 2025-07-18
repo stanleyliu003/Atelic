@@ -4,9 +4,18 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "android": "expo run:android"
   },
   "dependencies": {
+    "@aws-amplify/analytics": "^7.0.84",
+    "@aws-amplify/api": "^6.3.15",
+    "@aws-amplify/auth": "^6.13.3",
+    "@aws-amplify/datastore": "^5.0.86",
+    "@aws-amplify/geo": "^3.0.84",
+    "@aws-amplify/pushnotification": "^5.0.46",
+    "@aws-amplify/react-native": "^1.1.10",
+    "@aws-amplify/storage": "^6.9.3",
     "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/cli-server-api": "^18.0.0",
