@@ -134,25 +134,6 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
-    "RetrieveTripStorage": {
-      "build": true,
-      "dependsOn": [
-        {
-          "attributeEnvMap": {
-            "Arn": "TABLE_ARN",
-            "Name": "TABLE_NAME"
-          },
-          "attributes": [
-            "Name",
-            "Arn"
-          ],
-          "category": "storage",
-          "resourceName": "TripStorage"
-        }
-      ],
-      "providerPlugin": "awscloudformation",
-      "service": "Lambda"
-    },
     "getLocationCoordinates": {
       "build": true,
       "dependsOn": [],

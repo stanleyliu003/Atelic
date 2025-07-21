@@ -56,6 +56,14 @@ export default function TripViewMain() {
         reorderDayActivities,
     } = useDayActivities();
 
+    
+    // Initialize day 1 if it doesn't exist
+    useEffect(() => {
+        if (getDayCount() === 0) {
+            addNewDay(); // This will create day 1
+        }
+    }, [getDayCount, addNewDay]);
+
     // Define handleTabChange before using it in the hook
     const handleTabChange = (tab: TabType) => {
         setActiveTab(tab);

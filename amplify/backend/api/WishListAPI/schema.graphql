@@ -36,10 +36,18 @@
      legs: [RouteLeg]
    }
 
-   type Trip
-     @model
-     @auth(rules: [{ allow: owner, ownerField: "userID" }]) {
-     userID: String!
+   type Query {
+     analyzeWishlist(wishlist_text: String!): WishlistAnalysisResult @function(name: "wishlistAnalyzer-dev")
+     getRoute(waypoints: [WaypointInput!]!): RouteResult @function(name: "GetRoute-dev")
+   }
+
+   input WaypointInput {
+     place_id: String!
+     lat: Float!
+     lng: Float!
+   }
+
+   type Trip {
      tripId: String!
      days: [Day!]!
      wishlist: [Activity!]!
@@ -51,20 +59,9 @@
      encodedPolyline: String
    }
 
-   type Query {
-     analyzeWishlist(wishlist_text: String!): WishlistAnalysisResult @function(name: "wishlistAnalyzer-dev")
-     getRoute(waypoints: [WaypointInput!]!): RouteResult @function(name: "GetRoute-dev")
-     retrieveTripsByUser(userID: String!): [Trip] @function(name: "RetrieveTripStorage-${env}")
-   }
-
-   input WaypointInput {
-     place_id: String!
-     lat: Float!
-     lng: Float!
-   }
-
    type Mutation {
      optimizeRoute(activities: [ActivityInput!]!): [Activity] @function(name: "OptimizeRoute-${env}")
+     createTrip(input: CreateTripInput!): Trip @function(name: "CreateTripStorage-${env}")
    }
 
    input ActivityInput {

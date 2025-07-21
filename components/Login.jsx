@@ -1,3 +1,16 @@
+import { Amplify } from 'aws-amplify';
+import awsconfig from '../src/aws-exports'; // adjust path if needed
+// Configure Amplify with React Native adapter
+Amplify.configure({
+  ...awsconfig,
+  // Add React Native specific configuration
+  Analytics: {
+    disabled: true,
+  },
+});
+
+console.log('Amplify configured')
+
 import { Colors } from '../constants/Colors';
 import { useRouter } from 'expo-router';
 import React from 'react';
