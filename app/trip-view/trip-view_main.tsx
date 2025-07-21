@@ -55,7 +55,6 @@ export default function TripViewMain() {
         addNewDay,
         reorderDayActivities,
     } = useDayActivities();
-
     
     // Initialize day 1 if it doesn't exist
     useEffect(() => {
