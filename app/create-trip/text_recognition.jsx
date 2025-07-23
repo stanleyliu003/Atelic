@@ -3,13 +3,13 @@ import { API, graphqlOperation } from 'aws-amplify';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 
 export default function text_recognition() {
     const router = useRouter();
     const navigation=useNavigation();
-    const { updateActivities, updateWishlistText, setIsLoading, resetTrip } = useCreateTrip();
+    const { updateActivities, updateWishlistText, setIsLoading, resetTrip, setIsCreatingTrip } = useCreateTrip();
     const [wishlist_text_raw,setWishlistText]=useState();
     const [loading, setLoading] = useState(false);
 
@@ -17,6 +17,14 @@ export default function text_recognition() {
         navigation.setOptions({
           headerShown:false
       })
+      
+      // Set flag that user is creating a trip
+      setIsCreatingTrip(true);
+      
+      // Cleanup when component unmounts
+      return () => {
+        setIsCreatingTrip(false);
+      };
     },[])
 
     const OnWishListInput = async () => {
@@ -80,55 +88,67 @@ export default function text_recognition() {
     };
 
   return (
-
-    <View style={{
-      padding:25,
-      paddingTop:40,
-      backgroundColor:Colors.WHITE,
-      height:'100%'
-    }}>
-      <TouchableOpacity onPress={()=>router.push('(tabs)/create_new_trip')}>
-        <Ionicons name="arrow-back" size={32} color="black" />
-      </TouchableOpacity>
-
-    {/* Enter Wishlist Text */}
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: Colors.WHITE }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={60}
+    >
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        style={{ backgroundColor: Colors.WHITE }}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={{
-          marginTop:45
+          padding:25,
+          paddingTop:40,
+          backgroundColor:Colors.WHITE,
+          minHeight:'100%'
         }}>
-          <Text style={{
-            fontFamily:'outfit-bold',
-            fontSize:36
-          }}>Text Recognition</Text>
-          <TextInput 
-          style={styles.input}
-          placeholder='Enter your destinations here (e.g., Times Square, Empire State Building, Statue of Liberty) to build your trip.'
-          onChangeText={(value)=>setWishlistText(value)}
-          multiline={true} // allows multiple lines to show up
-          />
-        </View>
-    
-    {/* Create Wishlist Button */}
-      <View> 
-        <TouchableOpacity
-        onPress={handleCreateWishlist}
-        style ={{
-          padding:20,
-          backgroundColor:loading ? Colors.GRAY : Colors.PRIMARY,
-          opacity: loading ? 0.6 : 1,
-          borderRadius:15, //rounded corners
-          marginTop:50
-        }}
-        disabled={loading}
-        >
-       <Text style = {{
-           color: Colors.WHITE,
-           textAlign:'center',
-           fontFamily:'outfit-bold',
-       }}> {loading ? 'Creating Wishlist...' : 'Create Wishlist'}</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity onPress={()=>router.push('(tabs)/create_new_trip')}>
+            <Ionicons name="arrow-back" size={32} color="black" />
+          </TouchableOpacity>
 
-    </View>
+        {/* Enter Wishlist Text */}
+            <View style={{
+              marginTop:45
+            }}>
+              <Text style={{
+                fontFamily:'outfit-bold',
+                fontSize:36
+              }}>Text Recognition</Text>
+              <TextInput 
+              style={styles.input}
+              placeholder='Enter your destinations here (e.g., Times Square, Empire State Building, Statue of Liberty) to build your trip.'
+              onChangeText={(value)=>setWishlistText(value)}
+              multiline={true} // allows multiple lines to show up
+              />
+            </View>
+        
+        {/* Create Wishlist Button */}
+          <View> 
+            <TouchableOpacity
+            onPress={handleCreateWishlist}
+            style ={{
+              padding:20,
+              backgroundColor:loading ? Colors.GRAY : Colors.PRIMARY,
+              opacity: loading ? 0.6 : 1,
+              borderRadius:15, //rounded corners
+              marginTop:50
+            }}
+            disabled={loading}
+            >
+           <Text style = {{
+               color: Colors.WHITE,
+               textAlign:'center',
+               fontFamily:'outfit-bold',
+           }}> {loading ? 'Creating Wishlist...' : 'Create Wishlist'}</Text>
+            </TouchableOpacity>
+          </View>
+
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   )
 }
 
@@ -140,7 +160,7 @@ const styles = StyleSheet.create({
       borderRadius:30,
       borderColor:Colors.GRAY,
       fontFamily:'outfit',
-      height: 400,
+      height: 335,
       textAlignVertical: 'top', //aligns text with top
       paddingTop: 15 //padding from top to the actual text
   }

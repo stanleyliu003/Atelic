@@ -21,6 +21,7 @@ export const CreateTripProvider = ({ children }) => {
     const [wishlistText, setWishlistText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [createdAt, setCreatedAt] = useState(null);
+    const [isCreatingTrip, setIsCreatingTrip] = useState(false);
 
     // Store polylines per day: { [dayNumber]: encodedPolyline }
     const [dayPolylines, setDayPolylines] = useState({});
@@ -126,6 +127,8 @@ export const CreateTripProvider = ({ children }) => {
         resetTrip,
         createdAt,
         setCreatedAt,
+        isCreatingTrip,
+        setIsCreatingTrip,
     };
 
     return (
