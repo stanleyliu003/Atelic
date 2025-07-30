@@ -11,6 +11,7 @@ export default function text_recognition() {
     const navigation=useNavigation();
     const { updateActivities, updateWishlistText, setIsLoading, resetTrip, setIsCreatingTrip } = useCreateTrip();
     const [wishlist_text_raw,setWishlistText]=useState();
+    const [city, setCity] = useState();
     const [loading, setLoading] = useState(false);
 
     useEffect(()=>{
@@ -28,13 +29,15 @@ export default function text_recognition() {
     },[])
 
     const OnWishListInput = async () => {
-        //check if users inputted wishlist text
-        if(!wishlist_text_raw){
+        //check if users inputted wishlist text and city
+        if(!wishlist_text_raw || !city){
             return;
         }
         try {
             setLoading(true);
             setIsLoading(true);
+            // Combine city and destinations for the API call
+            const combinedText = `${city}: ${wishlist_text_raw}`;
             // Use the Gen 1 API to call the GraphQL API
             const result = await API.graphql(graphqlOperation(`
                 query AnalyzeWishlist($wishlist_text: String!) {
@@ -52,7 +55,7 @@ export default function text_recognition() {
                         }
                     }
                 }
-            `, { wishlist_text: wishlist_text_raw }));
+            `, { wishlist_text: combinedText }));
             
             // Extract and print the activities array with proper null checking
             const activities = result?.data?.analyzeWishlist?.wishlist_activities || [];
@@ -64,7 +67,7 @@ export default function text_recognition() {
             
             // Store activities in context
             updateActivities(activities);
-            updateWishlistText(wishlist_text_raw);
+            updateWishlistText(combinedText);
             
             // Navigate to the next screen
             //router.replace('create-trip/wishlist_map');
@@ -109,19 +112,33 @@ export default function text_recognition() {
             <Ionicons name="arrow-back" size={32} color="black" />
           </TouchableOpacity>
 
-        {/* Enter Wishlist Text */}
+        {/* Enter City */}
             <View style={{
-              marginTop:45
+              marginTop:25
             }}>
               <Text style={{
                 fontFamily:'outfit-bold',
                 fontSize:36
-              }}>Text Recognition</Text>
+              }}>Plan Your Trip</Text>
+              
+              <Text style={[styles.label, { marginTop: 20 }]}>Cities</Text>
               <TextInput 
-              style={styles.input}
-              placeholder='Enter your destinations here (e.g., Times Square, Empire State Building, Statue of Liberty) to build your trip.'
-              onChangeText={(value)=>setWishlistText(value)}
-              multiline={true} // allows multiple lines to show up
+                style={styles.cityInput}
+                placeholder='Ex: New York City, Boston'
+                onChangeText={(value)=>setCity(value)}
+              />
+            </View>
+
+        {/* Enter Destinations */}
+            <View style={{
+              marginTop:25
+            }}>
+              <Text style={styles.label}>Must See Destinations</Text>
+              <TextInput 
+                style={styles.input}
+                placeholder='Ex: Times Square, Statue of Liberty, Boston Common, Harvard'
+                onChangeText={(value)=>setWishlistText(value)}
+                multiline={true} // allows multiple lines to show up
               />
             </View>
         
@@ -153,15 +170,32 @@ export default function text_recognition() {
 }
 
 const styles = StyleSheet.create({
+  label: {
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
+    marginTop: 7,
+    marginBottom: 10,
+    color: '#1a1a1a'
+  },
+  cityInput: {
+    padding: 15,
+    borderWidth: 1,
+    borderRadius: 15,
+    borderColor: '#1a1a1a',
+    fontFamily: 'outfit',
+    height: 50,
+    color: '#1a1a1a'
+  },
   input:{
-      marginTop:30,
+      marginTop: 10,
       padding:15,
       borderWidth:1,
       borderRadius:30,
-      borderColor:Colors.GRAY,
+      borderColor:'#1a1a1a',
       fontFamily:'outfit',
-      height: 335,
+      height: 300,
       textAlignVertical: 'top', //aligns text with top
-      paddingTop: 15 //padding from top to the actual text
+      paddingTop: 15, //padding from top to the actual text
+      color: '#1a1a1a' //very dark gray, almost black for maximum readability
   }
 })
