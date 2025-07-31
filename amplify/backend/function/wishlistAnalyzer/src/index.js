@@ -46,15 +46,17 @@ exports.handler = async (event) => {
         // It is most likely still "gemini-pro", but this verification step is crucial.
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-        // Create prompt for Gemini to extract activities
+        // Create prompt for Gemini to extract activities AND get recommendations
         const prompt = `
         You are an expert travel assistant. Analyze the following travel wishlist text. First, identify the primary city of the trip. Second, extract all of the location names, landmarks, or points of interest.
         For each location, provide its full, official name, avoiding abbreviations or slang. The names should be precise and suitable for use with a mapping API like Google Places.
         For example, instead of "UPenn", use "University of Pennsylvania". Instead of "Philly museum of art", use "Philadelphia Museum of Art".
 
-        Return ONLY a single, minified JSON object with no additional text or explanation. No need to return or tell me to "see location 1" or "go enjoy location 2" I just want the location name The object must have two keys: "primaryCity" (a string) and "locations" (an array of strings).
+        Additionally, based on the user's interests and the locations they've chosen, recommend exactly 7 additional popular attractions, landmarks, or points of interest in the same city that would complement their itinerary. These should be well-known, highly-rated destinations that tourists typically visit.
 
-        Format: {"primaryCity":"City Name","locations":["Official Location Name 1","Official Location Name 2"]}
+        Return ONLY a single, minified JSON object with no additional text or explanation. The object must have three keys: "primaryCity" (a string), "locations" (an array of strings), and "recommendations" (an array of exactly 7 strings).
+
+        Format: {"primaryCity":"City Name","locations":["Official Location Name 1","Official Location Name 2"],"recommendations":["Recommended Location 1","Recommended Location 2","Recommended Location 3","Recommended Location 4","Recommended Location 5","Recommended Location 6","Recommended Location 7"]}
 
         Wishlist text: "${wishlist_text}"
         `;
@@ -74,10 +76,10 @@ exports.handler = async (event) => {
             throw new Error('Failed to parse analysis from AI response.');
         }
 
-        const { primaryCity, locations } = analysisResult;
+        const { primaryCity, locations, recommendations } = analysisResult;
 
-        if (!primaryCity || !locations || !Array.isArray(locations)) {
-            throw new Error('Invalid JSON structure from AI. Missing "primaryCity" or "locations".');
+        if (!primaryCity || !locations || !Array.isArray(locations) || !recommendations || !Array.isArray(recommendations)) {
+            throw new Error('Invalid JSON structure from AI. Missing "primaryCity", "locations", or "recommendations".');
         }
 
         // ----------------------------------------------------------------
@@ -102,21 +104,22 @@ exports.handler = async (event) => {
             console.warn(`Could not get coordinates for primary city "${primaryCity}". Proceeding without bias.`);
         }
 
-        // Step 2: Get coordinates for all other locations using the city bias.
-        console.log(`Invoking getLocationCoordinates for ${locations.length} locations with bias.`);
+        // Step 2: Get coordinates for all locations (user's + recommendations) using the city bias.
+        const allLocations = [...locations, ...recommendations];
+        console.log(`Invoking getLocationCoordinates for ${allLocations.length} locations with bias.`);
         const locationsInvokeCommand = new InvokeCommand({
             FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
-            Payload: JSON.stringify({ locations, bias: locationBias }),
+            Payload: JSON.stringify({ locations: allLocations, bias: locationBias }),
         });
         const locationsResponse = await lambdaClient.send(locationsInvokeCommand);
         const locationsPayload = JSON.parse(new TextDecoder().decode(locationsResponse.Payload));
-        const locationsWithCoords = JSON.parse(locationsPayload.body);
+        const allLocationsWithCoords = JSON.parse(locationsPayload.body);
 
-        console.log('Received coordinates for locations:', locationsWithCoords);
+        console.log('Received coordinates for all locations:', allLocationsWithCoords);
 
-        // Combine original names with the new coordinates
-        const finalActivities = locations.map(locationName => {
-            const coordData = locationsWithCoords.find(c => c.name === locationName);
+        // Helper function to create activity object
+        const createActivityObject = (locationName, isRecommended = false) => {
+            const coordData = allLocationsWithCoords.find(c => c.name === locationName);
             return {
                 name: locationName,
                 lat: coordData ? coordData.lat : null,
@@ -127,8 +130,14 @@ exports.handler = async (event) => {
                 types: coordData ? coordData.types : [],
                 place_id: coordData ? coordData.place_id : null,
                 photo_reference: coordData ? coordData.photo_reference : null,
+                is_recommended: isRecommended, // Flag to distinguish user's choices from recommendations
             };
-        });
+        };
+
+        // Create final activities array with user's locations first, then recommendations
+        const userActivities = locations.map(locationName => createActivityObject(locationName, false));
+        const recommendedActivities = recommendations.map(locationName => createActivityObject(locationName, true));
+        const finalActivities = [...userActivities, ...recommendedActivities];
 
         return {
             wishlist_activities: finalActivities,

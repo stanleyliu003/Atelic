@@ -17,6 +17,7 @@
      types: [String]
      place_id: String
      photo_reference: String
+     is_recommended: Boolean
    }
 
    type WishlistAnalysisResult {
@@ -74,6 +75,7 @@
      photo_reference: String
      formatted_address: String
      user_ratings_total: Int
+     is_recommended: Boolean
    }
 
    input DayInput {
