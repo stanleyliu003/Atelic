@@ -52,7 +52,7 @@ exports.handler = async (event) => {
         For each location, provide its full, official name, avoiding abbreviations or slang. The names should be precise and suitable for use with a mapping API like Google Places.
         For example, instead of "UPenn", use "University of Pennsylvania". Instead of "Philly museum of art", use "Philadelphia Museum of Art".
         Also generate a list of exactly 7 high-quality recommendations by following these specific rules: 
-        RULE 1: ANALYZE USER INTENT Infer the user's implicit interests from their wishlist (e.g., History, Art, Outdoors, Food, if they chose museums, include other cultural sites; if they chose parks, include outdoor attractions, if they like art museums, suggest a specific gallery district or a notable sculpture park). The recommendations must be complementary to a users interests. 
+        RULE 1: ANALYZE USER INTENT Infer the user's implicit interests from their wishlist. They can have multiple interests (e.g., History, Art, Outdoors, Food, science, music, art, popular attractions, religious, etc. if they chose museums, include other cultural sites; if they chose parks, include outdoor attractions, if they like art museums, suggest a specific gallery district or a notable sculpture park). The recommendations must be complementary to a users interests. 
         RULE 2: APPLY RECOMMENDATION CRITERIA Every recommendation must meet these qualifications: 
         - Thematic Relevance: Aligns with the user's inferred interests from Rule 1. 
         - Quality & Popularity: Must be well-regarded and highly reviewed destinations that tourists and locals appreciate. 
