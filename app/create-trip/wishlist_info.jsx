@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { WishlistActivities } from '../../src/components/trip-view';
 import { Colors } from './../../constants/Colors';
@@ -63,15 +63,37 @@ export default function WishlistInfo() {
             <Text style={styles.title}>Wishlist Activities</Text>
         </View>
 
-        {/* Use the shared WishlistActivities component with selection functionality */}
-        <WishlistActivities 
-            activities={activities || []} 
-            selectedActivities={selectedActivities}
-            onActivitySelect={handleActivitySelect}
-            onActivityDeselect={handleActivityDeselect}
-            showSelectionIndicator={true}
-        />
-        
+        <ScrollView 
+          style={styles.scrollContainer}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* User-selected activities (is_recommended: false) */}
+          <WishlistActivities 
+              activities={(activities || []).filter(a => !a.is_recommended)} 
+              selectedActivities={selectedActivities}
+              onActivitySelect={handleActivitySelect}
+              onActivityDeselect={handleActivityDeselect}
+              showSelectionIndicator={true}
+              scrollable={false}
+          />
+
+          {/* Recommended activities (is_recommended: true) */}
+          {activities && activities.some(a => a.is_recommended) && (
+            <>
+              <Text style={styles.recommendedTitle}>Recommended Activities:</Text>
+              <WishlistActivities 
+                  activities={activities.filter(a => a.is_recommended)} 
+                  selectedActivities={selectedActivities}
+                  onActivitySelect={handleActivitySelect}
+                  onActivityDeselect={handleActivityDeselect}
+                  showSelectionIndicator={true}
+                  scrollable={false}
+              />
+            </>
+          )}
+        </ScrollView>
+
         {/* Create Trip Button */}
         <TouchableOpacity
           onPress={handleCreateTrip}
@@ -106,6 +128,18 @@ const styles = StyleSheet.create({
     title: {
       fontFamily: 'outfit-bold',
       fontSize: 35,
+    },
+    scrollContainer: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingBottom: 20,
+    },
+    recommendedTitle: {
+      fontFamily: 'outfit-bold',
+      fontSize: 22,
+      marginTop: 25,
+      marginBottom: 20,
     },
     createTripButton: {
       padding: 20,

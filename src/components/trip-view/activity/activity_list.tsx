@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, View, StyleSheet } from 'react-native';
 import { RouteLeg } from '../../../services/getRoute_graphQL_call';
 import { Activity, ActivityListProps } from '../../../types/activity.types';
 import { ActivityCard } from './activity_card';
@@ -11,7 +11,8 @@ interface EnhancedActivityListProps extends ActivityListProps {
   showSelectionIndicator?: boolean;
   emptyStateTitle?: string;
   emptyStateSubtitle?: string;
-  routeLegs?: RouteLeg[]; // Add route legs data
+  routeLegs?: RouteLeg[];
+  scrollable?: boolean; // <-- new prop
 }
 
 export function ActivityList({ 
@@ -26,7 +27,8 @@ export function ActivityList({
   showSelectionIndicator = false,
   emptyStateTitle,
   emptyStateSubtitle,
-  routeLegs = [], // Add route legs with default empty array
+  routeLegs = [],
+  scrollable = true, // <-- default true
 }: EnhancedActivityListProps) {
   if (!activities || activities.length === 0) {
     return (
@@ -58,22 +60,21 @@ export function ActivityList({
 
   const shouldShowSelectionIndicator = showSelectionIndicator || variant === 'selectable';
 
+  const Container = scrollable ? ScrollView : View;
+  const containerProps = scrollable
+    ? { style: styles.container, contentContainerStyle: styles.contentContainer, showsVerticalScrollIndicator: false }
+    : { style: styles.container };
+
   return (
-    <ScrollView 
-      style={styles.container} 
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false} 
-    >
+    <Container {...containerProps}>
       {activities.map((activity: Activity, index: number) => {
         const isSelected = activity.place_id ? selectedActivities.includes(activity.place_id) : false;
         const isLastActivity = index === activities.length - 1;
-        
         // Get route info for this activity (distance/duration to next activity)
         const routeLeg = routeLegs[index];
         const nextActivityDistance = routeLeg?.distance;
         const nextActivityDuration = routeLeg?.duration;
-        const nextActivity = activities[index + 1]; // Get the next activity
-        
+        const nextActivity = activities[index + 1];
         return (
           <ActivityCard
             key={activity.place_id || index}
@@ -92,13 +93,12 @@ export function ActivityList({
           />
         );
       })}
-    </ScrollView>
+    </Container>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     width: '100%',
   },
   contentContainer: {

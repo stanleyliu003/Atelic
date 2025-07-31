@@ -13,6 +13,7 @@ export const optimizeRoute = /* GraphQL */ `
       types
       place_id
       photo_reference
+      is_recommended
       __typename
     }
   }
@@ -36,6 +37,7 @@ export const createTrip = /* GraphQL */ `
         types
         place_id
         photo_reference
+        is_recommended
         __typename
       }
       __typename
@@ -63,6 +65,7 @@ export const createWishlistAnalysis = /* GraphQL */ `
         types
         place_id
         photo_reference
+        is_recommended
         __typename
       }
       createdAt
@@ -92,6 +95,7 @@ export const updateWishlistAnalysis = /* GraphQL */ `
         types
         place_id
         photo_reference
+        is_recommended
         __typename
       }
       createdAt
@@ -121,6 +125,7 @@ export const deleteWishlistAnalysis = /* GraphQL */ `
         types
         place_id
         photo_reference
+        is_recommended
         __typename
       }
       createdAt

@@ -52,6 +52,7 @@ export default function text_recognition() {
                             types
                             place_id
                             photo_reference
+                            is_recommended
                         }
                     }
                 }

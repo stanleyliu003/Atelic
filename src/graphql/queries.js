@@ -14,6 +14,7 @@ export const analyzeWishlist = /* GraphQL */ `
         types
         place_id
         photo_reference
+        is_recommended
         __typename
       }
       __typename
@@ -54,6 +55,7 @@ export const getWishlistAnalysis = /* GraphQL */ `
         types
         place_id
         photo_reference
+        is_recommended
         __typename
       }
       createdAt

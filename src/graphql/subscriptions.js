@@ -21,6 +21,7 @@ export const onCreateWishlistAnalysis = /* GraphQL */ `
         types
         place_id
         photo_reference
+        is_recommended
         __typename
       }
       createdAt
@@ -49,6 +50,7 @@ export const onUpdateWishlistAnalysis = /* GraphQL */ `
         types
         place_id
         photo_reference
+        is_recommended
         __typename
       }
       createdAt
@@ -77,6 +79,7 @@ export const onDeleteWishlistAnalysis = /* GraphQL */ `
         types
         place_id
         photo_reference
+        is_recommended
         __typename
       }
       createdAt

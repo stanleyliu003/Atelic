@@ -138,6 +138,7 @@ exports.handler = async (event) => {
         const userActivities = locations.map(locationName => createActivityObject(locationName, false));
         const recommendedActivities = recommendations.map(locationName => createActivityObject(locationName, true));
         const finalActivities = [...userActivities, ...recommendedActivities];
+        console.log('finalActivities', finalActivities);
 
         return {
             wishlist_activities: finalActivities,
