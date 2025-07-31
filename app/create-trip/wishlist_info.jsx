@@ -15,13 +15,13 @@ export default function WishlistInfo() {
     // Loading state for create trip
     const [loading, setLoading] = useState(false);
 
-    // Initialize all activities as selected when component mounts or activities change
+    // Initialize only user-selected activities (not recommendations) as selected when component mounts or activities change
     useEffect(() => {
         if (activities && activities.length > 0) {
-            const allActivityIds = activities
-                .filter(activity => activity.place_id)
+            const userActivityIds = activities
+                .filter(activity => activity.place_id && !activity.is_recommended)
                 .map(activity => activity.place_id);
-            setSelectedActivities(allActivityIds);
+            setSelectedActivities(userActivityIds);
         }
     }, [activities]);
 
