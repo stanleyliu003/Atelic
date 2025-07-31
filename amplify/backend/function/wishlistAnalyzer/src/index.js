@@ -51,13 +51,22 @@ exports.handler = async (event) => {
         You are an expert travel assistant. Analyze the following travel wishlist text. First, identify the primary city of the trip. Second, extract all of the location names, landmarks, or points of interest.
         For each location, provide its full, official name, avoiding abbreviations or slang. The names should be precise and suitable for use with a mapping API like Google Places.
         For example, instead of "UPenn", use "University of Pennsylvania". Instead of "Philly museum of art", use "Philadelphia Museum of Art".
-
-        Additionally, based on the user's interests and the locations they've chosen, recommend exactly 7 additional popular attractions, landmarks, or points of interest in the same city that would complement their itinerary. These should be well-known, highly-rated destinations that tourists typically visit.
-
+        Also generate a list of exactly 7 high-quality recommendations by following these specific rules: 
+        RULE 1: ANALYZE USER INTENT Infer the user's implicit interests from their wishlist (e.g., History, Art, Outdoors, Food, if they chose museums, include other cultural sites; if they chose parks, include outdoor attractions, if they like art museums, suggest a specific gallery district or a notable sculpture park). The recommendations must be complementary to a users interests. 
+        RULE 2: APPLY RECOMMENDATION CRITERIA Every recommendation must meet these qualifications: 
+        - Thematic Relevance: Aligns with the user's inferred interests from Rule 1. 
+        - Quality & Popularity: Must be well-regarded and highly reviewed destinations that tourists and locals appreciate. 
+        - Geographic Logic: Should be reasonably accessible from the user's other chosen locations, creating a sensible travel path. 
+        - Itinerary Balance: The final list of 7 must be diverse. It should balance iconic, "must-see" attractions that define the city with unique local favorites or experiences to create a well-rounded itinerary. 
+        RULE 3: APPLY EXCLUSION CRITERIA DO NOT include any of the following in the recommendations: 
+        - Locations already present in the user's original wishlist. 
+        - Generic chain establishments (e.g., Starbucks, McDonald's). 
+        - Hotels or other accommodations. 
+        - Overly niche attractions with very limited appeal. 
+        - Locations requiring significant travel outside the primary city. 
+        - Seasonal attractions that are very likely to be closed (e.g., a water park in winter).
         Return ONLY a single, minified JSON object with no additional text or explanation. The object must have three keys: "primaryCity" (a string), "locations" (an array of strings), and "recommendations" (an array of exactly 7 strings).
-
         Format: {"primaryCity":"City Name","locations":["Official Location Name 1","Official Location Name 2"],"recommendations":["Recommended Location 1","Recommended Location 2","Recommended Location 3","Recommended Location 4","Recommended Location 5","Recommended Location 6","Recommended Location 7"]}
-
         Wishlist text: "${wishlist_text}"
         `;
 
