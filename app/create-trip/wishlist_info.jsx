@@ -60,7 +60,7 @@ export default function WishlistInfo() {
         </TouchableOpacity>
 
         <View style={styles.header}>
-            <Text style={styles.title}>Wishlist Activities</Text>
+            <Text style={styles.title}>Trip Wishlist</Text>
         </View>
 
         <ScrollView 

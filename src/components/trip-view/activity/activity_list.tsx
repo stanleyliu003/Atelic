@@ -3,14 +3,11 @@ import { ScrollView, View, StyleSheet } from 'react-native';
 import { RouteLeg } from '../../../services/getRoute_graphQL_call';
 import { Activity, ActivityListProps } from '../../../types/activity.types';
 import { ActivityCard } from './activity_card';
-import { NoActivities } from './no_activities';
 
 interface EnhancedActivityListProps extends ActivityListProps {
   onActivityPress?: (activity: Activity) => void;
   onActivityLongPress?: (activity: Activity) => void;
   showSelectionIndicator?: boolean;
-  emptyStateTitle?: string;
-  emptyStateSubtitle?: string;
   routeLegs?: RouteLeg[];
   scrollable?: boolean; // <-- new prop
 }
@@ -25,18 +22,12 @@ export function ActivityList({
   variant = 'default',
   disabled = false,
   showSelectionIndicator = false,
-  emptyStateTitle,
-  emptyStateSubtitle,
   routeLegs = [],
   scrollable = true, // <-- default true
 }: EnhancedActivityListProps) {
+  // Since we always have recommendations, we don't need empty state handling
   if (!activities || activities.length === 0) {
-    return (
-      <NoActivities 
-        title={emptyStateTitle}
-        subtitle={emptyStateSubtitle}
-      />
-    );
+    return null;
   }
 
   const handleActivityPress = (activity: Activity) => {

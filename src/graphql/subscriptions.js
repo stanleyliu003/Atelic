@@ -13,6 +13,7 @@ export const onCreateWishlistAnalysis = /* GraphQL */ `
       status
       activities {
         name
+        city
         lat
         lng
         rating
@@ -42,6 +43,7 @@ export const onUpdateWishlistAnalysis = /* GraphQL */ `
       status
       activities {
         name
+        city
         lat
         lng
         rating
@@ -71,6 +73,7 @@ export const onDeleteWishlistAnalysis = /* GraphQL */ `
       status
       activities {
         name
+        city
         lat
         lng
         rating

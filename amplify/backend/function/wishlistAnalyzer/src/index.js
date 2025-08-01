@@ -48,17 +48,17 @@ exports.handler = async (event) => {
 
         // Create prompt for Gemini to extract activities AND get recommendations
         const prompt = `
-        You are an expert travel assistant. Analyze the following travel wishlist text. First, identify ALL the cities mentioned in the trip. Second, extract all of the location names, landmarks, or points of interest.
+        You are an expert travel assistant. Analyze the following travel wishlist text. First, identify ALL the cities mentioned in the trip and the number of cities. Second, extract all of the location names, landmarks, or points of interest.
         For each location, provide its full, official name, avoiding abbreviations or slang. The names should be precise and suitable for use with a mapping API like Google Places.
         For example, instead of "UPenn", use "University of Pennsylvania". Instead of "Philly museum of art", use "Philadelphia Museum of Art".
-        Also generate a list of exactly 7 high-quality recommendations by following these specific rules: 
+        Also generate a list of exactly 7 high-quality recommendations per each city by following these specific rules: 
         RULE 1: ANALYZE USER INTENT Infer the user's implicit interests from their wishlist. They can have multiple interests (e.g., History, Art, Outdoors, Food, science, music, art, popular attractions, religious, etc. if they chose museums, include other cultural sites; if they chose parks, include outdoor attractions, if they like art museums, suggest a specific gallery district or a notable sculpture park). The recommendations must be complementary to a users interests. 
         RULE 2: APPLY RECOMMENDATION CRITERIA Every recommendation must meet these qualifications: 
         - Thematic Relevance: Aligns with the user's inferred interests from Rule 1. 
         - Quality & Popularity: Must be well-regarded and highly reviewed destinations that tourists and locals appreciate. 
         - Geographic Logic: Should be reasonably accessible from the user's other chosen locations, creating a sensible travel path. 
-        - Itinerary Balance: The final list of 10 must be diverse. It should balance iconic, "must-see" attractions that define the cities with the users interests to create a well-rounded itinerary. 
-        - Multi-City Distribution: If multiple cities are mentioned, distribute recommendations across all cities mentioned (e.g., if NYC and Boston, include recommendations from both cities).
+        - Itinerary Balance: The final list of 7 activities per each city should balance iconic, "must-see" attractions that define the cities with the users interests. 
+        - Multi-City Distribution: If multiple cities are mentioned, group recommendations by city. List all recommendations for the first city, then all recommendations for the second city, and so on. Do not alternate between cities.
         RULE 3: APPLY EXCLUSION CRITERIA DO NOT include any of the following in the recommendations: 
         - Locations already present in the user's original wishlist. 
         - Generic chain establishments (e.g., Starbucks, McDonald's). 
@@ -66,8 +66,8 @@ exports.handler = async (event) => {
         - Overly niche attractions with very limited appeal. 
         - Locations requiring significant travel outside the mentioned cities. 
         - Seasonal attractions that are very likely to be closed (e.g., a water park in winter).
-        Return ONLY a single, minified JSON object with no additional text or explanation. The object must have three keys: "cities" (an array of city names), "locations" (an array of objects with "name" and "city"), and "recommendations" (an array of exactly 10 objects with "name" and "city").
-        Format: {"cities":["City Name 1","City Name 2"],"locations":[{"name":"Official Location Name 1","city":"City Name 1"},{"name":"Official Location Name 2","city":"City Name 2"}],"recommendations":[{"name":"Recommended Location 1","city":"City Name 1"},{"name":"Recommended Location 2","city":"City Name 2"},{"name":"Recommended Location 3","city":"City Name 1"},{"name":"Recommended Location 4","city":"City Name 2"},{"name":"Recommended Location 5","city":"City Name 1"},{"name":"Recommended Location 6","city":"City Name 2"},{"name":"Recommended Location 7","city":"City Name 1"},{"name":"Recommended Location 8","city":"City Name 2"},{"name":"Recommended Location 9","city":"City Name 1"},{"name":"Recommended Location 10","city":"City Name 2"}]}
+        Return ONLY a single, minified JSON object with no additional text or explanation. The object must have three keys: "cities" (an array of city names), "locations" (an array of objects with "name" and "city"), and "recommendations" (an array of objects with "name" and "city" - 7 recommendations per city mentioned).
+        Format: {"cities":["City Name 1","City Name 2"],"locations":[{"name":"Official Location Name 1","city":"City Name 1"},{"name":"Official Location Name 2","city":"City Name 2"}],"recommendations":[{"name":"Recommended Location 1","city":"City Name 1"},{"name":"Recommended Location 2","city":"City Name 1"},{"name":"Recommended Location 3","city":"City Name 1"},{"name":"Recommended Location 4","city":"City Name 1"},{"name":"Recommended Location 5","city":"City Name 1"},{"name":"Recommended Location 6","city":"City Name 1"},{"name":"Recommended Location 7","city":"City Name 1"},{"name":"Recommended Location 8","city":"City Name 2"},{"name":"Recommended Location 9","city":"City Name 2"},{"name":"Recommended Location 10","city":"City Name 2"}]}
         Wishlist text: "${wishlist_text}"
         `;
 
@@ -184,7 +184,15 @@ exports.handler = async (event) => {
         const recommendedActivities = recommendations
             .filter(locationObj => !cities.includes(locationObj.name))
             .map(locationObj => createActivityObject(locationObj, true));
-        const finalActivities = [...userActivities, ...recommendedActivities];
+        
+        // Sort recommendations by city to group them together
+        const sortedRecommendedActivities = recommendedActivities.sort((a, b) => {
+            const cityAIndex = cities.indexOf(a.city);
+            const cityBIndex = cities.indexOf(b.city);
+            return cityAIndex - cityBIndex;
+        });
+        
+        const finalActivities = [...userActivities, ...sortedRecommendedActivities];
         console.log('finalActivities', finalActivities);
 
         return {

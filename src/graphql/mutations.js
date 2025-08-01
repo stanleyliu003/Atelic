@@ -5,6 +5,7 @@ export const optimizeRoute = /* GraphQL */ `
   mutation OptimizeRoute($activities: [ActivityInput!]!) {
     optimizeRoute(activities: $activities) {
       name
+      city
       lat
       lng
       rating
@@ -29,6 +30,7 @@ export const createTrip = /* GraphQL */ `
       }
       wishlist {
         name
+        city
         lat
         lng
         rating
@@ -57,6 +59,7 @@ export const createWishlistAnalysis = /* GraphQL */ `
       status
       activities {
         name
+        city
         lat
         lng
         rating
@@ -87,6 +90,7 @@ export const updateWishlistAnalysis = /* GraphQL */ `
       status
       activities {
         name
+        city
         lat
         lng
         rating
@@ -117,6 +121,7 @@ export const deleteWishlistAnalysis = /* GraphQL */ `
       status
       activities {
         name
+        city
         lat
         lng
         rating

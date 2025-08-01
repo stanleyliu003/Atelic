@@ -10,7 +10,6 @@ export type Activity = {
   photo_reference?: string;
   formatted_address?: string;
   user_ratings_total?: number;
-  is_recommended?: boolean;
 };
 
 // Tab type for navigation between wishlist and different days

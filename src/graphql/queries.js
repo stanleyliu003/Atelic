@@ -6,6 +6,7 @@ export const analyzeWishlist = /* GraphQL */ `
     analyzeWishlist(wishlist_text: $wishlist_text) {
       wishlist_activities {
         name
+        city
         lat
         lng
         rating
@@ -47,6 +48,7 @@ export const getWishlistAnalysis = /* GraphQL */ `
       status
       activities {
         name
+        city
         lat
         lng
         rating
