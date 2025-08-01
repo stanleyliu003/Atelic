@@ -25,8 +25,6 @@ export function WishlistActivities({
       onActivityDeselect={onActivityDeselect}
       showSelectionIndicator={showSelectionIndicator}
       variant="selectable"
-      emptyStateTitle="No activities found"
-      emptyStateSubtitle="Please go back and add some destinations"
     />
   );
 }

@@ -168,7 +168,7 @@ export function ActivityCard({
 
 const styles = StyleSheet.create({
   cardContainer: {
-    marginBottom: 10,
+    marginBottom: 18,
   },
   activityCard: {
     backgroundColor: '#fff',

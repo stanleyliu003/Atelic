@@ -2,7 +2,7 @@ import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { encodePolyline } from '../../src/utils/polyline';
 import { DaySchedule, TabBar, WishlistActivities } from '../../src/components/trip-view';
@@ -368,15 +368,36 @@ export default function TripViewMain() {
 
             {/* Tab Content */}
             <View style={styles.tabContent}>
-                {activeTab === 'wishlist' && (
-                    <WishlistActivities 
-                        activities={getActivitiesForTab('wishlist')}
-                        selectedActivities={selectedActivities}
-                        onActivitySelect={toggleActivitySelection}
-                        onActivityDeselect={toggleActivitySelection}
-                        showSelectionIndicator={isSelectionMode}
-                    />
-                )}
+                {activeTab === 'wishlist' && (() => {
+                    const wishlistActivities = getActivitiesForTab('wishlist');
+                    const activitiesByCity = wishlistActivities.reduce((acc: { [key: string]: Activity[] }, activity) => {
+                        const city = activity.city || 'Unknown City';
+                        if (!acc[city]) acc[city] = [];
+                        acc[city].push(activity);
+                        return acc;
+                    }, {} as { [key: string]: Activity[] });
+
+                    return (
+                        <ScrollView 
+                            style={styles.wishlistContainer}
+                            contentContainerStyle={styles.wishlistContent}
+                            showsVerticalScrollIndicator={false}
+                        >
+                            {Object.entries(activitiesByCity).map(([city, cityActivities]: [string, Activity[]]) => (
+                                <View key={`wishlist-${city}`} style={styles.citySection}>
+                                    <Text style={styles.cityTitle}>{city}</Text>
+                                    <WishlistActivities 
+                                        activities={cityActivities}
+                                        selectedActivities={selectedActivities}
+                                        onActivitySelect={toggleActivitySelection}
+                                        onActivityDeselect={toggleActivitySelection}
+                                        showSelectionIndicator={isSelectionMode}
+                                    />
+                                </View>
+                            ))}
+                        </ScrollView>
+                    );
+                })()}
                 
                 {activeTab.startsWith('day') && (
                     <DaySchedule 
@@ -522,5 +543,22 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontFamily: 'outfit-bold',
         fontWeight: '600',
+    },
+    citySection: {
+        marginBottom: 5,
+    },
+    cityTitle: {
+        fontFamily: 'outfit-bold',
+        fontSize: 24,
+        marginTop: 0,
+        textAlign: 'center',
+        marginBottom: 13,
+        color: '#1a1a1a',
+    },
+    wishlistContainer: {
+        flex: 1,
+    },
+    wishlistContent: {
+        paddingBottom: 20,
     },
 });

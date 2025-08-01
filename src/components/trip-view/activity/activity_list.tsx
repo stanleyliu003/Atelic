@@ -96,6 +96,6 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   activityCard: {
-    marginBottom: 18,
+    marginBottom: 12,
   },
 }); 

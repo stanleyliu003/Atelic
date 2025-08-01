@@ -153,19 +153,19 @@ const styles = StyleSheet.create({
     recommendedTitle: {
       fontFamily: 'outfit-bold',
       fontSize: 26,
-      marginTop: 10,
-      marginBottom: 20,
+      marginTop: 25,
+      marginBottom: 24,
       textAlign: 'center',
     },
     citySection: {
-      marginBottom: 20,
+      marginBottom: 10,
     },
     cityTitle: {
       fontFamily: 'outfit-bold',
       fontSize: 24,
-      marginTop: -10,
+      marginTop: -5,
       textAlign: 'center',
-      marginBottom: 9,
+      marginBottom: 15,
       color: '#1a1a1a',
     },
     createTripButton: {
