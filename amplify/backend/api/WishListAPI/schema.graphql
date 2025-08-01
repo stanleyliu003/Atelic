@@ -9,6 +9,7 @@
 
    type Activity {
      name: String!
+     city: String
      lat: Float
      lng: Float
      rating: Float
@@ -68,6 +69,7 @@
    input ActivityInput {
      place_id: String!
      name: String!
+     city: String
      lat: Float!
      lng: Float!
      rating: Float

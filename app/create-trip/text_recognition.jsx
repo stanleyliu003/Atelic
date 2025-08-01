@@ -44,6 +44,7 @@ export default function text_recognition() {
                     analyzeWishlist(wishlist_text: $wishlist_text) {
                         wishlist_activities {
                             name
+                            city
                             lat
                             lng
                             rating

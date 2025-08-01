@@ -66,8 +66,8 @@ exports.handler = async (event) => {
         - Overly niche attractions with very limited appeal. 
         - Locations requiring significant travel outside the mentioned cities. 
         - Seasonal attractions that are very likely to be closed (e.g., a water park in winter).
-        Return ONLY a single, minified JSON object with no additional text or explanation. The object must have three keys: "cities" (an array of city names), "locations" (an array of strings), and "recommendations" (an array of exactly 7 strings).
-        Format: {"cities":["City Name 1","City Name 2"],"locations":["Official Location Name 1","Official Location Name 2"],"recommendations":["Recommended Location 1","Recommended Location 2","Recommended Location 3","Recommended Location 4","Recommended Location 5","Recommended Location 6","Recommended Location 7"]}
+        Return ONLY a single, minified JSON object with no additional text or explanation. The object must have three keys: "cities" (an array of city names), "locations" (an array of objects with "name" and "city"), and "recommendations" (an array of exactly 10 objects with "name" and "city").
+        Format: {"cities":["City Name 1","City Name 2"],"locations":[{"name":"Official Location Name 1","city":"City Name 1"},{"name":"Official Location Name 2","city":"City Name 2"}],"recommendations":[{"name":"Recommended Location 1","city":"City Name 1"},{"name":"Recommended Location 2","city":"City Name 2"},{"name":"Recommended Location 3","city":"City Name 1"},{"name":"Recommended Location 4","city":"City Name 2"},{"name":"Recommended Location 5","city":"City Name 1"},{"name":"Recommended Location 6","city":"City Name 2"},{"name":"Recommended Location 7","city":"City Name 1"},{"name":"Recommended Location 8","city":"City Name 2"},{"name":"Recommended Location 9","city":"City Name 1"},{"name":"Recommended Location 10","city":"City Name 2"}]}
         Wishlist text: "${wishlist_text}"
         `;
 
@@ -96,7 +96,7 @@ exports.handler = async (event) => {
         // MULTI-CITY GECODING LOGIC
         // ----------------------------------------------------------------
 
-        // Step 1: Get coordinates for all cities to create multiple search biases.
+        // Step 1: Get coordinates for all cities to create city-specific search biases.
         console.log(`Getting bias coordinates for cities: ${cities.join(', ')}`);
         const cityInvokeCommand = new InvokeCommand({
             FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
@@ -106,38 +106,64 @@ exports.handler = async (event) => {
         const cityPayload = JSON.parse(new TextDecoder().decode(cityResponse.Payload));
         const cityCoordsArr = JSON.parse(cityPayload.body);
         
-        // Create multiple location biases for better geocoding accuracy
-        const locationBiases = cityCoordsArr.map(city => ({ lat: city.lat, lng: city.lng }));
+        // Create city-specific location biases for precise geocoding
+        const cityBiases = {};
+        cityCoordsArr.forEach(city => {
+            cityBiases[city.name] = { lat: city.lat, lng: city.lng };
+        });
 
-        if (locationBiases.length > 0) {
-            console.log(`Successfully got biases for ${locationBiases.length} cities:`, locationBiases);
+        if (Object.keys(cityBiases).length > 0) {
+            console.log(`Successfully got biases for ${Object.keys(cityBiases).length} cities:`, cityBiases);
         } else {
             console.warn(`Could not get coordinates for cities "${cities.join(', ')}". Proceeding without bias.`);
         }
 
-        // Step 2: Get coordinates for all locations (user's + recommendations) using multiple city biases.
-        const allLocations = [...locations, ...recommendations];
-        console.log(`Invoking getLocationCoordinates for ${allLocations.length} locations with ${locationBiases.length} city biases.`);
+        // Step 2: Geocode locations with city-specific biases for maximum accuracy
+        const allLocationObjects = [...locations, ...recommendations];
+        console.log(`Geocoding ${allLocationObjects.length} locations with city-specific biases.`);
         
-        // For now, use the first city bias as the primary bias, but this could be enhanced
-        // to use multiple biases or implement a more sophisticated geocoding strategy
-        const primaryBias = locationBiases.length > 0 ? locationBiases[0] : null;
+        // Geocode each location using its specific city bias
+        const geocodedLocations = [];
         
-        const locationsInvokeCommand = new InvokeCommand({
-            FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
-            Payload: JSON.stringify({ locations: allLocations, bias: primaryBias }),
-        });
-        const locationsResponse = await lambdaClient.send(locationsInvokeCommand);
-        const locationsPayload = JSON.parse(new TextDecoder().decode(locationsResponse.Payload));
-        const allLocationsWithCoords = JSON.parse(locationsPayload.body);
-
-        console.log('Received coordinates for all locations:', allLocationsWithCoords);
+        for (const locationObj of allLocationObjects) {
+            const { name, city } = locationObj;
+            const cityBias = cityBiases[city];
+            
+            console.log(`Geocoding "${name}" in "${city}" with bias:`, cityBias);
+            
+            const locationInvokeCommand = new InvokeCommand({
+                FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
+                Payload: JSON.stringify({ 
+                    locations: [name], 
+                    bias: cityBias 
+                }),
+            });
+            
+            try {
+                const locationResponse = await lambdaClient.send(locationInvokeCommand);
+                const locationPayload = JSON.parse(new TextDecoder().decode(locationResponse.Payload));
+                const locationResult = JSON.parse(locationPayload.body);
+                
+                if (locationResult && locationResult.length > 0) {
+                    geocodedLocations.push(...locationResult);
+                } else {
+                    console.warn(`No geocoding results for "${name}" in "${city}"`);
+                }
+            } catch (error) {
+                console.error(`Error geocoding "${name}" in "${city}":`, error);
+            }
+        }
+        
+        console.log('All geocoded locations:', geocodedLocations);
+        // Use the geocoded locations we just obtained
+        const allLocationsWithCoords = geocodedLocations;
 
         // Helper function to create activity object
-        const createActivityObject = (locationName, isRecommended = false) => {
-            const coordData = allLocationsWithCoords.find(c => c.name === locationName);
+        const createActivityObject = (locationObj, isRecommended = false) => {
+            const coordData = allLocationsWithCoords.find(c => c.name === locationObj.name);
             return {
-                name: locationName,
+                name: locationObj.name,
+                city: locationObj.city, // Include city information
                 lat: coordData ? coordData.lat : null,
                 lng: coordData ? coordData.lng : null,
                 rating: coordData ? coordData.rating : null,
@@ -153,11 +179,11 @@ exports.handler = async (event) => {
         // Create final activities array with user's locations first, then recommendations
         // Filter out any city names from both user locations and recommendations
         const userActivities = locations
-            .filter(locationName => !cities.includes(locationName))
-            .map(locationName => createActivityObject(locationName, false));
+            .filter(locationObj => !cities.includes(locationObj.name))
+            .map(locationObj => createActivityObject(locationObj, false));
         const recommendedActivities = recommendations
-            .filter(locationName => !cities.includes(locationName))
-            .map(locationName => createActivityObject(locationName, true));
+            .filter(locationObj => !cities.includes(locationObj.name))
+            .map(locationObj => createActivityObject(locationObj, true));
         const finalActivities = [...userActivities, ...recommendedActivities];
         console.log('finalActivities', finalActivities);
 

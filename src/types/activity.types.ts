@@ -1,6 +1,7 @@
 // Define a type for our activity data for better type safety
 export type Activity = {
   name: string;
+  city?: string;
   lat: number | null;
   lng: number | null;
   place_id?: string;
@@ -8,6 +9,8 @@ export type Activity = {
   types?: string[];
   photo_reference?: string;
   formatted_address?: string;
+  user_ratings_total?: number;
+  is_recommended?: boolean;
 };
 
 // Tab type for navigation between wishlist and different days
