@@ -220,8 +220,8 @@ const styles = StyleSheet.create({
   },
   activityText: {
     color: Colors.PRIMARY,
-    fontFamily: 'outfit-bold',
-    fontSize: 17,
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
     marginBottom: 8,
   },
   disabledText: {

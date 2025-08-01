@@ -68,7 +68,7 @@ export default function WishlistInfo() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* User-selected activities (is_recommended: false) */}
+          {/* User-selected activities (not grouped by city) */}
           <WishlistActivities 
               activities={(activities || []).filter(a => !a.is_recommended)} 
               selectedActivities={selectedActivities}
@@ -78,18 +78,33 @@ export default function WishlistInfo() {
               scrollable={false}
           />
 
-          {/* Recommended activities (is_recommended: true) */}
+          {/* Recommended activities grouped by city */}
           {activities && activities.some(a => a.is_recommended) && (
             <>
-              <Text style={styles.recommendedTitle}>Recommended Activities:</Text>
-              <WishlistActivities 
-                  activities={activities.filter(a => a.is_recommended)} 
-                  selectedActivities={selectedActivities}
-                  onActivitySelect={handleActivitySelect}
-                  onActivityDeselect={handleActivityDeselect}
-                  showSelectionIndicator={true}
-                  scrollable={false}
-              />
+              <Text style={styles.recommendedTitle}>Recommendations</Text>
+              {(() => {
+                const recommendedActivities = activities.filter(a => a.is_recommended);
+                const recommendedByCity = recommendedActivities.reduce((acc, activity) => {
+                  const city = activity.city || 'Unknown City';
+                  if (!acc[city]) acc[city] = [];
+                  acc[city].push(activity);
+                  return acc;
+                }, {});
+
+                return Object.entries(recommendedByCity).map(([city, cityActivities]) => (
+                  <View key={`recommended-${city}`} style={styles.citySection}>
+                    <Text style={styles.cityTitle}>{city}</Text>
+                    <WishlistActivities 
+                        activities={cityActivities} 
+                        selectedActivities={selectedActivities}
+                        onActivitySelect={handleActivitySelect}
+                        onActivityDeselect={handleActivityDeselect}
+                        showSelectionIndicator={true}
+                        scrollable={false}
+                    />
+                  </View>
+                ));
+              })()}
             </>
           )}
         </ScrollView>
@@ -137,9 +152,21 @@ const styles = StyleSheet.create({
     },
     recommendedTitle: {
       fontFamily: 'outfit-bold',
-      fontSize: 22,
-      marginTop: 25,
+      fontSize: 26,
+      marginTop: 10,
       marginBottom: 20,
+      textAlign: 'center',
+    },
+    citySection: {
+      marginBottom: 20,
+    },
+    cityTitle: {
+      fontFamily: 'outfit-bold',
+      fontSize: 24,
+      marginTop: -10,
+      textAlign: 'center',
+      marginBottom: 9,
+      color: '#1a1a1a',
     },
     createTripButton: {
       padding: 20,
