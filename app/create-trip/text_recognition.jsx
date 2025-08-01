@@ -37,7 +37,7 @@ export default function text_recognition() {
             setLoading(true);
             setIsLoading(true);
             // Combine city and destinations for the API call
-            const combinedText = `${city}: ${wishlist_text_raw}`;
+            const combinedText = `User wants to visit these cities: ${city} and the following places: ${wishlist_text_raw}`;
             // Use the Gen 1 API to call the GraphQL API
             const result = await API.graphql(graphqlOperation(`
                 query AnalyzeWishlist($wishlist_text: String!) {

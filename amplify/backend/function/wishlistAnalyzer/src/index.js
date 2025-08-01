@@ -48,7 +48,7 @@ exports.handler = async (event) => {
 
         // Create prompt for Gemini to extract activities AND get recommendations
         const prompt = `
-        You are an expert travel assistant. Analyze the following travel wishlist text. First, identify the primary city of the trip. Second, extract all of the location names, landmarks, or points of interest.
+        You are an expert travel assistant. Analyze the following travel wishlist text. First, identify ALL the cities mentioned in the trip. Second, extract all of the location names, landmarks, or points of interest.
         For each location, provide its full, official name, avoiding abbreviations or slang. The names should be precise and suitable for use with a mapping API like Google Places.
         For example, instead of "UPenn", use "University of Pennsylvania". Instead of "Philly museum of art", use "Philadelphia Museum of Art".
         Also generate a list of exactly 7 high-quality recommendations by following these specific rules: 
@@ -57,16 +57,17 @@ exports.handler = async (event) => {
         - Thematic Relevance: Aligns with the user's inferred interests from Rule 1. 
         - Quality & Popularity: Must be well-regarded and highly reviewed destinations that tourists and locals appreciate. 
         - Geographic Logic: Should be reasonably accessible from the user's other chosen locations, creating a sensible travel path. 
-        - Itinerary Balance: The final list of 7 must be diverse. It should balance iconic, "must-see" attractions that define the city with unique local favorites or experiences to create a well-rounded itinerary. 
+        - Itinerary Balance: The final list of 10 must be diverse. It should balance iconic, "must-see" attractions that define the cities with the users interests to create a well-rounded itinerary. 
+        - Multi-City Distribution: If multiple cities are mentioned, distribute recommendations across all cities mentioned (e.g., if NYC and Boston, include recommendations from both cities).
         RULE 3: APPLY EXCLUSION CRITERIA DO NOT include any of the following in the recommendations: 
         - Locations already present in the user's original wishlist. 
         - Generic chain establishments (e.g., Starbucks, McDonald's). 
         - Hotels or other accommodations. 
         - Overly niche attractions with very limited appeal. 
-        - Locations requiring significant travel outside the primary city. 
+        - Locations requiring significant travel outside the mentioned cities. 
         - Seasonal attractions that are very likely to be closed (e.g., a water park in winter).
-        Return ONLY a single, minified JSON object with no additional text or explanation. The object must have three keys: "primaryCity" (a string), "locations" (an array of strings), and "recommendations" (an array of exactly 7 strings).
-        Format: {"primaryCity":"City Name","locations":["Official Location Name 1","Official Location Name 2"],"recommendations":["Recommended Location 1","Recommended Location 2","Recommended Location 3","Recommended Location 4","Recommended Location 5","Recommended Location 6","Recommended Location 7"]}
+        Return ONLY a single, minified JSON object with no additional text or explanation. The object must have three keys: "cities" (an array of city names), "locations" (an array of strings), and "recommendations" (an array of exactly 7 strings).
+        Format: {"cities":["City Name 1","City Name 2"],"locations":["Official Location Name 1","Official Location Name 2"],"recommendations":["Recommended Location 1","Recommended Location 2","Recommended Location 3","Recommended Location 4","Recommended Location 5","Recommended Location 6","Recommended Location 7"]}
         Wishlist text: "${wishlist_text}"
         `;
 
@@ -85,40 +86,46 @@ exports.handler = async (event) => {
             throw new Error('Failed to parse analysis from AI response.');
         }
 
-        const { primaryCity, locations, recommendations } = analysisResult;
+        const { cities, locations, recommendations } = analysisResult;
 
-        if (!primaryCity || !locations || !Array.isArray(locations) || !recommendations || !Array.isArray(recommendations)) {
-            throw new Error('Invalid JSON structure from AI. Missing "primaryCity", "locations", or "recommendations".');
+        if (!cities || !Array.isArray(cities) || !locations || !Array.isArray(locations) || !recommendations || !Array.isArray(recommendations)) {
+            throw new Error('Invalid JSON structure from AI. Missing "cities", "locations", or "recommendations".');
         }
 
         // ----------------------------------------------------------------
-        // NEW 2-STEP GECODING LOGIC
+        // MULTI-CITY GECODING LOGIC
         // ----------------------------------------------------------------
 
-        // Step 1: Get coordinates for the primary city to create a search bias.
-        console.log(`Getting bias coordinates for primary city: ${primaryCity}`);
+        // Step 1: Get coordinates for all cities to create multiple search biases.
+        console.log(`Getting bias coordinates for cities: ${cities.join(', ')}`);
         const cityInvokeCommand = new InvokeCommand({
             FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
-            Payload: JSON.stringify({ locations: [primaryCity] }),
+            Payload: JSON.stringify({ locations: cities }),
         });
         const cityResponse = await lambdaClient.send(cityInvokeCommand);
         const cityPayload = JSON.parse(new TextDecoder().decode(cityResponse.Payload));
         const cityCoordsArr = JSON.parse(cityPayload.body);
         
-        const locationBias = cityCoordsArr.length > 0 ? { lat: cityCoordsArr[0].lat, lng: cityCoordsArr[0].lng } : null;
+        // Create multiple location biases for better geocoding accuracy
+        const locationBiases = cityCoordsArr.map(city => ({ lat: city.lat, lng: city.lng }));
 
-        if (locationBias) {
-            console.log(`Successfully got bias:`, locationBias);
+        if (locationBiases.length > 0) {
+            console.log(`Successfully got biases for ${locationBiases.length} cities:`, locationBiases);
         } else {
-            console.warn(`Could not get coordinates for primary city "${primaryCity}". Proceeding without bias.`);
+            console.warn(`Could not get coordinates for cities "${cities.join(', ')}". Proceeding without bias.`);
         }
 
-        // Step 2: Get coordinates for all locations (user's + recommendations) using the city bias.
+        // Step 2: Get coordinates for all locations (user's + recommendations) using multiple city biases.
         const allLocations = [...locations, ...recommendations];
-        console.log(`Invoking getLocationCoordinates for ${allLocations.length} locations with bias.`);
+        console.log(`Invoking getLocationCoordinates for ${allLocations.length} locations with ${locationBiases.length} city biases.`);
+        
+        // For now, use the first city bias as the primary bias, but this could be enhanced
+        // to use multiple biases or implement a more sophisticated geocoding strategy
+        const primaryBias = locationBiases.length > 0 ? locationBiases[0] : null;
+        
         const locationsInvokeCommand = new InvokeCommand({
             FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
-            Payload: JSON.stringify({ locations: allLocations, bias: locationBias }),
+            Payload: JSON.stringify({ locations: allLocations, bias: primaryBias }),
         });
         const locationsResponse = await lambdaClient.send(locationsInvokeCommand);
         const locationsPayload = JSON.parse(new TextDecoder().decode(locationsResponse.Payload));
@@ -144,8 +151,13 @@ exports.handler = async (event) => {
         };
 
         // Create final activities array with user's locations first, then recommendations
-        const userActivities = locations.map(locationName => createActivityObject(locationName, false));
-        const recommendedActivities = recommendations.map(locationName => createActivityObject(locationName, true));
+        // Filter out any city names from both user locations and recommendations
+        const userActivities = locations
+            .filter(locationName => !cities.includes(locationName))
+            .map(locationName => createActivityObject(locationName, false));
+        const recommendedActivities = recommendations
+            .filter(locationName => !cities.includes(locationName))
+            .map(locationName => createActivityObject(locationName, true));
         const finalActivities = [...userActivities, ...recommendedActivities];
         console.log('finalActivities', finalActivities);
 
