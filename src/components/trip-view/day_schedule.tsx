@@ -123,13 +123,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   optimizeButton: {
-    backgroundColor: '#E6E6FA', // Lavender
+    backgroundColor: '#FF9800', // Orange
   },
   optimizeButtonText: {
     fontFamily: 'outfit',
     fontSize: 12,
-    color: '#4B0082', // Deep purple
-    fontWeight: '600',
+    color: '#FFFFFF', // White text for better contrast on orange
+    fontWeight: '700',
   },
   transferButton: {
     backgroundColor: '#FFE6E6', // Light red
