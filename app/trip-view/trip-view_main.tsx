@@ -13,7 +13,7 @@ import { useActivitySelection } from '../../src/hooks/use_activity_selection';
 import { useDayActivities } from '../../src/hooks/use_day_activities';
 import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
 import { fetchRoutePolyline, RouteData } from '../../src/services/getRoute_graphQL_call';
-import { fetchOptimizedRoute } from '../../src/services/optimize_route_graphQL_call';
+import { optimizeRouteWithHaversine } from '../../src/components/trip-view/logic/optimize_route';
 import { Activity, TabType } from '../../src/types/activity.types';
 import { API, graphqlOperation } from 'aws-amplify';
 import { createTrip } from '../../src/graphql/mutations';
@@ -210,8 +210,8 @@ export default function TripViewMain() {
                 setRouteLoading(false);
                 return;
             }
-            // 2. Call optimizeRoute Lambda via GraphQL
-            const { result: reordered, wasCached } = await fetchOptimizedRoute(currentActivities);
+            // 2. Use local Haversine optimization (FREE)
+            const { result: reordered, wasCached } = optimizeRouteWithHaversine(currentActivities);
             if (!Array.isArray(reordered) || reordered.length < 2) {
                 setRouteLoading(false);
                 return;
