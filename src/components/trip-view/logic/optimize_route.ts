@@ -37,12 +37,59 @@ function buildDistanceMatrix(activities: Activity[]): number[][] {
   return matrix;
 }
 
-// Nearest Neighbor algorithm
+// Find optimal starting point by trying all possible starting points
+function findOptimalStartingPoint(distances: number[][]): number {
+  const n = distances.length;
+  let bestTotalDistance = Infinity;
+  let bestStartingPoint = 0;
+  
+  // Try each location as a starting point
+  for (let start = 0; start < n; start++) {
+    const visited = Array(n).fill(false);
+    const order = [start];
+    visited[start] = true;
+    
+    // Build route from this starting point using nearest neighbor
+    for (let step = 1; step < n; step++) {
+      const current = order[order.length - 1];
+      let minDist = Infinity;
+      let nextIdx = -1;
+      
+      // Find nearest unvisited neighbor
+      for (let j = 0; j < n; j++) {
+        if (!visited[j] && distances[current][j] < minDist) {
+          minDist = distances[current][j];
+          nextIdx = j;
+        }
+      }
+      
+      if (nextIdx === -1) break; // No unvisited nodes
+      order.push(nextIdx);
+      visited[nextIdx] = true;
+    }
+    
+    // Calculate total distance for this route
+    const totalDistance = calculateTotalDistance(order, distances);
+    
+    // Update best if this route is shorter
+    if (totalDistance < bestTotalDistance) {
+      bestTotalDistance = totalDistance;
+      bestStartingPoint = start;
+    }
+  }
+  
+  return bestStartingPoint;
+}
+
+// Nearest Neighbor algorithm with optimal starting point
 function nearestNeighborOrder(distances: number[][]): number[] {
   const n = distances.length;
   const visited = Array(n).fill(false);
-  const order = [0]; // Start at first location
-  visited[0] = true;
+  
+  // Find the optimal starting point
+  const optimalStart = findOptimalStartingPoint(distances);
+  const order = [optimalStart];
+  visited[optimalStart] = true;
   
   for (let step = 1; step < n; step++) {
     const current = order[order.length - 1];
@@ -124,6 +171,11 @@ export function optimizeRouteWithHaversine(activities: Activity[]): { result: Ac
   
   // Return activities in optimized order
   const result = optimizedRoute.map(idx => activities[idx]);
+  
+  // Log the optimal starting point
+  const optimalStartIndex = optimizedRoute[0];
+  const optimalStartActivity = activities[optimalStartIndex];
+  console.log(`[HAVERSINE OPTIMIZATION] Optimal starting point: "${optimalStartActivity.name}" (index ${optimalStartIndex})`);
   
   return { result, wasCached: false };
 } 

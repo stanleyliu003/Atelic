@@ -216,10 +216,6 @@ export default function TripViewMain() {
                 setRouteLoading(false);
                 return;
             }
-            // Show notification if route was already optimized
-            if (wasCached) {
-                alert('Route has already been optimized');
-            }
             // 3. Reorder the full activity objects using the new order from optimizeRoute
             let reorderedFull = reordered.map(optAct => {
                 if (optAct.place_id) {
@@ -240,9 +236,21 @@ export default function TripViewMain() {
             reorderDayActivities(dayNumber, reorderedFull);
             // 6. Call getRoute Lambda via GraphQL for the new order
             const newRouteData = await fetchRoutePolyline(reorderedFull);
-            // 7. Update the route data for this day/tab
-            if (activeTab === `day${dayNumber}`) {
+            // 7. Update the route cache for this day regardless of active tab
+            const dayTab = `day${dayNumber}`;
+            const activitiesHash = hashActivities(reorderedFull);
+            routeCache.current[dayTab] = {
+                activitiesHash,
+                routeData: newRouteData,
+            };
+            // 8. Update the route data if this is the currently active tab
+            if (activeTab === dayTab) {
                 setRouteData(newRouteData);
+            }
+            // 9. Store encoded polyline in context for the optimized route
+            if (newRouteData.polyline && newRouteData.polyline.length > 1) {
+                const encoded = encodePolyline(newRouteData.polyline);
+                setDayPolyline(dayNumber, encoded);
             }
             setRouteLoading(false);
         } catch (err) {
