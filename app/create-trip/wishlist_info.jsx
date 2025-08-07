@@ -152,9 +152,9 @@ const styles = StyleSheet.create({
     },
     recommendedTitle: {
       fontFamily: 'outfit-bold',
-      fontSize: 26,
+      fontSize: 24,
       marginTop: 25,
-      marginBottom: 24,
+      marginBottom: 10,
       textAlign: 'center',
     },
     citySection: {
