@@ -30,7 +30,7 @@ export default function text_recognition() {
 
     const OnWishListInput = async () => {
         //check if users inputted wishlist text and city
-        if(!wishlist_text_raw || !city){
+        if(!city){
             return;
         }
         try {
