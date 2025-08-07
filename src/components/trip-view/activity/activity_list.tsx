@@ -32,12 +32,17 @@ export function ActivityList({
 }: EnhancedActivityListProps) {
   // Since we always have recommendations, we don't need empty state handling
   if (!activities || activities.length === 0) {
-    return (
-      <NoActivities 
-        title={emptyStateTitle}
-        subtitle={emptyStateSubtitle}
-      />
-    );
+    // Only show empty state if title or subtitle is provided
+    if (emptyStateTitle || emptyStateSubtitle) {
+      return (
+        <NoActivities 
+          title={emptyStateTitle}
+          subtitle={emptyStateSubtitle}
+        />
+      );
+    }
+    // Return empty view if no empty state props provided
+    return <View />;
   }
 
   const handleActivityPress = (activity: Activity) => {
