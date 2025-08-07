@@ -114,10 +114,11 @@ const styles = StyleSheet.create({
   actionButtons: {
     alignItems: 'flex-end',
     gap: 8,
+    marginRight: -25,
   },
   actionButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     borderRadius: 8,
     minWidth: 120,
     alignItems: 'center',
@@ -126,10 +127,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF9800', // Orange
   },
   optimizeButtonText: {
-    fontFamily: 'outfit',
-    fontSize: 12,
+    fontFamily: 'outfit-bold',
+    fontSize: 13,
     color: '#FFFFFF', // White text for better contrast on orange
-    fontWeight: '700',
   },
   transferButton: {
     backgroundColor: '#FFE6E6', // Light red

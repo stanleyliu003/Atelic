@@ -105,7 +105,7 @@ function nearestNeighborOrder(distances: number[][]): number[] {
     }
     
     if (nextIdx === -1) break; // No unvisited nodes
-    order.push(nextIdx);
+    order.push(nextIdx); 
     visited[nextIdx] = true;
   }
   
