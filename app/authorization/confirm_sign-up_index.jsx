@@ -101,14 +101,14 @@ export default function ConfirmSignUp() {
       backgroundColor: Colors.WHITE,
       height: '100%'
     }}>
-      <TouchableOpacity onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={24} color="black" />
+      <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
+        <Ionicons name="arrow-back" size={32} color="black" />
       </TouchableOpacity>
 
       <Text style={{
         fontFamily: 'outfit-bold',
         fontSize: 30,
-        marginTop: 30
+        marginTop: 20
       }}>Confirm Your Account</Text>
 
       <Text style={{

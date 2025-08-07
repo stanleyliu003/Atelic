@@ -151,15 +151,16 @@ export function ActivityCard({
           activeOpacity={0.7}
         >
           <View style={styles.routeInfoItem}>
-            <FontAwesome5 name="car" size={12} color={Colors.GRAY} />
+            <FontAwesome5 name="car" size={13} color={Colors.GRAY} />
             <Text style={styles.routeInfoLabel}> :</Text>
             <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
           </View>
           <View style={styles.routeInfoItem}>
-            <FontAwesome5 name="clock" size={12} color={Colors.GRAY} />
+            <FontAwesome5 name="clock" size={13} color={Colors.GRAY} />
             <Text style={styles.routeInfoLabel}> :</Text>
             <Text style={styles.routeInfoValue}>{formatDuration(nextActivityDuration)}</Text>
           </View>
+          <FontAwesome5 name="chevron-right" size={18} color={Colors.PRIMARY} style={styles.chevronIcon} />
         </TouchableOpacity>
       )}
     </View>
@@ -269,6 +270,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   routeInfoItem: {
     flexDirection: 'row',
@@ -277,7 +286,7 @@ const styles = StyleSheet.create({
   },
   routeInfoLabel: {
     fontFamily: 'outfit',
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.GRAY,
     marginRight: 4,
   },
@@ -285,5 +294,8 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit-bold',
     fontSize: 12,
     color: Colors.PRIMARY,
+  },
+  chevronIcon: {
+    marginLeft: 8,
   },
 });

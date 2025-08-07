@@ -110,13 +110,13 @@ export default function text_recognition() {
           backgroundColor:Colors.WHITE,
           minHeight:'100%'
         }}>
-          <TouchableOpacity onPress={()=>router.push('(tabs)/create_new_trip')}>
-            <Ionicons name="arrow-back" size={32} color="black" />
+        <TouchableOpacity onPress={()=>router.back()} style={{ marginTop: 20 }}>
+        <Ionicons name="arrow-back" size={32} color="black" />
           </TouchableOpacity>
 
         {/* Enter City */}
             <View style={{
-              marginTop:25
+              marginTop:15
             }}>
               <Text style={{
                 fontFamily:'outfit-bold',
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
       borderRadius:30,
       borderColor:'#1a1a1a',
       fontFamily:'outfit',
-      height: 300,
+      height: 250,
       textAlignVertical: 'top', //aligns text with top
       paddingTop: 15, //padding from top to the actual text
       color: '#1a1a1a' //very dark gray, almost black for maximum readability
