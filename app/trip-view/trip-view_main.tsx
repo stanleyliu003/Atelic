@@ -391,18 +391,24 @@ export default function TripViewMain() {
                             contentContainerStyle={styles.wishlistContent}
                             showsVerticalScrollIndicator={false}
                         >
-                            {Object.entries(activitiesByCity).map(([city, cityActivities]: [string, Activity[]]) => (
-                                <View key={`wishlist-${city}`} style={styles.citySection}>
-                                    <Text style={styles.cityTitle}>{city}</Text>
-                                    <WishlistActivities 
-                                        activities={cityActivities}
-                                        selectedActivities={selectedActivities}
-                                        onActivitySelect={toggleActivitySelection}
-                                        onActivityDeselect={toggleActivitySelection}
-                                        showSelectionIndicator={isSelectionMode}
-                                    />
+                            {wishlistActivities.length === 0 ? (
+                                <View style={styles.noActivitiesContainer}>
+                                    <Text style={styles.noActivitiesText}>No Wishlist Activities found</Text>
                                 </View>
-                            ))}
+                            ) : (
+                                Object.entries(activitiesByCity).map(([city, cityActivities]: [string, Activity[]]) => (
+                                    <View key={`wishlist-${city}`} style={styles.citySection}>
+                                        <Text style={styles.cityTitle}>{city}</Text>
+                                        <WishlistActivities 
+                                            activities={cityActivities}
+                                            selectedActivities={selectedActivities}
+                                            onActivitySelect={toggleActivitySelection}
+                                            onActivityDeselect={toggleActivitySelection}
+                                            showSelectionIndicator={isSelectionMode}
+                                        />
+                                    </View>
+                                ))
+                            )}
                         </ScrollView>
                     );
                 })()}
@@ -568,5 +574,16 @@ const styles = StyleSheet.create({
     },
     wishlistContent: {
         paddingBottom: 20,
+    },
+    noActivitiesContainer: {
+        marginTop: 50,
+        alignItems: 'center',
+        padding: 20,
+    },
+    noActivitiesText: {
+        fontFamily: 'outfit-bold',
+        fontSize: 18,
+        color: Colors.GRAY,
+        textAlign: 'center',
     },
 });
