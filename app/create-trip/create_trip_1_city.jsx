@@ -73,7 +73,6 @@ export default function create_trip_1_city() {
                     marginTop: 15
                 }}>
                     
-                    <Text style={[styles.label, { marginTop: 20 }]}>Cities</Text>
                     <GooglePlacesAutocomplete
                         placeholder='Ex: Boston, MA, USA'
                         onPress={(data) => {

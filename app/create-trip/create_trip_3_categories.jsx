@@ -124,12 +124,15 @@ export default function create_trip_3_categories() {
                         </View>
                         <Text style={styles.progressLabel}>Step 3 of 3</Text>
                     </View>
-
+                    {/* Categories Prompt */}
+                        <View style={styles.promptSection}>                    
+                        <Text style={styles.promptTitle}>What kind of experiences in {selectedCity} interest you?</Text>
+                        <Text style={styles.promptSubtitle}>Select all that apply</Text>
+                    </View>
                     {/* Enter Destinations */}
                     <View style={{
                         marginTop: 25
                     }}>
-                        <Text style={styles.label}>Must See Destinations</Text>
                         <TextInput 
                             style={styles.input}
                             placeholder='Ex: Times Square, Statue of Liberty, Boston Common, Harvard'

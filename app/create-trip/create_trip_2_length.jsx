@@ -62,12 +62,17 @@ export default function create_trip_2_length() {
                     <Text style={styles.progressLabel}>Step 2 of 3</Text>
                 </View>
 
+                {/* Trip Length Prompt */}
+                    <View style={styles.promptSection}>                    
+                    <Text style={styles.promptTitle}>How long is your trip?</Text>
+                    <Text style={styles.promptSubtitle}>Select the number of days</Text>
+                </View>
+
                 {/* Trip Length Selection */}
                 <View style={{
                     marginTop: 15
                 }}>
                     
-                    <Text style={[styles.label, { marginTop: 20 }]}>Trip Length</Text>
                     <View style={styles.dropdownContainer}>
                         <TouchableOpacity 
                             style={styles.dropdownButton}
