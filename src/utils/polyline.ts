@@ -27,7 +27,7 @@ export function decodePolyline(encoded: string): { latitude: number, longitude: 
   return poly;
 } 
 
-// Encode an array of { latitude, longitude } to a polyline string
+// Encode an array of { latitude, longitude } to a polyline string array
 export function encodePolyline(coordinates: { latitude: number, longitude: number }[]): string {
   let lastLat = 0;
   let lastLng = 0;

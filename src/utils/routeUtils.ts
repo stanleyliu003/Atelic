@@ -15,7 +15,7 @@ export function formatDuration(duration: string): string {
     return formatDurationFromSeconds(totalSeconds);
   }
   
-  // Fallback: try to parse other formats like "15m 30s" or "2h 15m"
+  // Fallback: try to parse other formats like "15m 30s" or 2h 15m
   const timeMatch = duration.match(/(?:(\d+)h\s*)?(?:(\d+)m\s*)?(?:(\d+)s)?/);
   if (timeMatch) {
     const hours = parseInt(timeMatch[1] || '0');
