@@ -113,6 +113,14 @@ export default function create_trip_3_categories() {
                         <Ionicons name="arrow-back" size={32} color="black" />
                     </TouchableOpacity>
 
+                    {/* Progress Bar */}
+                    <View style={styles.progressSection}>
+                        <View style={styles.progressTrack}>
+                            <View style={styles.progressFill3}></View>
+                        </View>
+                        <Text style={styles.progressLabel}>Step 3 of 3</Text>
+                    </View>
+
                     {/* Plan Your Trip Title */}
                     <View style={{
                         marginTop: 15
@@ -181,5 +189,29 @@ const styles = StyleSheet.create({
         textAlignVertical: 'top',
         paddingTop: 15,
         color: '#1a1a1a'
+    },
+    progressSection: {
+        padding: 20,
+        backgroundColor: 'white',
+    },
+    progressTrack: {
+        height: 6,
+        backgroundColor: '#e0e0e0',
+        borderRadius: 3,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    progressFill3: {
+        height: '100%',
+        width: '100%',
+        backgroundColor: '#333',
+        borderRadius: 3,
+    },
+    progressLabel: {
+        marginTop: 10,
+        fontSize: 13,
+        color: '#666',
+        fontWeight: '500',
+        fontFamily: 'outfit-medium',
     }
 })

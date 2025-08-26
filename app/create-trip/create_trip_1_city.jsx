@@ -50,6 +50,14 @@ export default function create_trip_1_city() {
                     <Ionicons name="arrow-back" size={32} color="black" />
                 </TouchableOpacity>
 
+                {/* Progress Bar */}
+                <View style={styles.progressSection}>
+                    <View style={styles.progressTrack}>
+                        <View style={styles.progressFill1}></View>
+                    </View>
+                    <Text style={styles.progressLabel}>Step 1 of 3</Text>
+                </View>
+
                 {/* Enter City */}
                 <View style={{
                     marginTop: 15
@@ -147,5 +155,29 @@ const styles = StyleSheet.create({
         marginTop: 7,
         marginBottom: 10,
         color: '#1a1a1a'
+    },
+    progressSection: {
+        padding: 20,
+        backgroundColor: 'white',
+    },
+    progressTrack: {
+        height: 6,
+        backgroundColor: '#e0e0e0',
+        borderRadius: 3,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    progressFill1: {
+        height: '100%',
+        width: '33.33%',
+        backgroundColor: '#333',
+        borderRadius: 3,
+    },
+    progressLabel: {
+        marginTop: 10,
+        fontSize: 13,
+        color: '#666',
+        fontWeight: '500',
+        fontFamily: 'outfit-medium',
     }
 })

@@ -50,6 +50,14 @@ export default function create_trip_2_length() {
                     <Ionicons name="arrow-back" size={32} color="black" />
                 </TouchableOpacity>
 
+                {/* Progress Bar */}
+                <View style={styles.progressSection}>
+                    <View style={styles.progressTrack}>
+                        <View style={styles.progressFill2}></View>
+                    </View>
+                    <Text style={styles.progressLabel}>Step 2 of 3</Text>
+                </View>
+
                 {/* Trip Length Selection */}
                 <View style={{
                     marginTop: 15
@@ -199,5 +207,29 @@ const styles = StyleSheet.create({
     selectedOptionText: {
         fontFamily: 'outfit-bold',
         color: Colors.PRIMARY,
+    },
+    progressSection: {
+        padding: 20,
+        backgroundColor: 'white',
+    },
+    progressTrack: {
+        height: 6,
+        backgroundColor: '#e0e0e0',
+        borderRadius: 3,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    progressFill2: {
+        height: '100%',
+        width: '66.66%',
+        backgroundColor: '#333',
+        borderRadius: 3,
+    },
+    progressLabel: {
+        marginTop: 10,
+        fontSize: 13,
+        color: '#666',
+        fontWeight: '500',
+        fontFamily: 'outfit-medium',
     }
 })
