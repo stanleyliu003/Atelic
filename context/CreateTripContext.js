@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 // import { v4 as uuidv4 } from 'uuid'; // Commented out for now
 
 // Define the shape of our context data
@@ -24,6 +24,15 @@ export const CreateTripProvider = ({ children }) => {
     const [isCreatingTrip, setIsCreatingTrip] = useState(false);
     const [selectedCity, setSelectedCity] = useState('');
     const [tripLength, setTripLength] = useState(null);
+    
+    // Add logging to setTripLength
+    const setTripLengthWithLog = (length) => {
+        setTripLength(length);
+    };
+
+    // Add logging when tripLength changes
+    useEffect(() => {
+    }, [tripLength]);
 
     // Store polylines per day: { [dayNumber]: encodedPolyline }
     const [dayPolylines, setDayPolylines] = useState({});
@@ -69,6 +78,13 @@ export const CreateTripProvider = ({ children }) => {
         updateActivities(trip.wishlist);
         setAllDayActivities(trip.days);
         setAllDayPolylines(trip.days);
+        // Restore tripLength if available, otherwise derive from days
+        if (trip.tripLength) {
+            setTripLength(trip.tripLength);
+        } else if (trip.days && trip.days.length > 0) {
+            // Derive tripLength from the number of days if not explicitly stored
+            setTripLength(trip.days.length);
+        }
     };
 
     const updateActivities = (newActivities) => {
@@ -106,6 +122,18 @@ export const CreateTripProvider = ({ children }) => {
         setWishlistText('');
         setDayPolylines({});
         setDayActivities({});
+        // Note: Don't reset selectedCity and tripLength during create trip flow
+        // setSelectedCity('');
+        // setTripLength(null);
+    };
+
+    // Complete reset for starting a brand new trip
+    const completeReset = () => {
+        setTripId('');
+        setActivities([]);
+        setWishlistText('');
+        setDayPolylines({});
+        setDayActivities({});
         setSelectedCity('');
         setTripLength(null);
     };
@@ -129,6 +157,7 @@ export const CreateTripProvider = ({ children }) => {
         restoreTripFromObject,
         setDayActivities: setDayActivitiesWithLog,
         resetTrip,
+        completeReset,
         createdAt,
         setCreatedAt,
         isCreatingTrip,
@@ -136,7 +165,7 @@ export const CreateTripProvider = ({ children }) => {
         selectedCity,
         setSelectedCity,
         tripLength,
-        setTripLength,
+        setTripLength: setTripLengthWithLog,
     };
 
     return (

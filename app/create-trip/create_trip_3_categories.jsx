@@ -86,7 +86,6 @@ export default function create_trip_3_categories() {
     }
 
     const handleCreateWishlist = () => {
-        resetTrip();
         OnWishListInput();
     };
 

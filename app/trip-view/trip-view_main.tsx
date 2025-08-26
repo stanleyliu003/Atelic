@@ -24,7 +24,7 @@ export default function TripViewMain() {
     const navigation = useNavigation();
     const params = useLocalSearchParams();
     const { restoreTrip } = params;
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -53,15 +53,21 @@ export default function TripViewMain() {
         getDayActivities,
         getDayCount,
         addNewDay,
+        addMultipleDays,
         reorderDayActivities,
     } = useDayActivities();
     
-    // Initialize day 1 if it doesn't exist
+    // Initialize days based on tripLength
     useEffect(() => {
-        if (getDayCount() === 0) {
-            addNewDay(); // This will create day 1
+        console.log('[trip-view_main] useEffect triggered - tripLength:', tripLength, 'getDayCount():', getDayCount());
+        if (tripLength && tripLength > 0 && getDayCount() === 0) {
+            // Create all days at once based on tripLength
+            addMultipleDays(tripLength);
+        } else if (!tripLength && getDayCount() === 0) {
+            // Fallback: create day 1 if tripLength is not set
+            addNewDay();
         }
-    }, [getDayCount, addNewDay]);
+    }, [tripLength, getDayCount, addNewDay, addMultipleDays]);
 
     // Define handleTabChange before using it in the hook
     const handleTabChange = (tab: TabType) => {
@@ -310,6 +316,7 @@ export default function TripViewMain() {
             days,
             wishlist,
             createdAt: tripCreatedAt,
+            tripLength: tripLength || days.length, // Include tripLength in saved data
         };
         // Commented out GraphQL save trip call
         // const result = await API.graphql(

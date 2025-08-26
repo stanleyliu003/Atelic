@@ -130,6 +130,24 @@ export function useDayActivities() {
     return newDayNumber;
   }, [getDayCount, setDayActivities]);
 
+  const addMultipleDays = useCallback((numberOfDays: number) => {
+    setDayActivities((prev: any) => {
+      const newDayActivities = { ...prev };
+      const currentDayCount = Object.keys(prev).length;
+      
+      for (let i = 1; i <= numberOfDays; i++) {
+        const dayNumber = currentDayCount + i;
+        newDayActivities[dayNumber] = {
+          dayNumber,
+          activities: [],
+          encodedPolyline: undefined,
+        };
+      }
+      
+      return newDayActivities;
+    });
+  }, [setDayActivities]);
+
   return {
     dayActivities,
     addActivityToDay,
@@ -141,6 +159,7 @@ export function useDayActivities() {
     setDayPolyline,
     clearDay,
     addNewDay,
+    addMultipleDays,
     getDayActivities,
     getAllDayActivities,
     getDayCount,
