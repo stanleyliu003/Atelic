@@ -46,9 +46,13 @@ export default function create_trip_1_city() {
                 backgroundColor: Colors.WHITE,
                 minHeight: '100%'
             }}>
-                <TouchableOpacity onPress={() => router.replace('(tabs)/create_new_trip')} style={{ marginTop: 20 }}>
-                    <Ionicons name="arrow-back" size={32} color="black" />
-                </TouchableOpacity>
+                {/* Header Row */}
+                <View style={styles.headerRow}>
+                    <TouchableOpacity onPress={() => router.replace('(tabs)/create_new_trip')} style={styles.backButton}>
+                        <Ionicons name="arrow-back" size={32} color="black" />
+                    </TouchableOpacity>
+                    <Text style={styles.titleText}>Plan Your Trip</Text>
+                </View>
 
                 {/* Progress Bar */}
                 <View style={styles.progressSection}>
@@ -58,18 +62,20 @@ export default function create_trip_1_city() {
                     <Text style={styles.progressLabel}>Step 1 of 3</Text>
                 </View>
 
+                {/* Destination Prompt */}
+                <View style={styles.promptSection}>                    
+                    <Text style={styles.promptTitle}>Where do you want to go?</Text>
+                    <Text style={styles.promptSubtitle}>Select your destination city</Text>
+                </View>
+
                 {/* Enter City */}
                 <View style={{
                     marginTop: 15
                 }}>
-                    <Text style={{
-                        fontFamily: 'outfit-bold',
-                        fontSize: 36
-                    }}>Plan Your Trip</Text>
                     
                     <Text style={[styles.label, { marginTop: 20 }]}>Cities</Text>
                     <GooglePlacesAutocomplete
-                        placeholder='Ex: New York City, Boston'
+                        placeholder='Ex: Boston, MA, USA'
                         onPress={(data) => {
                             setSelectedCity(data.description);
                         }}
@@ -85,6 +91,7 @@ export default function create_trip_1_city() {
                             },
                             textInputContainer: {
                                 flexDirection: 'row',
+                                width: '100%',
                             },
                             textInput: {
                                 height: 50,
@@ -95,6 +102,7 @@ export default function create_trip_1_city() {
                                 borderRadius: 15,
                                 borderColor: '#1a1a1a',
                                 paddingHorizontal: 15,
+                                flex: 1,
                             },
                             listView: {
                                 backgroundColor: 'white',
@@ -156,6 +164,21 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         color: '#1a1a1a'
     },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 20,
+        marginBottom: 10,
+    },
+    backButton: {
+        marginRight: 15,
+    },
+    titleText: {
+        fontFamily: 'outfit-bold',
+        fontSize: 32,
+        color: '#1a1a1a',
+        flex: 1,
+    },
     progressSection: {
         padding: 20,
         backgroundColor: 'white',
@@ -173,6 +196,24 @@ const styles = StyleSheet.create({
         backgroundColor: '#333',
         borderRadius: 3,
     },
+    promptSection: {
+        paddingHorizontal: 20,
+        paddingVertical: 25,
+        alignItems: 'center',
+      },
+      promptTitle: {
+        fontFamily: 'outfit-bold',
+        fontSize: 24,
+        color: '#1a1a1a',
+        textAlign: 'center',
+        marginBottom: 8,
+      },
+      promptSubtitle: {
+        fontFamily: 'outfit',
+        fontSize: 16,
+        color: '#666',
+        textAlign: 'center',
+      },
     progressLabel: {
         marginTop: 10,
         fontSize: 13,

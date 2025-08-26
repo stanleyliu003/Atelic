@@ -46,9 +46,13 @@ export default function create_trip_2_length() {
                 backgroundColor: Colors.WHITE,
                 minHeight: '100%'
             }}>
-                <TouchableOpacity onPress={() => router.replace('/create-trip/create_trip_1_city')} style={{ marginTop: 20 }}>
-                    <Ionicons name="arrow-back" size={32} color="black" />
-                </TouchableOpacity>
+                {/* Header Row */}
+                <View style={styles.headerRow}>
+                    <TouchableOpacity onPress={() => router.replace('/create-trip/create_trip_1_city')} style={styles.backButton}>
+                        <Ionicons name="arrow-back" size={32} color="black" />
+                    </TouchableOpacity>
+                    <Text style={styles.titleText}>Plan Your Trip</Text>
+                </View>
 
                 {/* Progress Bar */}
                 <View style={styles.progressSection}>
@@ -62,10 +66,6 @@ export default function create_trip_2_length() {
                 <View style={{
                     marginTop: 15
                 }}>
-                    <Text style={{
-                        fontFamily: 'outfit-bold',
-                        fontSize: 36
-                    }}>Plan Your Trip</Text>
                     
                     <Text style={[styles.label, { marginTop: 20 }]}>Trip Length</Text>
                     <View style={styles.dropdownContainer}>
@@ -231,5 +231,38 @@ const styles = StyleSheet.create({
         color: '#666',
         fontWeight: '500',
         fontFamily: 'outfit-medium',
+    },
+    promptSection: {
+        paddingHorizontal: 20,
+        paddingVertical: 25,
+        alignItems: 'center',
+      },
+      promptTitle: {
+        fontFamily: 'outfit-bold',
+        fontSize: 24,
+        color: '#1a1a1a',
+        textAlign: 'center',
+        marginBottom: 8,
+      },
+      promptSubtitle: {
+        fontFamily: 'outfit',
+        fontSize: 16,
+        color: '#666',
+        textAlign: 'center',
+      },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 20,
+        marginBottom: 10,
+    },
+    backButton: {
+        marginRight: 15,
+    },
+    titleText: {
+        fontFamily: 'outfit-bold',
+        fontSize: 32,
+        color: '#1a1a1a',
+        flex: 1,
     }
 })
