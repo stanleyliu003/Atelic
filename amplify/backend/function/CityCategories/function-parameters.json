@@ -1,0 +1,13 @@
+{
+  "lambdaLayers": [],
+  "environmentVariableList": [
+    {
+      "cloudFormationParameterName": "geminiApiKey",
+      "environmentVariableName": "GEMINI_API_KEY"
+    },
+    {
+      "cloudFormationParameterName": "googlePlacesApiKey",
+      "environmentVariableName": "GOOGLE_PLACES_API_KEY"
+    }
+  ]
+}

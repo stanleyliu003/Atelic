@@ -63,6 +63,12 @@
     }
   },
   "function": {
+    "CityCategories": {
+      "build": true,
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "CreateTripStorage": {
       "build": true,
       "dependsOn": [
@@ -165,6 +171,38 @@
     }
   },
   "parameters": {
+    "AMPLIFY_function_CityCategories_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "CityCategories"
+        }
+      ]
+    },
+    "AMPLIFY_function_CityCategories_geminiApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "CityCategories"
+        }
+      ]
+    },
+    "AMPLIFY_function_CityCategories_googlePlacesApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "CityCategories"
+        }
+      ]
+    },
+    "AMPLIFY_function_CityCategories_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "CityCategories"
+        }
+      ]
+    },
     "AMPLIFY_function_CreateTripStorage_deploymentBucketName": {
       "usedBy": [
         {

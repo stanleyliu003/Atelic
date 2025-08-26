@@ -10,11 +10,17 @@ interface ActivityImageProps {
 export function ActivityImage({ photo_reference, style }: ActivityImageProps) {
     const [imageError, setImageError] = useState(false);
     
-    if (!photo_reference || imageError) {
+    // Don't display anything if no photo reference
+    if (!photo_reference) {
+      return null;
+    }
+    
+    // Show error message only if image failed to load
+    if (imageError) {
       return (
         <View style={[style, { backgroundColor: '#e0e0e0', justifyContent: 'center', alignItems: 'center' }]}> 
           <Text style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>
-            {!photo_reference ? 'No Image' : 'Image\nUnavailable'}
+            Image\nUnavailable
           </Text>
         </View>
       );

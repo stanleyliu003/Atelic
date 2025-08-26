@@ -38,10 +38,16 @@
      legs: [RouteLeg]
    }
 
-   type Query {
-     analyzeWishlist(wishlist_text: String!): WishlistAnalysisResult @function(name: "wishlistAnalyzer-dev")
-     getRoute(waypoints: [WaypointInput!]!): RouteResult @function(name: "GetRoute-dev")
-   }
+     type CityPhotoResult {
+    city: String!
+    photo_reference: String
+  }
+
+  type Query {
+    analyzeWishlist(wishlist_text: String!): WishlistAnalysisResult @function(name: "wishlistAnalyzer-dev")
+    getRoute(waypoints: [WaypointInput!]!): RouteResult @function(name: "GetRoute-dev")
+    getCityPhoto(selectedCity: String!): CityPhotoResult @function(name: "CityCategories-${env}")
+  }
 
    input WaypointInput {
      place_id: String!

@@ -38,6 +38,15 @@ export const getRoute = /* GraphQL */ `
     }
   }
 `;
+export const getCityPhoto = /* GraphQL */ `
+  query GetCityPhoto($selectedCity: String!) {
+    getCityPhoto(selectedCity: $selectedCity) {
+      city
+      photo_reference
+      __typename
+    }
+  }
+`;
 export const getWishlistAnalysis = /* GraphQL */ `
   query GetWishlistAnalysis($id: ID!) {
     getWishlistAnalysis(id: $id) {

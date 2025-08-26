@@ -3,7 +3,6 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCreateTrip } from '../../context/CreateTripContext';
 
 export default function PublishSuccess() {

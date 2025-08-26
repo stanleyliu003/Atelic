@@ -1,8 +1,15 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 // import { v4 as uuidv4 } from 'uuid'; // Commented out for now
 
 // Define the shape of our context data
 const CreateTripContext = createContext();
+
+// Cache keys for trip creation flow
+const CACHE_KEYS = {
+    SELECTED_CITY: 'create_trip_selected_city',
+    CITY_PHOTO_REF: 'create_trip_city_photo_ref'
+};
 
 // Custom hook to use the context
 export const useCreateTrip = () => {
@@ -127,8 +134,23 @@ export const CreateTripProvider = ({ children }) => {
         // setTripLength(null);
     };
 
+    // Clear cached trip creation data
+    const clearTripCreationCache = async () => {
+        try {
+            await AsyncStorage.multiRemove([CACHE_KEYS.SELECTED_CITY, CACHE_KEYS.CITY_PHOTO_REF]);
+            // Don't immediately clear selectedCity from context state
+            // Let the individual components handle their own state clearing
+        } catch (error) {
+            console.error('Error clearing trip creation cache:', error);
+        }
+    };
+
     // Complete reset for starting a brand new trip
-    const completeReset = () => {
+    const completeReset = async () => {
+        // Clear cached data first
+        await clearTripCreationCache();
+        
+        // Then reset all context state
         setTripId('');
         setActivities([]);
         setWishlistText('');
@@ -158,6 +180,7 @@ export const CreateTripProvider = ({ children }) => {
         setDayActivities: setDayActivitiesWithLog,
         resetTrip,
         completeReset,
+        clearTripCreationCache,
         createdAt,
         setCreatedAt,
         isCreatingTrip,

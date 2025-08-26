@@ -2,10 +2,12 @@ import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { Text, TouchableOpacity, View } from 'react-native';
+import { useCreateTrip } from '../../context/CreateTripContext';
 
 export default function Start2ndTripCard() {
 
     const router=useRouter(); //initializing the router
+    const { completeReset } = useCreateTrip();
   return (
     <View
     style = {{
@@ -34,7 +36,11 @@ export default function Start2ndTripCard() {
     </Text>
 
     <TouchableOpacity 
-    onPress={()=>router.push('create-trip/create_trip_1_city')} //redirecting when button is pushed 
+    onPress={async ()=> {
+        // Reset all trip data and cache before starting fresh
+        await completeReset();
+        router.push('create-trip/create_trip_1_city');
+    }} //redirecting when button is pushed 
     style ={{ 
         padding:10,
         backgroundColor:Colors.PRIMARY,

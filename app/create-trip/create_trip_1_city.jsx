@@ -3,15 +3,73 @@ import { Colors } from '../../constants/Colors';
 import { API_KEYS } from '../../constants/ApiKeys';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter } from 'expo-router';
-import { useEffect } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState, useRef } from 'react';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
+import { API } from 'aws-amplify';
+import { getCityPhoto } from '../../src/graphql/queries';
+import { ActivityImage } from '../../src/components/trip-view/activity/activity_image';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function create_trip_1_city() {
     const router = useRouter();
     const navigation = useNavigation();
-    const { setIsCreatingTrip, selectedCity, setSelectedCity } = useCreateTrip();
+    const { setIsCreatingTrip, selectedCity, setSelectedCity, clearTripCreationCache } = useCreateTrip();
+    const [cityPhotoRef, setCityPhotoRef] = useState(null);
+    const [isLoadingPhoto, setIsLoadingPhoto] = useState(false);
+    const googlePlacesRef = useRef(null);
+
+    // Cache keys - shared with context
+    const CACHE_KEYS = {
+        SELECTED_CITY: 'create_trip_selected_city',
+        CITY_PHOTO_REF: 'create_trip_city_photo_ref'
+    };
+
+    // Load cached values on component mount
+    const loadCachedValues = async () => {
+        try {
+            const cachedCity = await AsyncStorage.getItem(CACHE_KEYS.SELECTED_CITY);
+            const cachedPhotoRef = await AsyncStorage.getItem(CACHE_KEYS.CITY_PHOTO_REF);
+            
+            if (cachedCity) {
+                setSelectedCity(cachedCity);
+                // Set GooglePlacesAutocomplete text directly when loading from cache
+                setTimeout(() => {
+                    if (googlePlacesRef.current) {
+                        googlePlacesRef.current.setAddressText(cachedCity);
+                    }
+                }, 300); // Slightly longer delay to ensure component is ready
+            }
+            
+            if (cachedPhotoRef) {
+                setCityPhotoRef(cachedPhotoRef);
+            }
+        } catch (error) {
+            console.error('Error loading cached values:', error);
+        }
+    };
+
+    // Save city and photo reference to cache
+    const saveCityToCache = async (city, photoRef) => {
+        try {
+            await AsyncStorage.setItem(CACHE_KEYS.SELECTED_CITY, city);
+            if (photoRef) {
+                await AsyncStorage.setItem(CACHE_KEYS.CITY_PHOTO_REF, photoRef);
+            }
+        } catch (error) {
+            console.error('Error saving to cache:', error);
+        }
+    };
+
+    // Clear cache (useful when trip is completed or user wants to start fresh)
+    const clearCache = async () => {
+        try {
+            await AsyncStorage.multiRemove([CACHE_KEYS.SELECTED_CITY, CACHE_KEYS.CITY_PHOTO_REF]);
+        } catch (error) {
+            console.error('Error clearing cache:', error);
+        }
+    };
 
     useEffect(() => {
         navigation.setOptions({
@@ -21,11 +79,46 @@ export default function create_trip_1_city() {
         // Set flag that user is creating a trip
         setIsCreatingTrip(true);
         
+        // Load cached values
+        loadCachedValues();
+        
         // Cleanup when component unmounts
         return () => {
             setIsCreatingTrip(false);
         };
     }, [])
+
+    // Clear photo reference when selectedCity is cleared, but don't interfere with user input
+    useEffect(() => {
+        if (!selectedCity) {
+            setCityPhotoRef(null);
+        }
+    }, [selectedCity])
+
+    const fetchCityPhoto = async (cityName) => {
+        try {
+            setIsLoadingPhoto(true);
+            
+            const result = await API.graphql({
+                query: getCityPhoto,
+                variables: { selectedCity: cityName }
+            });
+            
+            const photoRef = result.data.getCityPhoto.photo_reference;
+            setCityPhotoRef(photoRef);
+            
+            // Save to cache
+            await saveCityToCache(cityName, photoRef);
+            
+        } catch (error) {
+            console.error('Error fetching city photo:', error);
+            setCityPhotoRef(null);
+            // Still save the city name even if photo fetch fails
+            await saveCityToCache(cityName, null);
+        } finally {
+            setIsLoadingPhoto(false);
+        }
+    };
 
     const handleNext = () => {
         if (!selectedCity) {
@@ -74,9 +167,12 @@ export default function create_trip_1_city() {
                 }}>
                     
                     <GooglePlacesAutocomplete
+                        ref={googlePlacesRef}
                         placeholder='Ex: Boston, MA, USA'
-                        onPress={(data) => {
+                        onPress={async (data) => {
                             setSelectedCity(data.description);
+                            // Fetch city photo when city is selected
+                            await fetchCityPhoto(data.description);
                         }}
                         query={{
                             key: API_KEYS.GOOGLE_MAPS,
@@ -130,6 +226,23 @@ export default function create_trip_1_city() {
                         debounce={200}
                     />
                 </View>
+
+                {/* City Photo Preview */}
+                {selectedCity && (
+                    <View style={styles.cityPhotoSection}>
+                        {isLoadingPhoto ? (
+                            <View style={styles.loadingContainer}>
+                                <ActivityIndicator size="large" color={Colors.PRIMARY} />
+                                <Text style={styles.loadingText}>Loading city image...</Text>
+                            </View>
+                        ) : (
+                            <ActivityImage 
+                                photo_reference={cityPhotoRef || ''}
+                                style={styles.cityImage}
+                            />
+                        )}
+                    </View>
+                )}
                 
                 {/* Next Button */}
                 <View style={{ position: 'absolute', bottom: 50, left: 25, right: 25 }}>
@@ -219,5 +332,33 @@ const styles = StyleSheet.create({
         color: '#666',
         fontWeight: '500',
         fontFamily: 'outfit-medium',
+    },
+    cityPhotoSection: {
+        marginTop: 20,
+        padding: 15,
+    },
+    cityPhotoLabel: {
+        fontFamily: 'outfit-medium',
+        fontSize: 16,
+        color: '#1a1a1a',
+        marginBottom: 10,
+    },
+    cityImage: {
+        width: '100%',
+        height: 200,
+        borderRadius: 15,
+    },
+    loadingContainer: {
+        height: 200,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+        borderRadius: 15,
+    },
+    loadingText: {
+        marginTop: 10,
+        fontFamily: 'outfit',
+        fontSize: 14,
+        color: '#666',
     }
 })

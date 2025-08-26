@@ -16,6 +16,13 @@ export type AmplifyDependentResourcesAttributes = {
     }
   },
   "function": {
+    "CityCategories": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
     "CreateTripStorage": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
