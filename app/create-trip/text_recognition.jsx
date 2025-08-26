@@ -1,9 +1,12 @@
+import 'react-native-get-random-values';
 import { Colors } from '../../constants/Colors';
+import { API_KEYS } from '../../constants/ApiKeys';
 import { API, graphqlOperation } from 'aws-amplify';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 
 export default function text_recognition() {
@@ -124,10 +127,59 @@ export default function text_recognition() {
               }}>Plan Your Trip</Text>
               
               <Text style={[styles.label, { marginTop: 20 }]}>Cities</Text>
-              <TextInput 
-                style={styles.cityInput}
+              <GooglePlacesAutocomplete
                 placeholder='Ex: New York City, Boston'
-                onChangeText={(value)=>setCity(value)}
+                onPress={(data) => {
+                  setCity(data.description);
+                }}
+                query={{
+                  key: API_KEYS.GOOGLE_MAPS,
+                  language: 'en',
+                  types: '(cities)',
+                }}
+                styles={{
+                  container: {
+                    flex: 0,
+                    zIndex: 1,
+                  },
+                  textInputContainer: {
+                    flexDirection: 'row',
+                  },
+                  textInput: {
+                    height: 50,
+                    color: '#1a1a1a',
+                    fontSize: 16,
+                    fontFamily: 'outfit',
+                    borderWidth: 1,
+                    borderRadius: 15,
+                    borderColor: '#1a1a1a',
+                    paddingHorizontal: 15,
+                  },
+                  listView: {
+                    backgroundColor: 'white',
+                    borderRadius: 15,
+                    marginTop: 5,
+                    elevation: 3,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                  },
+                  row: {
+                    backgroundColor: 'white',
+                    padding: 13,
+                    height: 44,
+                    flexDirection: 'row',
+                  },
+                  description: {
+                    fontFamily: 'outfit',
+                    fontSize: 16,
+                    color: '#1a1a1a',
+                  },
+                }}
+                fetchDetails={false}
+                enablePoweredByContainer={false}
+                debounce={200}
               />
             </View>
 
