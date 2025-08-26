@@ -55,7 +55,7 @@ export default function WishlistInfo() {
 
     return (
       <View style={styles.container}>
-        <TouchableOpacity onPress={()=>router.replace('/create-trip/text_recognition')}>
+        <TouchableOpacity onPress={()=>router.replace('/create-trip/create_trip_3_categories')}>
           <Ionicons name="arrow-back" size={32} color="black" />
         </TouchableOpacity>
 

@@ -34,7 +34,7 @@ export default function Start2ndTripCard() {
     </Text>
 
     <TouchableOpacity 
-    onPress={()=>router.push('create-trip/text_recognition')} //redirecting when button is pushed 
+    onPress={()=>router.push('create-trip/create_trip_1_city')} //redirecting when button is pushed 
     style ={{ 
         padding:10,
         backgroundColor:Colors.PRIMARY,
