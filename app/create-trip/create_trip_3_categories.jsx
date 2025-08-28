@@ -348,9 +348,9 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 8,
         right: 8,
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
         borderColor: Colors.GRAY,
         justifyContent: 'center',
         alignItems: 'center',
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     },
     checkmark: {
         color: 'white',
-        fontSize: 6,
+        fontSize: 6.25,
         fontWeight: 'bold',
     },
     categoryContent: {
