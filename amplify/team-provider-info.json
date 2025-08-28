@@ -31,7 +31,7 @@
         "wishlistAnalyzer": {
           "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw",
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/wishlistAnalyzer-4d4c6b726c494858506a-build.zip"
+          "s3Key": "amplify-builds/wishlistAnalyzer-6b6f73627a5848357533-build.zip"
         },
         "CreateTripStorage": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",

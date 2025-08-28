@@ -29,13 +29,21 @@ const lambdaClient = new LambdaClient({ region: process.env.REGION });
  */
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
+    
+    // Track execution time to prevent timeout
+    const startTime = Date.now();
+    const maxExecutionTime = 55000; // 55 seconds, leaving 5 seconds buffer before Lambda timeout
 
     try {
-        // Extract wishlist_text from GraphQL input
-        const { wishlist_text } = event.arguments || {};
+        // Extract wishlist_text and selectedCity from GraphQL input
+        const { wishlist_text, selectedCity } = event.arguments || {};
 
         if (!wishlist_text) {
             throw new Error('wishlist_text is required');
+        }
+
+        if (!selectedCity) {
+            throw new Error('selectedCity is required');
         }
 
         // Initialize Gemini with API key from environment
@@ -48,17 +56,16 @@ exports.handler = async (event) => {
 
         // Create prompt for Gemini to extract activities AND get recommendations
         const prompt = `
-        You are an expert travel assistant. Analyze the following travel wishlist text. First, identify ALL the cities mentioned in the trip and the number of cities. Second, extract all of the location names, landmarks, or points of interest.
+        You are an expert travel assistant. Analyze the following travel wishlist text. First, use this ${selectedCity} city or region name. Second, extract all of the location names, landmarks, or points of interest.
         For each location, provide its full, official name, avoiding abbreviations or slang. The names should be precise and suitable for use with a mapping API like Google Places.
         For example, instead of "UPenn", use "University of Pennsylvania". Instead of "Philly museum of art", use "Philadelphia Museum of Art".
-        Also generate a list of exactly 7 high-quality recommendations per each city by following these specific rules: 
+        Also generate a list of exactly 7 high-quality recommendations for ${selectedCity} by following these specific rules: 
         RULE 1: ANALYZE USER INTENT Infer the user's implicit interests from their wishlist. They can have multiple interests (e.g., History, Art, Outdoors, Food, science, music, art, popular attractions, religious, etc. if they chose museums, include other cultural sites; if they chose parks, include outdoor attractions, if they like art museums, suggest a specific gallery district or a notable sculpture park). The recommendations must be complementary to a users interests. 
         RULE 2: APPLY RECOMMENDATION CRITERIA Every recommendation must meet these qualifications: 
         - Thematic Relevance: Aligns with the user's inferred interests from Rule 1. 
         - Quality & Popularity: Must be well-regarded and highly reviewed destinations that tourists and locals appreciate. 
         - Geographic Logic: Should be reasonably accessible from the user's other chosen locations, creating a sensible travel path. 
-        - Itinerary Balance: The final list of 7 activities per each city should balance iconic, "must-see" attractions that define the cities with the users interests. 
-        - Multi-City Distribution: If multiple cities are mentioned, group recommendations by city. List all recommendations for the first city, then all recommendations for the second city, and so on. Do not alternate between cities.
+        - Itinerary Balance: The final list of 7 activities should balance iconic, "must-see" attractions that define ${selectedCity} with the users interests.
         RULE 3: APPLY EXCLUSION CRITERIA DO NOT include any of the following in the recommendations: 
         - Locations already present in the user's original wishlist. 
         - Generic chain establishments (e.g., Starbucks, McDonald's). 
@@ -93,65 +100,86 @@ exports.handler = async (event) => {
         }
 
         // ----------------------------------------------------------------
-        // MULTI-CITY GECODING LOGIC
+        // SINGLE-CITY GEOCODING LOGIC
         // ----------------------------------------------------------------
 
-        // Step 1: Get coordinates for all cities to create city-specific search biases.
-        console.log(`Getting bias coordinates for cities: ${cities.join(', ')}`);
+        // Step 1: Get coordinates for the selected city to create city-specific search bias.
+        console.log(`Getting bias coordinates for city: ${selectedCity}`);
         const cityInvokeCommand = new InvokeCommand({
             FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
-            Payload: JSON.stringify({ locations: cities }),
+            Payload: JSON.stringify({ locations: [selectedCity] }),
         });
         const cityResponse = await lambdaClient.send(cityInvokeCommand);
         const cityPayload = JSON.parse(new TextDecoder().decode(cityResponse.Payload));
         const cityCoordsArr = JSON.parse(cityPayload.body);
         
-        // Create city-specific location biases for precise geocoding
-        const cityBiases = {};
-        cityCoordsArr.forEach(city => {
-            cityBiases[city.name] = { lat: city.lat, lng: city.lng };
-        });
-
-        if (Object.keys(cityBiases).length > 0) {
-            console.log(`Successfully got biases for ${Object.keys(cityBiases).length} cities:`, cityBiases);
+        // Create city-specific location bias for precise geocoding
+        let cityBias = null;
+        if (cityCoordsArr && cityCoordsArr.length > 0) {
+            cityBias = { lat: cityCoordsArr[0].lat, lng: cityCoordsArr[0].lng };
+            console.log(`Successfully got bias for ${selectedCity}:`, cityBias);
         } else {
-            console.warn(`Could not get coordinates for cities "${cities.join(', ')}". Proceeding without bias.`);
+            console.warn(`Could not get coordinates for city "${selectedCity}". Proceeding without bias.`);
         }
 
-        // Step 2: Geocode locations with city-specific biases for maximum accuracy
+        // Step 2: Geocode locations with city-specific bias for maximum accuracy
         const allLocationObjects = [...locations, ...recommendations];
-        console.log(`Geocoding ${allLocationObjects.length} locations with city-specific biases.`);
+        console.log(`Geocoding ${allLocationObjects.length} locations with city-specific bias.`);
         
-        // Geocode each location using its specific city bias
+        // Process locations in parallel batches to improve performance
+        const batchSize = 5; // Process 5 locations at a time to avoid overwhelming the API
         const geocodedLocations = [];
         
-        for (const locationObj of allLocationObjects) {
-            const { name, city } = locationObj;
-            const cityBias = cityBiases[city];
+        for (let i = 0; i < allLocationObjects.length; i += batchSize) {
+            // Check if we're approaching timeout
+            if (Date.now() - startTime > maxExecutionTime) {
+                console.warn(`Approaching timeout, stopping geocoding at batch ${Math.floor(i/batchSize) + 1}. Processed ${geocodedLocations.length} locations so far.`);
+                break;
+            }
             
-            console.log(`Geocoding "${name}" in "${city}" with bias:`, cityBias);
+            const batch = allLocationObjects.slice(i, i + batchSize);
             
-            const locationInvokeCommand = new InvokeCommand({
-                FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
-                Payload: JSON.stringify({ 
-                    locations: [name], 
-                    bias: cityBias 
-                }),
+            // Process current batch in parallel
+            const batchPromises = batch.map(async (locationObj) => {
+                const { name, city } = locationObj;
+                const cityBias = cityBiases[city];
+                
+                console.log(`Geocoding "${name}" in "${city}" with bias:`, cityBias);
+                
+                const locationInvokeCommand = new InvokeCommand({
+                    FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
+                    Payload: JSON.stringify({ 
+                        locations: [name], 
+                        bias: cityBias 
+                    }),
+                });
+                
+                try {
+                    const locationResponse = await lambdaClient.send(locationInvokeCommand);
+                    const locationPayload = JSON.parse(new TextDecoder().decode(locationResponse.Payload));
+                    const locationResult = JSON.parse(locationPayload.body);
+                    
+                    if (locationResult && locationResult.length > 0) {
+                        return locationResult;
+                    } else {
+                        console.warn(`No geocoding results for "${name}" in "${city}"`);
+                        return [];
+                    }
+                } catch (error) {
+                    console.error(`Error geocoding "${name}" in "${city}":`, error);
+                    return [];
+                }
             });
             
-            try {
-                const locationResponse = await lambdaClient.send(locationInvokeCommand);
-                const locationPayload = JSON.parse(new TextDecoder().decode(locationResponse.Payload));
-                const locationResult = JSON.parse(locationPayload.body);
-                
-                if (locationResult && locationResult.length > 0) {
-                    geocodedLocations.push(...locationResult);
-                } else {
-                    console.warn(`No geocoding results for "${name}" in "${city}"`);
+            // Wait for current batch to complete before processing next batch
+            const batchResults = await Promise.all(batchPromises);
+            batchResults.forEach(results => {
+                if (results.length > 0) {
+                    geocodedLocations.push(...results);
                 }
-            } catch (error) {
-                console.error(`Error geocoding "${name}" in "${city}":`, error);
-            }
+            });
+            
+            console.log(`Completed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allLocationObjects.length/batchSize)}, total geocoded: ${geocodedLocations.length}`);
         }
         
         console.log('All geocoded locations:', geocodedLocations);
@@ -179,20 +207,13 @@ exports.handler = async (event) => {
         // Create final activities array with all activities marked as recommended
         // Filter out any city names from both user locations and recommendations
         const userActivities = locations
-            .filter(locationObj => !cities.includes(locationObj.name))
+            .filter(locationObj => locationObj.name !== selectedCity)
             .map(locationObj => createActivityObject(locationObj, true));
         const recommendedActivities = recommendations
-            .filter(locationObj => !cities.includes(locationObj.name))
+            .filter(locationObj => locationObj.name !== selectedCity)
             .map(locationObj => createActivityObject(locationObj, true));
         
-        // Sort recommendations by city to group them together
-        const sortedRecommendedActivities = recommendedActivities.sort((a, b) => {
-            const cityAIndex = cities.indexOf(a.city);
-            const cityBIndex = cities.indexOf(b.city);
-            return cityAIndex - cityBIndex;
-        });
-        
-        const finalActivities = [...userActivities, ...sortedRecommendedActivities];
+        const finalActivities = [...userActivities, ...recommendedActivities];
         console.log('finalActivities', finalActivities);
 
         return {

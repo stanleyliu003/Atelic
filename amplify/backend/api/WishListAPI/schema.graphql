@@ -60,7 +60,7 @@
  }
 
  type Query {
-   analyzeWishlist(wishlist_text: String!): WishlistAnalysisResult @function(name: "wishlistAnalyzer-dev")
+   analyzeWishlist(wishlist_text: String!, selectedCity: String!): WishlistAnalysisResult @function(name: "wishlistAnalyzer-dev")
    getRoute(waypoints: [WaypointInput!]!): RouteResult @function(name: "GetRoute-dev")
    getRegionImage(selectedCity: String!): RegionImageResult @function(name: "regionImage-${env}")
    getCityCategories(selectedCity: String!): CityCategoriesResult @function(name: "CityCategories-${env}")

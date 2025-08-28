@@ -143,8 +143,8 @@ export default function create_trip_4_additional_info() {
 
                     {/* Additional Info Prompt */}
                     <View style={styles.promptSection}>                    
-                        <Text style={styles.promptTitle}>Tell us about your trip to {selectedCity}</Text>
-                        <Text style={styles.promptSubtitle}>Add specific places you'd like to visit (optional)</Text>
+                        <Text style={styles.promptTitle}>Any additional interests or preferences for your trip?</Text>
+                        <Text style={styles.promptSubtitle}>Share specific interests, experiences, activities you'd like to include (optional)</Text>
                     </View>
 
                     {/* Enter Destinations */}
@@ -153,7 +153,7 @@ export default function create_trip_4_additional_info() {
                     }}>
                         <TextInput 
                             style={styles.input}
-                            placeholder='Ex: Times Square, Statue of Liberty, Boston Common, Harvard'
+                            placeholder='Ex: Vegan friendly restaurants, coastal hiking trails, jazz bars'
                             onChangeText={(value) => setWishlistText(value)}
                             multiline={true}
                         />
