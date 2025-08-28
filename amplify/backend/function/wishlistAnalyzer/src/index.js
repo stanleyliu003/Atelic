@@ -176,11 +176,11 @@ exports.handler = async (event) => {
             };
         };
 
-        // Create final activities array with user's locations first, then recommendations
+        // Create final activities array with all activities marked as recommended
         // Filter out any city names from both user locations and recommendations
         const userActivities = locations
             .filter(locationObj => !cities.includes(locationObj.name))
-            .map(locationObj => createActivityObject(locationObj, false));
+            .map(locationObj => createActivityObject(locationObj, true));
         const recommendedActivities = recommendations
             .filter(locationObj => !cities.includes(locationObj.name))
             .map(locationObj => createActivityObject(locationObj, true));
