@@ -62,7 +62,9 @@ export default function create_trip_1_city() {
     // Save city, photo reference, and categories to cache
     const saveCityToCache = async (city, photoRef, categories) => {
         try {
-            await AsyncStorage.setItem(CACHE_KEYS.SELECTED_CITY, city);
+            if (city) {
+                await AsyncStorage.setItem(CACHE_KEYS.SELECTED_CITY, city);
+            }
             if (photoRef) {
                 await AsyncStorage.setItem(CACHE_KEYS.CITY_PHOTO_REF, photoRef);
             }
@@ -105,49 +107,55 @@ export default function create_trip_1_city() {
         if (!selectedCity) {
             setCityPhotoRef(null);
             setCityCategories(null);
+            setIsLoadingPhoto(false);
         }
     }, [selectedCity, setCityCategories])
 
+    // Fetch city photo independently - this should be fast
     const fetchCityPhoto = async (cityName) => {
         try {
             setIsLoadingPhoto(true);
             
-            // Call both APIs in parallel for better performance
-            const [imageResult, categoriesResult] = await Promise.allSettled([
-                API.graphql({
-                    query: getRegionImage,
-                    variables: { selectedCity: cityName }
-                }),
-                API.graphql({
-                    query: getCityCategories,
-                    variables: { selectedCity: cityName }
-                })
-            ]);
+            const imageResult = await API.graphql({
+                query: getRegionImage,
+                variables: { selectedCity: cityName }
+            });
             
-            // Extract photo reference from image API
-            const photoRef = imageResult.status === 'fulfilled' 
-                ? imageResult.value.data.getRegionImage.photo_reference 
-                : null;
-                
-            // Extract categories from categories API
-            const categories = categoriesResult.status === 'fulfilled' 
-                ? categoriesResult.value.data.getCityCategories.categories 
-                : null;
-            
+            const photoRef = imageResult.data.getRegionImage.photo_reference;
             setCityPhotoRef(photoRef);
-            setCityCategories(categories);
             
-            // Save to cache
-            await saveCityToCache(cityName, photoRef, categories);
+            // Save photo to cache immediately
+            await saveCityToCache(cityName, photoRef, null);
             
         } catch (error) {
-            console.error('Error fetching city data:', error);
+            console.error('Error fetching city photo:', error);
             setCityPhotoRef(null);
-            setCityCategories(null);
-            // Still save the city name even if fetch fails
+            // Still save the city name even if photo fetch fails
             await saveCityToCache(cityName, null, null);
         } finally {
             setIsLoadingPhoto(false);
+        }
+    };
+
+    // Fetch city categories independently - this can be slow due to Gemini
+    const fetchCityCategories = async (cityName) => {
+        try {
+            const categoriesResult = await API.graphql({
+                query: getCityCategories,
+                variables: { selectedCity: cityName }
+            });
+            
+            const categories = categoriesResult.data.getCityCategories.categories;
+            setCityCategories(categories);
+            
+            // Update cache with categories (preserving existing photo)
+            const existingCity = await AsyncStorage.getItem(CACHE_KEYS.SELECTED_CITY);
+            const existingPhoto = await AsyncStorage.getItem(CACHE_KEYS.CITY_PHOTO_REF);
+            await saveCityToCache(existingCity || cityName, existingPhoto, categories);
+            
+        } catch (error) {
+            console.error('Error fetching city categories:', error);
+            setCityCategories(null);
         }
     };
 
@@ -202,8 +210,10 @@ export default function create_trip_1_city() {
                         placeholder='Ex: Boston, MA, USA'
                         onPress={async (data) => {
                             setSelectedCity(data.description);
-                            // Fetch city photo when city is selected
-                            await fetchCityPhoto(data.description);
+                            // Fetch city photo and categories independently
+                            // Photo should load quickly, categories may take longer due to Gemini
+                            fetchCityPhoto(data.description); // Don't await - let it run independently
+                            fetchCityCategories(data.description); // Don't await - let it run independently
                         }}
                         query={{
                             key: API_KEYS.GOOGLE_MAPS,
@@ -264,7 +274,7 @@ export default function create_trip_1_city() {
                         {isLoadingPhoto ? (
                             <View style={styles.loadingContainer}>
                                 <ActivityIndicator size="large" color={Colors.PRIMARY} />
-                                <Text style={styles.loadingText}>Loading destination...</Text>
+                                <Text style={styles.loadingText}>Loading destination photo...</Text>
                             </View>
                         ) : (
                             <ActivityImage 

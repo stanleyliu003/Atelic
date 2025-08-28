@@ -322,8 +322,9 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 2,
         elevation: 1,
-        flexDirection: 'row',
-        alignItems: 'flex-start',
+        position: 'relative',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     selectedCategoryCard: {
         backgroundColor: '#f0f8ff', // Light blue background for selected state
@@ -344,16 +345,17 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     selectionIndicator: {
-        width: 16,
-        height: 16,
-        borderRadius: 8,
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
         borderColor: Colors.GRAY,
-        marginRight: 8,
-        marginTop: 2,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        flexShrink: 0,
+        zIndex: 1,
     },
     selectedIndicator: {
         backgroundColor: Colors.PRIMARY,
@@ -361,12 +363,12 @@ const styles = StyleSheet.create({
     },
     checkmark: {
         color: 'white',
-        fontSize: 10,
+        fontSize: 6,
         fontWeight: 'bold',
     },
     categoryContent: {
-        flex: 1,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     selectedCategoryName: {
         color: Colors.PRIMARY,
