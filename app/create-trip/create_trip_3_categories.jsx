@@ -9,7 +9,7 @@ import { useCreateTrip } from '../../context/CreateTripContext';
 export default function create_trip_3_categories() {
     const router = useRouter();
     const navigation = useNavigation();
-    const { updateActivities, updateWishlistText, setIsLoading, resetTrip, setIsCreatingTrip, cityCategories } = useCreateTrip();
+    const { updateActivities, updateWishlistText, setIsLoading, resetTrip, setIsCreatingTrip, cityCategories, selectedCategories, setSelectedCategories } = useCreateTrip();
     const [wishlist_text_raw, setWishlistText] = useState();
     const [loading, setLoading] = useState(false);
 
@@ -89,6 +89,17 @@ export default function create_trip_3_categories() {
         OnWishListInput();
     };
 
+    // Handle category selection
+    const handleCategorySelect = (categoryName) => {
+        if (selectedCategories.includes(categoryName)) {
+            // Deselect category
+            setSelectedCategories(prev => prev.filter(cat => cat !== categoryName));
+        } else {
+            // Select category
+            setSelectedCategories(prev => [...prev, categoryName]);
+        }
+    };
+
     return (
         <KeyboardAvoidingView
             style={{ flex: 1, backgroundColor: Colors.WHITE }}
@@ -126,20 +137,40 @@ export default function create_trip_3_categories() {
                     {/* Categories Prompt */}
                     <View style={styles.promptSection}>                    
                         <Text style={styles.promptTitle}>What kind of experiences in {selectedCity} interest you?</Text>
-                        <Text style={styles.promptSubtitle}>Here are some popular categories to inspire your wishlist</Text>
+                        <Text style={styles.promptSubtitle}>Select all that apply</Text>
                     </View>
 
                     {/* City Categories Display */}
                     {cityCategories && cityCategories.length > 0 ? (
                         <View style={styles.categoriesSection}>
-                            <Text style={styles.categoriesTitle}>Popular in {selectedCity}</Text>
                             <View style={styles.categoriesGrid}>
-                                {cityCategories.map((category, index) => (
-                                    <View key={index} style={styles.categoryCard}>
-                                        <Text style={styles.categoryName}>{category.category}</Text>
-                                        <Text style={styles.categoryItems}>{category.category_items[0]}</Text>
-                                    </View>
-                                ))}
+                                {cityCategories.map((category, index) => {
+                                    const isSelected = selectedCategories.includes(category.category);
+                                    return (
+                                        <TouchableOpacity 
+                                            key={index} 
+                                            style={[
+                                                styles.categoryCard,
+                                                isSelected && styles.selectedCategoryCard
+                                            ]}
+                                            onPress={() => handleCategorySelect(category.category)}
+                                            activeOpacity={0.7}
+                                        >
+                                            {/* Selection indicator */}
+                                            <View style={[styles.selectionIndicator, isSelected && styles.selectedIndicator]}>
+                                                {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                                            </View>
+                                            <View style={styles.categoryContent}>
+                                                <Text style={[styles.categoryName, isSelected && styles.selectedCategoryName]}>
+                                                    {category.category}
+                                                </Text>
+                                                <Text style={[styles.categoryItems, isSelected && styles.selectedCategoryItems]}>
+                                                    {category.category_items[0]}
+                                                </Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })}
                             </View>
                         </View>
                     ) : selectedCity && (
@@ -291,17 +322,56 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 2,
         elevation: 1,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    selectedCategoryCard: {
+        backgroundColor: '#f0f8ff', // Light blue background for selected state
+        borderColor: Colors.PRIMARY,
     },
     categoryName: {
         fontFamily: 'outfit-bold',
         fontSize: 14,
         color: '#333',
+        textAlign: 'center',
         marginBottom: 5,
     },
     categoryItems: {
         fontFamily: 'outfit',
-        fontSize: 12,
+        fontSize: 10,
         color: '#666',
         lineHeight: 16,
+        textAlign: 'center',
+    },
+    selectionIndicator: {
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        borderColor: Colors.GRAY,
+        marginRight: 8,
+        marginTop: 2,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        flexShrink: 0,
+    },
+    selectedIndicator: {
+        backgroundColor: Colors.PRIMARY,
+        borderColor: Colors.PRIMARY,
+    },
+    checkmark: {
+        color: 'white',
+        fontSize: 10,
+        fontWeight: 'bold',
+    },
+    categoryContent: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    selectedCategoryName: {
+        color: Colors.PRIMARY,
+    },
+    selectedCategoryItems: {
+        color: Colors.PRIMARY,
     }
 })

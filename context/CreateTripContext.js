@@ -33,6 +33,7 @@ export const CreateTripProvider = ({ children }) => {
     const [selectedCity, setSelectedCity] = useState('');
     const [tripLength, setTripLength] = useState(null);
     const [cityCategories, setCityCategories] = useState(null);
+    const [selectedCategories, setSelectedCategories] = useState([]);
     
     // Add logging to setTripLength
     const setTripLengthWithLog = (length) => {
@@ -161,6 +162,7 @@ export const CreateTripProvider = ({ children }) => {
         setSelectedCity('');
         setTripLength(null);
         setCityCategories(null);
+        setSelectedCategories([]);
     };
 
     const value = {
@@ -194,6 +196,8 @@ export const CreateTripProvider = ({ children }) => {
         setTripLength: setTripLengthWithLog,
         cityCategories,
         setCityCategories,
+        selectedCategories,
+        setSelectedCategories,
         CACHE_KEYS,
     };
 
