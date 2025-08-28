@@ -59,7 +59,6 @@ export default function TripViewMain() {
     
     // Initialize days based on tripLength
     useEffect(() => {
-        console.log('[trip-view_main] useEffect triggered - tripLength:', tripLength, 'getDayCount():', getDayCount());
         if (tripLength && tripLength > 0 && getDayCount() === 0) {
             // Create all days at once based on tripLength
             addMultipleDays(tripLength);

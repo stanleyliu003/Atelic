@@ -158,7 +158,7 @@ export default function create_trip_1_city() {
                 {/* Destination Prompt */}
                 <View style={styles.promptSection}>                    
                     <Text style={styles.promptTitle}>Where do you want to go?</Text>
-                    <Text style={styles.promptSubtitle}>Select your destination city</Text>
+                    <Text style={styles.promptSubtitle}>Select your destination</Text>
                 </View>
 
                 {/* Enter City */}
@@ -177,7 +177,7 @@ export default function create_trip_1_city() {
                         query={{
                             key: API_KEYS.GOOGLE_MAPS,
                             language: 'en',
-                            types: '(cities)',
+                            types: '(regions)',
                         }}
                         styles={{
                             container: {

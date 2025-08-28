@@ -44,7 +44,7 @@ exports.handler = async (event) => {
         // **IMPORTANT:** After running the above debug code and checking logs,
         // use the exact model name that is listed and supports 'generateContent'.
         // It is most likely still "gemini-pro", but this verification step is crucial.
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         // Create prompt for Gemini to extract activities AND get recommendations
         const prompt = `
