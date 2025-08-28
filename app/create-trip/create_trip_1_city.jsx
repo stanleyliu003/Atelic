@@ -233,7 +233,7 @@ export default function create_trip_1_city() {
                         {isLoadingPhoto ? (
                             <View style={styles.loadingContainer}>
                                 <ActivityIndicator size="large" color={Colors.PRIMARY} />
-                                <Text style={styles.loadingText}>Loading city image...</Text>
+                                <Text style={styles.loadingText}>Loading destination...</Text>
                             </View>
                         ) : (
                             <ActivityImage 

@@ -83,7 +83,7 @@ export function ActivityList({
         const nextActivity = activities[index + 1];
         return (
           <ActivityCard
-            key={activity.place_id || index}
+            key={activity.place_id ? `${activity.place_id}-${index}` : `activity-${index}`}
             activity={activity}
             isSelected={isSelected}
             onPress={handleActivityPress}
