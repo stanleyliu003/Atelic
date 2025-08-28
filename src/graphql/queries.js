@@ -2,8 +2,11 @@
 // this is an auto generated file. This will be overwritten
 
 export const analyzeWishlist = /* GraphQL */ `
-  query AnalyzeWishlist($wishlist_text: String!) {
-    analyzeWishlist(wishlist_text: $wishlist_text) {
+  query AnalyzeWishlist($wishlist_text: String!, $selectedCity: String!) {
+    analyzeWishlist(
+      wishlist_text: $wishlist_text
+      selectedCity: $selectedCity
+    ) {
       wishlist_activities {
         name
         city

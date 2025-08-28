@@ -58,8 +58,8 @@ export default function create_trip_4_additional_info() {
             const combinedText = `User wants to visit ${selectedCity} for ${tripLength} days.${categoriesText}${wishlist_text_raw ? ` They also want to visit these specific places or have these interests: ${wishlist_text_raw}` : ''}`;
             // Use the Gen 1 API to call the GraphQL API
             const result = await API.graphql(graphqlOperation(`
-                query AnalyzeWishlist($wishlist_text: String!) {
-                    analyzeWishlist(wishlist_text: $wishlist_text) {
+                query AnalyzeWishlist($wishlist_text: String!, $selectedCity: String!) {
+                    analyzeWishlist(wishlist_text: $wishlist_text, selectedCity: $selectedCity) {
                         wishlist_activities {
                             name
                             city
@@ -75,7 +75,7 @@ export default function create_trip_4_additional_info() {
                         }
                     }
                 }
-            `, { wishlist_text: combinedText }));
+            `, { wishlist_text: combinedText, selectedCity: selectedCity }));
             
             // Extract and print the activities array with proper null checking
             const activities = result?.data?.analyzeWishlist?.wishlist_activities || [];

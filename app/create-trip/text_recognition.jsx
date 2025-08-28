@@ -43,8 +43,8 @@ export default function text_recognition() {
             const combinedText = `User wants to visit these cities: ${city} and the following places: ${wishlist_text_raw}`;
             // Use the Gen 1 API to call the GraphQL API
             const result = await API.graphql(graphqlOperation(`
-                query AnalyzeWishlist($wishlist_text: String!) {
-                    analyzeWishlist(wishlist_text: $wishlist_text) {
+                query AnalyzeWishlist($wishlist_text: String!, $selectedCity: String!) {
+                    analyzeWishlist(wishlist_text: $wishlist_text, selectedCity: $selectedCity) {
                         wishlist_activities {
                             name
                             city
@@ -60,7 +60,7 @@ export default function text_recognition() {
                         }
                     }
                 }
-            `, { wishlist_text: combinedText }));
+            `, { wishlist_text: combinedText, selectedCity: city }));
             
             // Extract and print the activities array with proper null checking
             const activities = result?.data?.analyzeWishlist?.wishlist_activities || [];

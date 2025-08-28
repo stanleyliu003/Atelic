@@ -142,7 +142,6 @@ exports.handler = async (event) => {
             // Process current batch in parallel
             const batchPromises = batch.map(async (locationObj) => {
                 const { name, city } = locationObj;
-                const cityBias = cityBiases[city];
                 
                 console.log(`Geocoding "${name}" in "${city}" with bias:`, cityBias);
                 
