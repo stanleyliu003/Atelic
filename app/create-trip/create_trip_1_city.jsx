@@ -191,7 +191,7 @@ export default function create_trip_1_city() {
                     <View style={styles.progressTrack}>
                         <View style={styles.progressFill1}></View>
                     </View>
-                    <Text style={styles.progressLabel}>Step 1 of 3</Text>
+                                            <Text style={styles.progressLabel}>Step 1 of 4</Text>
                 </View>
 
                 {/* Destination Prompt */}
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
     },
     progressFill1: {
         height: '100%',
-        width: '33.33%',
+        width: '25%',
         backgroundColor: '#333',
         borderRadius: 3,
     },

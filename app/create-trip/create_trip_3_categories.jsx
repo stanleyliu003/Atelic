@@ -1,17 +1,14 @@
 import { Colors } from '../../constants/Colors';
-import { API, graphqlOperation } from 'aws-amplify';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 
 export default function create_trip_3_categories() {
     const router = useRouter();
     const navigation = useNavigation();
-    const { updateActivities, updateWishlistText, setIsLoading, resetTrip, setIsCreatingTrip, cityCategories, selectedCategories, setSelectedCategories } = useCreateTrip();
-    const [wishlist_text_raw, setWishlistText] = useState();
-    const [loading, setLoading] = useState(false);
+    const { setIsCreatingTrip, cityCategories, selectedCategories, setSelectedCategories } = useCreateTrip();
 
     const { selectedCity, tripLength } = useCreateTrip();
 
@@ -28,66 +25,6 @@ export default function create_trip_3_categories() {
             setIsCreatingTrip(false);
         };
     }, [])
-
-    const OnWishListInput = async () => {
-        // Check if users inputted wishlist text
-        if (!wishlist_text_raw) {
-            return;
-        }
-        try {
-            setLoading(true);
-            setIsLoading(true);
-            // Combine city and destinations for the API call
-            const combinedText = `User wants to visit these cities: ${selectedCity} for ${tripLength} days and the following places: ${wishlist_text_raw}`;
-            // Use the Gen 1 API to call the GraphQL API
-            const result = await API.graphql(graphqlOperation(`
-                query AnalyzeWishlist($wishlist_text: String!) {
-                    analyzeWishlist(wishlist_text: $wishlist_text) {
-                        wishlist_activities {
-                            name
-                            city
-                            lat
-                            lng
-                            rating
-                            user_ratings_total
-                            formatted_address
-                            types
-                            place_id
-                            photo_reference
-                            is_recommended
-                        }
-                    }
-                }
-            `, { wishlist_text: combinedText }));
-            
-            // Extract and print the activities array with proper null checking
-            const activities = result?.data?.analyzeWishlist?.wishlist_activities || [];
-            console.log('Extracted activities:', JSON.stringify(activities, null, 2));
-            
-            if (activities.length === 0) {
-                console.warn('No activities were returned from the analysis');
-            }
-            
-            // Store activities in context
-            updateActivities(activities);
-            updateWishlistText(combinedText);
-            
-            // Navigate to the next screen
-            router.replace('/create-trip/wishlist_info');
-        } catch (error) {
-            console.error('Error analyzing wishlist:', error);
-            if (error.errors) {
-                console.error('GraphQL Errors:', JSON.stringify(error.errors, null, 2));
-            }
-        } finally {
-            setIsLoading(false);
-            setLoading(false);
-        }
-    }
-
-    const handleCreateWishlist = () => {
-        OnWishListInput();
-    };
 
     // Handle category selection
     const handleCategorySelect = (categoryName) => {
@@ -132,7 +69,7 @@ export default function create_trip_3_categories() {
                         <View style={styles.progressTrack}>
                             <View style={styles.progressFill3}></View>
                         </View>
-                        <Text style={styles.progressLabel}>Step 3 of 3</Text>
+                        <Text style={styles.progressLabel}>Step 3 of 4</Text>
                     </View>
                     {/* Categories Prompt */}
                     <View style={styles.promptSection}>                    
@@ -178,36 +115,23 @@ export default function create_trip_3_categories() {
                             <Text style={styles.categoriesTitle}>Getting inspiration for {selectedCity}...</Text>
                         </View>
                     )}
-                    {/* Enter Destinations */}
-                    <View style={{
-                        marginTop: 25
-                    }}>
-                        <TextInput 
-                            style={styles.input}
-                            placeholder='Ex: Times Square, Statue of Liberty, Boston Common, Harvard'
-                            onChangeText={(value) => setWishlistText(value)}
-                            multiline={true}
-                        />
-                    </View>
                 
-                    {/* Create Wishlist Button */}
+                    {/* Next Button */}
                     <View> 
                         <TouchableOpacity
-                            onPress={handleCreateWishlist}
+                            onPress={() => router.replace('/create-trip/create_trip_4_additional_info')}
                             style={{
                                 padding: 20,
-                                backgroundColor: loading ? Colors.GRAY : Colors.PRIMARY,
-                                opacity: loading ? 0.6 : 1,
+                                backgroundColor: Colors.PRIMARY,
                                 borderRadius: 15,
                                 marginTop: 50
                             }}
-                            disabled={loading}
                         >
                             <Text style={{
                                 color: Colors.WHITE,
                                 textAlign: 'center',
                                 fontFamily: 'outfit-bold',
-                            }}>{loading ? 'Creating Wishlist...' : 'Create Wishlist'}</Text>
+                            }}>Next</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -217,25 +141,6 @@ export default function create_trip_3_categories() {
 }
 
 const styles = StyleSheet.create({
-    label: {
-        fontFamily: 'outfit-medium',
-        fontSize: 18,
-        marginTop: 7,
-        marginBottom: 10,
-        color: '#1a1a1a'
-    },
-    input: {
-        marginTop: 10,
-        padding: 15,
-        borderWidth: 1,
-        borderRadius: 30,
-        borderColor: '#1a1a1a',
-        fontFamily: 'outfit',
-        height: 250,
-        textAlignVertical: 'top',
-        paddingTop: 15,
-        color: '#1a1a1a'
-    },
     progressSection: {
         padding: 20,
         backgroundColor: 'white',
@@ -249,7 +154,7 @@ const styles = StyleSheet.create({
     },
     progressFill3: {
         height: '100%',
-        width: '100%',
+        width: '75%',
         backgroundColor: '#333',
         borderRadius: 3,
     },

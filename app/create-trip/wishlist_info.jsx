@@ -15,13 +15,11 @@ export default function WishlistInfo() {
     // Loading state for create trip
     const [loading, setLoading] = useState(false);
 
-    // Initialize only user-selected activities (not recommendations) as selected when component mounts or activities change
+    // Initialize with no activities selected by default since all are now recommendations
     useEffect(() => {
         if (activities && activities.length > 0) {
-            const userActivityIds = activities
-                .filter(activity => activity.place_id && !activity.is_recommended)
-                .map(activity => activity.place_id);
-            setSelectedActivities(userActivityIds);
+            // Start with no activities selected - user can choose which ones they want
+            setSelectedActivities([]);
         }
     }, [activities]);
 
@@ -55,7 +53,7 @@ export default function WishlistInfo() {
 
     return (
       <View style={styles.container}>
-        <TouchableOpacity onPress={()=>router.replace('/create-trip/create_trip_3_categories')}>
+        <TouchableOpacity onPress={()=>router.replace('/create-trip/create_trip_4_additional_info')}>
           <Ionicons name="arrow-back" size={32} color="black" />
         </TouchableOpacity>
 
@@ -68,31 +66,19 @@ export default function WishlistInfo() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* User-selected activities (not grouped by city) */}
-          <WishlistActivities 
-              activities={(activities || []).filter(a => !a.is_recommended)} 
-              selectedActivities={selectedActivities}
-              onActivitySelect={handleActivitySelect}
-              onActivityDeselect={handleActivityDeselect}
-              showSelectionIndicator={true}
-              scrollable={false}
-          />
-
-          {/* Recommended activities grouped by city */}
-          {activities && activities.some(a => a.is_recommended) && (
+          {/* All activities grouped by city */}
+          {activities && activities.length > 0 && (
             <>
-              <Text style={styles.recommendedTitle}>Recommendations</Text>
               {(() => {
-                const recommendedActivities = activities.filter(a => a.is_recommended);
-                const recommendedByCity = recommendedActivities.reduce((acc, activity) => {
+                const activitiesByCity = activities.reduce((acc, activity) => {
                   const city = activity.city || 'Unknown City';
                   if (!acc[city]) acc[city] = [];
                   acc[city].push(activity);
                   return acc;
                 }, {});
 
-                return Object.entries(recommendedByCity).map(([city, cityActivities]) => (
-                  <View key={`recommended-${city}`} style={styles.citySection}>
+                return Object.entries(activitiesByCity).map(([city, cityActivities]) => (
+                  <View key={`city-${city}`} style={styles.citySection}>
                     <Text style={styles.cityTitle}>{city}</Text>
                     <WishlistActivities 
                         activities={cityActivities} 
@@ -150,13 +136,7 @@ const styles = StyleSheet.create({
     scrollContent: {
       paddingBottom: 20,
     },
-    recommendedTitle: {
-      fontFamily: 'outfit-bold',
-      fontSize: 24,
-      marginTop: 25,
-      marginBottom: 10,
-      textAlign: 'center',
-    },
+
     citySection: {
       marginBottom: 10,
     },

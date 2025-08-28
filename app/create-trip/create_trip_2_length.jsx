@@ -59,7 +59,7 @@ export default function create_trip_2_length() {
                     <View style={styles.progressTrack}>
                         <View style={styles.progressFill2}></View>
                     </View>
-                    <Text style={styles.progressLabel}>Step 2 of 3</Text>
+                                            <Text style={styles.progressLabel}>Step 2 of 4</Text>
                 </View>
 
                 {/* Trip Length Prompt */}
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     },
     progressFill2: {
         height: '100%',
-        width: '66.66%',
+        width: '50%',
         backgroundColor: '#333',
         borderRadius: 3,
     },
