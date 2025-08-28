@@ -38,6 +38,28 @@ export const getRoute = /* GraphQL */ `
     }
   }
 `;
+export const getRegionImage = /* GraphQL */ `
+  query GetRegionImage($selectedCity: String!) {
+    getRegionImage(selectedCity: $selectedCity) {
+      city
+      photo_reference
+      __typename
+    }
+  }
+`;
+export const getCityCategories = /* GraphQL */ `
+  query GetCityCategories($selectedCity: String!) {
+    getCityCategories(selectedCity: $selectedCity) {
+      city
+      categories {
+        category
+        category_items
+        __typename
+      }
+      __typename
+    }
+  }
+`;
 export const getCityPhoto = /* GraphQL */ `
   query GetCityPhoto($selectedCity: String!) {
     getCityPhoto(selectedCity: $selectedCity) {

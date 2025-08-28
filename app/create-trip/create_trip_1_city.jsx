@@ -8,7 +8,7 @@ import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, Vie
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { API } from 'aws-amplify';
-import { getCityPhoto } from '../../src/graphql/queries';
+import { getRegionImage, getCityCategories } from '../../src/graphql/queries';
 import { ActivityImage } from '../../src/components/trip-view/activity/activity_image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -112,13 +112,27 @@ export default function create_trip_1_city() {
         try {
             setIsLoadingPhoto(true);
             
-            const result = await API.graphql({
-                query: getCityPhoto,
-                variables: { selectedCity: cityName }
-            });
+            // Call both APIs in parallel for better performance
+            const [imageResult, categoriesResult] = await Promise.allSettled([
+                API.graphql({
+                    query: getRegionImage,
+                    variables: { selectedCity: cityName }
+                }),
+                API.graphql({
+                    query: getCityCategories,
+                    variables: { selectedCity: cityName }
+                })
+            ]);
             
-            const photoRef = result.data.getCityPhoto.photo_reference;
-            const categories = result.data.getCityPhoto.categories;
+            // Extract photo reference from image API
+            const photoRef = imageResult.status === 'fulfilled' 
+                ? imageResult.value.data.getRegionImage.photo_reference 
+                : null;
+                
+            // Extract categories from categories API
+            const categories = categoriesResult.status === 'fulfilled' 
+                ? categoriesResult.value.data.getCityCategories.categories 
+                : null;
             
             setCityPhotoRef(photoRef);
             setCityCategories(categories);
@@ -127,10 +141,10 @@ export default function create_trip_1_city() {
             await saveCityToCache(cityName, photoRef, categories);
             
         } catch (error) {
-            console.error('Error fetching city photo:', error);
+            console.error('Error fetching city data:', error);
             setCityPhotoRef(null);
             setCityCategories(null);
-            // Still save the city name even if photo fetch fails
+            // Still save the city name even if fetch fails
             await saveCityToCache(cityName, null, null);
         } finally {
             setIsLoadingPhoto(false);

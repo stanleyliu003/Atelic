@@ -146,6 +146,12 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "regionImage": {
+      "build": true,
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "wishlistAnalyzer": {
       "build": true,
       "dependsOn": [
@@ -288,6 +294,30 @@
         {
           "category": "function",
           "resourceName": "getLocationCoordinates"
+        }
+      ]
+    },
+    "AMPLIFY_function_regionImage_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "regionImage"
+        }
+      ]
+    },
+    "AMPLIFY_function_regionImage_googlePlacesApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "regionImage"
+        }
+      ]
+    },
+    "AMPLIFY_function_regionImage_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "regionImage"
         }
       ]
     },

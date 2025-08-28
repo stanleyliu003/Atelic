@@ -38,22 +38,34 @@
      legs: [RouteLeg]
    }
 
-     type CategoryItem {
-    category: String!
-    category_items: [String!]!
-  }
+          type CategoryItem {
+   category: String!
+   category_items: [String!]!
+ }
 
-  type CityPhotoResult {
-    city: String!
-    photo_reference: String
-    categories: [CategoryItem]
-  }
+ type RegionImageResult {
+   city: String!
+   photo_reference: String
+ }
 
-  type Query {
-    analyzeWishlist(wishlist_text: String!): WishlistAnalysisResult @function(name: "wishlistAnalyzer-dev")
-    getRoute(waypoints: [WaypointInput!]!): RouteResult @function(name: "GetRoute-dev")
-    getCityPhoto(selectedCity: String!): CityPhotoResult @function(name: "CityCategories-${env}")
-  }
+ type CityCategoriesResult {
+   city: String!
+   categories: [CategoryItem]
+ }
+
+ type CityPhotoResult {
+   city: String!
+   photo_reference: String
+   categories: [CategoryItem]
+ }
+
+ type Query {
+   analyzeWishlist(wishlist_text: String!): WishlistAnalysisResult @function(name: "wishlistAnalyzer-dev")
+   getRoute(waypoints: [WaypointInput!]!): RouteResult @function(name: "GetRoute-dev")
+   getRegionImage(selectedCity: String!): RegionImageResult @function(name: "regionImage-${env}")
+   getCityCategories(selectedCity: String!): CityCategoriesResult @function(name: "CityCategories-${env}")
+   getCityPhoto(selectedCity: String!): CityPhotoResult @function(name: "CityCategories-${env}")
+ }
 
    input WaypointInput {
      place_id: String!
