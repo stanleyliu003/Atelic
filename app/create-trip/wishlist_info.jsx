@@ -69,16 +69,18 @@ export default function WishlistInfo() {
           {/* All activities grouped by city */}
           {activities && activities.length > 0 && (
             <>
+            <Text style={styles.recommendedTitle}>Recommended Activities</Text>
               {(() => {
-                const activitiesByCity = activities.reduce((acc, activity) => {
+                const recommendedActivities = activities.filter(a => a.is_recommended);
+                const recommendedByCity = recommendedActivities.reduce((acc, activity) => {
                   const city = activity.city || 'Unknown City';
                   if (!acc[city]) acc[city] = [];
                   acc[city].push(activity);
                   return acc;
                 }, {});
 
-                return Object.entries(activitiesByCity).map(([city, cityActivities]) => (
-                  <View key={`city-${city}`} style={styles.citySection}>
+                return Object.entries(recommendedByCity).map(([city, cityActivities]) => (
+                  <View key={`recommended-${city}`} style={styles.citySection}>
                     <Text style={styles.cityTitle}>{city}</Text>
                     <WishlistActivities 
                         activities={cityActivities} 
@@ -163,5 +165,12 @@ const styles = StyleSheet.create({
       color: Colors.WHITE,
       textAlign: 'center',
       fontFamily: 'outfit-bold',
+    },
+    recommendedTitle: {
+      fontFamily: 'outfit-bold',
+      fontSize: 24,
+      marginTop: 25,
+      marginBottom: 10,
+      textAlign: 'center',
     }
 });
