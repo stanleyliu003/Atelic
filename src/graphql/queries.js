@@ -43,6 +43,11 @@ export const getCityPhoto = /* GraphQL */ `
     getCityPhoto(selectedCity: $selectedCity) {
       city
       photo_reference
+      categories {
+        category
+        category_items
+        __typename
+      }
       __typename
     }
   }

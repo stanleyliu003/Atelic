@@ -38,9 +38,15 @@
      legs: [RouteLeg]
    }
 
-     type CityPhotoResult {
+     type CategoryItem {
+    category: String!
+    category_items: [String!]!
+  }
+
+  type CityPhotoResult {
     city: String!
     photo_reference: String
+    categories: [CategoryItem]
   }
 
   type Query {

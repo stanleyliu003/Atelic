@@ -9,7 +9,7 @@ import { useCreateTrip } from '../../context/CreateTripContext';
 export default function create_trip_3_categories() {
     const router = useRouter();
     const navigation = useNavigation();
-    const { updateActivities, updateWishlistText, setIsLoading, resetTrip, setIsCreatingTrip } = useCreateTrip();
+    const { updateActivities, updateWishlistText, setIsLoading, resetTrip, setIsCreatingTrip, cityCategories } = useCreateTrip();
     const [wishlist_text_raw, setWishlistText] = useState();
     const [loading, setLoading] = useState(false);
 
@@ -124,10 +124,29 @@ export default function create_trip_3_categories() {
                         <Text style={styles.progressLabel}>Step 3 of 3</Text>
                     </View>
                     {/* Categories Prompt */}
-                        <View style={styles.promptSection}>                    
+                    <View style={styles.promptSection}>                    
                         <Text style={styles.promptTitle}>What kind of experiences in {selectedCity} interest you?</Text>
-                        <Text style={styles.promptSubtitle}>Select all that apply</Text>
+                        <Text style={styles.promptSubtitle}>Here are some popular categories to inspire your wishlist</Text>
                     </View>
+
+                    {/* City Categories Display */}
+                    {cityCategories && cityCategories.length > 0 ? (
+                        <View style={styles.categoriesSection}>
+                            <Text style={styles.categoriesTitle}>Popular in {selectedCity}</Text>
+                            <View style={styles.categoriesGrid}>
+                                {cityCategories.map((category, index) => (
+                                    <View key={index} style={styles.categoryCard}>
+                                        <Text style={styles.categoryName}>{category.category}</Text>
+                                        <Text style={styles.categoryItems}>{category.category_items[0]}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    ) : selectedCity && (
+                        <View style={styles.categoriesSection}>
+                            <Text style={styles.categoriesTitle}>Getting inspiration for {selectedCity}...</Text>
+                        </View>
+                    )}
                     {/* Enter Destinations */}
                     <View style={{
                         marginTop: 25
@@ -242,5 +261,47 @@ const styles = StyleSheet.create({
         fontSize: 32,
         color: '#1a1a1a',
         flex: 1,
+    },
+    categoriesSection: {
+        marginTop: 10,
+        marginBottom: 20,
+    },
+    categoriesTitle: {
+        fontFamily: 'outfit-medium',
+        fontSize: 18,
+        color: '#1a1a1a',
+        marginBottom: 15,
+        paddingHorizontal: 5,
+    },
+    categoriesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+    },
+    categoryCard: {
+        width: '48%',
+        backgroundColor: '#f8f9fa',
+        borderRadius: 12,
+        padding: 15,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#e9ecef',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    categoryName: {
+        fontFamily: 'outfit-bold',
+        fontSize: 14,
+        color: '#333',
+        marginBottom: 5,
+    },
+    categoryItems: {
+        fontFamily: 'outfit',
+        fontSize: 12,
+        color: '#666',
+        lineHeight: 16,
     }
 })

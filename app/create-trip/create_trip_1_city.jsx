@@ -15,22 +15,27 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function create_trip_1_city() {
     const router = useRouter();
     const navigation = useNavigation();
-    const { setIsCreatingTrip, selectedCity, setSelectedCity, clearTripCreationCache } = useCreateTrip();
+    const { 
+        setIsCreatingTrip, 
+        selectedCity, 
+        setSelectedCity, 
+        clearTripCreationCache,
+        cityCategories,
+        setCityCategories,
+        CACHE_KEYS
+    } = useCreateTrip();
     const [cityPhotoRef, setCityPhotoRef] = useState(null);
     const [isLoadingPhoto, setIsLoadingPhoto] = useState(false);
     const googlePlacesRef = useRef(null);
 
-    // Cache keys - shared with context
-    const CACHE_KEYS = {
-        SELECTED_CITY: 'create_trip_selected_city',
-        CITY_PHOTO_REF: 'create_trip_city_photo_ref'
-    };
+    // Note: CACHE_KEYS now comes from context
 
     // Load cached values on component mount
     const loadCachedValues = async () => {
         try {
             const cachedCity = await AsyncStorage.getItem(CACHE_KEYS.SELECTED_CITY);
             const cachedPhotoRef = await AsyncStorage.getItem(CACHE_KEYS.CITY_PHOTO_REF);
+            const cachedCategories = await AsyncStorage.getItem(CACHE_KEYS.CITY_CATEGORIES);
             
             if (cachedCity) {
                 setSelectedCity(cachedCity);
@@ -45,17 +50,24 @@ export default function create_trip_1_city() {
             if (cachedPhotoRef) {
                 setCityPhotoRef(cachedPhotoRef);
             }
+            
+            if (cachedCategories) {
+                setCityCategories(JSON.parse(cachedCategories));
+            }
         } catch (error) {
             console.error('Error loading cached values:', error);
         }
     };
 
-    // Save city and photo reference to cache
-    const saveCityToCache = async (city, photoRef) => {
+    // Save city, photo reference, and categories to cache
+    const saveCityToCache = async (city, photoRef, categories) => {
         try {
             await AsyncStorage.setItem(CACHE_KEYS.SELECTED_CITY, city);
             if (photoRef) {
                 await AsyncStorage.setItem(CACHE_KEYS.CITY_PHOTO_REF, photoRef);
+            }
+            if (categories) {
+                await AsyncStorage.setItem(CACHE_KEYS.CITY_CATEGORIES, JSON.stringify(categories));
             }
         } catch (error) {
             console.error('Error saving to cache:', error);
@@ -65,7 +77,7 @@ export default function create_trip_1_city() {
     // Clear cache (useful when trip is completed or user wants to start fresh)
     const clearCache = async () => {
         try {
-            await AsyncStorage.multiRemove([CACHE_KEYS.SELECTED_CITY, CACHE_KEYS.CITY_PHOTO_REF]);
+            await AsyncStorage.multiRemove([CACHE_KEYS.SELECTED_CITY, CACHE_KEYS.CITY_PHOTO_REF, CACHE_KEYS.CITY_CATEGORIES]);
         } catch (error) {
             console.error('Error clearing cache:', error);
         }
@@ -88,12 +100,13 @@ export default function create_trip_1_city() {
         };
     }, [])
 
-    // Clear photo reference when selectedCity is cleared, but don't interfere with user input
+    // Clear photo reference and categories when selectedCity is cleared, but don't interfere with user input
     useEffect(() => {
         if (!selectedCity) {
             setCityPhotoRef(null);
+            setCityCategories(null);
         }
-    }, [selectedCity])
+    }, [selectedCity, setCityCategories])
 
     const fetchCityPhoto = async (cityName) => {
         try {
@@ -105,16 +118,20 @@ export default function create_trip_1_city() {
             });
             
             const photoRef = result.data.getCityPhoto.photo_reference;
+            const categories = result.data.getCityPhoto.categories;
+            
             setCityPhotoRef(photoRef);
+            setCityCategories(categories);
             
             // Save to cache
-            await saveCityToCache(cityName, photoRef);
+            await saveCityToCache(cityName, photoRef, categories);
             
         } catch (error) {
             console.error('Error fetching city photo:', error);
             setCityPhotoRef(null);
+            setCityCategories(null);
             // Still save the city name even if photo fetch fails
-            await saveCityToCache(cityName, null);
+            await saveCityToCache(cityName, null, null);
         } finally {
             setIsLoadingPhoto(false);
         }
@@ -243,6 +260,8 @@ export default function create_trip_1_city() {
                         )}
                     </View>
                 )}
+
+
                 
                 {/* Next Button */}
                 <View style={{ position: 'absolute', bottom: 50, left: 25, right: 25 }}>
@@ -360,5 +379,6 @@ const styles = StyleSheet.create({
         fontFamily: 'outfit',
         fontSize: 14,
         color: '#666',
-    }
+    },
+
 })

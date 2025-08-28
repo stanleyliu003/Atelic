@@ -8,7 +8,8 @@ const CreateTripContext = createContext();
 // Cache keys for trip creation flow
 const CACHE_KEYS = {
     SELECTED_CITY: 'create_trip_selected_city',
-    CITY_PHOTO_REF: 'create_trip_city_photo_ref'
+    CITY_PHOTO_REF: 'create_trip_city_photo_ref',
+    CITY_CATEGORIES: 'create_trip_city_categories'
 };
 
 // Custom hook to use the context
@@ -31,6 +32,7 @@ export const CreateTripProvider = ({ children }) => {
     const [isCreatingTrip, setIsCreatingTrip] = useState(false);
     const [selectedCity, setSelectedCity] = useState('');
     const [tripLength, setTripLength] = useState(null);
+    const [cityCategories, setCityCategories] = useState(null);
     
     // Add logging to setTripLength
     const setTripLengthWithLog = (length) => {
@@ -137,7 +139,7 @@ export const CreateTripProvider = ({ children }) => {
     // Clear cached trip creation data
     const clearTripCreationCache = async () => {
         try {
-            await AsyncStorage.multiRemove([CACHE_KEYS.SELECTED_CITY, CACHE_KEYS.CITY_PHOTO_REF]);
+            await AsyncStorage.multiRemove([CACHE_KEYS.SELECTED_CITY, CACHE_KEYS.CITY_PHOTO_REF, CACHE_KEYS.CITY_CATEGORIES]);
             // Don't immediately clear selectedCity from context state
             // Let the individual components handle their own state clearing
         } catch (error) {
@@ -158,6 +160,7 @@ export const CreateTripProvider = ({ children }) => {
         setDayActivities({});
         setSelectedCity('');
         setTripLength(null);
+        setCityCategories(null);
     };
 
     const value = {
@@ -189,6 +192,9 @@ export const CreateTripProvider = ({ children }) => {
         setSelectedCity,
         tripLength,
         setTripLength: setTripLengthWithLog,
+        cityCategories,
+        setCityCategories,
+        CACHE_KEYS,
     };
 
     return (
