@@ -143,7 +143,7 @@ export default function create_trip_4_additional_info() {
 
                     {/* Additional Info Prompt */}
                     <View style={styles.promptSection}>                    
-                        <Text style={styles.promptTitle}>Any additional interests or preferences for your trip?</Text>
+                        <Text style={styles.promptTitle}>Any additional preferences for your trip?</Text>
                         <Text style={styles.promptSubtitle}>Share specific interests, experiences, activities you'd like to include (optional)</Text>
                     </View>
 

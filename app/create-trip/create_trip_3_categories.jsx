@@ -119,28 +119,21 @@ export default function create_trip_3_categories() {
                         </View>
                     ) : selectedCity && (
                         <View style={styles.categoriesSection}>
-                            <Text style={styles.categoriesTitle}>Getting inspiration for {selectedCity}...</Text>
+                            <Text style={styles.loadingText}>Getting inspiration for {selectedCity}...</Text>
                         </View>
                     )}
                 
-                    {/* Next Button */}
-                    <View> 
-                        <TouchableOpacity
-                            onPress={() => router.replace('/create-trip/create_trip_4_additional_info')}
-                            style={{
-                                padding: 20,
-                                backgroundColor: Colors.PRIMARY,
-                                borderRadius: 15,
-                                marginTop: 30
-                            }}
-                        >
-                            <Text style={{
-                                color: Colors.WHITE,
-                                textAlign: 'center',
-                                fontFamily: 'outfit-bold',
-                            }}>Next</Text>
-                        </TouchableOpacity>
-                    </View>
+                    {/* Next Button - Only show when categories are loaded */}
+                    {cityCategories && cityCategories.length > 0 && (
+                        <View> 
+                            <TouchableOpacity
+                                onPress={() => router.replace('/create-trip/create_trip_4_additional_info')}
+                                style={styles.nextButton}
+                            >
+                                <Text style={styles.nextButtonText}>Next</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
@@ -214,6 +207,13 @@ const styles = StyleSheet.create({
         fontSize: 18,
         color: '#1a1a1a',
         marginBottom: 15,
+        paddingHorizontal: 5,
+    },
+    loadingText: {
+        fontFamily: 'outfit',
+        fontSize: 16,
+        color: '#666',
+        textAlign: 'center',
         paddingHorizontal: 5,
     },
     categoriesGrid: {
@@ -303,5 +303,16 @@ const styles = StyleSheet.create({
     },
     selectedCategoryItems: {
         color: Colors.PRIMARY,
+    },
+    nextButton: {
+        padding: 20,
+        backgroundColor: Colors.PRIMARY,
+        borderRadius: 15,
+        marginTop: 30,
+    },
+    nextButtonText: {
+        color: Colors.WHITE,
+        textAlign: 'center',
+        fontFamily: 'outfit-bold',
     }
 })
