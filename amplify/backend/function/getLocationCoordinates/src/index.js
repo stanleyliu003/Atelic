@@ -120,11 +120,29 @@ exports.handler = async (event) => {
     }
 
     const results = [];
-    // Process locations sequentially to avoid rate-limiting issues.
-    for (const name of locations) {
-        const result = await getLocationInfo(name, bias);
-        results.push(result);
-    }
+    
+    // Process locations in parallel with controlled concurrency for better performance
+    // Google Places API can handle moderate concurrent requests
+    const maxConcurrent = 8; // Process up to 8 locations simultaneously
+    
+    const processInBatches = async (locationNames, batchSize) => {
+        const allResults = [];
+        for (let i = 0; i < locationNames.length; i += batchSize) {
+            const batch = locationNames.slice(i, i + batchSize);
+            console.log(`Processing geocoding batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(locationNames.length/batchSize)} (${batch.length} locations)`);
+            
+            // Process current batch in parallel
+            const batchPromises = batch.map(name => getLocationInfo(name, bias));
+            const batchResults = await Promise.all(batchPromises);
+            allResults.push(...batchResults);
+            
+            console.log(`Completed geocoding batch ${Math.floor(i/batchSize) + 1}, processed ${allResults.length}/${locationNames.length} locations`);
+        }
+        return allResults;
+    };
+
+    const allResults = await processInBatches(locations, maxConcurrent);
+    results.push(...allResults);
     
     const successfulLocations = results.filter(r => !r.error);
 

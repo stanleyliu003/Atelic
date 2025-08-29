@@ -26,12 +26,12 @@
         "getLocationCoordinates": {
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/getLocationCoordinates-6a4a6e745755754a7532-build.zip"
+          "s3Key": "amplify-builds/getLocationCoordinates-6f5736572f757a59394c-build.zip"
         },
         "wishlistAnalyzer": {
           "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw",
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/wishlistAnalyzer-47554770494133556343-build.zip"
+          "s3Key": "amplify-builds/wishlistAnalyzer-4d666f4b696d79546d67-build.zip"
         },
         "CreateTripStorage": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",

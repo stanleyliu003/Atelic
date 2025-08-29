@@ -56,27 +56,45 @@ exports.handler = async (event) => {
 
         // Create prompt for Gemini to extract activities AND get recommendations
         const prompt = `
-        You are an expert travel assistant. Analyze the following travel wishlist text. First, use this ${selectedCity} city or region name. Second, extract all of the location names, landmarks, or points of interest.
-        For each location, provide its full, official name, avoiding abbreviations or slang. The names should be precise and suitable for use with a mapping API like Google Places.
-        For example, instead of "UPenn", use "University of Pennsylvania". Instead of "Philly museum of art", use "Philadelphia Museum of Art".
-        Also generate a list of exactly 7 high-quality recommendations for ${selectedCity} by following these specific rules: 
-        RULE 1: ANALYZE USER INTENT Infer the user's implicit interests from their wishlist. They can have multiple interests (e.g., History, Art, Outdoors, Food, science, music, art, popular attractions, religious, etc. if they chose museums, include other cultural sites; if they chose parks, include outdoor attractions, if they like art museums, suggest a specific gallery district or a notable sculpture park). The recommendations must be complementary to a users interests. 
-        RULE 2: APPLY RECOMMENDATION CRITERIA Every recommendation must meet these qualifications: 
-        - Thematic Relevance: Aligns with the user's inferred interests from Rule 1. 
-        - Quality & Popularity: Must be well-regarded and highly reviewed destinations that tourists and locals appreciate. 
-        - Geographic Logic: Should be reasonably accessible from the user's other chosen locations, creating a sensible travel path. 
-        - Itinerary Balance: The final list of 7 activities should balance iconic, "must-see" attractions that define ${selectedCity} with the users interests.
-        RULE 3: APPLY EXCLUSION CRITERIA DO NOT include any of the following in the recommendations: 
-        - Locations already present in the user's original wishlist. 
-        - Generic chain establishments (e.g., Starbucks, McDonald's). 
-        - Hotels or other accommodations. 
-        - Overly niche attractions with very limited appeal. 
-        - Locations requiring significant travel outside the mentioned cities. 
-        - Seasonal attractions that are very likely to be closed (e.g., a water park in winter).
-        Return ONLY a single, minified JSON object with no additional text or explanation. The object must have three keys: "cities" (an array of city names), "locations" (an array of objects with "name" and "city"), and "recommendations" (an array of objects with "name" and "city" - 7 recommendations per city mentioned).
-        Format: {"cities":["City Name 1","City Name 2"],"locations":[{"name":"Official Location Name 1","city":"City Name 1"},{"name":"Official Location Name 2","city":"City Name 2"}],"recommendations":[{"name":"Recommended Location 1","city":"City Name 1"},{"name":"Recommended Location 2","city":"City Name 1"},{"name":"Recommended Location 3","city":"City Name 1"},{"name":"Recommended Location 4","city":"City Name 1"},{"name":"Recommended Location 5","city":"City Name 1"},{"name":"Recommended Location 6","city":"City Name 1"},{"name":"Recommended Location 7","city":"City Name 1"},{"name":"Recommended Location 8","city":"City Name 2"},{"name":"Recommended Location 9","city":"City Name 2"},{"name":"Recommended Location 10","city":"City Name 2"}]}
-        Wishlist text: "${wishlist_text}"
-        `;
+       You are an expert travel assistant. Analyze the following travel wishlist text for the region: ${selectedCity}.
+
+       CRITICAL CONSTRAINTS:
+       1. ONLY focus on ${selectedCity} - do NOT include other regions, cities, or areas
+       2. When users mention broad categories (like "night markets", "temples", "coastal areas"), extract only 1-2 SPECIFIC examples within ${selectedCity}
+       3. Generate exactly 5 recommendations that are WITHIN ${selectedCity} only
+       4. Use precise, official names suitable for Google Places API
+
+       TASK 1 - EXTRACT SPECIFIC LOCATIONS:
+       From the wishlist text, identify specific location names, landmarks, or points of interest mentioned by the user.
+       - Use full, official names (e.g., "University of Pennsylvania" not "UPenn")
+       - If user mentions categories like "night markets", only extract 1-2 specific examples in ${selectedCity}
+       - Ignore vague references that don't point to specific places
+
+       TASK 2 - GENERATE 7 RECOMMENDATIONS:
+       Create exactly 7 high-quality recommendations within ${selectedCity} that:
+       - Match the user's interests inferred from their wishlist
+       - Are well-regarded attractions/destinations
+       - Are geographically accessible within ${selectedCity}
+       - Are NOT already in the user's wishlist
+       - Are NOT generic chains, hotels, or overly niche attractions
+
+
+       STRICT OUTPUT FORMAT:
+       Return ONLY this JSON structure with no additional text:
+       {"region":["${selectedCity}"],"locations":[{"name":"Specific Location Name","region":"${selectedCity}"}],"recommendations":[{"name":"Rec 1","region":"${selectedCity}"},{"name":"Rec 2","region":"${selectedCity}"},{"name":"Rec 3","region":"${selectedCity}"},{"name":"Rec 4","region":"${selectedCity}"},{"name":"Rec 5","region":"${selectedCity}"},{"name":"Rec 6","region":"${selectedCity}"},{"name":"Rec 7","region":"${selectedCity}"}]}
+
+
+       EXAMPLES OF CORRECT BEHAVIOR:
+       - User mentions "night markets" → Extract 1 specific market in ${selectedCity}
+       - User mentions "temples" → Extract 1 specific temples in ${selectedCity}
+       - User mentions "coastal charms" → Extract 1 specific beach/coastal area in ${selectedCity}
+       - DO NOT create extensive lists from broad categories
+      
+       Format: {"region":["${selectedCity}"],"locations":[{"name":"Official Location Name 1","region":"${selectedCity}"},{"name":"Official Location Name 2","region":"${selectedCity}"}],"recommendations":[{"name":"Recommended Location 1","region":"${selectedCity}"},{"name":"Recommended Location 2","region":"${selectedCity}"},{"name":"Recommended Location 3","region":"${selectedCity}"},{"name":"Recommended Location 4","region":"${selectedCity}"},{"name":"Recommended Location 5","region":"${selectedCity}"}]}
+
+
+       Wishlist text: "${wishlist_text}"
+       `;
 
         // Call Gemini API
         const result = await model.generateContent(prompt);
@@ -93,10 +111,10 @@ exports.handler = async (event) => {
             throw new Error('Failed to parse analysis from AI response.');
         }
 
-        const { cities, locations, recommendations } = analysisResult;
+        const { region, locations, recommendations } = analysisResult;
 
-        if (!cities || !Array.isArray(cities) || !locations || !Array.isArray(locations) || !recommendations || !Array.isArray(recommendations)) {
-            throw new Error('Invalid JSON structure from AI. Missing "cities", "locations", or "recommendations".');
+        if (!region || !Array.isArray(region) || !locations || !Array.isArray(locations) || !recommendations || !Array.isArray(recommendations)) {
+            throw new Error('Invalid JSON structure from AI. Missing "region", "locations", or "recommendations".');
         }
 
         // ----------------------------------------------------------------
@@ -141,9 +159,9 @@ exports.handler = async (event) => {
             
             // Process current batch in parallel
             const batchPromises = batch.map(async (locationObj) => {
-                const { name, city } = locationObj;
+                const { name, region } = locationObj;
                 
-                console.log(`Geocoding "${name}" in "${city}" with bias:`, cityBias);
+                console.log(`Geocoding "${name}" in "${region}" with bias:`, cityBias);
                 
                 const locationInvokeCommand = new InvokeCommand({
                     FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
@@ -161,11 +179,11 @@ exports.handler = async (event) => {
                     if (locationResult && locationResult.length > 0) {
                         return locationResult;
                     } else {
-                        console.warn(`No geocoding results for "${name}" in "${city}"`);
+                        console.warn(`No geocoding results for "${name}" in "${region}"`);
                         return [];
                     }
                 } catch (error) {
-                    console.error(`Error geocoding "${name}" in "${city}":`, error);
+                    console.error(`Error geocoding "${name}" in "${region}":`, error);
                     return [];
                 }
             });
@@ -190,7 +208,7 @@ exports.handler = async (event) => {
             const coordData = allLocationsWithCoords.find(c => c.name === locationObj.name);
             return {
                 name: locationObj.name,
-                city: locationObj.city, // Include city information
+                city: locationObj.region, // Include region information as city
                 lat: coordData ? coordData.lat : null,
                 lng: coordData ? coordData.lng : null,
                 rating: coordData ? coordData.rating : null,
