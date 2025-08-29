@@ -38,10 +38,11 @@
      legs: [RouteLeg]
    }
 
-          type CategoryItem {
-   category: String!
-   category_items: [String!]!
- }
+                   type CategoryItem {
+  category: String!
+  category_items: [String!]!
+  emoji: String
+}
 
  type RegionImageResult {
    city: String!

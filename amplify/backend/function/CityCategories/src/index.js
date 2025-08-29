@@ -66,9 +66,10 @@ const generateCityCategories = async (cityName) => {
         const prompt = `You are a travel categorization engine with deep local knowledge.
 
 GOAL
-Given a single place name (city or country), return a JSON array of EXACTLY 6 objects. Each object must have:
+Given a single place name (city, country, state, or region), return a JSON array of EXACTLY 6 objects. Each object must have:
 - "category": a short, distinctive Title Case label that captures what makes this place unique
-- "category_items": an array with EXACTLY ONE string containing EXACTLY THREE specific items separated by commas (no "and")
+- "category_items": an array with EXACTLY ONE string containing EXACTLY TWO specific items separated by commas (no "and")
+- "emoji": a single emoji that represents the category
 
 RULES
 - Use only items actually located in the requested place (city-level for cities; country-level for countries)
@@ -79,28 +80,29 @@ RULES
 - Cover diverse interests (culture, food, neighborhoods, landmarks, nature, etc.)
 - Use correct diacritics and proper spelling
 - No duplicates across categories or items
+- Select an emoji that is relevant to the category
 - Output valid JSON ONLY - no prose, no markdown, no trailing commas
 
 OUTPUT FORMAT
 [
-  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2, Item 3"] },
-  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2, Item 3"] },
-  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2, Item 3"] },
-  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2, Item 3"] },
-  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2, Item 3"] },
-  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2, Item 3"] }
+  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2"], "emoji": "Category Emoji" },
+  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2"], "emoji": "Category Emoji" },
+  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2"], "emoji": "Category Emoji" },
+  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2"], "emoji": "Category Emoji" },
+  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2"], "emoji": "Category Emoji" },
+  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2"], "emoji": "Category Emoji" }
 ]
 
 EXAMPLE (for reference only; do NOT include unless input is exactly "Paris, France"):
 Input: Paris, France
 Output:
 [
-  { "category": "Art & Museums", "category_items": ["Louvre, Musée d'Orsay, Centre Pompidou"] },
-  { "category": "Café Culture", "category_items": ["Café de Flore, Les Deux Magots, Café Procope"] },
-  { "category": "Iconic Landmarks", "category_items": ["Eiffel Tower, Arc de Triomphe, Notre-Dame"] },
-  { "category": "Michelin Dining", "category_items": ["L'Ambroisie, Guy Savoy, Le Bristol"] },
-  { "category": "Bohemian Quarters", "category_items": ["Montmartre, Le Marais, Saint-Germain"] },
-  { "category": "Seine Experiences", "category_items": ["Bateaux Parisiens, Pont Neuf, Île Saint-Louis"] }
+  { "category": "Art & Museums", "category_items": ["Louvre, Musée d'Orsay"], "emoji": "🎨" },
+  { "category": "Café Culture", "category_items": ["Café de Flore, Les Deux Magots"], "emoji": "☕" },
+  { "category": "Iconic Landmarks", "category_items": ["Eiffel Tower, Arc de Triomphe"], "emoji": "🗼" },
+  { "category": "Michelin Dining", "category_items": ["L'Ambroisie, Guy Savoy"], "emoji": "🍴" },
+  { "category": "Bohemian Quarters", "category_items": ["Montmartre, Le Marais"], "emoji": "🎭" },
+  { "category": "Seine Experiences", "category_items": ["Bateaux Parisiens, Pont Neuf"], "emoji": "🚢" }
 ]
 
 INPUT: ${cityName}`;

@@ -98,6 +98,13 @@ export default function create_trip_3_categories() {
                                                 {isSelected && <Text style={styles.checkmark}>✓</Text>}
                                             </View>
                                             <View style={styles.categoryContent}>
+                                                {category.emoji && (
+                                                    <View style={[styles.emojiContainer, isSelected && styles.selectedEmojiContainer]}>
+                                                        <Text style={styles.categoryEmoji}>
+                                                            {category.emoji}
+                                                        </Text>
+                                                    </View>
+                                                )}
                                                 <Text style={[styles.categoryName, isSelected && styles.selectedCategoryName]}>
                                                     {category.category}
                                                 </Text>
@@ -124,7 +131,7 @@ export default function create_trip_3_categories() {
                                 padding: 20,
                                 backgroundColor: Colors.PRIMARY,
                                 borderRadius: 15,
-                                marginTop: 50
+                                marginTop: 30
                             }}
                         >
                             <Text style={{
@@ -253,9 +260,9 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 8,
         right: 8,
-        width: 10,
-        height: 10,
-        borderRadius: 5,
+        width: 15,
+        height: 15,
+        borderRadius: 7.5,
         borderColor: Colors.GRAY,
         justifyContent: 'center',
         alignItems: 'center',
@@ -268,12 +275,28 @@ const styles = StyleSheet.create({
     },
     checkmark: {
         color: 'white',
-        fontSize: 6.25,
+        fontSize: 9.375,
         fontWeight: 'bold',
     },
     categoryContent: {
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    emojiContainer: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: '#e9ecef',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    selectedEmojiContainer: {
+        backgroundColor: '#333',
+    },
+    categoryEmoji: {
+        fontSize: 24,
+        textAlign: 'center',
     },
     selectedCategoryName: {
         color: Colors.PRIMARY,

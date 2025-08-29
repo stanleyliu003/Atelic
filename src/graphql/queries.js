@@ -57,6 +57,7 @@ export const getCityCategories = /* GraphQL */ `
       categories {
         category
         category_items
+        emoji
         __typename
       }
       __typename
@@ -71,6 +72,7 @@ export const getCityPhoto = /* GraphQL */ `
       categories {
         category
         category_items
+        emoji
         __typename
       }
       __typename
