@@ -122,20 +122,20 @@ export default function create_trip_3_categories() {
                             <Text style={styles.loadingText}>Getting inspiration for {selectedCity}...</Text>
                         </View>
                     )}
-                
-                    {/* Next Button - Only show when categories are loaded */}
-                    {cityCategories && cityCategories.length > 0 && (
-                        <View> 
-                            <TouchableOpacity
-                                onPress={() => router.replace('/create-trip/create_trip_4_additional_info')}
-                                style={styles.nextButton}
-                            >
-                                <Text style={styles.nextButtonText}>Next</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
                 </View>
             </ScrollView>
+            
+            {/* Fixed Next Button - Always visible at bottom */}
+            {cityCategories && cityCategories.length > 0 && (
+                <View style={styles.fixedButtonContainer}>
+                    <TouchableOpacity
+                        onPress={() => router.replace('/create-trip/create_trip_4_additional_info')}
+                        style={styles.fixedNextButton}
+                    >
+                        <Text style={styles.nextButtonText}>Next</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
         </KeyboardAvoidingView>
     )
 }
@@ -201,6 +201,7 @@ const styles = StyleSheet.create({
     categoriesSection: {
         marginTop: 10,
         marginBottom: 20,
+        paddingBottom: 100, // Add extra padding so users can scroll to see bottom categories above the fixed button
     },
     categoriesTitle: {
         fontFamily: 'outfit-medium',
@@ -310,9 +311,37 @@ const styles = StyleSheet.create({
         borderRadius: 15,
         marginTop: 30,
     },
+    fixedButtonContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)', // Semi-transparent white background
+        paddingHorizontal: 25,
+        paddingTop: 15,
+        paddingBottom: 40, // Extra padding for safe area
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0, 0, 0, 0.1)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    fixedNextButton: {
+        padding: 20,
+        backgroundColor: Colors.PRIMARY,
+        borderRadius: 15,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+    },
     nextButtonText: {
         color: Colors.WHITE,
         textAlign: 'center',
         fontFamily: 'outfit-bold',
+        fontSize: 16,
     }
 })
