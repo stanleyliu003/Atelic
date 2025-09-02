@@ -61,7 +61,7 @@ exports.handler = async (event) => {
        CRITICAL CONSTRAINTS:
        1. ONLY focus on ${selectedCity} - do NOT include other regions, cities, or areas
        2. When users mention broad categories (like "night markets", "temples", "coastal areas"), extract only 1-2 SPECIFIC examples within ${selectedCity}
-       3. Generate exactly 5 recommendations that are WITHIN ${selectedCity} only
+       3. Generate exactly 7 recommendations that are WITHIN ${selectedCity} only
        4. Use precise, official names suitable for Google Places API
 
        TASK 1 - EXTRACT SPECIFIC LOCATIONS:

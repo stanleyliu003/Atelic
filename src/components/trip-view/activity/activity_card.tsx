@@ -1,5 +1,6 @@
 import { Colors } from '../../../../constants/Colors';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import React from 'react';
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Activity } from '../../../types/activity.types';
@@ -151,14 +152,12 @@ export function ActivityCard({
           activeOpacity={0.7}
         >
           <View style={styles.routeInfoItem}>
-            <FontAwesome5 name="car" size={13} color={Colors.GRAY} />
-            <Text style={styles.routeInfoLabel}> :</Text>
-            <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
+            <MaterialCommunityIcons name="car-outline" size={17} color={Colors.PRIMARY} />
+            <Text style={styles.routeInfoValue}>  {formatDuration(nextActivityDuration)}</Text>
           </View>
           <View style={styles.routeInfoItem}>
-            <FontAwesome5 name="clock" size={13} color={Colors.GRAY} />
-            <Text style={styles.routeInfoLabel}> :</Text>
-            <Text style={styles.routeInfoValue}>{formatDuration(nextActivityDuration)}</Text>
+            <Text style={styles.routeMidDotLabel}>· </Text>
+            <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
           </View>
           <FontAwesome5 name="chevron-right" size={18} color={Colors.PRIMARY} style={styles.chevronIcon} />
         </TouchableOpacity>
@@ -288,7 +287,13 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit',
     fontSize: 13,
     color: Colors.GRAY,
-    marginRight: 4,
+    marginRight: 2,
+  },
+  routeMidDotLabel: {
+    fontFamily: 'outfit',
+    fontSize: 24,
+    color: Colors.GRAY,
+    marginLeft: -2,
   },
   routeInfoValue: {
     fontFamily: 'outfit-bold',
