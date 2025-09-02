@@ -1,7 +1,7 @@
 import { Colors } from '../../constants/Colors';
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
-import { ActivityIndicator, View, Text } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View, Text, Animated } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { API, graphqlOperation } from 'aws-amplify';
 
@@ -17,8 +17,43 @@ export default function LoadingWishlist() {
         tripLength,
         wishlistText
     } = useCreateTrip();
+    
+    const progressAnim = useRef(new Animated.Value(0)).current;
+    const [progressText, setProgressText] = useState('Initializing...');
 
     useEffect(() => {
+        const animateProgress = (toValue, duration = 3000) => {
+            return new Promise(resolve => {
+                Animated.timing(progressAnim, {
+                    toValue,
+                    duration,
+                    useNativeDriver: false,
+                }).start(resolve);
+            });
+        };
+
+        const runProgressAnimation = async () => {
+            // Step 1: Initial setup (3 seconds)
+            setProgressText('Preparing your preferences...');
+            await animateProgress(0.2, 3000);
+            
+            // Step 2: Building query (3 seconds)
+            setProgressText('Building your travel query...');
+            await animateProgress(0.4, 3000);
+            
+            // Step 3: Analyzing preferences (3 seconds)
+            setProgressText('Analyzing your preferences...');
+            await animateProgress(0.7, 3000);
+            
+            // Step 4: Processing results (3 seconds)
+            setProgressText('Creating your wishlist...');
+            await animateProgress(0.9, 3000);
+            
+            // Step 5: Finalizing (3 seconds)
+            setProgressText('Almost done...');
+            await animateProgress(1.0, 3000);
+        };
+
         const createWishlist = async () => {
             try {
                 setIsLoading(true);
@@ -43,26 +78,31 @@ export default function LoadingWishlist() {
                 // Combine city, trip length, categories, and destinations for the API call
                 const combinedText = `User wants to visit ${selectedCity} for ${tripLength} days.${categoriesText}${wishlistText ? ` They also want to visit these specific places or have these interests: ${wishlistText}` : ''}`;
                 
-                // Use the Gen 1 API to call the GraphQL API
-                const result = await API.graphql(graphqlOperation(`
-                    query AnalyzeWishlist($wishlist_text: String!, $selectedCity: String!) {
-                        analyzeWishlist(wishlist_text: $wishlist_text, selectedCity: $selectedCity) {
-                            wishlist_activities {
-                                name
-                                city
-                                lat
-                                lng
-                                rating
-                                user_ratings_total
-                                formatted_address
-                                types
-                                place_id
-                                photo_reference
-                                is_recommended
+                // Start the API call and progress animation in parallel
+                const [result] = await Promise.all([
+                    // API call
+                    API.graphql(graphqlOperation(`
+                        query AnalyzeWishlist($wishlist_text: String!, $selectedCity: String!) {
+                            analyzeWishlist(wishlist_text: $wishlist_text, selectedCity: $selectedCity) {
+                                wishlist_activities {
+                                    name
+                                    city
+                                    lat
+                                    lng
+                                    rating
+                                    user_ratings_total
+                                    formatted_address
+                                    types
+                                    place_id
+                                    photo_reference
+                                    is_recommended
+                                }
                             }
                         }
-                    }
-                `, { wishlist_text: combinedText, selectedCity: selectedCity }));
+                    `, { wishlist_text: combinedText, selectedCity: selectedCity })),
+                    // Progress animation (15 seconds total - 5 steps x 3 seconds each)
+                    runProgressAnimation()
+                ]);
                 
                 // Extract and print the activities array with proper null checking
                 const activities = result?.data?.analyzeWishlist?.wishlist_activities || [];
@@ -83,8 +123,9 @@ export default function LoadingWishlist() {
                 if (error.errors) {
                     console.error('GraphQL Errors:', JSON.stringify(error.errors, null, 2));
                 }
+                setProgressText('Something went wrong...');
                 // On error, go back to the previous screen
-                router.back();
+                setTimeout(() => router.back(), 1000);
             } finally {
                 setIsLoading(false);
             }
@@ -93,22 +134,57 @@ export default function LoadingWishlist() {
         createWishlist();
     }, []);
 
+    const progressWidth = progressAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0%', '100%']
+    });
+
     return (
         <View style={{
             flex: 1,
             justifyContent: 'center',
             alignItems: 'center',
-            backgroundColor: Colors.WHITE
+            backgroundColor: Colors.WHITE,
+            paddingHorizontal: 40
         }}>
-            <ActivityIndicator size="large" color={Colors.PRIMARY} />
+            <Text style={{
+                fontFamily: 'outfit-bold',
+                fontSize: 28,
+                marginBottom: 10,
+                color: Colors.PRIMARY,
+                textAlign: 'center'
+            }}>
+                Creating Your Wishlist
+            </Text>
+            
             <Text style={{
                 fontFamily: 'outfit',
                 fontSize: 16,
-                marginTop: 10,
-                color: Colors.GRAY
+                marginBottom: 30,
+                color: Colors.GRAY,
+                textAlign: 'center'
             }}>
-                Creating wishlist...
+                {progressText}
             </Text>
+            
+            {/* Progress Bar Container */}
+            <View style={{
+                width: '100%',
+                height: 6,
+                backgroundColor: '#e0e0e0',
+                borderRadius: 3,
+                overflow: 'hidden',
+                marginBottom: 15
+            }}>
+                <Animated.View style={{
+                    height: '100%',
+                    width: progressWidth,
+                    backgroundColor: Colors.PRIMARY,
+                    borderRadius: 3,
+                }} />
+            </View>
+            
+
         </View>
     );
 }
