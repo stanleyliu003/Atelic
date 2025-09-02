@@ -292,12 +292,12 @@ const styles = StyleSheet.create({
   routeMidDotLabel: {
     fontFamily: 'outfit',
     fontSize: 24,
-    color: Colors.GRAY,
+    color: Colors.PRIMARY,
     marginLeft: -2,
   },
   routeInfoValue: {
-    fontFamily: 'outfit-bold',
-    fontSize: 12,
+    fontFamily: 'outfit-medium',
+    fontSize: 13,
     color: Colors.PRIMARY,
   },
   chevronIcon: {
