@@ -11,7 +11,7 @@ export default function Profile() {
   const params = useLocalSearchParams();
   const photoReference = params.photoReference || '';
   const dayCount = parseInt(params.dayCount, 10) || 1;
-  const { activities, createdAt } = useCreateTrip();
+  const { activities, createdAt, selectedCity } = useCreateTrip();
 
   const [fullName, setFullName] = useState('');
 
@@ -28,12 +28,6 @@ export default function Profile() {
 
   // Find the activity with the matching photo_reference
   const activity = activities.find((a) => a.photo_reference === photoReference);
-  // Extract country from formatted_address (last comma-separated part)
-  let country = '';
-  if (activity && activity.formatted_address) {
-    const parts = activity.formatted_address.split(',');
-    country = parts[parts.length - 1].trim();
-  }
 
   const getDayCountText = () => {
     if (dayCount === 1) return '1 day';
@@ -91,7 +85,7 @@ export default function Profile() {
           )}
           <View style={styles.tripSummaryTextContainer}>
             <Text style={styles.tripSummaryText}>
-              {getDayCountText()} Trip{country ? ` to ${country}` : ''}
+              {getDayCountText()} Trip{selectedCity ? ` to ${selectedCity}` : ''}
             </Text>
             {createdAt && (
               <Text style={styles.tripSummaryDate}>
@@ -151,7 +145,7 @@ const styles = StyleSheet.create({
   },
   tripSummaryText: {
     fontFamily: 'outfit-medium',
-    marginTop: 40,
+    marginTop: 25,
     fontSize: 22,
     color: Colors.PRIMARY,
   },
