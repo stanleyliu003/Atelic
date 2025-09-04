@@ -576,14 +576,18 @@ export default function TripViewMain() {
                             showsVerticalScrollIndicator={false}
                         >
                             {wishlistActivities.length === 0 ? (
-                                <View style={styles.noActivitiesContainer}>
-                                    <Text style={styles.noActivitiesText}>No Wishlist Activities found</Text>
-                                    <AddPlacesButton
-                                        onPress={() => setIsAddPlacesModalVisible(true)}
-                                        isAddingPlace={isAddingPlace}
-                                        style={{ marginTop: 30, borderColor: Colors.GRAY }}
-                                        showLoadingIndicator={false}
-                                    />
+                                <View>
+                                    {selectedCity && (
+                                        <Text style={styles.cityTitle}>{selectedCity}</Text>
+                                    )}
+                                    <View style={{ marginTop: 10, alignItems: 'center', padding: 20 }}>
+                                        <AddPlacesButton
+                                            onPress={() => setIsAddPlacesModalVisible(true)}
+                                            isAddingPlace={isAddingPlace}
+                                            style={{ marginTop: 10, borderColor: Colors.GRAY }}
+                                            showLoadingIndicator={false}
+                                        />
+                                    </View>
                                 </View>
                             ) : (
                                 <>
@@ -824,17 +828,6 @@ const styles = StyleSheet.create({
     },
     wishlistContent: {
         paddingBottom: 20,
-    },
-    noActivitiesContainer: {
-        marginTop: 50,
-        alignItems: 'center',
-        padding: 20,
-    },
-    noActivitiesText: {
-        fontFamily: 'outfit-bold',
-        fontSize: 18,
-        color: Colors.GRAY,
-        textAlign: 'center',
     },
     addPlacesModalContainer: {
         height: '50%', // Reduced to 50% of screen height
