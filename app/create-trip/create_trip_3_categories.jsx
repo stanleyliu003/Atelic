@@ -2,7 +2,7 @@ import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 
 export default function create_trip_3_categories() {
@@ -119,7 +119,10 @@ export default function create_trip_3_categories() {
                         </View>
                     ) : selectedCity && (
                         <View style={styles.categoriesSection}>
-                            <Text style={styles.loadingText}>Getting inspiration for {selectedCity}...</Text>
+                            <View style={styles.loadingContainer}>
+                                <ActivityIndicator size="large" color={Colors.PRIMARY} />
+                                <Text style={styles.loadingText}>Loading experiences in {selectedCity}...</Text>
+                            </View>
                         </View>
                     )}
                 </View>
@@ -210,12 +213,18 @@ const styles = StyleSheet.create({
         marginBottom: 15,
         paddingHorizontal: 5,
     },
+    loadingContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 40,
+    },
     loadingText: {
         fontFamily: 'outfit',
         fontSize: 16,
         color: '#666',
         textAlign: 'center',
         paddingHorizontal: 5,
+        marginTop: 15,
     },
     categoriesGrid: {
         flexDirection: 'row',

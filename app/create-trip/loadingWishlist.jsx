@@ -22,7 +22,7 @@ export default function LoadingWishlist() {
     const [progressText, setProgressText] = useState('Initializing...');
 
     useEffect(() => {
-        const animateProgress = (toValue, duration = 3000) => {
+        const animateProgress = (toValue, duration = 4000) => {
             return new Promise(resolve => {
                 Animated.timing(progressAnim, {
                     toValue,
@@ -35,23 +35,23 @@ export default function LoadingWishlist() {
         const runProgressAnimation = async () => {
             // Step 1: Initial setup (3 seconds)
             setProgressText('Preparing your preferences...');
-            await animateProgress(0.2, 3000);
+            await animateProgress(0.2, 4000);
             
             // Step 2: Building query (3 seconds)
             setProgressText('Building your travel query...');
-            await animateProgress(0.4, 3000);
+            await animateProgress(0.4, 4000);
             
             // Step 3: Analyzing preferences (3 seconds)
             setProgressText('Analyzing your preferences...');
-            await animateProgress(0.7, 3000);
+            await animateProgress(0.7, 4000);
             
             // Step 4: Processing results (3 seconds)
             setProgressText('Creating your wishlist...');
-            await animateProgress(0.9, 3000);
+            await animateProgress(0.9, 4000);
             
             // Step 5: Finalizing (3 seconds)
             setProgressText('Almost done...');
-            await animateProgress(1.0, 3000);
+            await animateProgress(1.0, 4000);
         };
 
         const createWishlist = async () => {
