@@ -178,6 +178,7 @@ export const CreateTripProvider = ({ children }) => {
         setIsLoading,
         dayPolylines,
         setDayPolyline,
+        setDayPolylinesDeleteDay: setDayPolylines,
         setAllDayPolylines,
         dayActivities,
         setAllDayActivities,

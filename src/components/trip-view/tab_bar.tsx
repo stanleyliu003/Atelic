@@ -10,11 +10,12 @@ interface TabBarProps {
   onTabChange: (tab: TabType) => void;
   dayCount: number;
   onAddDay: () => void;
+  onDeleteDay: () => void;
   shouldScrollToActive?: boolean;
   tabLabels?: TabType[];
 }
 
-export function TabBar({ activeTab, onTabChange, dayCount, onAddDay, shouldScrollToActive = false, tabLabels }: TabBarProps) {
+export function TabBar({ activeTab, onTabChange, dayCount, onAddDay, onDeleteDay, shouldScrollToActive = false, tabLabels }: TabBarProps) {
   const scrollViewRef = useRef<ScrollView>(null);
   
   // Generate tab order: use tabLabels if provided, otherwise default
@@ -60,6 +61,16 @@ export function TabBar({ activeTab, onTabChange, dayCount, onAddDay, shouldScrol
           </TouchableOpacity>
         ))}
       </ScrollView>
+      
+      {/* Delete Day Button - Only show when activeTab is a day */}
+      {activeTab.startsWith('day') && (
+        <TouchableOpacity
+          style={styles.deleteDayButton}
+          onPress={onDeleteDay}
+        >
+          <Ionicons name="remove" size={20} color="#dc3545" />
+        </TouchableOpacity>
+      )}
       
       {/* Add Day Button - Fixed position */}
       <TouchableOpacity
@@ -116,7 +127,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#d4f8d4',
+    //d4f8d4
+    borderLeftWidth: 1,
+    borderLeftColor: 'black',
+  },
+  deleteDayButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffebee',
     borderLeftWidth: 1,
     borderLeftColor: 'black',
   },

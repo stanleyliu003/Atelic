@@ -148,6 +148,35 @@ export function useDayActivities() {
     });
   }, [setDayActivities]);
 
+  const deleteDayAndRenumber = useCallback((dayToDelete: number) => {
+    // Get activities from the day being deleted
+    const deletedDayActivities = dayActivities[dayToDelete]?.activities || [];
+    
+    setDayActivities((prev: any) => {
+      const newDayActivities: { [dayNumber: number]: DayWithPolyline } = {};
+      
+      // Go through all days and renumber them
+      Object.entries(prev).forEach(([dayStr, dayObj]: any) => {
+        const dayNum = Number(dayStr);
+        
+        // Skip the day we're deleting
+        if (dayNum === dayToDelete) return;
+        
+        // Renumber days that come after the deleted day
+        const newDayNum = dayNum > dayToDelete ? dayNum - 1 : dayNum;
+        newDayActivities[newDayNum] = {
+          ...dayObj,
+          dayNumber: newDayNum,
+        };
+      });
+      
+      return newDayActivities;
+    });
+    
+    // Return the activities from the deleted day
+    return deletedDayActivities;
+  }, [setDayActivities, dayActivities]);
+
   return {
     dayActivities,
     addActivityToDay,
@@ -163,5 +192,6 @@ export function useDayActivities() {
     getDayActivities,
     getAllDayActivities,
     getDayCount,
+    deleteDayAndRenumber,
   };
 } 

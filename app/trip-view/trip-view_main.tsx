@@ -24,7 +24,7 @@ export default function TripViewMain() {
     const navigation = useNavigation();
     const params = useLocalSearchParams();
     const { restoreTrip } = params;
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setDayPolylinesDeleteDay } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -55,6 +55,7 @@ export default function TripViewMain() {
         addNewDay,
         addMultipleDays,
         reorderDayActivities,
+        deleteDayAndRenumber,
     } = useDayActivities();
     
     // Initialize days based on tripLength
@@ -273,6 +274,57 @@ export default function TripViewMain() {
         setShouldScrollToActive(true);
     };
 
+    const handleDeleteDay = () => {
+        // Only allow deletion if activeTab is a day (not wishlist)
+        if (!activeTab.startsWith('day')) return;
+        
+        const dayToDelete = parseInt(activeTab.replace('day', ''));
+        
+        // Delete the day and get its activities to move back to wishlist
+        const deletedDayActivities = deleteDayAndRenumber(dayToDelete);
+        
+        // Add deleted day activities back to wishlist
+        if (deletedDayActivities.length > 0) {
+            updateActivities([...activities, ...deletedDayActivities]);
+        }
+        
+        // Clear route cache for days that got renumbered
+        Object.keys(routeCache.current).forEach(cacheKey => {
+            if (cacheKey.startsWith('day')) {
+                const cachedDayNum = parseInt(cacheKey.replace('day', ''));
+                if (cachedDayNum >= dayToDelete) {
+                    delete routeCache.current[cacheKey];
+                }
+            }
+        });
+        
+        // Update dayPolylines to renumber the keys
+        setDayPolylinesDeleteDay(prev => {
+            const newPolylines: { [key: number]: string } = {};
+            Object.entries(prev).forEach(([dayStr, polyline]) => {
+                const dayNum = Number(dayStr);
+                if (dayNum < dayToDelete) {
+                    // Keep days before the deleted day as-is
+                    newPolylines[dayNum] = polyline as string;
+                } else if (dayNum > dayToDelete) {
+                    // Renumber days after the deleted day
+                    newPolylines[dayNum - 1] = polyline as string;
+                }
+                // Skip the deleted day (dayNum === dayToDelete)
+            });
+            return newPolylines;
+        });
+        
+        // Switch to appropriate tab after deletion
+        if (dayToDelete === 1) {
+            // If deleting day 1, go to wishlist
+            setActiveTab('wishlist');
+        } else {
+            // If deleting any other day, go to the previous day
+            setActiveTab(`day${dayToDelete - 1}`);
+        }
+    };
+
     const handleDeleteActivities = () => {
         if (selectedActivities.length === 0) return;
 
@@ -376,6 +428,7 @@ export default function TripViewMain() {
                 onTabChange={handleTabChange}
                 dayCount={getDayCount()}
                 onAddDay={handleAddDay}
+                onDeleteDay={handleDeleteDay}
                 shouldScrollToActive={shouldScrollToActive}
                 tabLabels={tabLabels}
             />
