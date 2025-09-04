@@ -747,7 +747,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingVertical: 15,
         paddingHorizontal: 20,
-        marginTop: 20,
+        marginTop: -5, // Reduced from 20 to 10 (50% reduction)
         marginBottom: 10,
         borderWidth: 1,
         borderColor: Colors.GRAY,
@@ -761,7 +761,7 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     addPlacesModalContainer: {
-        height: '70%', // Reduced by 30% from full height
+        height: '50%', // Reduced to 50% of screen height
         backgroundColor: Colors.WHITE,
     },
     addPlacesModalHeader: {
