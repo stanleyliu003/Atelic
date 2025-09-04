@@ -3,7 +3,7 @@ import { API_KEYS } from '../../constants/ApiKeys';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { encodePolyline } from '../../src/utils/polyline';
@@ -40,6 +40,7 @@ export default function TripViewMain() {
     
     // State for add places modal
     const [isAddPlacesModalVisible, setIsAddPlacesModalVisible] = useState(false);
+    const [isAddingPlace, setIsAddingPlace] = useState(false);
 
     // Hooks for activity and day management
     const {
@@ -382,6 +383,7 @@ export default function TripViewMain() {
     const handlePlaceSelect = async (data: any, details: any | null) => {
         try {
             setIsAddPlacesModalVisible(false);
+            setIsAddingPlace(true);
             
             // Call the backend to add additional place
             const result = await API.graphql(graphqlOperation(`
@@ -415,6 +417,8 @@ export default function TripViewMain() {
         } catch (error) {
             console.error('Error adding place:', error);
             // Optionally show a user-facing error message
+        } finally {
+            setIsAddingPlace(false);
         }
     };
 
@@ -536,6 +540,7 @@ export default function TripViewMain() {
                                     <TouchableOpacity 
                                         style={[styles.addPlacesButton, { marginTop: 30 }]}
                                         onPress={() => setIsAddPlacesModalVisible(true)}
+                                        disabled={isAddingPlace}
                                     >
                                         <Ionicons name="add-circle-outline" size={24} color={Colors.GRAY} />
                                         <Text style={styles.addPlacesButtonText}>Add additional places</Text>
@@ -556,13 +561,24 @@ export default function TripViewMain() {
                                         </View>
                                     ))}
                                     
+                                    {/* Loading indicator for adding place */}
+                                    {isAddingPlace && (
+                                        <View style={styles.addingPlaceContainer}>
+                                            <ActivityIndicator size="large" color={Colors.PRIMARY} />
+                                            <Text style={styles.addingPlaceText}>Adding place...</Text>
+                                        </View>
+                                    )}
+                                    
                                     {/* Add additional places button */}
                                     <TouchableOpacity 
-                                        style={styles.addPlacesButton}
+                                        style={[styles.addPlacesButton, isAddingPlace && styles.addPlacesButtonDisabled]}
                                         onPress={() => setIsAddPlacesModalVisible(true)}
+                                        disabled={isAddingPlace}
                                     >
-                                        <Ionicons name="add-circle-outline" size={24} color={Colors.PRIMARY} />
-                                        <Text style={styles.addPlacesButtonText}>Add additional places</Text>
+                                        <Ionicons name="add-circle-outline" size={24} color={isAddingPlace ? Colors.GRAY : Colors.PRIMARY} />
+                                        <Text style={[styles.addPlacesButtonText, isAddingPlace && styles.addPlacesButtonTextDisabled]}>
+                                            Add additional places
+                                        </Text>
                                     </TouchableOpacity>
                                 </>
                             )}
@@ -811,6 +827,27 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: Colors.PRIMARY,
         marginLeft: 8,
+    },
+    addPlacesButtonDisabled: {
+        opacity: 0.6,
+        borderColor: Colors.GRAY,
+    },
+    addPlacesButtonTextDisabled: {
+        color: Colors.GRAY,
+        marginBottom: 10,
+    },
+    addingPlaceContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 20,
+        marginBottom: 10,
+    },
+    addingPlaceText: {
+        fontFamily: 'outfit-medium',
+        fontSize: 16,
+        color: Colors.PRIMARY,
+        marginLeft: 12,
     },
     addPlacesModalContainer: {
         height: '50%', // Reduced to 50% of screen height

@@ -69,9 +69,11 @@ export default function WishlistInfo() {
           {/* All activities grouped by city */}
           {activities && activities.length > 0 && (
             <>
-            <Text style={styles.recommendedTitle}>Recommended Activities</Text>
+              {/* Recommended Activities */}
               {(() => {
                 const recommendedActivities = activities.filter(a => a.is_recommended);
+                if (recommendedActivities.length === 0) return null;
+                
                 const recommendedByCity = recommendedActivities.reduce((acc, activity) => {
                   const city = activity.city || 'Unknown City';
                   if (!acc[city]) acc[city] = [];
@@ -79,19 +81,56 @@ export default function WishlistInfo() {
                   return acc;
                 }, {});
 
-                return Object.entries(recommendedByCity).map(([city, cityActivities]) => (
-                  <View key={`recommended-${city}`} style={styles.citySection}>
-                    <Text style={styles.cityTitle}>{city}</Text>
-                    <WishlistActivities 
-                        activities={cityActivities} 
-                        selectedActivities={selectedActivities}
-                        onActivitySelect={handleActivitySelect}
-                        onActivityDeselect={handleActivityDeselect}
-                        showSelectionIndicator={true}
-                        scrollable={false}
-                    />
-                  </View>
-                ));
+                return (
+                  <>
+                    <Text style={styles.recommendedTitle}>Recommended Activities</Text>
+                    {Object.entries(recommendedByCity).map(([city, cityActivities]) => (
+                      <View key={`recommended-${city}`} style={styles.citySection}>
+                        <Text style={styles.cityTitle}>{city}</Text>
+                        <WishlistActivities 
+                            activities={cityActivities} 
+                            selectedActivities={selectedActivities}
+                            onActivitySelect={handleActivitySelect}
+                            onActivityDeselect={handleActivityDeselect}
+                            showSelectionIndicator={true}
+                            scrollable={false}
+                        />
+                      </View>
+                    ))}
+                  </>
+                );
+              })()}
+
+              {/* User Added Activities */}
+              {(() => {
+                const userAddedActivities = activities.filter(a => !a.is_recommended);
+                if (userAddedActivities.length === 0) return null;
+                
+                const userAddedByCity = userAddedActivities.reduce((acc, activity) => {
+                  const city = activity.city || 'Unknown City';
+                  if (!acc[city]) acc[city] = [];
+                  acc[city].push(activity);
+                  return acc;
+                }, {});
+
+                return (
+                  <>
+                    <Text style={styles.userAddedTitle}>Your Added Activities</Text>
+                    {Object.entries(userAddedByCity).map(([city, cityActivities]) => (
+                      <View key={`user-added-${city}`} style={styles.citySection}>
+                        <Text style={styles.cityTitle}>{city}</Text>
+                        <WishlistActivities 
+                            activities={cityActivities} 
+                            selectedActivities={selectedActivities}
+                            onActivitySelect={handleActivitySelect}
+                            onActivityDeselect={handleActivityDeselect}
+                            showSelectionIndicator={true}
+                            scrollable={false}
+                        />
+                      </View>
+                    ))}
+                  </>
+                );
               })()}
             </>
           )}
@@ -172,5 +211,13 @@ const styles = StyleSheet.create({
       marginTop: 25,
       marginBottom: 10,
       textAlign: 'center',
+    },
+    userAddedTitle: {
+      fontFamily: 'outfit-bold',
+      fontSize: 24,
+      marginTop: 25,
+      marginBottom: 10,
+      textAlign: 'center',
+      color: Colors.PRIMARY, // Slightly different color to distinguish from recommended
     }
 });
