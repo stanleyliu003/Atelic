@@ -1,8 +1,10 @@
 import { Colors } from '../../constants/Colors';
+import { API_KEYS } from '../../constants/ApiKeys';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { encodePolyline } from '../../src/utils/polyline';
 import { DaySchedule, TabBar, WishlistActivities } from '../../src/components/trip-view';
@@ -24,7 +26,7 @@ export default function TripViewMain() {
     const navigation = useNavigation();
     const params = useLocalSearchParams();
     const { restoreTrip } = params;
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setDayPolylinesDeleteDay } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setDayPolylinesDeleteDay, selectedCity } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -35,6 +37,9 @@ export default function TripViewMain() {
     });
     const [routeLoading, setRouteLoading] = useState(false);
     const routeCache = useRef<{ [tab: string]: { activitiesHash: string, routeData: RouteData } }>({});
+    
+    // State for add places modal
+    const [isAddPlacesModalVisible, setIsAddPlacesModalVisible] = useState(false);
 
     // Hooks for activity and day management
     const {
@@ -353,6 +358,13 @@ export default function TripViewMain() {
         clearSelection();
     };
 
+    // Handler for place selection from GooglePlacesAutocomplete
+    const handlePlaceSelect = (data: any, details: any | null) => {
+        console.log('Selected place:', details?.name || data.description);
+        setIsAddPlacesModalVisible(false);
+        // TODO: Add backend logic to process the selected place
+    };
+
     // Reset shouldScrollToActive after it's been used
     React.useEffect(() => {
         if (shouldScrollToActive) {
@@ -468,20 +480,38 @@ export default function TripViewMain() {
                             {wishlistActivities.length === 0 ? (
                                 <View style={styles.noActivitiesContainer}>
                                     <Text style={styles.noActivitiesText}>No Wishlist Activities found</Text>
+                                    <TouchableOpacity 
+                                        style={[styles.addPlacesButton, { marginTop: 30 }]}
+                                        onPress={() => setIsAddPlacesModalVisible(true)}
+                                    >
+                                        <Ionicons name="add-circle-outline" size={24} color={Colors.GRAY} />
+                                        <Text style={styles.addPlacesButtonText}>Add additional places</Text>
+                                    </TouchableOpacity>
                                 </View>
                             ) : (
-                                Object.entries(activitiesByCity).map(([city, cityActivities]: [string, Activity[]]) => (
-                                    <View key={`wishlist-${city}`} style={styles.citySection}>
-                                        <Text style={styles.cityTitle}>{city}</Text>
-                                        <WishlistActivities 
-                                            activities={cityActivities}
-                                            selectedActivities={selectedActivities}
-                                            onActivitySelect={toggleActivitySelection}
-                                            onActivityDeselect={toggleActivitySelection}
-                                            showSelectionIndicator={isSelectionMode}
-                                        />
-                                    </View>
-                                ))
+                                <>
+                                    {Object.entries(activitiesByCity).map(([city, cityActivities]: [string, Activity[]]) => (
+                                        <View key={`wishlist-${city}`} style={styles.citySection}>
+                                            <Text style={styles.cityTitle}>{city}</Text>
+                                            <WishlistActivities 
+                                                activities={cityActivities}
+                                                selectedActivities={selectedActivities}
+                                                onActivitySelect={toggleActivitySelection}
+                                                onActivityDeselect={toggleActivitySelection}
+                                                showSelectionIndicator={isSelectionMode}
+                                            />
+                                        </View>
+                                    ))}
+                                    
+                                    {/* Add additional places button */}
+                                    <TouchableOpacity 
+                                        style={styles.addPlacesButton}
+                                        onPress={() => setIsAddPlacesModalVisible(true)}
+                                    >
+                                        <Ionicons name="add-circle-outline" size={24} color={Colors.PRIMARY} />
+                                        <Text style={styles.addPlacesButtonText}>Add additional places</Text>
+                                    </TouchableOpacity>
+                                </>
                             )}
                         </ScrollView>
                     );
@@ -556,6 +586,56 @@ export default function TripViewMain() {
                 onConfirm={handleConfirmTransfer}
                 onClose={() => setIsModalVisible(false)}
             />
+
+            {/* Add Places Modal */}
+            <Modal
+                visible={isAddPlacesModalVisible}
+                animationType="slide"
+                presentationStyle="formSheet"
+                onRequestClose={() => setIsAddPlacesModalVisible(false)}
+            >
+                <KeyboardAvoidingView 
+                    style={styles.addPlacesModalContainer}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                >
+                    <View style={styles.addPlacesModalHeader}>
+                        <TouchableOpacity 
+                            onPress={() => setIsAddPlacesModalVisible(false)}
+                            style={styles.addPlacesModalCloseButton}
+                        >
+                            <Ionicons name="close" size={24} color={Colors.GRAY} />
+                        </TouchableOpacity>
+                        <Text style={styles.addPlacesModalTitle}>Add Places</Text>
+                        <View style={styles.addPlacesModalSpacer} />
+                    </View>
+                    
+                    <View style={styles.addPlacesModalContent}>
+                        <GooglePlacesAutocomplete
+                            placeholder="Search here."
+                            onPress={handlePlaceSelect}
+                            fetchDetails={true}
+                            query={{
+                                key: API_KEYS.GOOGLE_MAPS,
+                                language: 'en',
+                                ...(selectedCity && {
+                                    components: `country:${selectedCity.split(',').pop()?.trim()}`,
+                                    location: selectedCity,
+                                    radius: 50000, // 50km radius around the selected city
+                                }),
+                            }}
+                            styles={{
+                                container: styles.googlePlacesContainer,
+                                textInput: styles.googlePlacesInput,
+                                listView: styles.googlePlacesList,
+                                row: styles.googlePlacesRow,
+                                description: styles.googlePlacesDescription,
+                            }}
+                            enablePoweredByContainer={false}
+                            debounce={300}
+                        />
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
 
             <TouchableOpacity 
                 style={styles.backButton} 
@@ -659,5 +739,91 @@ const styles = StyleSheet.create({
         fontSize: 18,
         color: Colors.GRAY,
         textAlign: 'center',
+    },
+    addPlacesButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 15,
+        paddingHorizontal: 20,
+        marginTop: 20,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: Colors.GRAY,
+        borderRadius: 10,
+        backgroundColor: 'transparent',
+    },
+    addPlacesButtonText: {
+        fontFamily: 'outfit-medium',
+        fontSize: 16,
+        color: Colors.PRIMARY,
+        marginLeft: 8,
+    },
+    addPlacesModalContainer: {
+        flex: 1,
+        backgroundColor: Colors.WHITE,
+    },
+    addPlacesModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingTop: 60,
+        paddingBottom: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E5E5',
+    },
+    addPlacesModalCloseButton: {
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    addPlacesModalTitle: {
+        fontFamily: 'outfit-bold',
+        fontSize: 18,
+        color: '#1a1a1a',
+    },
+    addPlacesModalSpacer: {
+        width: 40,
+    },
+    addPlacesModalContent: {
+        flex: 1,
+        padding: 20,
+    },
+    googlePlacesContainer: {
+        flex: 1,
+        zIndex: 1,
+    },
+    googlePlacesInput: {
+        fontSize: 16,
+        fontFamily: 'outfit-medium',
+        backgroundColor: '#F8F8F8',
+        borderRadius: 10,
+        paddingHorizontal: 15,
+        paddingVertical: 12,
+        borderWidth: 1,
+        borderColor: '#E5E5E5',
+    },
+    googlePlacesList: {
+        backgroundColor: Colors.WHITE,
+        borderRadius: 10,
+        marginTop: 5,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+    },
+    googlePlacesRow: {
+        paddingVertical: 15,
+        paddingHorizontal: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
+    },
+    googlePlacesDescription: {
+        fontFamily: 'outfit-medium',
+        fontSize: 15,
+        color: '#1a1a1a',
     },
 });
