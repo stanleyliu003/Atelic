@@ -603,9 +603,9 @@ export default function TripViewMain() {
                             onPress={() => setIsAddPlacesModalVisible(false)}
                             style={styles.addPlacesModalCloseButton}
                         >
-                            <Ionicons name="close" size={24} color={Colors.GRAY} />
+                            <Ionicons name="close" size={32} color={Colors.GRAY} />
                         </TouchableOpacity>
-                        <Text style={styles.addPlacesModalTitle}>Add Places</Text>
+                        <Text style={styles.addPlacesModalTitle}>Add Additional Places</Text>
                         <View style={styles.addPlacesModalSpacer} />
                     </View>
                     
@@ -613,7 +613,6 @@ export default function TripViewMain() {
                         <GooglePlacesAutocomplete
                             placeholder="Search here."
                             onPress={handlePlaceSelect}
-                            fetchDetails={true}
                             query={{
                                 key: API_KEYS.GOOGLE_MAPS,
                                 language: 'en',
@@ -625,13 +624,15 @@ export default function TripViewMain() {
                             }}
                             styles={{
                                 container: styles.googlePlacesContainer,
+                                textInputContainer: styles.googlePlacesTextInputContainer,
                                 textInput: styles.googlePlacesInput,
                                 listView: styles.googlePlacesList,
                                 row: styles.googlePlacesRow,
                                 description: styles.googlePlacesDescription,
                             }}
+                            fetchDetails={false}
                             enablePoweredByContainer={false}
-                            debounce={300}
+                            debounce={200}
                         />
                     </View>
                 </KeyboardAvoidingView>
@@ -760,7 +761,7 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     addPlacesModalContainer: {
-        flex: 1,
+        height: '70%', // Reduced by 30% from full height
         backgroundColor: Colors.WHITE,
     },
     addPlacesModalHeader: {
@@ -781,7 +782,7 @@ const styles = StyleSheet.create({
     },
     addPlacesModalTitle: {
         fontFamily: 'outfit-bold',
-        fontSize: 18,
+        fontSize: 24,
         color: '#1a1a1a',
     },
     addPlacesModalSpacer: {
@@ -792,38 +793,43 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     googlePlacesContainer: {
-        flex: 1,
+        flex: 0,
         zIndex: 1,
     },
+    googlePlacesTextInputContainer: {
+        flexDirection: 'row',
+        width: '100%',
+    },
     googlePlacesInput: {
+        height: 50,
+        color: '#1a1a1a',
         fontSize: 16,
-        fontFamily: 'outfit-medium',
-        backgroundColor: '#F8F8F8',
-        borderRadius: 10,
-        paddingHorizontal: 15,
-        paddingVertical: 12,
+        fontFamily: 'outfit',
         borderWidth: 1,
-        borderColor: '#E5E5E5',
+        borderRadius: 15,
+        borderColor: '#1a1a1a',
+        paddingHorizontal: 15,
+        flex: 1,
     },
     googlePlacesList: {
-        backgroundColor: Colors.WHITE,
-        borderRadius: 10,
+        backgroundColor: 'white',
+        borderRadius: 15,
         marginTop: 5,
         elevation: 3,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 3,
+        shadowRadius: 4,
     },
     googlePlacesRow: {
-        paddingVertical: 15,
-        paddingHorizontal: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0',
+        backgroundColor: 'white',
+        padding: 13,
+        height: 44,
+        flexDirection: 'row',
     },
     googlePlacesDescription: {
-        fontFamily: 'outfit-medium',
-        fontSize: 15,
+        fontFamily: 'outfit',
+        fontSize: 16,
         color: '#1a1a1a',
     },
 });
