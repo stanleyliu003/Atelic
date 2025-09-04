@@ -58,16 +58,21 @@ export default function TripViewMain() {
         deleteDayAndRenumber,
     } = useDayActivities();
     
-    // Initialize days based on tripLength
+    // Initialize days based on tripLength (only for new trips, not existing ones)
+    const [hasInitialized, setHasInitialized] = useState(false);
     useEffect(() => {
-        if (tripLength && tripLength > 0 && getDayCount() === 0) {
-            // Create all days at once based on tripLength
-            addMultipleDays(tripLength);
-        } else if (!tripLength && getDayCount() === 0) {
-            // Fallback: create day 1 if tripLength is not set
-            addNewDay();
+        // Only initialize days once when the component first mounts
+        if (!hasInitialized) {
+            if (tripLength && tripLength > 0 && getDayCount() === 0) {
+                // Create all days at once based on tripLength
+                addMultipleDays(tripLength);
+            } else if (!tripLength && getDayCount() === 0) {
+                // Fallback: create day 1 if tripLength is not set
+                addNewDay();
+            }
+            setHasInitialized(true);
         }
-    }, [tripLength, getDayCount, addNewDay, addMultipleDays]);
+    }, [tripLength, getDayCount, addNewDay, addMultipleDays, hasInitialized]);
 
     // Define handleTabChange before using it in the hook
     const handleTabChange = (tab: TabType) => {
@@ -325,8 +330,9 @@ export default function TripViewMain() {
         });
         
         // Switch to appropriate tab after deletion
-        if (dayToDelete === 1) {
-            // If deleting day 1, go to wishlist
+        const remainingDayCount = getDayCount() - 1; // Count after deletion
+        if (remainingDayCount === 0 || dayToDelete === 1) {
+            // If no days left or deleting day 1, go to wishlist
             setActiveTab('wishlist');
         } else {
             // If deleting any other day, go to the previous day
