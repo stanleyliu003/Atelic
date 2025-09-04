@@ -3,7 +3,7 @@ import { API_KEYS } from '../../constants/ApiKeys';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { encodePolyline } from '../../src/utils/polyline';
@@ -409,8 +409,38 @@ export default function TripViewMain() {
             
             const newActivity = result?.data?.addAdditionalPlace;
             if (newActivity) {
-                // Add the new activity to the activities list
-                updateActivities([...activities, newActivity]);
+                // Check for duplicates before adding
+                const existingPlaceIds = new Set();
+                
+                // Collect place_ids from current activities (wishlist)
+                (activities || []).forEach(activity => {
+                    if (activity.place_id) {
+                        existingPlaceIds.add(activity.place_id);
+                    }
+                });
+                
+                // Collect place_ids from all day activities
+                Object.values(dayActivities).forEach(dayObj => {
+                    if (Array.isArray((dayObj as any).activities)) {
+                        (dayObj as any).activities.forEach((activity: Activity) => {
+                            if (activity.place_id) {
+                                existingPlaceIds.add(activity.place_id);
+                            }
+                        });
+                    }
+                });
+                
+                // Check if the new activity is a duplicate
+                if (newActivity.place_id && existingPlaceIds.has(newActivity.place_id)) {
+                    Alert.alert(
+                        'Duplicate Place', 
+                        `"${newActivity.name}" is already in your trip.`,
+                        [{ text: 'OK' }]
+                    );
+                } else {
+                    // Add the new activity to the activities list (no duplicates)
+                    updateActivities([...activities, newActivity]);
+                }
             } else {
                 console.warn('Could not get place details');
             }
