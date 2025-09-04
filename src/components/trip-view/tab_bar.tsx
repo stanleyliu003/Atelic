@@ -124,17 +124,16 @@ const styles = StyleSheet.create({
   },
   addDayButton: {
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#d4f8d4',
-    //d4f8d4
     borderLeftWidth: 1,
     borderLeftColor: 'black',
   },
   deleteDayButton: {
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#ffebee',
