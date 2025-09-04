@@ -7,7 +7,7 @@ import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, KeyboardAv
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { encodePolyline } from '../../src/utils/polyline';
-import { DaySchedule, TabBar, WishlistActivities } from '../../src/components/trip-view';
+import { AddPlacesButton, DaySchedule, TabBar, WishlistActivities } from '../../src/components/trip-view';
 import { TripMapView } from '../../src/components/trip-view/map_view';
 import { TransferActivitiesModal } from '../../src/components/trip-view/transfer_activities_modal';
 import { TransferButtonContainer } from '../../src/components/trip-view/transfer_delete_button_containor';
@@ -62,6 +62,7 @@ export default function TripViewMain() {
         addMultipleDays,
         reorderDayActivities,
         deleteDayAndRenumber,
+        addActivityToDay,
     } = useDayActivities();
     
     // Initialize days based on tripLength (only for new trips, not existing ones)
@@ -438,8 +439,18 @@ export default function TripViewMain() {
                         [{ text: 'OK' }]
                     );
                 } else {
-                    // Add the new activity to the activities list (no duplicates)
-                    updateActivities([...activities, newActivity]);
+                    // Add the new activity to the active tab
+                    if (activeTab === 'wishlist') {
+                        // Add to wishlist (activities list)
+                        updateActivities([...activities, newActivity]);
+                    } else if (activeTab.startsWith('day')) {
+                        // Add to the specific day
+                        const dayNumber = parseInt(activeTab.replace('day', ''));
+                        addActivityToDay(newActivity, dayNumber);
+                    } else {
+                        // Fallback to wishlist
+                        updateActivities([...activities, newActivity]);
+                    }
                 }
             } else {
                 console.warn('Could not get place details');
@@ -567,14 +578,12 @@ export default function TripViewMain() {
                             {wishlistActivities.length === 0 ? (
                                 <View style={styles.noActivitiesContainer}>
                                     <Text style={styles.noActivitiesText}>No Wishlist Activities found</Text>
-                                    <TouchableOpacity 
-                                        style={[styles.addPlacesButton, { marginTop: 30 }]}
+                                    <AddPlacesButton
                                         onPress={() => setIsAddPlacesModalVisible(true)}
-                                        disabled={isAddingPlace}
-                                    >
-                                        <Ionicons name="add-circle-outline" size={24} color={Colors.GRAY} />
-                                        <Text style={styles.addPlacesButtonText}>Add additional places</Text>
-                                    </TouchableOpacity>
+                                        isAddingPlace={isAddingPlace}
+                                        style={{ marginTop: 30, borderColor: Colors.GRAY }}
+                                        showLoadingIndicator={false}
+                                    />
                                 </View>
                             ) : (
                                 <>
@@ -591,25 +600,11 @@ export default function TripViewMain() {
                                         </View>
                                     ))}
                                     
-                                    {/* Loading indicator for adding place */}
-                                    {isAddingPlace && (
-                                        <View style={styles.addingPlaceContainer}>
-                                            <ActivityIndicator size="large" color={Colors.PRIMARY} />
-                                            <Text style={styles.addingPlaceText}>Adding place...</Text>
-                                        </View>
-                                    )}
-                                    
                                     {/* Add additional places button */}
-                                    <TouchableOpacity 
-                                        style={[styles.addPlacesButton, isAddingPlace && styles.addPlacesButtonDisabled]}
+                                    <AddPlacesButton
                                         onPress={() => setIsAddPlacesModalVisible(true)}
-                                        disabled={isAddingPlace}
-                                    >
-                                        <Ionicons name="add-circle-outline" size={24} color={isAddingPlace ? Colors.GRAY : Colors.PRIMARY} />
-                                        <Text style={[styles.addPlacesButtonText, isAddingPlace && styles.addPlacesButtonTextDisabled]}>
-                                            Add additional places
-                                        </Text>
-                                    </TouchableOpacity>
+                                        isAddingPlace={isAddingPlace}
+                                    />
                                 </>
                             )}
                         </ScrollView>
@@ -627,6 +622,8 @@ export default function TripViewMain() {
                         onOptimizeRoute={handleOptimizeRoute}
                         showSelectionIndicator={isSelectionMode}
                         routeLegs={routeData.legs}
+                        onAddPlace={() => setIsAddPlacesModalVisible(true)}
+                        isAddingPlace={isAddingPlace}
                     />
                 )}
             </View>
@@ -838,46 +835,6 @@ const styles = StyleSheet.create({
         fontSize: 18,
         color: Colors.GRAY,
         textAlign: 'center',
-    },
-    addPlacesButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 15,
-        paddingHorizontal: 20,
-        marginTop: -5, // Reduced from 20 to 10 (50% reduction)
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: Colors.GRAY,
-        borderRadius: 10,
-        backgroundColor: 'transparent',
-    },
-    addPlacesButtonText: {
-        fontFamily: 'outfit-medium',
-        fontSize: 16,
-        color: Colors.PRIMARY,
-        marginLeft: 8,
-    },
-    addPlacesButtonDisabled: {
-        opacity: 0.6,
-        borderColor: Colors.GRAY,
-    },
-    addPlacesButtonTextDisabled: {
-        color: Colors.GRAY,
-        marginBottom: 10,
-    },
-    addingPlaceContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 20,
-        marginBottom: 10,
-    },
-    addingPlaceText: {
-        fontFamily: 'outfit-medium',
-        fontSize: 16,
-        color: Colors.PRIMARY,
-        marginLeft: 12,
     },
     addPlacesModalContainer: {
         height: '50%', // Reduced to 50% of screen height

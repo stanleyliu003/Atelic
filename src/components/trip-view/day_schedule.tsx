@@ -1,9 +1,9 @@
 import { Colors } from '../../../constants/Colors';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RouteLeg } from '../../services/getRoute_graphQL_call';
 import { Activity } from '../../types/activity.types';
-import { ActivityList } from './activity/activity_list';
+import { ActivityList, AddPlacesButton } from './index';
 
 interface DayScheduleProps {
   dayNumber: number;
@@ -16,6 +16,8 @@ interface DayScheduleProps {
   showSelectionIndicator?: boolean;
   disabled?: boolean;
   routeLegs?: RouteLeg[]; // Add route legs prop
+  onAddPlace?: () => void; // Add places modal trigger
+  isAddingPlace?: boolean; // Loading state for adding places
 }
 
 export function DaySchedule({ 
@@ -28,7 +30,9 @@ export function DaySchedule({
   onOptimizeRoute,
   showSelectionIndicator = false,
   disabled = false,
-  routeLegs = [] // Add route legs with default empty array
+  routeLegs = [], // Add route legs with default empty array
+  onAddPlace,
+  isAddingPlace = false
 }: DayScheduleProps) {
   const selectedCount = selectedActivities.length;
 
@@ -68,19 +72,34 @@ export function DaySchedule({
         </View>
       </View>
 
-      {/* Activities List */}
-      <ActivityList
-        activities={activities}
-        selectedActivities={selectedActivities}
-        onActivitySelect={onActivitySelect}
-        onActivityDeselect={onActivityDeselect}
-        showSelectionIndicator={showSelectionIndicator}
-        variant="selectable"
-        disabled={disabled}
-        emptyStateTitle={`No activities for Day ${dayNumber}`}
-        emptyStateSubtitle="Add activities from your wishlist to get started"
-        routeLegs={routeLegs}
-      />
+      {/* Scrollable Content */}
+      <ScrollView 
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Activities List */}
+        <ActivityList
+          activities={activities}
+          selectedActivities={selectedActivities}
+          onActivitySelect={onActivitySelect}
+          onActivityDeselect={onActivityDeselect}
+          showSelectionIndicator={showSelectionIndicator}
+          variant="selectable"
+          disabled={disabled}
+          emptyStateTitle={`No activities for Day ${dayNumber}`}
+          emptyStateSubtitle="Add activities from your wishlist to get started"
+          routeLegs={routeLegs}
+        />
+
+        {/* Add additional places button - only visible when scrolling down */}
+        {onAddPlace && (
+          <AddPlacesButton
+            onPress={onAddPlace}
+            isAddingPlace={isAddingPlace}
+          />
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -96,6 +115,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 15,
     paddingHorizontal: 5,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   dayInfo: {
     flex: 1,
