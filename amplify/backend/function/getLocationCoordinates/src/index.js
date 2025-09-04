@@ -108,11 +108,67 @@ const getLocationInfo = async (locationName, bias) => {
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
 exports.handler = async (event) => {
+    console.log(`EVENT: ${JSON.stringify(event)}`);
+    
     if (!apiKey) {
         console.error("FATAL: GOOGLE_PLACES_API_KEY environment variable not set.");
         return { statusCode: 500, body: JSON.stringify({ error: 'API Key is not configured.' }) };
     }
 
+    // ============================================================================
+    // ADD ADDITIONAL PLACE FUNCTIONALITY (GraphQL @function directive calls)
+    // This section ONLY runs when called via GraphQL from the "Add Additional Places" feature
+    // in trip-view_main.tsx. It processes a single place name and returns Activity data.
+    // ============================================================================
+    if (event.arguments) {
+        console.log('Processing ADD ADDITIONAL PLACE request via GraphQL');
+        const { placeName, selectedCity } = event.arguments;
+        
+        if (!placeName) {
+            throw new Error('placeName is required for addAdditionalPlace');
+        }
+        
+        // Create bias from selectedCity coordinates if possible
+        let bias = null;
+        if (selectedCity) {
+            console.log(`Creating location bias for additional place search using city: ${selectedCity}`);
+            // Get coordinates for the selected city to create bias
+            const cityResult = await getLocationInfo(selectedCity, null);
+            if (cityResult.lat && cityResult.lng) {
+                bias = { lat: cityResult.lat, lng: cityResult.lng };
+                console.log(`Successfully created bias:`, bias);
+            }
+        }
+        
+        const result = await getLocationInfo(placeName, bias);
+        
+        // Return in Activity format for GraphQL
+        if (result.error) {
+            throw new Error(`Could not find additional place "${placeName}": ${result.error}`);
+        }
+        
+        console.log(`Successfully processed additional place: ${result.foundName || result.name}`);
+        return {
+            name: result.foundName || result.name,
+            city: selectedCity,
+            lat: result.lat,
+            lng: result.lng,
+            place_id: result.place_id,
+            rating: result.rating,
+            user_ratings_total: result.user_ratings_total,
+            formatted_address: result.formatted_address,
+            types: result.types,
+            photo_reference: result.photo_reference,
+            is_recommended: false
+        };
+    }
+
+    // ============================================================================
+    // WISHLIST ANALYZER FUNCTIONALITY (Direct Lambda invocation)
+    // This section runs when called directly by the wishlistAnalyzer Lambda function.
+    // It processes multiple locations in batch and returns coordinate data.
+    // ============================================================================
+    console.log('Processing BATCH LOCATION LOOKUP request from wishlistAnalyzer');
     const { locations, bias } = event;
 
     if (!locations || !Array.isArray(locations) || locations.length === 0) {

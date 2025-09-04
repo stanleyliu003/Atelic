@@ -79,6 +79,24 @@ export const getCityPhoto = /* GraphQL */ `
     }
   }
 `;
+export const addAdditionalPlace = /* GraphQL */ `
+  query AddAdditionalPlace($placeName: String!, $selectedCity: String!) {
+    addAdditionalPlace(placeName: $placeName, selectedCity: $selectedCity) {
+      name
+      city
+      lat
+      lng
+      place_id
+      rating
+      user_ratings_total
+      formatted_address
+      types
+      photo_reference
+      is_recommended
+      __typename
+    }
+  }
+`;
 export const getWishlistAnalysis = /* GraphQL */ `
   query GetWishlistAnalysis($id: ID!) {
     getWishlistAnalysis(id: $id) {

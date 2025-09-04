@@ -66,6 +66,7 @@
    getRegionImage(selectedCity: String!): RegionImageResult @function(name: "regionImage-${env}")
    getCityCategories(selectedCity: String!): CityCategoriesResult @function(name: "CityCategories-${env}")
    getCityPhoto(selectedCity: String!): CityPhotoResult @function(name: "CityCategories-${env}")
+   addAdditionalPlace(placeName: String!, selectedCity: String!): Activity @function(name: "getLocationCoordinates-${env}")
  }
 
    input WaypointInput {

@@ -379,10 +379,45 @@ export default function TripViewMain() {
     };
 
     // Handler for place selection from GooglePlacesAutocomplete
-    const handlePlaceSelect = (data: any, details: any | null) => {
-        console.log('Selected place:', details?.name || data.description);
-        setIsAddPlacesModalVisible(false);
-        // TODO: Add backend logic to process the selected place
+    const handlePlaceSelect = async (data: any, details: any | null) => {
+        try {
+            console.log('Selected place:', details?.name || data.description);
+            setIsAddPlacesModalVisible(false);
+            
+            // Call the backend to add additional place
+            const result = await API.graphql(graphqlOperation(`
+                query AddAdditionalPlace($placeName: String!, $selectedCity: String!) {
+                    addAdditionalPlace(placeName: $placeName, selectedCity: $selectedCity) {
+                        name
+                        city
+                        lat
+                        lng
+                        place_id
+                        rating
+                        user_ratings_total
+                        formatted_address
+                        types
+                        photo_reference
+                        is_recommended
+                    }
+                }
+            `, { 
+                placeName: data.description,
+                selectedCity: selectedCity || 'Unknown City'
+            })) as any;
+            
+            const newActivity = result?.data?.addAdditionalPlace;
+            if (newActivity) {
+                // Add the new activity to the activities list
+                updateActivities([...activities, newActivity]);
+                console.log('Added new activity:', newActivity);
+            } else {
+                console.warn('Could not get place details');
+            }
+        } catch (error) {
+            console.error('Error adding place:', error);
+            // Optionally show a user-facing error message
+        }
     };
 
     // Reset shouldScrollToActive after it's been used
