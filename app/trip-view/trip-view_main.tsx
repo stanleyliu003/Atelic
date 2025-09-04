@@ -283,9 +283,18 @@ export default function TripViewMain() {
         // Delete the day and get its activities to move back to wishlist
         const deletedDayActivities = deleteDayAndRenumber(dayToDelete);
         
-        // Add deleted day activities back to wishlist
+        // Add deleted day activities back to wishlist (with deduplication)
         if (deletedDayActivities.length > 0) {
-            updateActivities([...activities, ...deletedDayActivities]);
+            const combinedActivities = [...activities, ...deletedDayActivities];
+            
+            // Remove duplicates based on place_id
+            const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
+                if (!activity.place_id) return true; // Keep activities without place_id
+                // Keep only the first occurrence of each place_id
+                return arr.findIndex(a => a.place_id === activity.place_id) === index;
+            });
+            
+            updateActivities(deduplicatedActivities);
         }
         
         // Clear route cache for days that got renumbered
