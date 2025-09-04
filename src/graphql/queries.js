@@ -86,11 +86,11 @@ export const addAdditionalPlace = /* GraphQL */ `
       city
       lat
       lng
-      place_id
       rating
       user_ratings_total
       formatted_address
       types
+      place_id
       photo_reference
       is_recommended
       __typename

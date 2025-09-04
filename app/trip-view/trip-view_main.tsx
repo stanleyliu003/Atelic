@@ -381,7 +381,6 @@ export default function TripViewMain() {
     // Handler for place selection from GooglePlacesAutocomplete
     const handlePlaceSelect = async (data: any, details: any | null) => {
         try {
-            console.log('Selected place:', details?.name || data.description);
             setIsAddPlacesModalVisible(false);
             
             // Call the backend to add additional place
@@ -410,7 +409,6 @@ export default function TripViewMain() {
             if (newActivity) {
                 // Add the new activity to the activities list
                 updateActivities([...activities, newActivity]);
-                console.log('Added new activity:', newActivity);
             } else {
                 console.warn('Could not get place details');
             }
