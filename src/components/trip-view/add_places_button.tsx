@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 15,
     paddingHorizontal: 20,
-    marginVertical: 20,
+    marginVertical: -12,
     marginHorizontal: 5,
   },
   addPlacesButtonText: {

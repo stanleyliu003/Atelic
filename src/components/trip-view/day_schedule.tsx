@@ -88,12 +88,12 @@ export function DaySchedule({
           variant="selectable"
           disabled={disabled}
           emptyStateTitle={`No activities for Day ${dayNumber}`}
-          emptyStateSubtitle="Add activities from your wishlist to get started"
+          emptyStateSubtitle={"Go to your wishlist to select and add activities"}
           routeLegs={routeLegs}
         />
 
-        {/* Add additional places button - only visible when scrolling down */}
-        {onAddPlace && (
+        {/* Add additional places button - only visible when scrolling down and there are activities */}
+        {onAddPlace && activities.length > 0 && (
           <AddPlacesButton
             onPress={onAddPlace}
             isAddingPlace={isAddingPlace}
