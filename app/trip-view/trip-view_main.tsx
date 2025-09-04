@@ -358,6 +358,26 @@ export default function TripViewMain() {
         clearSelection();
     };
 
+    // Get bias location from activities or selectedCity
+    const getBiasLocation = () => {
+        // First try to get coordinates from activities
+        if (activities && activities.length > 0) {
+            const validActivities = activities.filter(activity => activity.lat && activity.lng);
+            if (validActivities.length > 0) {
+                // Use the first activity with valid coordinates
+                const firstActivity = validActivities[0];
+                return `${firstActivity.lat},${firstActivity.lng}`;
+            }
+        }
+        
+        // Fallback to selectedCity if no activities have coordinates
+        if (selectedCity) {
+            return selectedCity;
+        }
+        
+        return null;
+    };
+
     // Handler for place selection from GooglePlacesAutocomplete
     const handlePlaceSelect = (data: any, details: any | null) => {
         console.log('Selected place:', details?.name || data.description);
@@ -611,15 +631,14 @@ export default function TripViewMain() {
                     
                     <View style={styles.addPlacesModalContent}>
                         <GooglePlacesAutocomplete
-                            placeholder="Search here."
+                            placeholder={`Search places in ${selectedCity}`}
                             onPress={handlePlaceSelect}
                             query={{
                                 key: API_KEYS.GOOGLE_MAPS,
                                 language: 'en',
-                                ...(selectedCity && {
-                                    components: `country:${selectedCity.split(',').pop()?.trim()}`,
-                                    location: selectedCity,
-                                    radius: 50000, // 50km radius around the selected city
+                                ...(getBiasLocation() && {
+                                    location: getBiasLocation(),
+                                    radius: 10000, // 25km radius around the bias location
                                 }),
                             }}
                             styles={{
