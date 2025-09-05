@@ -3,7 +3,8 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RouteLeg } from '../../services/getRoute_graphQL_call';
 import { Activity } from '../../types/activity.types';
-import { ActivityList, AddPlacesButton } from './index';
+import { ActivityList } from './activity/activity_list';
+import { AddPlacesButton } from './add_places_button';
 
 interface DayScheduleProps {
   dayNumber: number;
