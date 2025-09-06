@@ -12,51 +12,193 @@ Use the following code to retrieve configured secrets from AWS Secret Manager.
 */
 
 const https = require('https');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
 
 const apiKey = process.env.GOOGLE_PLACES_API_KEY;
 
+// Initialize DynamoDB client
+const ddbClient = new DynamoDBClient({ region: process.env.REGION });
+const ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
+const tableName = process.env.STORAGE_PLACESAPIACTIVITYSTORAGE_NAME;
+
+// Cache TTL constants (in seconds)
+const FINDPLACE_TTL = 60 * 24 * 60 * 60; // 60 days
+const PLACEDETAILS_TTL = 60 * 24 * 60 * 60; // 60 days
+
+// Cache helper functions
+const getCachedData = async (cacheType, cacheKey) => {
+    try {
+        const command = new GetCommand({
+            TableName: tableName,
+            Key: {
+                cache_type: cacheType,
+                cache_key: cacheKey
+            }
+        });
+        
+        const result = await ddbDocClient.send(command);
+        
+        if (result.Item) {
+            // Check if TTL has expired
+            const now = Math.floor(Date.now() / 1000);
+            if (result.Item.ttl && result.Item.ttl < now) {
+                console.log(`Cache expired for ${cacheType}:${cacheKey}`);
+                return null;
+            }
+            
+            console.log(`Cache HIT for ${cacheType}:${cacheKey}`);
+            return result.Item.data;
+        }
+        
+        console.log(`Cache MISS for ${cacheType}:${cacheKey}`);
+        return null;
+    } catch (error) {
+        console.error(`Error getting cached data for ${cacheType}:${cacheKey}:`, error);
+        return null; // Fall back to API call if cache fails
+    }
+};
+
+const setCachedData = async (cacheType, cacheKey, data, ttlSeconds) => {
+    try {
+        const ttl = Math.floor(Date.now() / 1000) + ttlSeconds;
+        
+        const command = new PutCommand({
+            TableName: tableName,
+            Item: {
+                cache_type: cacheType,
+                cache_key: cacheKey,
+                data: data,
+                ttl: ttl
+            }
+        });
+        
+        await ddbDocClient.send(command);
+        console.log(`Cached data for ${cacheType}:${cacheKey} with TTL ${ttl}`);
+    } catch (error) {
+        console.error(`Error caching data for ${cacheType}:${cacheKey}:`, error);
+        // Don't throw error - caching failure shouldn't break the main functionality
+    }
+};
+
+// Helper function to generate cache key for FindPlace API
+const generateFindPlaceCacheKey = (locationName, bias) => {
+    let key = encodeURIComponent(locationName.toLowerCase().trim());
+    if (bias && bias.lat && bias.lng) {
+        key += `_bias_${bias.lat}_${bias.lng}`;
+    }
+    return key;
+};
+
 // Helper function to get place details (rating, reviews, etc.)
-const getPlaceDetailsByPlaceId = (placeId) => {
+const getPlaceDetailsByPlaceId = async (placeId) => {
+    // Check cache first
+    const cachedData = await getCachedData('placedetails', placeId);
+    if (cachedData) {
+        return cachedData;
+    }
+    
     const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total,formatted_address,types,photos&key=${apiKey}`;
     
     return new Promise((resolve, reject) => {
         const req = https.get(url, (res) => {
             let data = '';
             res.on('data', (chunk) => { data += chunk; });
-            res.on('end', () => {
+            res.on('end', async () => {
                 try {
                     const result = JSON.parse(data);
                     let photo_reference = null;
+                    let placeDetails = null;
+                    
                     if (result.status === 'OK' && result.result) {
                         if (result.result.photos && result.result.photos.length > 0) {
                             photo_reference = result.result.photos[0].photo_reference;
                         }
-                        resolve({
+                        placeDetails = {
                             rating: result.result.rating || null,
                             user_ratings_total: result.result.user_ratings_total || null,
                             formatted_address: result.result.formatted_address || null,
                             types: result.result.types || [],
                             photo_reference: photo_reference
-                        });
+                        };
+                        
+                        // Cache the successful result
+                        await setCachedData('placedetails', placeId, placeDetails, PLACEDETAILS_TTL);
+                        
+                        resolve(placeDetails);
                     } else {
                         console.warn(`Could not get details for place_id "${placeId}". Status: ${result.status}`);
-                        resolve({ rating: null, user_ratings_total: null, formatted_address: null, types: [], photo_reference: null });
+                        const fallbackDetails = { rating: null, user_ratings_total: null, formatted_address: null, types: [], photo_reference: null };
+                        
+                        // Don't cache failed results, just return fallback
+                        resolve(fallbackDetails);
                     }
                 } catch (e) {
                     console.error(`Error parsing place details JSON for place_id "${placeId}":`, e);
-                    resolve({ rating: null, user_ratings_total: null, formatted_address: null, types: [], photo_reference: null });
+                    const fallbackDetails = { rating: null, user_ratings_total: null, formatted_address: null, types: [], photo_reference: null };
+                    resolve(fallbackDetails);
                 }
             });
         });
         req.on('error', (err) => {
             console.error(`[getPlaceDetailsByPlaceId] HTTPS request error for place_id ${placeId}:`, err);
-            resolve({ rating: null, user_ratings_total: null, formatted_address: null, types: [], photo_reference: null });
+            const fallbackDetails = { rating: null, user_ratings_total: null, formatted_address: null, types: [], photo_reference: null };
+            resolve(fallbackDetails);
         });
     });
 };
 
 // Helper function to get coordinates and place details for a single location
 const getLocationInfo = async (locationName, bias) => {
+    // Generate cache key for FindPlace API
+    const findPlaceCacheKey = generateFindPlaceCacheKey(locationName, bias);
+    
+    // Check cache first
+    const cachedFindPlaceData = await getCachedData('findplace', findPlaceCacheKey);
+    if (cachedFindPlaceData) {
+        // We have cached FindPlace data, now check if we need PlaceDetails
+        if (cachedFindPlaceData.place_id) {
+            const cachedPlaceDetails = await getCachedData('placedetails', cachedFindPlaceData.place_id);
+            if (cachedPlaceDetails) {
+                // Both FindPlace and PlaceDetails are cached
+                return {
+                    name: locationName,
+                    foundName: cachedFindPlaceData.name,
+                    place_id: cachedFindPlaceData.place_id,
+                    lat: cachedFindPlaceData.lat,
+                    lng: cachedFindPlaceData.lng,
+                    ...cachedPlaceDetails
+                };
+            } else {
+                // FindPlace is cached but PlaceDetails is not, fetch PlaceDetails only
+                const details = await getPlaceDetailsByPlaceId(cachedFindPlaceData.place_id);
+                return {
+                    name: locationName,
+                    foundName: cachedFindPlaceData.name,
+                    place_id: cachedFindPlaceData.place_id,
+                    lat: cachedFindPlaceData.lat,
+                    lng: cachedFindPlaceData.lng,
+                    ...details
+                };
+            }
+        } else {
+            // Cached FindPlace data without place_id
+            return {
+                name: locationName,
+                foundName: cachedFindPlaceData.name,
+                place_id: null,
+                lat: cachedFindPlaceData.lat,
+                lng: cachedFindPlaceData.lng,
+                rating: null,
+                user_ratings_total: null,
+                formatted_address: null,
+                types: [],
+                photo_reference: null
+            };
+        }
+    }
+    
+    // Cache miss, make API call
     let url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(locationName)}&inputtype=textquery&fields=name,geometry,place_id&key=${apiKey}`;
     
     // Add location bias if provided. This helps narrow down searches.
@@ -75,12 +217,20 @@ const getLocationInfo = async (locationName, bias) => {
                     if (result.status === 'OK' && result.candidates && result.candidates.length > 0) {
                         const candidate = result.candidates[0];
                         
+                        // Cache the FindPlace result
+                        const findPlaceResult = {
+                            name: candidate.name,
+                            place_id: candidate.place_id || null,
+                            lat: candidate.geometry.location.lat,
+                            lng: candidate.geometry.location.lng
+                        };
+                        await setCachedData('findplace', findPlaceCacheKey, findPlaceResult, FINDPLACE_TTL);
+                        
                         // Get additional details if we have a place_id
                         let details = { rating: null, user_ratings_total: null, formatted_address: null, types: [], photos: [], photo_reference: null };
                         if (candidate.place_id) {
                             details = await getPlaceDetailsByPlaceId(candidate.place_id);
                         }
-                        
                         
                         resolve({
                             name: locationName, // Return original name for matching

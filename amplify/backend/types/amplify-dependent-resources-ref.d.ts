@@ -67,6 +67,16 @@ export type AmplifyDependentResourcesAttributes = {
     }
   },
   "storage": {
+    "PlacesAPIActivityStorage": {
+      "Arn": "string",
+      "Name": "string",
+      "PartitionKeyName": "string",
+      "PartitionKeyType": "string",
+      "Region": "string",
+      "SortKeyName": "string",
+      "SortKeyType": "string",
+      "StreamArn": "string"
+    },
     "TripStorage": {
       "Arn": "string",
       "Name": "string",
