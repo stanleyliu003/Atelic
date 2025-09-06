@@ -1,0 +1,14 @@
+{
+  "resourceName": "PlacesAPIActivityStorage",
+  "tableName": "PlacesAPIActivityCache",
+  "partitionKey": {
+    "fieldName": "cache_type",
+    "fieldType": "string"
+  },
+  "sortKey": {
+    "fieldName": "cache_key",
+    "fieldType": "string"
+  },
+  "gsi": [],
+  "triggerFunctions": []
+}

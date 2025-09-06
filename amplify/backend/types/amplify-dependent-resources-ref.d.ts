@@ -76,6 +76,14 @@ export type AmplifyDependentResourcesAttributes = {
       "SortKeyName": "string",
       "SortKeyType": "string",
       "StreamArn": "string"
+    },
+    "regionImageStorage": {
+      "Arn": "string",
+      "Name": "string",
+      "PartitionKeyName": "string",
+      "PartitionKeyType": "string",
+      "Region": "string",
+      "StreamArn": "string"
     }
   }
 }

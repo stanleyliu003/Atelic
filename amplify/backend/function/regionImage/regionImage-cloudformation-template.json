@@ -16,6 +16,18 @@
     "s3Key": {
       "Type": "String"
     },
+    "storageregionImageStorageName": {
+      "Type": "String",
+      "Default": "storageregionImageStorageName"
+    },
+    "storageregionImageStorageArn": {
+      "Type": "String",
+      "Default": "storageregionImageStorageArn"
+    },
+    "storageregionImageStorageStreamArn": {
+      "Type": "String",
+      "Default": "storageregionImageStorageStreamArn"
+    },
     "googlePlacesApiKey": {
       "Type": "String"
     }
@@ -72,6 +84,15 @@
             },
             "REGION": {
               "Ref": "AWS::Region"
+            },
+            "STORAGE_REGIONIMAGESTORAGE_NAME": {
+              "Ref": "storageregionImageStorageName"
+            },
+            "STORAGE_REGIONIMAGESTORAGE_ARN": {
+              "Ref": "storageregionImageStorageArn"
+            },
+            "STORAGE_REGIONIMAGESTORAGE_STREAMARN": {
+              "Ref": "storageregionImageStorageStreamArn"
             },
             "GOOGLE_PLACES_API_KEY": {
               "Ref": "googlePlacesApiKey"
@@ -166,6 +187,62 @@
                   }
                 ]
               }
+            }
+          ]
+        }
+      }
+    },
+    "AmplifyResourcesPolicy": {
+      "DependsOn": [
+        "LambdaExecutionRole"
+      ],
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "amplify-lambda-execution-policy",
+        "Roles": [
+          {
+            "Ref": "LambdaExecutionRole"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:Put*",
+                "dynamodb:Create*",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PartiQLInsert",
+                "dynamodb:Get*",
+                "dynamodb:BatchGetItem",
+                "dynamodb:List*",
+                "dynamodb:Describe*",
+                "dynamodb:Scan",
+                "dynamodb:Query",
+                "dynamodb:PartiQLSelect",
+                "dynamodb:Update*",
+                "dynamodb:RestoreTable*",
+                "dynamodb:PartiQLUpdate",
+                "dynamodb:Delete*",
+                "dynamodb:PartiQLDelete"
+              ],
+              "Resource": [
+                {
+                  "Ref": "storageregionImageStorageArn"
+                },
+                {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      {
+                        "Ref": "storageregionImageStorageArn"
+                      },
+                      "index/*"
+                    ]
+                  ]
+                }
+              ]
             }
           ]
         }

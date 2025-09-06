@@ -148,7 +148,17 @@
     },
     "regionImage": {
       "build": true,
-      "dependsOn": [],
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "regionImageStorage"
+        }
+      ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
@@ -347,7 +357,15 @@
     }
   },
   "storage": {
+    "PlacesAPIActivityStorage": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    },
     "TripStorage": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    },
+    "regionImageStorage": {
       "providerPlugin": "awscloudformation",
       "service": "DynamoDB"
     }

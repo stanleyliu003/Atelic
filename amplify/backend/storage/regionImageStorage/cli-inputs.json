@@ -1,0 +1,10 @@
+{
+  "resourceName": "regionImageStorage",
+  "tableName": "regionImagesTable",
+  "partitionKey": {
+    "fieldName": "regionName",
+    "fieldType": "string"
+  },
+  "gsi": [],
+  "triggerFunctions": []
+}
