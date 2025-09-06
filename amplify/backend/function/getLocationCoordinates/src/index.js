@@ -1,6 +1,9 @@
 /* Amplify Params - DO NOT EDIT
 	ENV
 	REGION
+	STORAGE_PLACESAPIACTIVITYSTORAGE_ARN
+	STORAGE_PLACESAPIACTIVITYSTORAGE_NAME
+	STORAGE_PLACESAPIACTIVITYSTORAGE_STREAMARN
 Amplify Params - DO NOT EDIT *//*
 Use the following code to retrieve configured secrets from AWS Secret Manager.
 - https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html

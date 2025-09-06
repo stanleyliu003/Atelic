@@ -142,7 +142,17 @@
     },
     "getLocationCoordinates": {
       "build": true,
-      "dependsOn": [],
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "PlacesAPIActivityStorage"
+        }
+      ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
