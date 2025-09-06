@@ -23,8 +23,8 @@ const ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
 const tableName = process.env.STORAGE_PLACESAPIACTIVITYSTORAGE_NAME;
 
 // Cache TTL constants (in seconds)
-const FINDPLACE_TTL = 60 * 24 * 60 * 60; // 60 days
-const PLACEDETAILS_TTL = 60 * 24 * 60 * 60; // 60 days
+const FINDPLACE_TTL = 30 * 24 * 60 * 60; // 30 days
+const PLACEDETAILS_TTL = 30 * 24 * 60 * 60; // 30 days
 
 // Cache helper functions
 const getCachedData = async (cacheType, cacheKey) => {
