@@ -98,7 +98,7 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
         return cachedData;
     }
     
-    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total,formatted_address,types,photos&key=${apiKey}`;
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total,formatted_address,types,photos,name,opening_hours,current_opening_hours,secondary_opening_hours,website,reviews,editorial_summary&key=${apiKey}`;
     
     return new Promise((resolve, reject) => {
         const req = https.get(url, (res) => {
@@ -114,12 +114,68 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                         if (result.result.photos && result.result.photos.length > 0) {
                             photo_reference = result.result.photos[0].photo_reference;
                         }
+                        
+                        // Process opening hours
+                        const processOpeningHours = (openingHoursData) => {
+                            if (!openingHoursData) return null;
+                            return {
+                                open_now: openingHoursData.open_now || false,
+                                periods: openingHoursData.periods || [],
+                                weekday_text: openingHoursData.weekday_text || []
+                            };
+                        };
+                        
+                        // Process reviews (limit to first 5 for performance)
+                        const processReviews = (reviewsData) => {
+                            if (!reviewsData || !Array.isArray(reviewsData)) return [];
+                            return reviewsData.slice(0, 5).map(review => ({
+                                author_name: review.author_name || null,
+                                rating: review.rating || null,
+                                text: review.text || null,
+                                time: review.time || null,
+                                author_url: review.author_url || null,
+                                profile_photo_url: review.profile_photo_url || null
+                            }));
+                        };
+                        
+                        // Process photos (limit to first 5 for performance)
+                        const processPhotos = (photosData) => {
+                            if (!photosData || !Array.isArray(photosData)) return [];
+                            return photosData.slice(0, 5).map(photo => ({
+                                photo_reference: photo.photo_reference || null,
+                                width: photo.width || null,
+                                height: photo.height || null
+                            }));
+                        };
+                        
                         placeDetails = {
-                            rating: result.result.rating || null,
-                            user_ratings_total: result.result.user_ratings_total || null,
+                            // Basic fields
+                            display_name: result.result.name || null,
                             formatted_address: result.result.formatted_address || null,
                             types: result.result.types || [],
-                            photo_reference: photo_reference
+                            rating: result.result.rating || null,
+                            user_ratings_total: result.result.user_ratings_total || null,
+                            website_uri: result.result.website || null,
+                            
+                            // Legacy photo_reference for backward compatibility
+                            photo_reference: photo_reference,
+                            
+                            // Enhanced photo data
+                            photos: processPhotos(result.result.photos),
+                            
+                            // Opening hours data
+                            current_opening_hours: processOpeningHours(result.result.current_opening_hours),
+                            regular_opening_hours: processOpeningHours(result.result.opening_hours),
+                            regular_secondary_opening_hours: processOpeningHours(result.result.secondary_opening_hours),
+                            
+                            // Reviews and summaries
+                            reviews: processReviews(result.result.reviews),
+                            editorial_summary: result.result.editorial_summary?.overview || null,
+                            
+                            // Primary type display name (derived from types)
+                            primary_type_display_name: result.result.types && result.result.types.length > 0 
+                                ? result.result.types[0].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                                : null
                         };
                         
                         // Cache the successful result
@@ -128,21 +184,66 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                         resolve(placeDetails);
                     } else {
                         console.warn(`Could not get details for place_id "${placeId}". Status: ${result.status}`);
-                        const fallbackDetails = { rating: null, user_ratings_total: null, formatted_address: null, types: [], photo_reference: null };
+                        const fallbackDetails = { 
+                            display_name: null,
+                            formatted_address: null,
+                            types: [], 
+                            rating: null, 
+                            user_ratings_total: null, 
+                            website_uri: null,
+                            photo_reference: null,
+                            photos: [],
+                            current_opening_hours: null,
+                            regular_opening_hours: null,
+                            regular_secondary_opening_hours: null,
+                            reviews: [],
+                            editorial_summary: null,
+                            primary_type_display_name: null
+                        };
                         
                         // Don't cache failed results, just return fallback
                         resolve(fallbackDetails);
                     }
                 } catch (e) {
                     console.error(`Error parsing place details JSON for place_id "${placeId}":`, e);
-                    const fallbackDetails = { rating: null, user_ratings_total: null, formatted_address: null, types: [], photo_reference: null };
+                    const fallbackDetails = { 
+                        display_name: null,
+                        formatted_address: null,
+                        types: [], 
+                        rating: null, 
+                        user_ratings_total: null, 
+                        website_uri: null,
+                        photo_reference: null,
+                        photos: [],
+                        current_opening_hours: null,
+                        regular_opening_hours: null,
+                        regular_secondary_opening_hours: null,
+                        reviews: [],
+                        editorial_summary: null,
+                        primary_type_display_name: null
+                    };
                     resolve(fallbackDetails);
                 }
             });
         });
         req.on('error', (err) => {
             console.error(`[getPlaceDetailsByPlaceId] HTTPS request error for place_id ${placeId}:`, err);
-            const fallbackDetails = { rating: null, user_ratings_total: null, formatted_address: null, types: [], photo_reference: null };
+            const fallbackDetails = { 
+                display_name: null,
+                formatted_address: null,
+                types: [], 
+                rating: null, 
+                user_ratings_total: null, 
+                website_uri: null,
+                photo_reference: null,
+                photos: [],
+                current_opening_hours: null,
+                regular_opening_hours: null,
+                regular_secondary_opening_hours: null,
+                reviews: [],
+                editorial_summary: null,
+                primary_type_display_name: null
+            };
             resolve(fallbackDetails);
         });
     });
@@ -189,11 +290,20 @@ const getLocationInfo = async (locationName, bias) => {
                 place_id: null,
                 lat: cachedFindPlaceData.lat,
                 lng: cachedFindPlaceData.lng,
-                rating: null,
-                user_ratings_total: null,
+                display_name: cachedFindPlaceData.name,
                 formatted_address: null,
                 types: [],
-                photo_reference: null
+                rating: null,
+                user_ratings_total: null,
+                website_uri: null,
+                photo_reference: null,
+                photos: [],
+                current_opening_hours: null,
+                regular_opening_hours: null,
+                regular_secondary_opening_hours: null,
+                reviews: [],
+                editorial_summary: null,
+                primary_type_display_name: null
             };
         }
     }
@@ -227,7 +337,22 @@ const getLocationInfo = async (locationName, bias) => {
                         await setCachedData('findplace', findPlaceCacheKey, findPlaceResult, FINDPLACE_TTL);
                         
                         // Get additional details if we have a place_id
-                        let details = { rating: null, user_ratings_total: null, formatted_address: null, types: [], photos: [], photo_reference: null };
+                        let details = { 
+                            display_name: candidate.name,
+                            formatted_address: null,
+                            types: [], 
+                            rating: null, 
+                            user_ratings_total: null, 
+                            website_uri: null,
+                            photo_reference: null,
+                            photos: [],
+                            current_opening_hours: null,
+                            regular_opening_hours: null,
+                            regular_secondary_opening_hours: null,
+                            reviews: [],
+                            editorial_summary: null,
+                            primary_type_display_name: null
+                        };
                         if (candidate.place_id) {
                             details = await getPlaceDetailsByPlaceId(candidate.place_id);
                         }
@@ -307,11 +432,20 @@ exports.handler = async (event) => {
             lat: result.lat,
             lng: result.lng,
             place_id: result.place_id,
-            rating: result.rating,
-            user_ratings_total: result.user_ratings_total,
+            display_name: result.display_name,
             formatted_address: result.formatted_address,
             types: result.types,
+            rating: result.rating,
+            user_ratings_total: result.user_ratings_total,
+            website_uri: result.website_uri,
             photo_reference: result.photo_reference,
+            photos: result.photos,
+            current_opening_hours: result.current_opening_hours,
+            regular_opening_hours: result.regular_opening_hours,
+            regular_secondary_opening_hours: result.regular_secondary_opening_hours,
+            reviews: result.reviews,
+            editorial_summary: result.editorial_summary,
+            primary_type_display_name: result.primary_type_display_name,
             is_recommended: false
         };
     }

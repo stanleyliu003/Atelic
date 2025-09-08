@@ -15,6 +15,77 @@ export const optimizeRoute = /* GraphQL */ `
       place_id
       photo_reference
       is_recommended
+      display_name
+      website_uri
+      photos {
+        photo_reference
+        width
+        height
+      }
+      current_opening_hours {
+        open_now
+        periods {
+          open {
+            day
+            time
+            date
+            truncated
+          }
+          close {
+            day
+            time
+            date
+            truncated
+          }
+        }
+        weekday_text
+      }
+      regular_opening_hours {
+        open_now
+        periods {
+          open {
+            day
+            time
+            date
+            truncated
+          }
+          close {
+            day
+            time
+            date
+            truncated
+          }
+        }
+        weekday_text
+      }
+      regular_secondary_opening_hours {
+        open_now
+        periods {
+          open {
+            day
+            time
+            date
+            truncated
+          }
+          close {
+            day
+            time
+            date
+            truncated
+          }
+        }
+        weekday_text
+      }
+      reviews {
+        author_name
+        rating
+        text
+        time
+        author_url
+        profile_photo_url
+      }
+      editorial_summary
+      primary_type_display_name
       __typename
     }
   }
@@ -40,6 +111,59 @@ export const createTrip = /* GraphQL */ `
         place_id
         photo_reference
         is_recommended
+        display_name
+        website_uri
+        photos {
+          photo_reference
+          width
+          height
+        }
+        current_opening_hours {
+          open_now
+          periods {
+            open {
+              day
+              time
+              date
+              truncated
+            }
+            close {
+              day
+              time
+              date
+              truncated
+            }
+          }
+          weekday_text
+        }
+        regular_opening_hours {
+          open_now
+          periods {
+            open {
+              day
+              time
+              date
+              truncated
+            }
+            close {
+              day
+              time
+              date
+              truncated
+            }
+          }
+          weekday_text
+        }
+        reviews {
+          author_name
+          rating
+          text
+          time
+          author_url
+          profile_photo_url
+        }
+        editorial_summary
+        primary_type_display_name
         __typename
       }
       __typename
@@ -69,6 +193,59 @@ export const createWishlistAnalysis = /* GraphQL */ `
         place_id
         photo_reference
         is_recommended
+        display_name
+        website_uri
+        photos {
+          photo_reference
+          width
+          height
+        }
+        current_opening_hours {
+          open_now
+          periods {
+            open {
+              day
+              time
+              date
+              truncated
+            }
+            close {
+              day
+              time
+              date
+              truncated
+            }
+          }
+          weekday_text
+        }
+        regular_opening_hours {
+          open_now
+          periods {
+            open {
+              day
+              time
+              date
+              truncated
+            }
+            close {
+              day
+              time
+              date
+              truncated
+            }
+          }
+          weekday_text
+        }
+        reviews {
+          author_name
+          rating
+          text
+          time
+          author_url
+          profile_photo_url
+        }
+        editorial_summary
+        primary_type_display_name
         __typename
       }
       createdAt
@@ -100,6 +277,59 @@ export const updateWishlistAnalysis = /* GraphQL */ `
         place_id
         photo_reference
         is_recommended
+        display_name
+        website_uri
+        photos {
+          photo_reference
+          width
+          height
+        }
+        current_opening_hours {
+          open_now
+          periods {
+            open {
+              day
+              time
+              date
+              truncated
+            }
+            close {
+              day
+              time
+              date
+              truncated
+            }
+          }
+          weekday_text
+        }
+        regular_opening_hours {
+          open_now
+          periods {
+            open {
+              day
+              time
+              date
+              truncated
+            }
+            close {
+              day
+              time
+              date
+              truncated
+            }
+          }
+          weekday_text
+        }
+        reviews {
+          author_name
+          rating
+          text
+          time
+          author_url
+          profile_photo_url
+        }
+        editorial_summary
+        primary_type_display_name
         __typename
       }
       createdAt
@@ -131,6 +361,59 @@ export const deleteWishlistAnalysis = /* GraphQL */ `
         place_id
         photo_reference
         is_recommended
+        display_name
+        website_uri
+        photos {
+          photo_reference
+          width
+          height
+        }
+        current_opening_hours {
+          open_now
+          periods {
+            open {
+              day
+              time
+              date
+              truncated
+            }
+            close {
+              day
+              time
+              date
+              truncated
+            }
+          }
+          weekday_text
+        }
+        regular_opening_hours {
+          open_now
+          periods {
+            open {
+              day
+              time
+              date
+              truncated
+            }
+            close {
+              day
+              time
+              date
+              truncated
+            }
+          }
+          weekday_text
+        }
+        reviews {
+          author_name
+          rating
+          text
+          time
+          author_url
+          profile_photo_url
+        }
+        editorial_summary
+        primary_type_display_name
         __typename
       }
       createdAt

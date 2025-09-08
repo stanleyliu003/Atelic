@@ -19,10 +19,53 @@
      place_id: String
      photo_reference: String
      is_recommended: Boolean
+     # New enhanced fields
+     display_name: String
+     website_uri: String
+     photos: [PlacePhoto]
+     current_opening_hours: OpeningHours
+     regular_opening_hours: OpeningHours
+     regular_secondary_opening_hours: OpeningHours
+     reviews: [PlaceReview]
+     editorial_summary: String
+     primary_type_display_name: String
    }
 
    type WishlistAnalysisResult {
      wishlist_activities: [Activity]
+   }
+
+   type PlacePhoto {
+     photo_reference: String
+     width: Int
+     height: Int
+   }
+
+   type OpeningHours {
+     open_now: Boolean
+     periods: [OpeningPeriod]
+     weekday_text: [String]
+   }
+
+   type OpeningPeriod {
+     open: TimeOfDay
+     close: TimeOfDay
+   }
+
+   type TimeOfDay {
+     day: Int
+     time: String
+     date: String
+     truncated: Boolean
+   }
+
+   type PlaceReview {
+     author_name: String
+     rating: Float
+     text: String
+     time: Int
+     author_url: String
+     profile_photo_url: String
    }
 
    type RouteLeg {
@@ -104,6 +147,16 @@
      formatted_address: String
      user_ratings_total: Int
      is_recommended: Boolean
+     # New enhanced fields
+     display_name: String
+     website_uri: String
+     photos: [PlacePhotoInput]
+     current_opening_hours: OpeningHoursInput
+     regular_opening_hours: OpeningHoursInput
+     regular_secondary_opening_hours: OpeningHoursInput
+     reviews: [PlaceReviewInput]
+     editorial_summary: String
+     primary_type_display_name: String
    }
 
    input DayInput {
@@ -116,4 +169,37 @@
      tripId: String!
      days: [DayInput!]!
      wishlist: [ActivityInput!]!
+   }
+
+   input PlacePhotoInput {
+     photo_reference: String
+     width: Int
+     height: Int
+   }
+
+   input OpeningHoursInput {
+     open_now: Boolean
+     periods: [OpeningPeriodInput]
+     weekday_text: [String]
+   }
+
+   input OpeningPeriodInput {
+     open: TimeOfDayInput
+     close: TimeOfDayInput
+   }
+
+   input TimeOfDayInput {
+     day: Int
+     time: String
+     date: String
+     truncated: Boolean
+   }
+
+   input PlaceReviewInput {
+     author_name: String
+     rating: Float
+     text: String
+     time: Int
+     author_url: String
+     profile_photo_url: String
    }

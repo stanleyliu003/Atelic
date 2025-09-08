@@ -1,3 +1,37 @@
+// Define types for complex place data
+export type PlacePhoto = {
+  photo_reference?: string;
+  width?: number;
+  height?: number;
+};
+
+export type TimeOfDay = {
+  day?: number;
+  time?: string;
+  date?: string;
+  truncated?: boolean;
+};
+
+export type OpeningPeriod = {
+  open?: TimeOfDay;
+  close?: TimeOfDay;
+};
+
+export type OpeningHours = {
+  open_now?: boolean;
+  periods?: OpeningPeriod[];
+  weekday_text?: string[];
+};
+
+export type PlaceReview = {
+  author_name?: string;
+  rating?: number;
+  text?: string;
+  time?: number;
+  author_url?: string;
+  profile_photo_url?: string;
+};
+
 // Define a type for our activity data for better type safety
 export type Activity = {
   name: string;
@@ -10,6 +44,16 @@ export type Activity = {
   photo_reference?: string;
   formatted_address?: string;
   user_ratings_total?: number;
+  // New enhanced fields
+  display_name?: string;
+  website_uri?: string;
+  photos?: PlacePhoto[];
+  current_opening_hours?: OpeningHours;
+  regular_opening_hours?: OpeningHours;
+  regular_secondary_opening_hours?: OpeningHours;
+  reviews?: PlaceReview[];
+  editorial_summary?: string;
+  primary_type_display_name?: string;
 };
 
 // Tab type for navigation between wishlist and different days
