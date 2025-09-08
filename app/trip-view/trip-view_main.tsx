@@ -565,15 +565,17 @@ export default function TripViewMain() {
                 selectedActivities={selectedActivities}
             />
 
-            <TabBar 
-                activeTab={activeTab}
-                onTabChange={handleTabChange}
-                dayCount={getDayCount()}
-                onAddDay={handleAddDay}
-                onDeleteDay={handleDeleteDay}
-                shouldScrollToActive={shouldScrollToActive}
-                tabLabels={tabLabels}
-            />
+            {!showActivityDetail && (
+                <TabBar 
+                    activeTab={activeTab}
+                    onTabChange={handleTabChange}
+                    dayCount={getDayCount()}
+                    onAddDay={handleAddDay}
+                    onDeleteDay={handleDeleteDay}
+                    shouldScrollToActive={shouldScrollToActive}
+                    tabLabels={tabLabels}
+                />
+            )}
 
             {/* Tab Content */}
             <View style={styles.tabContent}>
@@ -676,8 +678,9 @@ export default function TripViewMain() {
                 const isLastDay = currentDayNumber === getDayCount();
                 const hasActivities = currentDayActivities && currentDayActivities.length > 0;
                 const noSelection = selectedActivities.length === 0;
+                const noActivityDetail = !showActivityDetail;
                 
-                if (isLastDay && hasActivities && noSelection) {
+                if (isLastDay && hasActivities && noSelection && noActivityDetail) {
                     return (
                         <TouchableOpacity 
                             style={styles.publishButton}
