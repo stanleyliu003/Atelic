@@ -96,53 +96,64 @@ export function ActivityCard({
 
   return (
     <View style={styles.cardContainer}>
-      <TouchableOpacity 
+      <View 
         style={[
           styles.activityCard, 
           style,
           isSelected && styles.selectedCard,
           disabled && styles.disabledCard
         ]}
-        onPress={handlePress}
-        onLongPress={handleLongPress}
-        disabled={disabled}
-        activeOpacity={0.7}
       >
         <View style={styles.activityContent}>
           {showSelectionIndicator && (
-            <View style={[styles.selectionIndicator, isSelected && styles.selectedIndicator]}>
-              {isSelected && <Text style={styles.checkmark}>✓</Text>}
-            </View>
+            <TouchableOpacity
+              style={styles.selectionTouchArea}
+              onPress={handlePress}
+              disabled={disabled}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.selectionIndicator, isSelected && styles.selectedIndicator]}>
+                {isSelected && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+            </TouchableOpacity>
           )}
           
-          <View style={styles.activityInfo}>
-            <Text style={[styles.activityText, disabled && styles.disabledText]}>
-              {getDisplayName()}
-            </Text>
-            <View style={styles.activityStats}>
-              {activity.rating && (
-                <View style={styles.ratingContainer}>
-                  <Text style={[styles.ratingText, disabled && styles.disabledText]}>
-                    ⭐ {activity.rating}
-                  </Text>
-                </View>
-              )}
-              {activity.types && activity.types.length > 0 && (
-                <View style={styles.typesContainer}>
-                  <Text style={[styles.typesText, disabled && styles.disabledText]}>
-                    {activity.types[0].replace(/_/g, ' ')}
-                  </Text>
-                </View>
-              )}
+          <TouchableOpacity 
+            style={styles.cardContentArea}
+            onPress={!showSelectionIndicator ? handlePress : undefined}
+            onLongPress={handleLongPress}
+            disabled={disabled}
+            activeOpacity={showSelectionIndicator ? 1 : 0.7}
+          >
+            <View style={styles.activityInfo}>
+              <Text style={[styles.activityText, disabled && styles.disabledText]}>
+                {getDisplayName()}
+              </Text>
+              <View style={styles.activityStats}>
+                {activity.rating && (
+                  <View style={styles.ratingContainer}>
+                    <Text style={[styles.ratingText, disabled && styles.disabledText]}>
+                      ⭐ {activity.rating}
+                    </Text>
+                  </View>
+                )}
+                {activity.types && activity.types.length > 0 && (
+                  <View style={styles.typesContainer}>
+                    <Text style={[styles.typesText, disabled && styles.disabledText]}>
+                      {activity.types[0].replace(/_/g, ' ')}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
-          </View>
-          
-          <ActivityImage 
-            photo_reference={activity.photo_reference || ''} 
-            style={[styles.activityImage, disabled && styles.disabledImage]}
-          />
+            
+            <ActivityImage 
+              photo_reference={activity.photo_reference || ''} 
+              style={[styles.activityImage, disabled && styles.disabledImage]}
+            />
+          </TouchableOpacity>
         </View>
-      </TouchableOpacity>
+      </View>
 
       {/* Distance and Travel Time Info - Now a button */}
       {!isLastActivity && nextActivityDistance !== undefined && nextActivityDistance !== null && nextActivityDistance > 0 && nextActivityDuration && (
@@ -194,12 +205,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  cardContentArea: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  selectionTouchArea: {
+    width: 40,
+    height: 40,
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   selectionIndicator: {
     width: 16,
     height: 16,
     borderRadius: 7.8,
     borderColor: Colors.GRAY,
-    marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
