@@ -98,7 +98,7 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
         return cachedData;
     }
     
-    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total,formatted_address,types,photos,name,opening_hours,current_opening_hours,secondary_opening_hours,website,reviews,editorial_summary&key=${apiKey}`;
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total,formatted_address,types,photos,name,opening_hours,secondary_opening_hours,website,reviews,editorial_summary&key=${apiKey}`;
     
     return new Promise((resolve, reject) => {
         const req = https.get(url, (res) => {
@@ -152,7 +152,6 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                             photo_reference: photo_reference,
                             
                             // Opening hours data
-                            current_opening_hours: processOpeningHours(result.result.current_opening_hours),
                             regular_opening_hours: processOpeningHours(result.result.opening_hours),
                             
                             // Reviews and summaries
@@ -179,7 +178,6 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                             user_ratings_total: null, 
                             website_uri: null,
                             photo_reference: null,
-                            current_opening_hours: null,
                             regular_opening_hours: null,
                             reviews: [],
                             editorial_summary: null,
@@ -200,7 +198,6 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                         website_uri: null,
                         photo_reference: null,
                         photos: [],
-                        current_opening_hours: null,
                         regular_opening_hours: null,
                         regular_secondary_opening_hours: null,
                         reviews: [],
@@ -222,7 +219,6 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                 website_uri: null,
                 photo_reference: null,
                 photos: [],
-                current_opening_hours: null,
                 regular_opening_hours: null,
                 regular_secondary_opening_hours: null,
                 reviews: [],
@@ -282,7 +278,6 @@ const getLocationInfo = async (locationName, bias) => {
                 user_ratings_total: null,
                 website_uri: null,
                 photo_reference: null,
-                current_opening_hours: null,
                 regular_opening_hours: null,
                 reviews: [],
                 editorial_summary: null,
@@ -328,7 +323,6 @@ const getLocationInfo = async (locationName, bias) => {
                             user_ratings_total: null, 
                             website_uri: null,
                             photo_reference: null,
-                            current_opening_hours: null,
                             regular_opening_hours: null,
                             reviews: [],
                             editorial_summary: null,
@@ -420,7 +414,6 @@ exports.handler = async (event) => {
             user_ratings_total: result.user_ratings_total,
             website_uri: result.website_uri,
             photo_reference: result.photo_reference,
-            current_opening_hours: result.current_opening_hours,
             regular_opening_hours: result.regular_opening_hours,
             reviews: result.reviews,
             editorial_summary: result.editorial_summary,

@@ -42,7 +42,6 @@ export type Activity = {
   // New enhanced fields
   display_name?: string;
   website_uri?: string;
-  current_opening_hours?: OpeningHours;
   regular_opening_hours?: OpeningHours;
   reviews?: PlaceReview[];
   editorial_summary?: string;

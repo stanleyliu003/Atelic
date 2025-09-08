@@ -98,24 +98,6 @@ export default function LoadingWishlist() {
                                     is_recommended
                                     display_name
                                     website_uri
-                                    current_opening_hours {
-                                        open_now
-                                        periods {
-                                            open {
-                                                day
-                                                time
-                                                date
-                                                truncated
-                                            }
-                                            close {
-                                                day
-                                                time
-                                                date
-                                                truncated
-                                            }
-                                        }
-                                        weekday_text
-                                    }
                                     regular_opening_hours {
                                         open_now
                                         periods {

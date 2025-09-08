@@ -99,11 +99,6 @@ export const addAdditionalPlace = /* GraphQL */ `
       is_recommended
       display_name
       website_uri
-      current_opening_hours {
-        open_now
-        weekday_text
-        __typename
-      }
       regular_opening_hours {
         open_now
         weekday_text

@@ -22,7 +22,6 @@
      # New enhanced fields
      display_name: String
      website_uri: String
-     current_opening_hours: OpeningHours
      regular_opening_hours: OpeningHours
      reviews: [PlaceReview]
      editorial_summary: String
@@ -143,7 +142,6 @@
      # New enhanced fields
      display_name: String
      website_uri: String
-     current_opening_hours: OpeningHoursInput
      regular_opening_hours: OpeningHoursInput
      reviews: [PlaceReviewInput]
      editorial_summary: String
