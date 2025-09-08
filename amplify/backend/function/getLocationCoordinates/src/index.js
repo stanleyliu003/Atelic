@@ -138,15 +138,6 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                             }));
                         };
                         
-                        // Process photos (limit to first 5 for performance)
-                        const processPhotos = (photosData) => {
-                            if (!photosData || !Array.isArray(photosData)) return [];
-                            return photosData.slice(0, 5).map(photo => ({
-                                photo_reference: photo.photo_reference || null,
-                                width: photo.width || null,
-                                height: photo.height || null
-                            }));
-                        };
                         
                         placeDetails = {
                             // Basic fields
@@ -160,13 +151,9 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                             // Legacy photo_reference for backward compatibility
                             photo_reference: photo_reference,
                             
-                            // Enhanced photo data
-                            photos: processPhotos(result.result.photos),
-                            
                             // Opening hours data
                             current_opening_hours: processOpeningHours(result.result.current_opening_hours),
                             regular_opening_hours: processOpeningHours(result.result.opening_hours),
-                            regular_secondary_opening_hours: processOpeningHours(result.result.secondary_opening_hours),
                             
                             // Reviews and summaries
                             reviews: processReviews(result.result.reviews),
@@ -192,10 +179,8 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                             user_ratings_total: null, 
                             website_uri: null,
                             photo_reference: null,
-                            photos: [],
                             current_opening_hours: null,
                             regular_opening_hours: null,
-                            regular_secondary_opening_hours: null,
                             reviews: [],
                             editorial_summary: null,
                             primary_type_display_name: null
@@ -297,10 +282,8 @@ const getLocationInfo = async (locationName, bias) => {
                 user_ratings_total: null,
                 website_uri: null,
                 photo_reference: null,
-                photos: [],
                 current_opening_hours: null,
                 regular_opening_hours: null,
-                regular_secondary_opening_hours: null,
                 reviews: [],
                 editorial_summary: null,
                 primary_type_display_name: null
@@ -345,10 +328,8 @@ const getLocationInfo = async (locationName, bias) => {
                             user_ratings_total: null, 
                             website_uri: null,
                             photo_reference: null,
-                            photos: [],
                             current_opening_hours: null,
                             regular_opening_hours: null,
-                            regular_secondary_opening_hours: null,
                             reviews: [],
                             editorial_summary: null,
                             primary_type_display_name: null
@@ -439,10 +420,8 @@ exports.handler = async (event) => {
             user_ratings_total: result.user_ratings_total,
             website_uri: result.website_uri,
             photo_reference: result.photo_reference,
-            photos: result.photos,
             current_opening_hours: result.current_opening_hours,
             regular_opening_hours: result.regular_opening_hours,
-            regular_secondary_opening_hours: result.regular_secondary_opening_hours,
             reviews: result.reviews,
             editorial_summary: result.editorial_summary,
             primary_type_display_name: result.primary_type_display_name,

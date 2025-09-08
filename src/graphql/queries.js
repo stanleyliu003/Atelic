@@ -21,11 +21,6 @@ export const analyzeWishlist = /* GraphQL */ `
         is_recommended
         display_name
         website_uri
-        photos {
-          photo_reference
-          width
-          height
-        }
         current_opening_hours {
           open_now
           periods {
@@ -45,24 +40,6 @@ export const analyzeWishlist = /* GraphQL */ `
           weekday_text
         }
         regular_opening_hours {
-          open_now
-          periods {
-            open {
-              day
-              time
-              date
-              truncated
-            }
-            close {
-              day
-              time
-              date
-              truncated
-            }
-          }
-          weekday_text
-        }
-        regular_secondary_opening_hours {
           open_now
           periods {
             open {
@@ -207,6 +184,24 @@ export const addAdditionalPlace = /* GraphQL */ `
         }
         weekday_text
       }
+      regular_secondary_opening_hours {
+        open_now
+        periods {
+          open {
+            day
+            time
+            date
+            truncated
+          }
+          close {
+            day
+            time
+            date
+            truncated
+          }
+        }
+        weekday_text
+      }
       reviews {
         author_name
         rating
@@ -243,11 +238,6 @@ export const getWishlistAnalysis = /* GraphQL */ `
         is_recommended
         display_name
         website_uri
-        photos {
-          photo_reference
-          width
-          height
-        }
         current_opening_hours {
           open_now
           periods {
@@ -267,24 +257,6 @@ export const getWishlistAnalysis = /* GraphQL */ `
           weekday_text
         }
         regular_opening_hours {
-          open_now
-          periods {
-            open {
-              day
-              time
-              date
-              truncated
-            }
-            close {
-              day
-              time
-              date
-              truncated
-            }
-          }
-          weekday_text
-        }
-        regular_secondary_opening_hours {
           open_now
           periods {
             open {

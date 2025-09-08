@@ -1,9 +1,4 @@
 // Define types for complex place data
-export type PlacePhoto = {
-  photo_reference?: string;
-  width?: number;
-  height?: number;
-};
 
 export type TimeOfDay = {
   day?: number;
@@ -47,10 +42,8 @@ export type Activity = {
   // New enhanced fields
   display_name?: string;
   website_uri?: string;
-  photos?: PlacePhoto[];
   current_opening_hours?: OpeningHours;
   regular_opening_hours?: OpeningHours;
-  regular_secondary_opening_hours?: OpeningHours;
   reviews?: PlaceReview[];
   editorial_summary?: string;
   primary_type_display_name?: string;
