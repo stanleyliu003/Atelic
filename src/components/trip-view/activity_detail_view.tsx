@@ -16,7 +16,7 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
       {/* Header with close button */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-          <Ionicons name="close" size={32} color={Colors.PRIMARY} />
+          <Ionicons name="close" size={40} color={Colors.WHITE} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Activity Details</Text>
         <View style={styles.headerSpacer} />
@@ -122,10 +122,17 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E5E5',
   },
   closeButton: {
-    width: 40,
-    height: 40,
+    width: 50,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.PRIMARY,
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   headerTitle: {
     fontFamily: 'outfit-bold',
@@ -133,7 +140,7 @@ const styles = StyleSheet.create({
     color: Colors.PRIMARY,
   },
   headerSpacer: {
-    width: 40,
+    width: 50,
   },
   content: {
     flex: 1,

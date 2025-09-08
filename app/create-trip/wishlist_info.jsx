@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { WishlistActivities } from '../../src/components/trip-view';
+import { ActivityDetailView } from '../../src/components/trip-view/activity_detail_view';
 import { Colors } from './../../constants/Colors';
 
 export default function WishlistInfo() {
@@ -14,6 +15,10 @@ export default function WishlistInfo() {
     const [selectedActivities, setSelectedActivities] = useState([]);
     // Loading state for create trip
     const [loading, setLoading] = useState(false);
+    
+    // State for activity detail view
+    const [selectedActivityForDetail, setSelectedActivityForDetail] = useState(null);
+    const [showActivityDetail, setShowActivityDetail] = useState(false);
 
     // Initialize with no activities selected by default since all are now recommendations
     useEffect(() => {
@@ -31,6 +36,18 @@ export default function WishlistInfo() {
     // Handle activity deselection
     const handleActivityDeselect = (activityId) => {
         setSelectedActivities(prev => prev.filter(id => id !== activityId));
+    };
+
+    // Handler for activity description card selection
+    const handleActivityDescriptionCardSelect = (activity) => {
+        setSelectedActivityForDetail(activity);
+        setShowActivityDetail(true);
+    };
+
+    // Handler for closing activity detail view
+    const handleCloseActivityDetail = () => {
+        setShowActivityDetail(false);
+        setSelectedActivityForDetail(null);
     };
 
     // Handle create trip button press
@@ -92,6 +109,7 @@ export default function WishlistInfo() {
                             selectedActivities={selectedActivities}
                             onActivitySelect={handleActivitySelect}
                             onActivityDeselect={handleActivityDeselect}
+                            onDescriptionCardPress={handleActivityDescriptionCardSelect}
                             showSelectionIndicator={true}
                             scrollable={false}
                         />
@@ -124,6 +142,7 @@ export default function WishlistInfo() {
                             selectedActivities={selectedActivities}
                             onActivitySelect={handleActivitySelect}
                             onActivityDeselect={handleActivityDeselect}
+                            onDescriptionCardPress={handleActivityDescriptionCardSelect}
                             showSelectionIndicator={true}
                             scrollable={false}
                         />
@@ -149,6 +168,16 @@ export default function WishlistInfo() {
             {loading ? 'Creating Trip...' : 'Create Trip'}
           </Text>
         </TouchableOpacity>
+
+        {/* Activity Detail View Overlay */}
+        {showActivityDetail && selectedActivityForDetail && (
+          <View style={styles.activityDetailOverlay}>
+            <ActivityDetailView 
+              activity={selectedActivityForDetail}
+              onClose={handleCloseActivityDetail}
+            />
+          </View>
+        )}
       </View>
     )
 }
@@ -219,5 +248,15 @@ const styles = StyleSheet.create({
       marginBottom: 10,
       textAlign: 'center',
       color: Colors.PRIMARY, // Slightly different color to distinguish from recommended
+    },
+    activityDetailOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: Colors.WHITE,
+      zIndex: 1000,
+      paddingTop: 55, // Match the main container's paddingTop
     }
 });
