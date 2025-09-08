@@ -19,39 +19,13 @@ export const optimizeRoute = /* GraphQL */ `
       website_uri
       current_opening_hours {
         open_now
-        periods {
-          open {
-            day
-            time
-            date
-            truncated
-          }
-          close {
-            day
-            time
-            date
-            truncated
-          }
-        }
         weekday_text
+        __typename
       }
       regular_opening_hours {
         open_now
-        periods {
-          open {
-            day
-            time
-            date
-            truncated
-          }
-          close {
-            day
-            time
-            date
-            truncated
-          }
-        }
         weekday_text
+        __typename
       }
       reviews {
         author_name
@@ -60,6 +34,7 @@ export const optimizeRoute = /* GraphQL */ `
         time
         author_url
         profile_photo_url
+        __typename
       }
       editorial_summary
       primary_type_display_name
@@ -90,50 +65,6 @@ export const createTrip = /* GraphQL */ `
         is_recommended
         display_name
         website_uri
-        current_opening_hours {
-          open_now
-          periods {
-            open {
-              day
-              time
-              date
-              truncated
-            }
-            close {
-              day
-              time
-              date
-              truncated
-            }
-          }
-          weekday_text
-        }
-        regular_opening_hours {
-          open_now
-          periods {
-            open {
-              day
-              time
-              date
-              truncated
-            }
-            close {
-              day
-              time
-              date
-              truncated
-            }
-          }
-          weekday_text
-        }
-        reviews {
-          author_name
-          rating
-          text
-          time
-          author_url
-          profile_photo_url
-        }
         editorial_summary
         primary_type_display_name
         __typename
@@ -167,50 +98,6 @@ export const createWishlistAnalysis = /* GraphQL */ `
         is_recommended
         display_name
         website_uri
-        current_opening_hours {
-          open_now
-          periods {
-            open {
-              day
-              time
-              date
-              truncated
-            }
-            close {
-              day
-              time
-              date
-              truncated
-            }
-          }
-          weekday_text
-        }
-        regular_opening_hours {
-          open_now
-          periods {
-            open {
-              day
-              time
-              date
-              truncated
-            }
-            close {
-              day
-              time
-              date
-              truncated
-            }
-          }
-          weekday_text
-        }
-        reviews {
-          author_name
-          rating
-          text
-          time
-          author_url
-          profile_photo_url
-        }
         editorial_summary
         primary_type_display_name
         __typename
@@ -246,50 +133,6 @@ export const updateWishlistAnalysis = /* GraphQL */ `
         is_recommended
         display_name
         website_uri
-        current_opening_hours {
-          open_now
-          periods {
-            open {
-              day
-              time
-              date
-              truncated
-            }
-            close {
-              day
-              time
-              date
-              truncated
-            }
-          }
-          weekday_text
-        }
-        regular_opening_hours {
-          open_now
-          periods {
-            open {
-              day
-              time
-              date
-              truncated
-            }
-            close {
-              day
-              time
-              date
-              truncated
-            }
-          }
-          weekday_text
-        }
-        reviews {
-          author_name
-          rating
-          text
-          time
-          author_url
-          profile_photo_url
-        }
         editorial_summary
         primary_type_display_name
         __typename
@@ -325,50 +168,6 @@ export const deleteWishlistAnalysis = /* GraphQL */ `
         is_recommended
         display_name
         website_uri
-        current_opening_hours {
-          open_now
-          periods {
-            open {
-              day
-              time
-              date
-              truncated
-            }
-            close {
-              day
-              time
-              date
-              truncated
-            }
-          }
-          weekday_text
-        }
-        regular_opening_hours {
-          open_now
-          periods {
-            open {
-              day
-              time
-              date
-              truncated
-            }
-            close {
-              day
-              time
-              date
-              truncated
-            }
-          }
-          weekday_text
-        }
-        reviews {
-          author_name
-          rating
-          text
-          time
-          author_url
-          profile_photo_url
-        }
         editorial_summary
         primary_type_display_name
         __typename

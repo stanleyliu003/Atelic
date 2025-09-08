@@ -23,6 +23,10 @@ export const onCreateWishlistAnalysis = /* GraphQL */ `
         place_id
         photo_reference
         is_recommended
+        display_name
+        website_uri
+        editorial_summary
+        primary_type_display_name
         __typename
       }
       createdAt
@@ -53,6 +57,10 @@ export const onUpdateWishlistAnalysis = /* GraphQL */ `
         place_id
         photo_reference
         is_recommended
+        display_name
+        website_uri
+        editorial_summary
+        primary_type_display_name
         __typename
       }
       createdAt
@@ -83,6 +91,10 @@ export const onDeleteWishlistAnalysis = /* GraphQL */ `
         place_id
         photo_reference
         is_recommended
+        display_name
+        website_uri
+        editorial_summary
+        primary_type_display_name
         __typename
       }
       createdAt

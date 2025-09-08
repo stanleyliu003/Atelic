@@ -25,7 +25,7 @@
         },
         "getLocationCoordinates": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/getLocationCoordinates-724f4554683247313865-build.zip",
+          "s3Key": "amplify-builds/getLocationCoordinates-5a486b736b4b6b456938-build.zip",
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
         },
         "wishlistAnalyzer": {
