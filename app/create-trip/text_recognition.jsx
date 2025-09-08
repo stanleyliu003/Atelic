@@ -57,6 +57,54 @@ export default function text_recognition() {
                             place_id
                             photo_reference
                             is_recommended
+                            display_name
+                            website_uri
+                            current_opening_hours {
+                                open_now
+                                periods {
+                                    open {
+                                        day
+                                        time
+                                        date
+                                        truncated
+                                    }
+                                    close {
+                                        day
+                                        time
+                                        date
+                                        truncated
+                                    }
+                                }
+                                weekday_text
+                            }
+                            regular_opening_hours {
+                                open_now
+                                periods {
+                                    open {
+                                        day
+                                        time
+                                        date
+                                        truncated
+                                    }
+                                    close {
+                                        day
+                                        time
+                                        date
+                                        truncated
+                                    }
+                                }
+                                weekday_text
+                            }
+                            reviews {
+                                author_name
+                                rating
+                                text
+                                time
+                                author_url
+                                profile_photo_url
+                            }
+                            editorial_summary
+                            primary_type_display_name
                         }
                     }
                 }

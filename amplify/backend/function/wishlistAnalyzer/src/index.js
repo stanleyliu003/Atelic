@@ -218,6 +218,14 @@ exports.handler = async (event) => {
                 place_id: coordData ? coordData.place_id : null,
                 photo_reference: coordData ? coordData.photo_reference : null,
                 is_recommended: isRecommended, // Flag to distinguish user's choices from recommendations
+                // Enhanced fields
+                display_name: coordData ? coordData.display_name : null,
+                website_uri: coordData ? coordData.website_uri : null,
+                current_opening_hours: coordData ? coordData.current_opening_hours : null,
+                regular_opening_hours: coordData ? coordData.regular_opening_hours : null,
+                reviews: coordData ? coordData.reviews : null,
+                editorial_summary: coordData ? coordData.editorial_summary : null,
+                primary_type_display_name: coordData ? coordData.primary_type_display_name : null,
             };
         };
 
