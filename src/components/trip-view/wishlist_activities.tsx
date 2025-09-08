@@ -6,6 +6,7 @@ interface WishlistActivitiesProps {
   selectedActivities?: string[];
   onActivitySelect?: (activityId: string) => void;
   onActivityDeselect?: (activityId: string) => void;
+  onDescriptionCardPress?: (activity: Activity) => void;
   showSelectionIndicator?: boolean;
 }
 
@@ -14,6 +15,7 @@ export function WishlistActivities({
   selectedActivities,
   onActivitySelect,
   onActivityDeselect,
+  onDescriptionCardPress,
   showSelectionIndicator = false
 }: WishlistActivitiesProps) {
   return (
@@ -22,6 +24,7 @@ export function WishlistActivities({
       selectedActivities={selectedActivities}
       onActivitySelect={onActivitySelect}
       onActivityDeselect={onActivityDeselect}
+      onDescriptionCardPress={onDescriptionCardPress}
       showSelectionIndicator={showSelectionIndicator}
       variant="selectable"
     />

@@ -8,6 +8,7 @@ import { NoActivities } from './no_activities';
 interface EnhancedActivityListProps extends ActivityListProps {
   onActivityPress?: (activity: Activity) => void;
   onActivityLongPress?: (activity: Activity) => void;
+  onDescriptionCardPress?: (activity: Activity) => void;
   showSelectionIndicator?: boolean;
   emptyStateTitle?: string;
   emptyStateSubtitle?: string;
@@ -22,6 +23,7 @@ export function ActivityList({
   onActivityDeselect,
   onActivityPress,
   onActivityLongPress,
+  onDescriptionCardPress,
   variant = 'default',
   disabled = false,
   showSelectionIndicator = false,
@@ -88,6 +90,7 @@ export function ActivityList({
             isSelected={isSelected}
             onPress={handleActivityPress}
             onLongPress={handleActivityLongPress}
+            onDescriptionCardPress={onDescriptionCardPress}
             showSelectionIndicator={shouldShowSelectionIndicator}
             disabled={disabled}
             style={styles.activityCard}

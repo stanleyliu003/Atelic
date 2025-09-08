@@ -12,6 +12,7 @@ interface DayScheduleProps {
   selectedActivities?: string[];
   onActivitySelect?: (activityId: string) => void;
   onActivityDeselect?: (activityId: string) => void;
+  onDescriptionCardPress?: (activity: Activity) => void;
   onTransferToWishlist?: (activityIds: string[]) => void;
   onOptimizeRoute?: (dayNumber: number) => void;
   showSelectionIndicator?: boolean;
@@ -27,6 +28,7 @@ export function DaySchedule({
   selectedActivities = [],
   onActivitySelect,
   onActivityDeselect,
+  onDescriptionCardPress,
   onTransferToWishlist,
   onOptimizeRoute,
   showSelectionIndicator = false,
@@ -85,6 +87,7 @@ export function DaySchedule({
           selectedActivities={selectedActivities}
           onActivitySelect={onActivitySelect}
           onActivityDeselect={onActivityDeselect}
+          onDescriptionCardPress={onDescriptionCardPress}
           showSelectionIndicator={showSelectionIndicator}
           variant="selectable"
           disabled={disabled}

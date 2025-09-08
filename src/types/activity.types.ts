@@ -39,6 +39,7 @@ export type Activity = {
   photo_reference?: string;
   formatted_address?: string;
   user_ratings_total?: number;
+  is_recommended?: boolean;
   // New enhanced fields
   display_name?: string;
   website_uri?: string;

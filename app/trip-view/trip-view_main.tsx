@@ -11,6 +11,7 @@ import { AddPlacesButton, DaySchedule, TabBar, WishlistActivities } from '../../
 import { TripMapView } from '../../src/components/trip-view/map_view';
 import { TransferActivitiesModal } from '../../src/components/trip-view/transfer_activities_modal';
 import { TransferButtonContainer } from '../../src/components/trip-view/transfer_delete_button_containor';
+import { ActivityDetailView } from '../../src/components/trip-view/activity_detail_view';
 import { useActivitySelection } from '../../src/hooks/use_activity_selection';
 import { useDayActivities } from '../../src/hooks/use_day_activities';
 import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
@@ -41,6 +42,10 @@ export default function TripViewMain() {
     // State for add places modal
     const [isAddPlacesModalVisible, setIsAddPlacesModalVisible] = useState(false);
     const [isAddingPlace, setIsAddingPlace] = useState(false);
+
+    // State for activity detail view
+    const [selectedActivityForDetail, setSelectedActivityForDetail] = useState<Activity | null>(null);
+    const [showActivityDetail, setShowActivityDetail] = useState(false);
 
     // Hooks for activity and day management
     const {
@@ -380,6 +385,18 @@ export default function TripViewMain() {
         return null;
     };
 
+    // Handler for activity description card selection
+    const handleActivityDescriptionCardSelect = (activity: Activity) => {
+        setSelectedActivityForDetail(activity);
+        setShowActivityDetail(true);
+    };
+
+    // Handler for closing activity detail view
+    const handleCloseActivityDetail = () => {
+        setShowActivityDetail(false);
+        setSelectedActivityForDetail(null);
+    };
+
     // Handler for place selection from GooglePlacesAutocomplete
     const handlePlaceSelect = async (data: any, details: any | null) => {
         try {
@@ -560,75 +577,86 @@ export default function TripViewMain() {
 
             {/* Tab Content */}
             <View style={styles.tabContent}>
-                {activeTab === 'wishlist' && (() => {
-                    const wishlistActivities = getActivitiesForTab('wishlist');
-                    const activitiesByCity = wishlistActivities.reduce((acc: { [key: string]: Activity[] }, activity) => {
-                        const city = activity.city || 'Unknown City';
-                        if (!acc[city]) acc[city] = [];
-                        acc[city].push(activity);
-                        return acc;
-                    }, {} as { [key: string]: Activity[] });
-
-                    return (
-                        <ScrollView 
-                            style={styles.wishlistContainer}
-                            contentContainerStyle={styles.wishlistContent}
-                            showsVerticalScrollIndicator={false}
-                        >
-                            {wishlistActivities.length === 0 ? (
-                                <View>
-                                    {selectedCity && (
-                                        <Text style={styles.cityTitle}>{selectedCity}</Text>
-                                    )}
-                                    <View style={{ marginTop: 10, alignItems: 'center', padding: 20 }}>
-                                        <AddPlacesButton
-                                            onPress={() => setIsAddPlacesModalVisible(true)}
-                                            isAddingPlace={isAddingPlace}
-                                            style={{ marginTop: 10, borderColor: Colors.GRAY }}
-                                            showLoadingIndicator={false}
-                                        />
-                                    </View>
-                                </View>
-                            ) : (
-                                <>
-                                    {Object.entries(activitiesByCity).map(([city, cityActivities]: [string, Activity[]]) => (
-                                        <View key={`wishlist-${city}`} style={styles.citySection}>
-                                            <Text style={styles.cityTitle}>{city}</Text>
-                                            <WishlistActivities 
-                                                activities={cityActivities}
-                                                selectedActivities={selectedActivities}
-                                                onActivitySelect={toggleActivitySelection}
-                                                onActivityDeselect={toggleActivitySelection}
-                                                showSelectionIndicator={isSelectionMode}
-                                            />
-                                        </View>
-                                    ))}
-                                    
-                                    {/* Add additional places button */}
-                                    <AddPlacesButton
-                                        onPress={() => setIsAddPlacesModalVisible(true)}
-                                        isAddingPlace={isAddingPlace}
-                                    />
-                                </>
-                            )}
-                        </ScrollView>
-                    );
-                })()}
-                
-                {activeTab.startsWith('day') && (
-                    <DaySchedule 
-                        dayNumber={parseInt(activeTab.replace('day', ''))}
-                        activities={getActivitiesForTab(activeTab)}
-                        selectedActivities={selectedActivities}
-                        onActivitySelect={toggleActivitySelection}
-                        onActivityDeselect={toggleActivitySelection}
-                        onTransferToWishlist={handleTransferToWishlist}
-                        onOptimizeRoute={handleOptimizeRoute}
-                        showSelectionIndicator={isSelectionMode}
-                        routeLegs={routeData.legs}
-                        onAddPlace={() => setIsAddPlacesModalVisible(true)}
-                        isAddingPlace={isAddingPlace}
+                {showActivityDetail && selectedActivityForDetail ? (
+                    <ActivityDetailView 
+                        activity={selectedActivityForDetail}
+                        onClose={handleCloseActivityDetail}
                     />
+                ) : (
+                    <>
+                        {activeTab === 'wishlist' && (() => {
+                            const wishlistActivities = getActivitiesForTab('wishlist');
+                            const activitiesByCity = wishlistActivities.reduce((acc: { [key: string]: Activity[] }, activity) => {
+                                const city = activity.city || 'Unknown City';
+                                if (!acc[city]) acc[city] = [];
+                                acc[city].push(activity);
+                                return acc;
+                            }, {} as { [key: string]: Activity[] });
+
+                            return (
+                                <ScrollView 
+                                    style={styles.wishlistContainer}
+                                    contentContainerStyle={styles.wishlistContent}
+                                    showsVerticalScrollIndicator={false}
+                                >
+                                    {wishlistActivities.length === 0 ? (
+                                        <View>
+                                            {selectedCity && (
+                                                <Text style={styles.cityTitle}>{selectedCity}</Text>
+                                            )}
+                                            <View style={{ marginTop: 10, alignItems: 'center', padding: 20 }}>
+                                                <AddPlacesButton
+                                                    onPress={() => setIsAddPlacesModalVisible(true)}
+                                                    isAddingPlace={isAddingPlace}
+                                                    style={{ marginTop: 10, borderColor: Colors.GRAY }}
+                                                    showLoadingIndicator={false}
+                                                />
+                                            </View>
+                                        </View>
+                                    ) : (
+                                        <>
+                                            {Object.entries(activitiesByCity).map(([city, cityActivities]: [string, Activity[]]) => (
+                                                <View key={`wishlist-${city}`} style={styles.citySection}>
+                                                    <Text style={styles.cityTitle}>{city}</Text>
+                                                    <WishlistActivities 
+                                                        activities={cityActivities}
+                                                        selectedActivities={selectedActivities}
+                                                        onActivitySelect={toggleActivitySelection}
+                                                        onActivityDeselect={toggleActivitySelection}
+                                                        onDescriptionCardPress={handleActivityDescriptionCardSelect}
+                                                        showSelectionIndicator={isSelectionMode}
+                                                    />
+                                                </View>
+                                            ))}
+                                            
+                                            {/* Add additional places button */}
+                                            <AddPlacesButton
+                                                onPress={() => setIsAddPlacesModalVisible(true)}
+                                                isAddingPlace={isAddingPlace}
+                                            />
+                                        </>
+                                    )}
+                                </ScrollView>
+                            );
+                        })()}
+                        
+                        {activeTab.startsWith('day') && (
+                            <DaySchedule 
+                                dayNumber={parseInt(activeTab.replace('day', ''))}
+                                activities={getActivitiesForTab(activeTab)}
+                                selectedActivities={selectedActivities}
+                                onActivitySelect={toggleActivitySelection}
+                                onActivityDeselect={toggleActivitySelection}
+                                onDescriptionCardPress={handleActivityDescriptionCardSelect}
+                                onTransferToWishlist={handleTransferToWishlist}
+                                onOptimizeRoute={handleOptimizeRoute}
+                                showSelectionIndicator={isSelectionMode}
+                                routeLegs={routeData.legs}
+                                onAddPlace={() => setIsAddPlacesModalVisible(true)}
+                                isAddingPlace={isAddingPlace}
+                            />
+                        )}
+                    </>
                 )}
             </View>
 

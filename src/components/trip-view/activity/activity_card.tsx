@@ -13,6 +13,7 @@ interface ActivityCardProps {
   isSelected?: boolean;
   onPress?: (activity: Activity) => void;
   onLongPress?: (activity: Activity) => void;
+  onDescriptionCardPress?: (activity: Activity) => void; // New prop for card content selection
   showSelectionIndicator?: boolean;
   disabled?: boolean;
   index?: number; // New prop for displaying numbered prefix
@@ -28,6 +29,7 @@ export function ActivityCard({
   isSelected = false,
   onPress,
   onLongPress,
+  onDescriptionCardPress,
   showSelectionIndicator = false,
   disabled = false,
   index,
@@ -46,6 +48,12 @@ export function ActivityCard({
   const handleLongPress = () => {
     if (!disabled && onLongPress) {
       onLongPress(activity);
+    }
+  };
+
+  const handleDescriptionCardPress = () => {
+    if (!disabled && onDescriptionCardPress) {
+      onDescriptionCardPress(activity);
     }
   };
 
@@ -106,24 +114,25 @@ export function ActivityCard({
       >
         <View style={styles.activityContent}>
           {showSelectionIndicator && (
-            <TouchableOpacity
-              style={styles.selectionTouchArea}
-              onPress={handlePress}
-              disabled={disabled}
-              activeOpacity={0.7}
-            >
+            <View style={styles.selectionContainer}>
               <View style={[styles.selectionIndicator, isSelected && styles.selectedIndicator]}>
                 {isSelected && <Text style={styles.checkmark}>✓</Text>}
               </View>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.selectionTouchArea}
+                onPress={handlePress}
+                disabled={disabled}
+                activeOpacity={1}
+              />
+            </View>
           )}
           
           <TouchableOpacity 
             style={styles.cardContentArea}
-            onPress={!showSelectionIndicator ? handlePress : undefined}
+            onPress={onDescriptionCardPress ? handleDescriptionCardPress : (!showSelectionIndicator ? handlePress : undefined)}
             onLongPress={handleLongPress}
             disabled={disabled}
-            activeOpacity={showSelectionIndicator ? 1 : 0.7}
+            activeOpacity={0.7}
           >
             <View style={styles.activityInfo}>
               <Text style={[styles.activityText, disabled && styles.disabledText]}>
@@ -211,17 +220,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  selectionTouchArea: {
-    width: 40,
-    height: 40,
+  selectionContainer: {
+    width: 24,
+    height: 24,
     marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  selectionTouchArea: {
+    position: 'absolute',
+    width: 70,
+    height: 70,
+    top: -23, // Center the 70px touch area around the 24px indicator (70-24)/2 = 23
+    left: -23,
     justifyContent: 'center',
     alignItems: 'center',
   },
   selectionIndicator: {
-    width: 16,
-    height: 16,
-    borderRadius: 7.8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderColor: Colors.GRAY,
     justifyContent: 'center',
     alignItems: 'center',
@@ -234,7 +253,7 @@ const styles = StyleSheet.create({
   },
   checkmark: {
     color: 'white',
-    fontSize: 9.1,
+    fontSize: 13.5,
     fontWeight: 'bold',
   },
   activityInfo: {
