@@ -12,6 +12,7 @@ export const optimizeRoute = /* GraphQL */ `
       user_ratings_total
       formatted_address
       types
+      primaryType
       place_id
       photo_reference
       is_recommended
@@ -55,6 +56,7 @@ export const createTrip = /* GraphQL */ `
         user_ratings_total
         formatted_address
         types
+        primaryType
         place_id
         photo_reference
         is_recommended
@@ -88,6 +90,7 @@ export const createWishlistAnalysis = /* GraphQL */ `
         user_ratings_total
         formatted_address
         types
+        primaryType
         place_id
         photo_reference
         is_recommended
@@ -123,6 +126,7 @@ export const updateWishlistAnalysis = /* GraphQL */ `
         user_ratings_total
         formatted_address
         types
+        primaryType
         place_id
         photo_reference
         is_recommended
@@ -158,6 +162,7 @@ export const deleteWishlistAnalysis = /* GraphQL */ `
         user_ratings_total
         formatted_address
         types
+        primaryType
         place_id
         photo_reference
         is_recommended

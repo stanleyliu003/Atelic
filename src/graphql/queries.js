@@ -16,6 +16,7 @@ export const analyzeWishlist = /* GraphQL */ `
         user_ratings_total
         formatted_address
         types
+        primaryType
         place_id
         photo_reference
         is_recommended
@@ -94,6 +95,7 @@ export const addAdditionalPlace = /* GraphQL */ `
       user_ratings_total
       formatted_address
       types
+      primaryType
       place_id
       photo_reference
       is_recommended
@@ -136,6 +138,7 @@ export const getWishlistAnalysis = /* GraphQL */ `
         user_ratings_total
         formatted_address
         types
+        primaryType
         place_id
         photo_reference
         is_recommended

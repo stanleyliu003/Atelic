@@ -214,7 +214,8 @@ exports.handler = async (event) => {
                 rating: coordData ? coordData.rating : null,
                 user_ratings_total: coordData ? coordData.user_ratings_total : null,
                 formatted_address: coordData ? coordData.formatted_address : null,
-                types: coordData ? coordData.types : [],
+                types: coordData ? coordData.types : [], // Keep for backward compatibility
+                primaryType: coordData ? coordData.primaryType : null,
                 place_id: coordData ? coordData.place_id : null,
                 photo_reference: coordData ? coordData.photo_reference : null,
                 is_recommended: isRecommended, // Flag to distinguish user's choices from recommendations

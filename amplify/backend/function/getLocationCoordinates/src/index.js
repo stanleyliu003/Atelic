@@ -143,7 +143,10 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                             // Basic fields
                             display_name: result.result.name || null,
                             formatted_address: result.result.formatted_address || null,
-                            types: result.result.types || [],
+                            types: result.result.types || [], // Keep full types array for backward compatibility
+                            primaryType: result.result.types && result.result.types.length > 0 
+                                ? result.result.types[0]
+                                : null,
                             rating: result.result.rating || null,
                             user_ratings_total: result.result.user_ratings_total || null,
                             website_uri: result.result.website || null,
@@ -158,7 +161,7 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                             reviews: processReviews(result.result.reviews),
                             editorial_summary: result.result.editorial_summary?.overview || null,
                             
-                            // Primary type display name (derived from types)
+                            // Primary type display name (derived from primary type)
                             primary_type_display_name: result.result.types && result.result.types.length > 0 
                                 ? result.result.types[0].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
                                 : null
@@ -174,6 +177,7 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                             display_name: null,
                             formatted_address: null,
                             types: [], 
+                            primaryType: null, 
                             rating: null, 
                             user_ratings_total: null, 
                             website_uri: null,
@@ -193,6 +197,7 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                         display_name: null,
                         formatted_address: null,
                         types: [], 
+                        primaryType: null, 
                         rating: null, 
                         user_ratings_total: null, 
                         website_uri: null,
@@ -214,6 +219,7 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                 display_name: null,
                 formatted_address: null,
                 types: [], 
+                primaryType: null, 
                 rating: null, 
                 user_ratings_total: null, 
                 website_uri: null,
@@ -274,6 +280,7 @@ const getLocationInfo = async (locationName, bias) => {
                 display_name: cachedFindPlaceData.name,
                 formatted_address: null,
                 types: [],
+                primaryType: null,
                 rating: null,
                 user_ratings_total: null,
                 website_uri: null,
@@ -319,6 +326,7 @@ const getLocationInfo = async (locationName, bias) => {
                             display_name: candidate.name,
                             formatted_address: null,
                             types: [], 
+                            primaryType: null, 
                             rating: null, 
                             user_ratings_total: null, 
                             website_uri: null,
@@ -410,6 +418,7 @@ exports.handler = async (event) => {
             display_name: result.display_name,
             formatted_address: result.formatted_address,
             types: result.types,
+            primaryType: result.primaryType,
             rating: result.rating,
             user_ratings_total: result.user_ratings_total,
             website_uri: result.website_uri,

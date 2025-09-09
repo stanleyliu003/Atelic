@@ -146,10 +146,10 @@ export function ActivityCard({
                     </Text>
                   </View>
                 )}
-                {activity.types && activity.types.length > 0 && (
+                {activity.primaryType && (
                   <View style={styles.typesContainer}>
                     <Text style={[styles.typesText, disabled && styles.disabledText]}>
-                      {activity.types[0].replace(/_/g, ' ')}
+                      {activity.primaryType.replace(/_/g, ' ')}
                     </Text>
                   </View>
                 )}

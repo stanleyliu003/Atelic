@@ -416,6 +416,7 @@ export default function TripViewMain() {
                         user_ratings_total
                         formatted_address
                         types
+                        primaryType
                         photo_reference
                         is_recommended
                     }

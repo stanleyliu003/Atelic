@@ -7,26 +7,27 @@
      activities: [Activity]
    }
 
-   type Activity {
-     name: String!
-     city: String
-     lat: Float
-     lng: Float
-     rating: Float
-     user_ratings_total: Int
-     formatted_address: String
-     types: [String]
-     place_id: String
-     photo_reference: String
-     is_recommended: Boolean
-     # New enhanced fields
-     display_name: String
-     website_uri: String
-     regular_opening_hours: OpeningHours
-     reviews: [PlaceReview]
-     editorial_summary: String
-     primary_type_display_name: String
-   }
+  type Activity {
+    name: String!
+    city: String
+    lat: Float
+    lng: Float
+    rating: Float
+    user_ratings_total: Int
+    formatted_address: String
+    types: [String]  # Deprecated: Use primaryType instead
+    primaryType: String
+    place_id: String
+    photo_reference: String
+    is_recommended: Boolean
+    # New enhanced fields
+    display_name: String
+    website_uri: String
+    regular_opening_hours: OpeningHours
+    reviews: [PlaceReview]
+    editorial_summary: String
+    primary_type_display_name: String
+  }
 
    type WishlistAnalysisResult {
      wishlist_activities: [Activity]
@@ -134,7 +135,8 @@
      lat: Float!
      lng: Float!
      rating: Float
-     types: [String]
+     types: [String]  # Deprecated: Use primaryType instead
+     primaryType: String
      photo_reference: String
      formatted_address: String
      user_ratings_total: Int

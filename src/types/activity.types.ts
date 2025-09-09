@@ -35,7 +35,8 @@ export type Activity = {
   lng: number | null;
   place_id?: string;
   rating?: number;
-  types?: string[];
+  types?: string[]; // Deprecated: Use primaryType instead, kept for backward compatibility
+  primaryType?: string;
   photo_reference?: string;
   formatted_address?: string;
   user_ratings_total?: number;

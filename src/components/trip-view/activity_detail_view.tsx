@@ -35,16 +35,14 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
           </View>
         )}
         
-        {/* Types/Tags */}
-        {activity.types && activity.types.length > 0 && (
+        {/* Primary Type */}
+        {activity.primaryType && (
           <View style={styles.typesContainer}>
-            {activity.types.slice(0, 3).map((type, index) => (
-              <View key={index} style={styles.typeTag}>
-                <Text style={styles.typeText}>
-                  {type.replace(/_/g, ' ')}
-                </Text>
-              </View>
-            ))}
+            <View style={styles.typeTag}>
+              <Text style={styles.typeText}>
+                {activity.primaryType.replace(/_/g, ' ')}
+              </Text>
+            </View>
           </View>
         )}
 

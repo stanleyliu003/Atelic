@@ -20,6 +20,7 @@ export const onCreateWishlistAnalysis = /* GraphQL */ `
         user_ratings_total
         formatted_address
         types
+        primaryType
         place_id
         photo_reference
         is_recommended
@@ -54,6 +55,7 @@ export const onUpdateWishlistAnalysis = /* GraphQL */ `
         user_ratings_total
         formatted_address
         types
+        primaryType
         place_id
         photo_reference
         is_recommended
@@ -88,6 +90,7 @@ export const onDeleteWishlistAnalysis = /* GraphQL */ `
         user_ratings_total
         formatted_address
         types
+        primaryType
         place_id
         photo_reference
         is_recommended
