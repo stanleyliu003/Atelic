@@ -1,6 +1,8 @@
 import { Colors } from '../../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import Entypo from '@expo/vector-icons/Entypo';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Activity } from '../../types/activity.types';
@@ -10,6 +12,10 @@ interface ActivityDetailViewProps {
   activity: Activity;
   onClose: () => void;
 }
+
+const formatNumber = (num: number) => {
+  return num.toLocaleString();
+};
 
 const renderStars = (rating: number) => {
   const stars = [];
@@ -82,7 +88,7 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
             </View>
             {activity.user_ratings_total && (
               <Text style={styles.ratingsCountText}>
-                ({activity.user_ratings_total})
+                ({formatNumber(activity.user_ratings_total)})
               </Text>
             )}
           </View>
@@ -95,16 +101,6 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
           </Text>
         )}
 
-        {/* Hours */}
-        {activity.regular_opening_hours?.weekday_text && (
-          <View style={styles.hoursContainer}>
-            <Text style={styles.hoursLabel}>Hours</Text>
-            {activity.regular_opening_hours.weekday_text.map((dayHours, index) => (
-              <Text key={index} style={styles.hoursText}>{dayHours}</Text>
-            ))}
-          </View>
-        )}
-
         {/* Activity Image */}
         <View style={styles.imageContainer}>
           <ActivityImage 
@@ -113,37 +109,48 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
           />
         </View>
 
+        {/* Editorial Summary */}
+        {activity.editorial_summary && (
+          <>
+            <View style={styles.spacerLine} />
+            <View style={styles.editorialContainer}>
+              <Text style={styles.editorialText}>{activity.editorial_summary}</Text>
+            </View>
+            <View style={styles.spacerLine} />
+          </>
+        )}
+
         {/* Address */}
         {activity.formatted_address && (
-          <View style={styles.addressContainer}>
-            <Text style={styles.addressLabel}>Address</Text>
-            <Text style={styles.addressText}>{activity.formatted_address}</Text>
+          <View style={styles.infoRow}>
+            <Ionicons name="location-outline" size={24} color="#027B8B" />
+            <Text style={styles.infoText}>{activity.formatted_address}</Text>
           </View>
         )}
 
-        {/* City */}
-        {activity.city && (
-          <View style={styles.cityContainer}>
-            <Text style={styles.cityLabel}>City</Text>
-            <Text style={styles.cityText}>{activity.city}</Text>
+        {/* Website */}
+        {activity.website_uri && (
+          <View style={styles.infoRow}>
+            <Entypo name="globe" size={24} color="#027B8B" />
+            <Text style={styles.infoText}>{activity.website_uri}</Text>
           </View>
         )}
 
-        {/* Coordinates */}
-        {activity.lat && activity.lng && (
-          <View style={styles.coordinatesContainer}>
-            <Text style={styles.coordinatesLabel}>Coordinates</Text>
-            <Text style={styles.coordinatesText}>
-              {activity.lat.toFixed(6)}, {activity.lng.toFixed(6)}
-            </Text>
+        {/* Phone */}
+        {activity.phone && (
+          <View style={styles.infoRow}>
+            <FontAwesome6 name="phone" size={24} color="#027B8B" />
+            <Text style={styles.infoText}>{activity.phone}</Text>
           </View>
         )}
 
-        {/* Place ID */}
-        {activity.place_id && (
-          <View style={styles.placeIdContainer}>
-            <Text style={styles.placeIdLabel}>Place ID</Text>
-            <Text style={styles.placeIdText}>{activity.place_id}</Text>
+        {/* Hours */}
+        {activity.regular_opening_hours?.weekday_text && (
+          <View style={styles.hoursContainer}>
+            <Text style={styles.hoursLabel}>Hours</Text>
+            {activity.regular_opening_hours.weekday_text.map((dayHours, index) => (
+              <Text key={index} style={styles.hoursText}>{dayHours}</Text>
+            ))}
           </View>
         )}
 
@@ -198,6 +205,21 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 15,
   },
+  spacerLine: {
+    height: 1,
+    backgroundColor: '#D9DCE0',
+    marginVertical: 15,
+  },
+  editorialContainer: {
+    marginBottom: 10,
+  },
+  editorialText: {
+    fontFamily: 'outfit',
+    fontSize: 16,
+    color: '#333',
+    lineHeight: 22,
+    textAlign: 'left',
+  },
   activityName: {
     fontFamily: 'outfit-bold',
     fontSize: 28,
@@ -235,29 +257,22 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
     marginBottom: 15,
   },
-  addressContainer: {
-    marginBottom: 20,
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingHorizontal: 5,
   },
-  addressLabel: {
-    fontFamily: 'outfit-bold',
-    fontSize: 16,
-    color: Colors.PRIMARY,
-    marginBottom: 5,
-  },
-  addressText: {
+  infoText: {
     fontFamily: 'outfit',
     fontSize: 16,
     color: '#333',
     lineHeight: 22,
+    marginLeft: 12,
+    flex: 1,
   },
   cityContainer: {
     marginBottom: 20,
-  },
-  cityLabel: {
-    fontFamily: 'outfit-bold',
-    fontSize: 16,
-    color: Colors.PRIMARY,
-    marginBottom: 5,
   },
   cityText: {
     fontFamily: 'outfit',
@@ -266,12 +281,6 @@ const styles = StyleSheet.create({
   },
   coordinatesContainer: {
     marginBottom: 20,
-  },
-  coordinatesLabel: {
-    fontFamily: 'outfit-bold',
-    fontSize: 16,
-    color: Colors.PRIMARY,
-    marginBottom: 5,
   },
   coordinatesText: {
     fontSize: 14,
