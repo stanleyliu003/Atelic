@@ -146,8 +146,9 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
 
         {/* Hours */}
         {activity.regular_opening_hours?.weekday_text && (
-          <View style={styles.hoursContainer}>
-            <Text style={styles.hoursLabel}>Hours</Text>
+          <View style={styles.infoRow}>
+            <FontAwesome6 name="clock" size={24} color="#027B8B" />
+            <Text style={styles.infoText}>Hours</Text>
             {activity.regular_opening_hours.weekday_text.map((dayHours, index) => (
               <Text key={index} style={styles.hoursText}>{dayHours}</Text>
             ))}
