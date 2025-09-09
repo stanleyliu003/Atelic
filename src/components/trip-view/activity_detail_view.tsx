@@ -13,52 +13,57 @@ interface ActivityDetailViewProps {
 export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProps) {
   return (
     <View style={styles.container}>
-      {/* Header with close button */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-          <Ionicons name="close" size={40} color={Colors.WHITE} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Activity Details</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
       {/* Content */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Activity Name with Close Button */}
+        <View style={styles.nameContainer}>
+          <Text style={styles.activityName}>{activity.name}</Text>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color={Colors.WHITE} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Rating and Review Count */}
+        {activity.rating && (
+          <View style={styles.ratingContainer}>
+            <Text style={styles.ratingText}>{activity.rating} ⭐</Text>
+            {activity.user_ratings_total && (
+              <Text style={styles.ratingsCountText}>
+                ({activity.user_ratings_total})
+              </Text>
+            )}
+          </View>
+        )}
+        
+        {/* Types/Tags */}
+        {activity.types && activity.types.length > 0 && (
+          <View style={styles.typesContainer}>
+            {activity.types.slice(0, 3).map((type, index) => (
+              <View key={index} style={styles.typeTag}>
+                <Text style={styles.typeText}>
+                  {type.replace(/_/g, ' ')}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Hours */}
+        {activity.regular_opening_hours?.weekday_text && (
+          <View style={styles.hoursContainer}>
+            <Text style={styles.hoursLabel}>Hours</Text>
+            {activity.regular_opening_hours.weekday_text.map((dayHours, index) => (
+              <Text key={index} style={styles.hoursText}>{dayHours}</Text>
+            ))}
+          </View>
+        )}
+
         {/* Activity Image */}
         <View style={styles.imageContainer}>
           <ActivityImage 
             photo_reference={activity.photo_reference || ''} 
             style={styles.activityImage}
           />
-        </View>
-
-        {/* Activity Name */}
-        <Text style={styles.activityName}>{activity.name}</Text>
-
-        {/* Rating and Types */}
-        <View style={styles.statsContainer}>
-          {activity.rating && (
-            <View style={styles.ratingContainer}>
-              <Text style={styles.ratingText}>⭐ {activity.rating}</Text>
-              {activity.user_ratings_total && (
-                <Text style={styles.ratingsCountText}>
-                  ({activity.user_ratings_total} reviews)
-                </Text>
-              )}
-            </View>
-          )}
-          
-          {activity.types && activity.types.length > 0 && (
-            <View style={styles.typesContainer}>
-              {activity.types.slice(0, 3).map((type, index) => (
-                <View key={index} style={styles.typeTag}>
-                  <Text style={styles.typeText}>
-                    {type.replace(/_/g, ' ')}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
         </View>
 
         {/* Address */}
@@ -112,35 +117,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.WHITE,
   },
-  header: {
+  nameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    marginTop: 20,
+    marginBottom: 15,
   },
   closeButton: {
-    width: 50,
-    height: 50,
+    width: 30,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.PRIMARY,
-    borderRadius: 25,
+    borderRadius: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
-  },
-  headerTitle: {
-    fontFamily: 'outfit-bold',
-    fontSize: 20,
-    color: Colors.PRIMARY,
-  },
-  headerSpacer: {
-    width: 50,
   },
   content: {
     flex: 1,
@@ -148,7 +143,8 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     alignItems: 'center',
-    marginVertical: 20,
+    marginTop: 20,
+    marginBottom: 25,
   },
   activityImage: {
     width: 200,
@@ -159,16 +155,14 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit-bold',
     fontSize: 28,
     color: Colors.PRIMARY,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  statsContainer: {
-    marginBottom: 25,
+    textAlign: 'left',
+    flex: 1,
+    marginRight: 10,
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     marginBottom: 15,
   },
   ratingText: {
@@ -185,8 +179,10 @@ const styles = StyleSheet.create({
   typesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
     gap: 8,
+    marginBottom: 15,
   },
   typeTag: {
     backgroundColor: '#e9ecef',
@@ -270,5 +266,21 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit',
     fontSize: 16,
     color: '#333',
+  },
+  hoursContainer: {
+    marginBottom: 20,
+  },
+  hoursLabel: {
+    fontFamily: 'outfit-bold',
+    fontSize: 16,
+    color: Colors.PRIMARY,
+    marginBottom: 8,
+  },
+  hoursText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    marginBottom: 2,
   },
 });
