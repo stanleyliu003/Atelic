@@ -1,5 +1,6 @@
 import { Colors } from '../../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Activity } from '../../types/activity.types';
@@ -9,6 +10,55 @@ interface ActivityDetailViewProps {
   activity: Activity;
   onClose: () => void;
 }
+
+const renderStars = (rating: number) => {
+  const stars = [];
+  const fullStars = Math.floor(rating);
+  const hasHalfStar = rating % 1 >= 0.1 && rating % 1 <= 0.9;
+  const totalStars = 5;
+
+  // Add full golden stars
+  for (let i = 0; i < fullStars; i++) {
+    stars.push(
+      <FontAwesome 
+        key={`full-${i}`} 
+        name="star" 
+        size={16} 
+        color="#FABC05" 
+        style={{ marginRight: 2 }}
+      />
+    );
+  }
+
+  // Add half star if applicable
+  if (hasHalfStar) {
+    stars.push(
+      <FontAwesome 
+        key="half" 
+        name="star-half-full" 
+        size={16} 
+        color="#FABC05" 
+        style={{ marginRight: 2 }}
+      />
+    );
+  }
+
+  // Add gray stars for the remaining
+  const grayStarsCount = totalStars - fullStars - (hasHalfStar ? 1 : 0);
+  for (let i = 0; i < grayStarsCount; i++) {
+    stars.push(
+      <FontAwesome 
+        key={`gray-${i}`} 
+        name="star" 
+        size={16} 
+        color="#D9DCE0" 
+        style={{ marginRight: 2 }}
+      />
+    );
+  }
+
+  return stars;
+};
 
 export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProps) {
   return (
@@ -26,7 +76,10 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
         {/* Rating and Review Count */}
         {activity.rating && (
           <View style={styles.ratingContainer}>
-            <Text style={styles.ratingText}>{activity.rating} ⭐</Text>
+            <Text style={styles.ratingText}>{activity.rating}</Text>
+            <View style={styles.starsContainer}>
+              {renderStars(activity.rating)}
+            </View>
             {activity.user_ratings_total && (
               <Text style={styles.ratingsCountText}>
                 ({activity.user_ratings_total})
@@ -36,14 +89,10 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
         )}
         
         {/* Primary Type */}
-        {activity.primaryType && (
-          <View style={styles.typesContainer}>
-            <View style={styles.typeTag}>
-              <Text style={styles.typeText}>
-                {activity.primaryType.replace(/_/g, ' ')}
-              </Text>
-            </View>
-          </View>
+        {activity.primary_type_display_name && (
+          <Text style={styles.typeText}>
+            {activity.primary_type_display_name}
+          </Text>
         )}
 
         {/* Hours */}
@@ -163,6 +212,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     marginBottom: 15,
   },
+  starsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
+  },
   ratingText: {
     fontFamily: 'outfit-medium',
     fontSize: 18,
@@ -174,25 +228,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.GRAY,
   },
-  typesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 7.5,
-  },
-  typeTag: {
-    backgroundColor: '#e9ecef',
-    borderRadius: 7.5,
-    paddingVertical: 3,
-    paddingHorizontal: 6,
-  },
   typeText: {
-    fontFamily: 'outfit',
-    fontSize: 7,
+    fontFamily: 'outfit-medium',
+    fontSize: 12,
     color: Colors.GRAY,
     textTransform: 'capitalize',
+    marginBottom: 15,
   },
   addressContainer: {
     marginBottom: 20,

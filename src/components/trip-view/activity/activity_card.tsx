@@ -6,6 +6,8 @@ import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Activity } from '../../../types/activity.types';
 import { formatDistance, formatDuration } from '../../../utils/routeUtils';
 import { ActivityImage } from './activity_image';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+
 
 interface ActivityCardProps {
   activity: Activity;
@@ -142,14 +144,14 @@ export function ActivityCard({
                 {activity.rating && (
                   <View style={styles.ratingContainer}>
                     <Text style={[styles.ratingText, disabled && styles.disabledText]}>
-                      ⭐ {activity.rating}
+                      {activity.rating} <FontAwesome name="star" size={16} color="#FABC05" />
                     </Text>
                   </View>
                 )}
-                {activity.primaryType && (
+                {activity.primary_type_display_name && (
                   <View style={styles.typesContainer}>
                     <Text style={[styles.typesText, disabled && styles.disabledText]}>
-                      {activity.primaryType.replace(/_/g, ' ')}
+                      {activity.primary_type_display_name}
                     </Text>
                   </View>
                 )}
