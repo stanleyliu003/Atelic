@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    marginBottom: 15,
+    marginBottom: 5,
   },
   starsContainer: {
     flexDirection: 'row',
@@ -218,9 +218,9 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   ratingText: {
-    fontFamily: 'outfit-medium',
-    fontSize: 18,
-    color: Colors.PRIMARY,
+    fontFamily: 'outfit',
+    fontSize: 16,
+    color: Colors.GRAY,
     marginRight: 8,
   },
   ratingsCountText: {
@@ -229,8 +229,8 @@ const styles = StyleSheet.create({
     color: Colors.GRAY,
   },
   typeText: {
-    fontFamily: 'outfit-medium',
-    fontSize: 12,
+    fontFamily: 'outfit',
+    fontSize: 16,
     color: Colors.GRAY,
     textTransform: 'capitalize',
     marginBottom: 15,
