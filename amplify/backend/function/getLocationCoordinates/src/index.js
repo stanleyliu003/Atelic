@@ -98,7 +98,7 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
         return cachedData;
     }
     
-    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total,formatted_address,types,photos,name,opening_hours,secondary_opening_hours,website,reviews,editorial_summary&key=${apiKey}`;
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total,formatted_address,types,photos,name,opening_hours,secondary_opening_hours,website,reviews,editorial_summary,international_phone_number&key=${apiKey}`;
     
     return new Promise((resolve, reject) => {
         const req = https.get(url, (res) => {
@@ -164,7 +164,10 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                             // Primary type display name (derived from primary type)
                             primary_type_display_name: result.result.types && result.result.types.length > 0 
                                 ? result.result.types[0].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                                : null
+                                : null,
+                            
+                            // International phone number
+                            international_phone_number: result.result.international_phone_number || null
                         };
                         
                         // Cache the successful result
@@ -185,7 +188,8 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                             regular_opening_hours: null,
                             reviews: [],
                             editorial_summary: null,
-                            primary_type_display_name: null
+                            primary_type_display_name: null,
+                            international_phone_number: null
                         };
                         
                         // Don't cache failed results, just return fallback
@@ -207,7 +211,8 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                         regular_secondary_opening_hours: null,
                         reviews: [],
                         editorial_summary: null,
-                        primary_type_display_name: null
+                        primary_type_display_name: null,
+                        international_phone_number: null
                     };
                     resolve(fallbackDetails);
                 }
@@ -229,7 +234,8 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                 regular_secondary_opening_hours: null,
                 reviews: [],
                 editorial_summary: null,
-                primary_type_display_name: null
+                primary_type_display_name: null,
+                international_phone_number: null
             };
             resolve(fallbackDetails);
         });
@@ -288,7 +294,8 @@ const getLocationInfo = async (locationName, bias) => {
                 regular_opening_hours: null,
                 reviews: [],
                 editorial_summary: null,
-                primary_type_display_name: null
+                primary_type_display_name: null,
+                international_phone_number: null
             };
         }
     }
@@ -334,7 +341,8 @@ const getLocationInfo = async (locationName, bias) => {
                             regular_opening_hours: null,
                             reviews: [],
                             editorial_summary: null,
-                            primary_type_display_name: null
+                            primary_type_display_name: null,
+                            international_phone_number: null
                         };
                         if (candidate.place_id) {
                             details = await getPlaceDetailsByPlaceId(candidate.place_id);
@@ -427,6 +435,7 @@ exports.handler = async (event) => {
             reviews: result.reviews,
             editorial_summary: result.editorial_summary,
             primary_type_display_name: result.primary_type_display_name,
+            international_phone_number: result.international_phone_number,
             is_recommended: false
         };
     }

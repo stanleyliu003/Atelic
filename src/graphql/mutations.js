@@ -34,6 +34,7 @@ export const optimizeRoute = /* GraphQL */ `
       }
       editorial_summary
       primary_type_display_name
+      international_phone_number
       __typename
     }
   }
@@ -64,6 +65,7 @@ export const createTrip = /* GraphQL */ `
         website_uri
         editorial_summary
         primary_type_display_name
+        international_phone_number
         __typename
       }
       __typename
@@ -98,6 +100,7 @@ export const createWishlistAnalysis = /* GraphQL */ `
         website_uri
         editorial_summary
         primary_type_display_name
+        international_phone_number
         __typename
       }
       createdAt
@@ -134,6 +137,7 @@ export const updateWishlistAnalysis = /* GraphQL */ `
         website_uri
         editorial_summary
         primary_type_display_name
+        international_phone_number
         __typename
       }
       createdAt
@@ -170,6 +174,7 @@ export const deleteWishlistAnalysis = /* GraphQL */ `
         website_uri
         editorial_summary
         primary_type_display_name
+        international_phone_number
         __typename
       }
       createdAt

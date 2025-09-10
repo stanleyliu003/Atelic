@@ -27,6 +27,7 @@
     reviews: [PlaceReview]
     editorial_summary: String
     primary_type_display_name: String
+    international_phone_number: String
   }
 
    type WishlistAnalysisResult {
@@ -148,6 +149,7 @@
      reviews: [PlaceReviewInput]
      editorial_summary: String
      primary_type_display_name: String
+     international_phone_number: String
    }
 
    input DayInput {

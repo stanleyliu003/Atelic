@@ -226,6 +226,7 @@ exports.handler = async (event) => {
                 reviews: coordData ? coordData.reviews : null,
                 editorial_summary: coordData ? coordData.editorial_summary : null,
                 primary_type_display_name: coordData ? coordData.primary_type_display_name : null,
+                international_phone_number: coordData ? coordData.international_phone_number : null,
             };
         };
 

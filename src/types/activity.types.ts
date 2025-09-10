@@ -48,6 +48,7 @@ export type Activity = {
   reviews?: PlaceReview[];
   editorial_summary?: string;
   primary_type_display_name?: string;
+  international_phone_number?: string;
 };
 
 // Tab type for navigation between wishlist and different days

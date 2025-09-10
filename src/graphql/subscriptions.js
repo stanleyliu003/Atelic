@@ -28,6 +28,7 @@ export const onCreateWishlistAnalysis = /* GraphQL */ `
         website_uri
         editorial_summary
         primary_type_display_name
+        international_phone_number
         __typename
       }
       createdAt
@@ -63,6 +64,7 @@ export const onUpdateWishlistAnalysis = /* GraphQL */ `
         website_uri
         editorial_summary
         primary_type_display_name
+        international_phone_number
         __typename
       }
       createdAt
@@ -98,6 +100,7 @@ export const onDeleteWishlistAnalysis = /* GraphQL */ `
         website_uri
         editorial_summary
         primary_type_display_name
+        international_phone_number
         __typename
       }
       createdAt

@@ -317,10 +317,10 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
         )}
 
         {/* Phone */}
-        {activity.phone && (
+        {activity.international_phone_number && (
           <View style={styles.infoRow}>
             <FontAwesome6 name="phone" size={24} color="#027B8B" />
-            <Text style={styles.infoText}>{activity.phone}</Text>
+            <Text style={styles.infoText}>{activity.international_phone_number}</Text>
           </View>
         )}
 
@@ -328,7 +328,7 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
         <View style={styles.recommendationContainer}>
           <Text style={styles.recommendationLabel}>Source</Text>
           <Text style={styles.recommendationText}>
-            {activity.is_recommended ? 'Recommended by Atelic' : 'Added by you'}
+            {activity.is_recommended ? 'Recommended by Google' : 'Added by you'}
           </Text>
         </View>
       </ScrollView>

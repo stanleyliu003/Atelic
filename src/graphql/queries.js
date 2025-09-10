@@ -24,6 +24,7 @@ export const analyzeWishlist = /* GraphQL */ `
         website_uri
         editorial_summary
         primary_type_display_name
+        international_phone_number
         __typename
       }
       __typename
@@ -117,6 +118,7 @@ export const addAdditionalPlace = /* GraphQL */ `
       }
       editorial_summary
       primary_type_display_name
+      international_phone_number
       __typename
     }
   }
@@ -146,6 +148,7 @@ export const getWishlistAnalysis = /* GraphQL */ `
         website_uri
         editorial_summary
         primary_type_display_name
+        international_phone_number
         __typename
       }
       createdAt
