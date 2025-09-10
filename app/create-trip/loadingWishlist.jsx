@@ -126,6 +126,7 @@ export default function LoadingWishlist() {
                                     }
                                     editorial_summary
                                     primary_type_display_name
+                                    international_phone_number
                                 }
                             }
                         }

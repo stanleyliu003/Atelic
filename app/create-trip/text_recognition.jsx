@@ -87,6 +87,7 @@ export default function text_recognition() {
                             }
                             editorial_summary
                             primary_type_display_name
+                            international_phone_number
                         }
                     }
                 }

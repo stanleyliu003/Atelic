@@ -419,6 +419,23 @@ export default function TripViewMain() {
                         primaryType
                         photo_reference
                         is_recommended
+                        display_name
+                        website_uri
+                        regular_opening_hours {
+                            open_now
+                            weekday_text
+                        }
+                        reviews {
+                            author_name
+                            rating
+                            text
+                            time
+                            author_url
+                            profile_photo_url
+                        }
+                        editorial_summary
+                        primary_type_display_name
+                        international_phone_number
                     }
                 }
             `, { 
