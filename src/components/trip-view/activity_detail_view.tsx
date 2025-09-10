@@ -4,7 +4,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking } from 'react-native';
 import { Activity } from '../../types/activity.types';
 import { ActivityImage } from './activity/activity_image';
 
@@ -67,6 +67,21 @@ const renderStars = (rating: number) => {
 };
 
 export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProps) {
+  const handleWebsitePress = async () => {
+    if (activity.website_uri) {
+      try {
+        const supported = await Linking.canOpenURL(activity.website_uri);
+        if (supported) {
+          await Linking.openURL(activity.website_uri);
+        } else {
+          console.log("Don't know how to open URI: " + activity.website_uri);
+        }
+      } catch (error) {
+        console.error('An error occurred', error);
+      }
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Content */}
@@ -128,11 +143,24 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
           </View>
         )}
 
+        {/* Hours */}
+                {activity.regular_opening_hours?.weekday_text && (
+          <View style={styles.infoRow}>
+            <FontAwesome6 name="clock" size={24} color="#027B8B" />
+            <Text style={styles.infoText}>Hours</Text>
+            {activity.regular_opening_hours.weekday_text.map((dayHours, index) => (
+              <Text key={index} style={styles.hoursText}>{dayHours}</Text>
+            ))}
+          </View>
+        )}
+
         {/* Website */}
         {activity.website_uri && (
           <View style={styles.infoRow}>
             <Entypo name="globe" size={24} color="#027B8B" />
-            <Text style={styles.infoText}>{activity.website_uri}</Text>
+            <TouchableOpacity onPress={handleWebsitePress} style={styles.websiteTouchable}>
+              <Text style={styles.websiteText}>{activity.website_uri}</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -141,17 +169,6 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
           <View style={styles.infoRow}>
             <FontAwesome6 name="phone" size={24} color="#027B8B" />
             <Text style={styles.infoText}>{activity.phone}</Text>
-          </View>
-        )}
-
-        {/* Hours */}
-        {activity.regular_opening_hours?.weekday_text && (
-          <View style={styles.infoRow}>
-            <FontAwesome6 name="clock" size={24} color="#027B8B" />
-            <Text style={styles.infoText}>Hours</Text>
-            {activity.regular_opening_hours.weekday_text.map((dayHours, index) => (
-              <Text key={index} style={styles.hoursText}>{dayHours}</Text>
-            ))}
           </View>
         )}
 
@@ -331,5 +348,15 @@ const styles = StyleSheet.create({
     color: '#333',
     lineHeight: 20,
     marginBottom: 2,
+  },
+  websiteTouchable: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  websiteText: {
+    fontFamily: 'outfit',
+    fontSize: 16,
+    color: '#333',
+    lineHeight: 22,
   },
 });
