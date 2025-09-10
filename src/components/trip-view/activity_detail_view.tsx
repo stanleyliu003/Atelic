@@ -3,7 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking } from 'react-native';
 import { Activity } from '../../types/activity.types';
 import { ActivityImage } from './activity/activity_image';
@@ -67,6 +67,8 @@ const renderStars = (rating: number) => {
 };
 
 export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProps) {
+  const [hoursExpanded, setHoursExpanded] = useState(false);
+
   const handleWebsitePress = async () => {
     if (activity.website_uri) {
       try {
@@ -81,6 +83,132 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
       }
     }
   };
+
+  const parseTimeToMinutes = (timeStr: string): number => {
+    // Parse time strings like "9:00 AM", "11:30 PM", "12:00 AM"
+    const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (!match) return -1;
+    
+    let hours = parseInt(match[1]);
+    const minutes = parseInt(match[2]);
+    const period = match[3].toUpperCase();
+    
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    
+    return hours * 60 + minutes;
+  };
+
+  const getCurrentDayAndTime = () => {
+    const now = new Date();
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const currentDay = dayNames[now.getDay()];
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    return { currentDay, currentMinutes };
+  };
+
+  const getHoursStatus = () => {
+    if (!activity.regular_opening_hours?.weekday_text) {
+      return { status: 'unknown', statusText: 'Hours not available', timeText: '' };
+    }
+
+    const { currentDay, currentMinutes } = getCurrentDayAndTime();
+    
+    // Find today's hours
+    const todayHours = activity.regular_opening_hours.weekday_text.find(day => 
+      day.toLowerCase().startsWith(currentDay.toLowerCase())
+    );
+
+    if (!todayHours) {
+      return { status: 'unknown', statusText: 'Hours not available', timeText: '' };
+    }
+
+    // Check if closed today
+    if (todayHours.toLowerCase().includes('closed')) {
+      // Find next open day
+      const dayIndex = new Date().getDay();
+      for (let i = 1; i <= 7; i++) {
+        const nextDayIndex = (dayIndex + i) % 7;
+        const nextDayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][nextDayIndex];
+        const nextDayHours = activity.regular_opening_hours.weekday_text.find(day => 
+          day.toLowerCase().startsWith(nextDayName.toLowerCase())
+        );
+        
+        if (nextDayHours && !nextDayHours.toLowerCase().includes('closed')) {
+          const timeMatch = nextDayHours.match(/(\d{1,2}:\d{2}\s*[AP]M)/i);
+          if (timeMatch) {
+            const openTime = timeMatch[1];
+            const dayText = i === 1 ? 'tomorrow' : nextDayName;
+            return { 
+              status: 'closed', 
+              statusText: 'Closed',
+              timeText: ` ⋅ Opens ${openTime} ${i === 1 ? '' : dayText}`.trim(),
+              color: '#DC2626'
+            };
+          }
+        }
+      }
+      return { status: 'closed', statusText: 'Closed', timeText: '', color: '#DC2626' };
+    }
+
+    // Parse open hours for today
+    const timeMatch = todayHours.match(/(\d{1,2}:\d{2}\s*[AP]M)\s*[–-]\s*(\d{1,2}:\d{2}\s*[AP]M)/i);
+    if (!timeMatch) {
+      // Check for 24-hour format
+      if (todayHours.toLowerCase().includes('24 hours') || todayHours.toLowerCase().includes('open 24 hours')) {
+        return { status: 'open', statusText: 'Open', timeText: ' 24 hours', color: '#16A34A' };
+      }
+      return { status: 'unknown', statusText: 'Hours format not recognized', timeText: '' };
+    }
+
+    const openTime = timeMatch[1];
+    const closeTime = timeMatch[2];
+    const openMinutes = parseTimeToMinutes(openTime);
+    const closeMinutes = parseTimeToMinutes(closeTime);
+
+    if (openMinutes === -1 || closeMinutes === -1) {
+      return { status: 'unknown', statusText: 'Hours format not recognized', timeText: '' };
+    }
+
+    // Handle overnight hours (e.g., 10 PM - 2 AM)
+    const isOvernightHours = closeMinutes < openMinutes;
+    
+    let isOpen = false;
+    if (isOvernightHours) {
+      isOpen = currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
+    } else {
+      isOpen = currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+    }
+
+    if (isOpen) {
+      return { 
+        status: 'open', 
+        statusText: 'Open',
+        timeText: ` ⋅ Closes ${closeTime}`,
+        color: '#16A34A'
+      };
+    } else {
+      // Check if will open later today
+      if (!isOvernightHours && currentMinutes < openMinutes) {
+        return { 
+          status: 'closed', 
+          statusText: 'Closed',
+          timeText: ` ⋅ Opens ${openTime}`,
+          color: '#DC2626'
+        };
+      } else {
+        // Will open tomorrow or next day
+        return { 
+          status: 'closed', 
+          statusText: 'Closed',
+          timeText: ` ⋅ Opens ${openTime} tomorrow`,
+          color: '#DC2626'
+        };
+      }
+    }
+  };
+
+  const hoursStatus = getHoursStatus();
 
   return (
     <View style={styles.container}>
@@ -144,13 +272,37 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
         )}
 
         {/* Hours */}
-                {activity.regular_opening_hours?.weekday_text && (
-          <View style={styles.infoRow}>
-            <FontAwesome6 name="clock" size={24} color="#027B8B" />
-            <Text style={styles.infoText}>Hours</Text>
-            {activity.regular_opening_hours.weekday_text.map((dayHours, index) => (
-              <Text key={index} style={styles.hoursText}>{dayHours}</Text>
-            ))}
+        {activity.regular_opening_hours?.weekday_text && (
+          <View style={styles.hoursMainContainer}>
+            <TouchableOpacity 
+              style={styles.hoursHeaderRow} 
+              onPress={() => setHoursExpanded(!hoursExpanded)}
+            >
+              <FontAwesome6 name="clock" size={24} color="#027B8B" />
+              <View style={styles.hoursStatusContainer}>
+                <Text style={styles.hoursStatusText}>
+                  <Text style={{ color: hoursStatus.color }}>
+                    {hoursStatus.statusText}
+                  </Text>
+                  <Text style={{ color: '#333' }}>
+                    {hoursStatus.timeText}
+                  </Text>
+                </Text>
+              </View>
+              <Ionicons 
+                name={hoursExpanded ? "chevron-up" : "chevron-down"} 
+                size={20} 
+                color="#666" 
+              />
+            </TouchableOpacity>
+            
+            {hoursExpanded && (
+              <View style={styles.expandedHoursContainer}>
+                {activity.regular_opening_hours.weekday_text.map((dayHours, index) => (
+                  <Text key={index} style={styles.hoursText}>{dayHours}</Text>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -358,5 +510,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     lineHeight: 22,
+  },
+  hoursMainContainer: {
+    marginBottom: 15,
+  },
+  hoursHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    paddingVertical: 8,
+  },
+  hoursStatusContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  hoursStatusText: {
+    fontFamily: 'outfit',
+    fontSize: 16,
+    fontWeight: '500',
+    lineHeight: 22,
+  },
+  expandedHoursContainer: {
+    marginTop: 8,
+    paddingLeft: 41,
+    paddingRight: 5,
   },
 });
