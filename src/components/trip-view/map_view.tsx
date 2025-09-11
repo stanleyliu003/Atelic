@@ -205,7 +205,7 @@ export function TripMapView({
 
 const styles = StyleSheet.create({
   mapContainer: {
-    height: '33%',
+    height: '40%',
     width: '100%',
     position: 'relative',
   },

@@ -570,7 +570,7 @@ export default function TripViewMain() {
     }, [dayActivities]);
 
     return (
-        <View style={styles.container}>
+        <>
             <TripMapView 
                 activities={getActivitiesForTab(activeTab)} 
                 activeTab={activeTab}
@@ -582,21 +582,22 @@ export default function TripViewMain() {
                 routeLoading={routeLoading}
                 selectedActivities={selectedActivities}
             />
+            
+            <View style={styles.container}>
+                {!showActivityDetail && (
+                    <TabBar 
+                        activeTab={activeTab}
+                        onTabChange={handleTabChange}
+                        dayCount={getDayCount()}
+                        onAddDay={handleAddDay}
+                        onDeleteDay={handleDeleteDay}
+                        shouldScrollToActive={shouldScrollToActive}
+                        tabLabels={tabLabels}
+                    />
+                )}
 
-            {!showActivityDetail && (
-                <TabBar 
-                    activeTab={activeTab}
-                    onTabChange={handleTabChange}
-                    dayCount={getDayCount()}
-                    onAddDay={handleAddDay}
-                    onDeleteDay={handleDeleteDay}
-                    shouldScrollToActive={shouldScrollToActive}
-                    tabLabels={tabLabels}
-                />
-            )}
-
-            {/* Tab Content */}
-            <View style={styles.tabContent}>
+                {/* Tab Content */}
+                <View style={styles.tabContent}>
                 {showActivityDetail && selectedActivityForDetail ? (
                     <ActivityDetailView 
                         activity={selectedActivityForDetail}
@@ -678,19 +679,19 @@ export default function TripViewMain() {
                         )}
                     </>
                 )}
-            </View>
+                </View>
 
-            {/* Transfer Button Container */}
-            <TransferButtonContainer
+                {/* Transfer Button Container */}
+                <TransferButtonContainer
                 activeTab={activeTab}
                 isSelectionMode={isSelectionMode}
                 selectedActivities={selectedActivities}
                 onTransferPress={handleOpenTransferModal}
                 onDeletePress={handleDeleteActivities}
-            />
+                />
 
-            {/* Publish Trip Button - Only show on last day with activities and no selection */}
-            {activeTab.startsWith('day') && (() => {
+                {/* Publish Trip Button - Only show on last day with activities and no selection */}
+                {activeTab.startsWith('day') && (() => {
                 const currentDayNumber = parseInt(activeTab.replace('day', ''));
                 const currentDayActivities = getDayActivities(currentDayNumber);
                 const isLastDay = currentDayNumber === getDayCount();
@@ -724,20 +725,20 @@ export default function TripViewMain() {
                     );
                 }
                 return null;
-            })()}
+                })()}
 
-            {/* Transfer Modal */}
-            <TransferActivitiesModal
+                {/* Transfer Modal */}
+                <TransferActivitiesModal
                 visible={isModalVisible}
                 daysArray={daysArray}
                 selectedDay={selectedDay}
                 onSelectDay={setSelectedDay}
                 onConfirm={handleConfirmTransfer}
                 onClose={() => setIsModalVisible(false)}
-            />
+                />
 
-            {/* Add Places Modal */}
-            <Modal
+                {/* Add Places Modal */}
+                <Modal
                 visible={isAddPlacesModalVisible}
                 animationType="slide"
                 presentationStyle="formSheet"
@@ -784,8 +785,9 @@ export default function TripViewMain() {
                         />
                     </View>
                 </KeyboardAvoidingView>
-            </Modal>
-
+                </Modal>
+            </View>
+            
             <TouchableOpacity 
                 style={styles.backButton} 
                 onPress={() => {
@@ -813,7 +815,7 @@ export default function TripViewMain() {
             >
                 <Ionicons name="arrow-back-circle-sharp" size={40} color={Colors.PRIMARY} />
             </TouchableOpacity>
-        </View>
+        </>
     );
 }
 
@@ -821,6 +823,10 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: Colors.WHITE,
+        borderTopLeftRadius: 40,
+        borderTopRightRadius: 40,
+        paddingTop: 10,
+        marginTop: -40,
     },
     backButton: {
         position: 'absolute',

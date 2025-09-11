@@ -274,10 +274,10 @@ const styles = StyleSheet.create({
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     bottomPopup: {
-      height: '70%',
+      height: '67%',
       backgroundColor: Colors.WHITE,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      paddingTop: 20,
+      borderTopLeftRadius: 25,
+      borderTopRightRadius: 25,
+      paddingTop: 25,
     }
 });
