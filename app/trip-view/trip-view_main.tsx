@@ -49,6 +49,18 @@ export default function TripViewMain() {
     
     // State for selected marker
     const [selectedMarker, setSelectedMarker] = useState<string | null>(null);
+    
+    // State for scroll positions per day
+    const [dayScrollPositions, setDayScrollPositions] = useState<{ [key: number]: number }>({});
+    const [shouldRestoreScrollPosition, setShouldRestoreScrollPosition] = useState(false);
+
+    // Handler for scroll position changes
+    const handleScrollPositionChange = (dayNumber: number, position: number) => {
+        setDayScrollPositions(prev => ({
+            ...prev,
+            [dayNumber]: position
+        }));
+    };
 
     // Hooks for activity and day management
     const {
@@ -406,6 +418,12 @@ export default function TripViewMain() {
         setSelectedActivityForDetail(null);
         // Clear selected marker when closing detail view
         setSelectedMarker(null);
+        // Trigger scroll position restore when closing detail view
+        setShouldRestoreScrollPosition(true);
+        // Reset the flag immediately after next render
+        setTimeout(() => {
+            setShouldRestoreScrollPosition(false);
+        }, 0);
     };
 
     // Handler for place selection from GooglePlacesAutocomplete
@@ -674,22 +692,28 @@ export default function TripViewMain() {
                             );
                         })()}
                         
-                        {activeTab.startsWith('day') && (
-                            <DaySchedule 
-                                dayNumber={parseInt(activeTab.replace('day', ''))}
-                                activities={getActivitiesForTab(activeTab)}
-                                selectedActivities={selectedActivities}
-                                onActivitySelect={toggleActivitySelection}
-                                onActivityDeselect={toggleActivitySelection}
-                                onDescriptionCardPress={handleActivityDescriptionCardSelect}
-                                onTransferToWishlist={handleTransferToWishlist}
-                                onOptimizeRoute={handleOptimizeRoute}
-                                showSelectionIndicator={isSelectionMode}
-                                routeLegs={routeData.legs}
-                                onAddPlace={() => setIsAddPlacesModalVisible(true)}
-                                isAddingPlace={isAddingPlace}
-                            />
-                        )}
+                        {activeTab.startsWith('day') && (() => {
+                            const currentDayNumber = parseInt(activeTab.replace('day', ''));
+                            return (
+                                <DaySchedule 
+                                    dayNumber={currentDayNumber}
+                                    activities={getActivitiesForTab(activeTab)}
+                                    selectedActivities={selectedActivities}
+                                    onActivitySelect={toggleActivitySelection}
+                                    onActivityDeselect={toggleActivitySelection}
+                                    onDescriptionCardPress={handleActivityDescriptionCardSelect}
+                                    onTransferToWishlist={handleTransferToWishlist}
+                                    onOptimizeRoute={handleOptimizeRoute}
+                                    showSelectionIndicator={isSelectionMode}
+                                    routeLegs={routeData.legs}
+                                    onAddPlace={() => setIsAddPlacesModalVisible(true)}
+                                    isAddingPlace={isAddingPlace}
+                                    scrollPosition={dayScrollPositions[currentDayNumber] || 0}
+                                    onScrollPositionChange={(position) => handleScrollPositionChange(currentDayNumber, position)}
+                                    shouldRestorePosition={shouldRestoreScrollPosition}
+                                />
+                            );
+                        })()}
                     </>
                 )}
                 </View>

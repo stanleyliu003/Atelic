@@ -1,5 +1,5 @@
 import { Colors } from '../../../constants/Colors';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RouteLeg } from '../../services/getRoute_graphQL_call';
 import { Activity } from '../../types/activity.types';
@@ -20,6 +20,9 @@ interface DayScheduleProps {
   routeLegs?: RouteLeg[]; // Add route legs prop
   onAddPlace?: () => void; // Add places modal trigger
   isAddingPlace?: boolean; // Loading state for adding places
+  scrollPosition?: number; // Current scroll position
+  onScrollPositionChange?: (position: number) => void; // Callback for scroll position changes
+  shouldRestorePosition?: boolean; // Flag to trigger position restore
 }
 
 export function DaySchedule({ 
@@ -35,9 +38,24 @@ export function DaySchedule({
   disabled = false,
   routeLegs = [], // Add route legs with default empty array
   onAddPlace,
-  isAddingPlace = false
+  isAddingPlace = false,
+  scrollPosition = 0,
+  onScrollPositionChange,
+  shouldRestorePosition = false
 }: DayScheduleProps) {
   const selectedCount = selectedActivities.length;
+  const scrollViewRef = useRef<ScrollView>(null);
+  const isRestoringRef = useRef(false);
+
+  // Restore scroll position only when explicitly triggered
+  useEffect(() => {
+    if (scrollViewRef.current && scrollPosition > 0 && shouldRestorePosition) {
+      isRestoringRef.current = true;
+      scrollViewRef.current.scrollTo({ y: scrollPosition, animated: false });
+      // Reset the flag immediately after scrolling
+      isRestoringRef.current = false;
+    }
+  }, [shouldRestorePosition, scrollPosition]);
 
   const handleOptimizeRoute = () => {
     if (onOptimizeRoute) {
@@ -77,9 +95,18 @@ export function DaySchedule({
 
       {/* Scrollable Content */}
       <ScrollView 
+        ref={scrollViewRef}
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={(event) => {
+          // Only update scroll position if we're not currently restoring
+          if (!isRestoringRef.current) {
+            const currentY = event.nativeEvent.contentOffset.y;
+            onScrollPositionChange?.(currentY);
+          }
+        }}
+        scrollEventThrottle={16}
       >
         {/* Activities List */}
         <ActivityList
