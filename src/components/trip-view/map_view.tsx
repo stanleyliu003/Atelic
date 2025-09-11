@@ -11,22 +11,26 @@ interface MapViewProps {
   routeCoordinates?: { latitude: number, longitude: number }[];
   routeLoading?: boolean;
   selectedActivities?: string[]; // Add selected activities prop
+  onMarkerPress?: (activity: Activity) => void; // Add callback for marker press
+  selectedMarker?: string | null; // Add selected marker prop
 }
 
 // Custom numbered marker component with selection state
 const NumberedMarker = ({ 
   number, 
   color, 
-  isSelected 
+  isSelected,
+  isMarkerSelected 
 }: { 
   number: number; 
   color: string; 
   isSelected: boolean;
+  isMarkerSelected: boolean;
 }) => (
   <View style={[
     styles.markerContainer, 
     { 
-      backgroundColor: isSelected ? '#000000' : color,
+      backgroundColor: isMarkerSelected ? '#000000' : (isSelected ? '#000000' : color),
     }
   ]}>
     {isSelected ? (
@@ -42,7 +46,9 @@ export function TripMapView({
   activeTab, 
   routeCoordinates = [], 
   routeLoading = false,
-  selectedActivities = [] // Add default value
+  selectedActivities = [], // Add default value
+  onMarkerPress, // Add callback prop
+  selectedMarker = null // Add selected marker prop
 }: MapViewProps) {
   const mapRef = useRef<MapView>(null);
 
@@ -75,8 +81,10 @@ export function TripMapView({
         index: idx + 1, // 1-based index for display
         color: markerColor,
         isSelected: activity.place_id ? selectedActivities.includes(activity.place_id) : false,
+        isMarkerSelected: activity.place_id === selectedMarker,
+        activity: activity, // Include full activity object for callback
       }));
-  }, [activities, markerColor, selectedActivities]);
+  }, [activities, markerColor, selectedActivities, selectedMarker]);
 
   // Calculate the region to show all markers
   const getRegionForActivities = (): Region => {
@@ -160,6 +168,22 @@ export function TripMapView({
     }
   }, [activities, activeTab, dynamicMarkers]);
 
+  // Zoom to selected marker when selectedMarker changes
+  useEffect(() => {
+    if (mapRef.current && selectedMarker) {
+      const selectedMarkerData = dynamicMarkers.find(marker => marker.activity.place_id === selectedMarker);
+      if (selectedMarkerData) {
+        const zoomRegion = {
+          latitude: selectedMarkerData.coordinate.latitude,
+          longitude: selectedMarkerData.coordinate.longitude,
+          latitudeDelta: 0.01, // Zoom in closer
+          longitudeDelta: 0.01,
+        };
+        mapRef.current.animateToRegion(zoomRegion, 800); // Zoom animation
+      }
+    }
+  }, [selectedMarker, dynamicMarkers]);
+
   return (
     <View style={styles.mapContainer}>
       <MapView
@@ -174,11 +198,13 @@ export function TripMapView({
             key={marker.key}
             coordinate={marker.coordinate}
             title={marker.title}
+            onPress={() => onMarkerPress?.(marker.activity)}
           >
             <NumberedMarker 
               number={marker.index} 
               color={marker.color} 
               isSelected={marker.isSelected}
+              isMarkerSelected={marker.isMarkerSelected}
             />
           </Marker>
         ))}

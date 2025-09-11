@@ -46,6 +46,9 @@ export default function TripViewMain() {
     // State for activity detail view
     const [selectedActivityForDetail, setSelectedActivityForDetail] = useState<Activity | null>(null);
     const [showActivityDetail, setShowActivityDetail] = useState(false);
+    
+    // State for selected marker
+    const [selectedMarker, setSelectedMarker] = useState<string | null>(null);
 
     // Hooks for activity and day management
     const {
@@ -92,6 +95,8 @@ export default function TripViewMain() {
         // Don't auto-scroll for manual tab selection
         setShouldScrollToActive(false);
         clearSelection(); // Clear selection when switching tabs
+        // Clear selected marker when switching tabs
+        setSelectedMarker(null);
     };
 
     // Remove local state and handlers for transfer modal and related logic
@@ -389,12 +394,18 @@ export default function TripViewMain() {
     const handleActivityDescriptionCardSelect = (activity: Activity) => {
         setSelectedActivityForDetail(activity);
         setShowActivityDetail(true);
+        // Set selected marker when opening detail view
+        if (activity.place_id) {
+            setSelectedMarker(activity.place_id);
+        }
     };
 
     // Handler for closing activity detail view
     const handleCloseActivityDetail = () => {
         setShowActivityDetail(false);
         setSelectedActivityForDetail(null);
+        // Clear selected marker when closing detail view
+        setSelectedMarker(null);
     };
 
     // Handler for place selection from GooglePlacesAutocomplete
@@ -581,6 +592,8 @@ export default function TripViewMain() {
                 }
                 routeLoading={routeLoading}
                 selectedActivities={selectedActivities}
+                onMarkerPress={handleActivityDescriptionCardSelect}
+                selectedMarker={selectedMarker}
             />
             
             <View style={styles.container}>
