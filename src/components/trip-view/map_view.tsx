@@ -173,10 +173,11 @@ export function TripMapView({
     if (mapRef.current && selectedMarker) {
       const selectedMarkerData = dynamicMarkers.find(marker => marker.activity.place_id === selectedMarker);
       if (selectedMarkerData) {
+        const latitudeDelta = 0.01;
         const zoomRegion = {
-          latitude: selectedMarkerData.coordinate.latitude,
+          latitude: selectedMarkerData.coordinate.latitude - latitudeDelta * 0.1, // Shift Y down by 10%
           longitude: selectedMarkerData.coordinate.longitude,
-          latitudeDelta: 0.01, // Zoom in closer
+          latitudeDelta: latitudeDelta, // Zoom in closer
           longitudeDelta: 0.01,
         };
         mapRef.current.animateToRegion(zoomRegion, 800); // Zoom animation
@@ -197,7 +198,6 @@ export function TripMapView({
           <Marker
             key={marker.key}
             coordinate={marker.coordinate}
-            title={marker.title}
             onPress={() => onMarkerPress?.(marker.activity)}
           >
             <NumberedMarker 
