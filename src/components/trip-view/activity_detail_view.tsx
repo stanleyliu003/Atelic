@@ -4,7 +4,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Image } from 'react-native';
 import { Activity } from '../../types/activity.types';
 import { ActivityImage } from './activity/activity_image';
 
@@ -326,7 +326,16 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
 
         {/* Recommendation Status */}
         <View style={styles.recommendationContainer}>
-          <Text style={styles.recommendationLabel}>Source</Text>
+          <View style={styles.sourceRow}>
+            <Text style={styles.recommendationLabel}>Source</Text>
+            {activity.is_recommended && (
+              <Image 
+                source={require('../../../assets/Google_logo.webp')} 
+                style={styles.googleLogo}
+                resizeMode="contain"
+              />
+            )}
+          </View>
           <Text style={styles.recommendationText}>
             {activity.is_recommended ? 'Recommended by Google' : 'Added by you'}
           </Text>
@@ -507,7 +516,7 @@ const styles = StyleSheet.create({
   },
   websiteText: {
     fontFamily: 'outfit',
-    fontSize: 16,
+    fontSize: 14,
     color: '#333',
     lineHeight: 22,
   },
@@ -534,5 +543,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingLeft: 41,
     paddingRight: 5,
+  },
+  sourceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  googleLogo: {
+    height: 16,
+    width: 16,
+    marginLeft: 8,
+    marginTop: -4,
   },
 });
