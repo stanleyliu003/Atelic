@@ -823,10 +823,10 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: Colors.WHITE,
-        borderTopLeftRadius: 40,
-        borderTopRightRadius: 40,
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
         paddingTop: 10,
-        marginTop: -40,
+        marginTop: -30,
     },
     backButton: {
         position: 'absolute',

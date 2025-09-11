@@ -107,8 +107,8 @@ export function TripMapView({
     const minLng = Math.min(...longitudes);
     const maxLng = Math.max(...longitudes);
 
-    const latDelta = (maxLat - minLat) * 1.44; // Add 44% padding (20% more than before)
-    const lngDelta = (maxLng - minLng) * 1.44; // Add 44% padding (20% more than before)
+    const latDelta = (maxLat - minLat) * 1.7; // Add 58% padding (10% more zoom out)
+    const lngDelta = (maxLng - minLng) * 1.7; // Add 58% padding (10% more zoom out)
 
     // Ensure minimum delta values for zoom
     const minDelta = 0.01;
@@ -116,7 +116,7 @@ export function TripMapView({
     const finalLngDelta = Math.max(lngDelta, minDelta);
 
     return {
-      latitude: (minLat + maxLat) / 2,
+      latitude: (minLat + maxLat) / 2 - finalLatDelta * 0.1, // Shift center slightly down
       longitude: (minLng + maxLng) / 2,
       latitudeDelta: finalLatDelta,
       longitudeDelta: finalLngDelta,
