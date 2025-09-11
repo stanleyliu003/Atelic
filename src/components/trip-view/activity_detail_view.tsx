@@ -212,15 +212,20 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
 
   return (
     <View style={styles.container}>
-      {/* Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Activity Name with Close Button */}
+      {/* Close Button - positioned relative to entire container */}
+      <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+        <Ionicons name="close" size={20} color="#000" />
+      </TouchableOpacity>
+      
+      {/* Fixed Header with Activity Name */}
+      <View style={styles.fixedHeader}>
         <View style={styles.nameContainer}>
           <Text style={styles.activityName}>{activity.name}</Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color={Colors.WHITE} />
-          </TouchableOpacity>
         </View>
+      </View>
+      
+      {/* Scrollable Content */}
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 
         {/* Rating and Review Count */}
         {activity.rating && (
@@ -350,29 +355,35 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.WHITE,
   },
+  fixedHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 0,
+    paddingBottom: 10,
+    zIndex: 1000,
+  },
   nameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 20,
-    marginBottom: 15,
+    justifyContent: 'flex-start',
+    paddingRight: 40,
   },
   closeButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
     width: 30,
     height: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: '#E5E7EB',
     borderRadius: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    zIndex: 2000,
+    elevation: 4,
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingTop: 7,
   },
   imageContainer: {
     alignItems: 'center',
@@ -401,7 +412,7 @@ const styles = StyleSheet.create({
   },
   activityName: {
     fontFamily: 'outfit-bold',
-    fontSize: 28,
+    fontSize: 24,
     color: Colors.PRIMARY,
     textAlign: 'left',
     flex: 1,
@@ -434,7 +445,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.GRAY,
     textTransform: 'capitalize',
-    marginBottom: 15,
+    marginBottom: 5,
   },
   infoRow: {
     flexDirection: 'row',
