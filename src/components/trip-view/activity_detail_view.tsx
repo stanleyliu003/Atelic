@@ -345,6 +345,7 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
             {activity.is_recommended ? 'Recommended by Google' : 'Added by you'}
           </Text>
         </View>
+        <View style={styles.bottomSpacing} />
       </ScrollView>
     </View>
   );
@@ -565,5 +566,8 @@ const styles = StyleSheet.create({
     width: 16,
     marginLeft: 8,
     marginTop: -4,
+  },
+  bottomSpacing: {
+    height: 40,
   },
 });
