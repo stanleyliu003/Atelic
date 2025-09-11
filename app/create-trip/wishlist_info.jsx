@@ -172,10 +172,17 @@ export default function WishlistInfo() {
         {/* Activity Detail View Overlay */}
         {showActivityDetail && selectedActivityForDetail && (
           <View style={styles.activityDetailOverlay}>
-            <ActivityDetailView 
-              activity={selectedActivityForDetail}
-              onClose={handleCloseActivityDetail}
+            <TouchableOpacity 
+              style={styles.overlayBackground}
+              onPress={handleCloseActivityDetail}
+              activeOpacity={1}
             />
+            <View style={styles.bottomPopup}>
+              <ActivityDetailView 
+                activity={selectedActivityForDetail}
+                onClose={handleCloseActivityDetail}
+              />
+            </View>
           </View>
         )}
       </View>
@@ -255,8 +262,22 @@ const styles = StyleSheet.create({
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: Colors.WHITE,
       zIndex: 1000,
-      paddingTop: 55, // Match the main container's paddingTop
+      justifyContent: 'flex-end',
+    },
+    overlayBackground: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    bottomPopup: {
+      height: '70%',
+      backgroundColor: Colors.WHITE,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingTop: 20,
     }
 });
