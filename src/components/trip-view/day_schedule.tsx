@@ -47,15 +47,17 @@ export function DaySchedule({
   const scrollViewRef = useRef<ScrollView>(null);
   const isRestoringRef = useRef(false);
 
-  // Restore scroll position only when explicitly triggered
+  // Restore scroll position only when explicitly triggered and for this specific tab
   useEffect(() => {
-    if (scrollViewRef.current && scrollPosition > 0 && shouldRestorePosition) {
+    if (scrollViewRef.current && shouldRestorePosition) {
       isRestoringRef.current = true;
-      scrollViewRef.current.scrollTo({ y: scrollPosition, animated: false });
+      // Only restore if there's a saved position, otherwise start at 0
+      const targetPosition = scrollPosition || 0;
+      scrollViewRef.current.scrollTo({ y: targetPosition, animated: false });
       // Reset the flag immediately after scrolling
       isRestoringRef.current = false;
     }
-  }, [shouldRestorePosition, scrollPosition]);
+  }, [shouldRestorePosition]);
 
   const handleOptimizeRoute = () => {
     if (onOptimizeRoute) {

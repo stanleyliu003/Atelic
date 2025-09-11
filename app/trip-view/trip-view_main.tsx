@@ -52,7 +52,7 @@ export default function TripViewMain() {
     
     // State for scroll positions per day
     const [dayScrollPositions, setDayScrollPositions] = useState<{ [key: number]: number }>({});
-    const [shouldRestoreScrollPosition, setShouldRestoreScrollPosition] = useState(false);
+    const [shouldRestoreScrollPositions, setShouldRestoreScrollPositions] = useState<{ [key: number]: boolean }>({});
 
     // Handler for scroll position changes
     const handleScrollPositionChange = (dayNumber: number, position: number) => {
@@ -109,6 +109,22 @@ export default function TripViewMain() {
         clearSelection(); // Clear selection when switching tabs
         // Clear selected marker when switching tabs
         setSelectedMarker(null);
+        
+        // Trigger scroll restoration for the new active tab if it's a day tab
+        if (tab.startsWith('day')) {
+            const dayNumber = parseInt(tab.replace('day', ''));
+            setShouldRestoreScrollPositions(prev => ({
+                ...prev,
+                [dayNumber]: true
+            }));
+            // Reset the flag after restoration
+            setTimeout(() => {
+                setShouldRestoreScrollPositions(prev => ({
+                    ...prev,
+                    [dayNumber]: false
+                }));
+            }, 100);
+        }
     };
 
     // Remove local state and handlers for transfer modal and related logic
@@ -418,12 +434,21 @@ export default function TripViewMain() {
         setSelectedActivityForDetail(null);
         // Clear selected marker when closing detail view
         setSelectedMarker(null);
-        // Trigger scroll position restore when closing detail view
-        setShouldRestoreScrollPosition(true);
-        // Reset the flag immediately after next render
-        setTimeout(() => {
-            setShouldRestoreScrollPosition(false);
-        }, 0);
+        // Trigger scroll position restore for the current active tab only
+        if (activeTab.startsWith('day')) {
+            const currentDayNumber = parseInt(activeTab.replace('day', ''));
+            setShouldRestoreScrollPositions(prev => ({
+                ...prev,
+                [currentDayNumber]: true
+            }));
+            // Reset the flag immediately after next render
+            setTimeout(() => {
+                setShouldRestoreScrollPositions(prev => ({
+                    ...prev,
+                    [currentDayNumber]: false
+                }));
+            }, 0);
+        }
     };
 
     // Handler for place selection from GooglePlacesAutocomplete
@@ -710,7 +735,7 @@ export default function TripViewMain() {
                                     isAddingPlace={isAddingPlace}
                                     scrollPosition={dayScrollPositions[currentDayNumber] || 0}
                                     onScrollPositionChange={(position) => handleScrollPositionChange(currentDayNumber, position)}
-                                    shouldRestorePosition={shouldRestoreScrollPosition}
+                                    shouldRestorePosition={shouldRestoreScrollPositions[currentDayNumber] || false}
                                 />
                             );
                         })()}
