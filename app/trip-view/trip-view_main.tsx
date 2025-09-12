@@ -11,7 +11,7 @@ import { AddPlacesButton, DaySchedule, TabBar, WishlistActivities } from '../../
 import { TripMapView } from '../../src/components/trip-view/map_view';
 import { TransferActivitiesModal } from '../../src/components/trip-view/transfer_activities_modal';
 import { TransferButtonContainer } from '../../src/components/trip-view/transfer_delete_button_containor';
-import { ActivityDetailView } from '../../src/components/trip-view/activity_detail_view';
+import { ActivityDetailView } from '../../src/components/trip-view/description_card';
 import { useActivitySelection } from '../../src/hooks/use_activity_selection';
 import { useDayActivities } from '../../src/hooks/use_day_activities';
 import { useTransferActivities } from '../../src/hooks/use_transfer_activities';

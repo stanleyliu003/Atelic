@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { WishlistActivities } from '../../src/components/trip-view';
-import { ActivityDetailView } from '../../src/components/trip-view/activity_detail_view';
+import { ActivityDetailView } from '../../src/components/trip-view/description_card';
 import { Colors } from './../../constants/Colors';
 
 export default function WishlistInfo() {
