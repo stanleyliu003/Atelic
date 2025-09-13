@@ -389,9 +389,34 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
                   {review.rating && renderStars(review.rating)}
                 </View>
                 {review.text && (
-                  <Text style={styles.reviewText} numberOfLines={3}>
-                    {review.text}
-                  </Text>
+                  <View style={styles.reviewTextContainer}>
+                    {expandedReviews.has(index) ? (
+                      <Text style={styles.reviewText}>
+                        {review.text}
+                        <Text> </Text>
+                        <Text 
+                          style={styles.moreButton} 
+                          onPress={() => toggleReviewExpansion(index)}
+                        >
+                          less
+                        </Text>
+                      </Text>
+                    ) : (
+                      <>
+                        <Text style={styles.reviewText} numberOfLines={3}>
+                          {review.text}
+                        </Text>
+                        {review.text.length > 150 && (
+                          <TouchableOpacity 
+                            style={styles.moreButtonContainer}
+                            onPress={() => toggleReviewExpansion(index)}
+                          >
+                            <Text style={styles.moreButton}>...more</Text>
+                          </TouchableOpacity>
+                        )}
+                      </>
+                    )}
+                  </View>
                 )}
               </View>
             ))}
@@ -669,11 +694,27 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 52,
   },
+  reviewTextContainer: {
+    marginLeft: 52,
+    position: 'relative',
+  },
   reviewText: {
     fontFamily: 'outfit',
     fontSize: 14,
     color: '#333',
     lineHeight: 20,
-    marginLeft: 52,
+  },
+  moreButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: Colors.WHITE,
+    paddingLeft: 8,
+  },
+  moreButton: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    textDecorationLine: 'underline',
   },
 });
