@@ -411,7 +411,8 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
                             style={styles.moreButtonContainer}
                             onPress={() => toggleReviewExpansion(index)}
                           >
-                            <Text style={styles.moreButton}>...more</Text>
+                            <Text style={styles.ellipsisText}>...</Text>
+                            <Text style={styles.moreText}> more</Text>
                           </TouchableOpacity>
                         )}
                       </>
@@ -709,7 +710,21 @@ const styles = StyleSheet.create({
     bottom: 0,
     right: 0,
     backgroundColor: Colors.WHITE,
-    paddingLeft: 8,
+    paddingLeft: 1,
+    flexDirection: 'row',
+  },
+  ellipsisText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+  },
+  moreText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    textDecorationLine: 'underline',
+    lineHeight: 20,
   },
   moreButton: {
     fontFamily: 'outfit',
