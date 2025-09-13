@@ -37,7 +37,7 @@ const makeRequest = (url) => {
     });
 };
 
-// Function to get route between multiple points using Google Routes API
+// Function to get route between multiple points using Google Routes API with fallback travel modes
 const getRoute = async (waypoints) => {
     if (!apiKey) {
         throw new Error('GOOGLE_PLACES_API_KEY environment variable not set');
@@ -53,43 +53,81 @@ const getRoute = async (waypoints) => {
     // Build the URL for Google Routes API
     const url = `https://routes.googleapis.com/directions/v2:computeRoutes?key=${apiKey}`;
     
-    // Prepare the request body
-    const requestBody = {
-        origin: {
-            location: {
-                latLng: {
-                    latitude: waypoints[0].lat,
-                    longitude: waypoints[0].lng
-                }
-            }
-        },
-        destination: {
-            location: {
-                latLng: {
-                    latitude: waypoints[waypoints.length - 1].lat,
-                    longitude: waypoints[waypoints.length - 1].lng
-                }
-            }
-        },
-        intermediates: waypoints.slice(1, -1).map(point => ({
-            location: {
-                latLng: {
-                    latitude: point.lat,
-                    longitude: point.lng
-                }
-            }
-        })),
-        travelMode: "DRIVE",
-        routingPreference: "TRAFFIC_AWARE",
-        computeAlternativeRoutes: false,
-        routeModifiers: {
-            avoidTolls: false,
-            avoidHighways: false
-        },
-        languageCode: "en-US",
-        units: "METRIC"
-    };
+    // Try different travel modes in order: DRIVE -> TRANSIT -> WALKING
+    const travelModes = ['DRIVE', 'TRANSIT', 'WALK'];
+    let lastError = null;
+    
+    for (const travelMode of travelModes) {
+        try {
+            console.log(`Attempting route calculation with travel mode: ${travelMode}`);
+            
+            // Prepare the request body for current travel mode
+            const requestBody = {
+                origin: {
+                    location: {
+                        latLng: {
+                            latitude: waypoints[0].lat,
+                            longitude: waypoints[0].lng
+                        }
+                    }
+                },
+                destination: {
+                    location: {
+                        latLng: {
+                            latitude: waypoints[waypoints.length - 1].lat,
+                            longitude: waypoints[waypoints.length - 1].lng
+                        }
+                    }
+                },
+                intermediates: waypoints.slice(1, -1).map(point => ({
+                    location: {
+                        latLng: {
+                            latitude: point.lat,
+                            longitude: point.lng
+                        }
+                    }
+                })),
+                travelMode: travelMode,
+                routingPreference: travelMode === 'DRIVE' ? "TRAFFIC_AWARE" : undefined,
+                computeAlternativeRoutes: false,
+                routeModifiers: travelMode === 'DRIVE' ? {
+                    avoidTolls: false,
+                    avoidHighways: false
+                } : undefined,
+                languageCode: "en-US",
+                units: "METRIC"
+            };
 
+            // Remove undefined properties
+            Object.keys(requestBody).forEach(key => {
+                if (requestBody[key] === undefined) {
+                    delete requestBody[key];
+                }
+            });
+
+            const result = await makeRouteRequest(requestBody);
+            
+            // If we get a successful result with routes, return it
+            if (result && result.routes && result.routes.length > 0) {
+                console.log(`Successfully calculated route with travel mode: ${travelMode}`);
+                return { ...result, usedTravelMode: travelMode };
+            } else {
+                console.log(`No routes found for travel mode: ${travelMode}`);
+                lastError = new Error(`No routes available for ${travelMode} mode`);
+            }
+        } catch (error) {
+            console.log(`Failed to get route with travel mode ${travelMode}:`, error.message);
+            lastError = error;
+            // Continue to next travel mode
+        }
+    }
+    
+    // If we get here, all travel modes failed
+    throw new Error(`Route calculation failed for all travel modes. Last error: ${lastError?.message || 'Unknown error'}`);
+};
+
+// Helper function to make the actual route request
+const makeRouteRequest = async (requestBody) => {
     // Make the request using POST method
     return new Promise((resolve, reject) => {
         const postData = JSON.stringify(requestBody);
@@ -229,6 +267,7 @@ exports.handler = async (event) => {
             polyline: route.polyline?.encodedPolyline || '',
             totalDistance: route.distanceMeters || 0,
             totalDuration: route.duration || '',
+            travelMode: routeData.usedTravelMode || 'DRIVE',
             legs: route.legs?.map(leg => ({
                 distance: leg.distanceMeters || 0,
                 duration: leg.duration || '',
