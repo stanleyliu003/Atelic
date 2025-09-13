@@ -1,6 +1,7 @@
 import { Colors } from '../../../../constants/Colors';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import React from 'react';
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Activity } from '../../../types/activity.types';
@@ -37,6 +38,19 @@ const getGoogleMapsTravelMode = (travelMode?: string): string => {
       return 'walking';
     default:
       return 'driving'; // Default fallback
+  }
+};
+
+// Helper function to get the appropriate icon based on travel mode
+const getTravelModeIcon = (travelMode?: string) => {
+  switch (travelMode) {
+    case 'WALK':
+      return <MaterialIcons name="directions-walk" size={17} color={Colors.PRIMARY} />;
+    case 'TRANSIT':
+      return <MaterialIcons name="directions-transit" size={17} color={Colors.PRIMARY} />;
+    case 'DRIVE':
+    default:
+      return <MaterialCommunityIcons name="car-outline" size={17} color={Colors.PRIMARY} />;
   }
 };
 
@@ -192,7 +206,7 @@ export function ActivityCard({
           activeOpacity={0.7}
         >
           <View style={styles.routeInfoItem}>
-            <MaterialCommunityIcons name="car-outline" size={17} color={Colors.PRIMARY} />
+            {getTravelModeIcon(travelMode)}
             <Text style={styles.routeInfoValue}>  {formatDuration(nextActivityDuration)}</Text>
           </View>
           <View style={styles.routeInfoItem}>
