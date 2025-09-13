@@ -35,7 +35,10 @@ export async function fetchRoutePolyline(activities: Activity[]): Promise<RouteD
   const result = await API.graphql(graphqlOperation(getRoute, { waypoints }));
 
   const routeData = (result as any)?.data?.getRoute;
+  console.log('Frontend received route data:', JSON.stringify(routeData, null, 2));
+  
   if (!routeData) {
+    console.log('No route data received from GraphQL');
     return {
       polyline: [],
       legs: [],
@@ -50,6 +53,12 @@ export async function fetchRoutePolyline(activities: Activity[]): Promise<RouteD
   const totalDistance = routeData.totalDistance || 0;
   const totalDuration = routeData.totalDuration || '';
   const travelMode = routeData.travelMode || 'DRIVE';
+  
+  console.log('Frontend processed legs:', legs);
+  console.log('Frontend legs count:', legs.length);
+  if (legs.length > 0) {
+    console.log('First leg distances:', legs.map((leg: any) => leg.distance));
+  }
 
   return {
     polyline,
