@@ -23,6 +23,7 @@ interface DayScheduleProps {
   scrollPosition?: number; // Current scroll position
   onScrollPositionChange?: (position: number) => void; // Callback for scroll position changes
   shouldRestorePosition?: boolean; // Flag to trigger position restore
+  travelMode?: string; // Travel mode from route calculation
 }
 
 export function DaySchedule({ 
@@ -41,7 +42,8 @@ export function DaySchedule({
   isAddingPlace = false,
   scrollPosition = 0,
   onScrollPositionChange,
-  shouldRestorePosition = false
+  shouldRestorePosition = false,
+  travelMode
 }: DayScheduleProps) {
   const selectedCount = selectedActivities.length;
   const scrollViewRef = useRef<ScrollView>(null);
@@ -123,6 +125,7 @@ export function DaySchedule({
           emptyStateTitle={`No activities for Day ${dayNumber}`}
           emptyStateSubtitle={"Go to your wishlist to select and add activities"}
           routeLegs={routeLegs}
+          travelMode={travelMode}
         />
 
         {/* Add additional places button - only visible when scrolling down and there are activities */}

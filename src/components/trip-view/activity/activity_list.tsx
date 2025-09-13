@@ -14,6 +14,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   emptyStateSubtitle?: string;
   routeLegs?: RouteLeg[];
   scrollable?: boolean; // <-- new prop
+  travelMode?: string; // Travel mode from route calculation
 }
 
 export function ActivityList({ 
@@ -31,6 +32,7 @@ export function ActivityList({
   emptyStateSubtitle,
   routeLegs = [],
   scrollable = true, // <-- default true
+  travelMode
 }: EnhancedActivityListProps) {
   // Since we always have recommendations, we don't need empty state handling
   if (!activities || activities.length === 0) {
@@ -99,6 +101,7 @@ export function ActivityList({
             nextActivityDuration={nextActivityDuration}
             isLastActivity={isLastActivity}
             nextActivity={nextActivity}
+            travelMode={travelMode}
           />
         );
       })}

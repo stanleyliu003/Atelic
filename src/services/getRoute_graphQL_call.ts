@@ -14,6 +14,7 @@ export interface RouteData {
   legs: RouteLeg[];
   totalDistance: number;
   totalDuration: string;
+  travelMode: string;
 }
 
 export async function fetchRoutePolyline(activities: Activity[]): Promise<RouteData> {
@@ -26,7 +27,8 @@ export async function fetchRoutePolyline(activities: Activity[]): Promise<RouteD
       polyline: [],
       legs: [],
       totalDistance: 0,
-      totalDuration: ''
+      totalDuration: '',
+      travelMode: 'DRIVE'
     };
   }
 
@@ -38,7 +40,8 @@ export async function fetchRoutePolyline(activities: Activity[]): Promise<RouteD
       polyline: [],
       legs: [],
       totalDistance: 0,
-      totalDuration: ''
+      totalDuration: '',
+      travelMode: 'DRIVE'
     };
   }
 
@@ -46,11 +49,13 @@ export async function fetchRoutePolyline(activities: Activity[]): Promise<RouteD
   const legs = routeData.legs || [];
   const totalDistance = routeData.totalDistance || 0;
   const totalDuration = routeData.totalDuration || '';
+  const travelMode = routeData.travelMode || 'DRIVE';
 
   return {
     polyline,
     legs,
     totalDistance,
-    totalDuration
+    totalDuration,
+    travelMode
   };
 } 

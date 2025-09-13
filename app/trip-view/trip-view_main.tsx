@@ -34,7 +34,8 @@ export default function TripViewMain() {
         polyline: [],
         legs: [],
         totalDistance: 0,
-        totalDuration: ''
+        totalDuration: '',
+        travelMode: 'DRIVE'
     });
     const [routeLoading, setRouteLoading] = useState(false);
     const routeCache = useRef<{ [tab: string]: { activitiesHash: string, routeData: RouteData } }>({});
@@ -184,7 +185,8 @@ export default function TripViewMain() {
             polyline: [],
             legs: [],
             totalDistance: 0,
-            totalDuration: ''
+            totalDuration: '',
+            travelMode: 'DRIVE'
         });
         if (!activeTab.startsWith('day')) {
             setRouteLoading(false);
@@ -736,6 +738,7 @@ export default function TripViewMain() {
                                     scrollPosition={dayScrollPositions[currentDayNumber] || 0}
                                     onScrollPositionChange={(position) => handleScrollPositionChange(currentDayNumber, position)}
                                     shouldRestorePosition={shouldRestoreScrollPositions[currentDayNumber] || false}
+                                    travelMode={routeData.travelMode}
                                 />
                             );
                         })()}

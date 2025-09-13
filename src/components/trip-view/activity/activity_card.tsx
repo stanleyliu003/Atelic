@@ -23,7 +23,22 @@ interface ActivityCardProps {
   nextActivityDuration?: string; // Duration to next activity
   isLastActivity?: boolean; // Whether this is the last activity in the list
   nextActivity?: Activity; // Next activity for Google Maps routing
+  travelMode?: string; // Travel mode from route calculation (DRIVE, TRANSIT, WALK)
 }
+
+// Helper function to convert our travel modes to Google Maps travel modes
+const getGoogleMapsTravelMode = (travelMode?: string): string => {
+  switch (travelMode) {
+    case 'DRIVE':
+      return 'driving';
+    case 'TRANSIT':
+      return 'transit';
+    case 'WALK':
+      return 'walking';
+    default:
+      return 'driving'; // Default fallback
+  }
+};
 
 export function ActivityCard({ 
   activity, 
@@ -38,7 +53,8 @@ export function ActivityCard({
   nextActivityDistance,
   nextActivityDuration,
   isLastActivity = false,
-  nextActivity
+  nextActivity,
+  travelMode
 }: ActivityCardProps) {
   
   const handlePress = () => {
@@ -62,11 +78,13 @@ export function ActivityCard({
   const handleRoutePress = () => {
     if (!nextActivity) return;
 
+    const googleMapsTravelMode = getGoogleMapsTravelMode(travelMode);
+
     const createCoordinateUrl = () => {
       if (activity.lat && activity.lng && nextActivity.lat && nextActivity.lng) {
         const origin = `${activity.lat},${activity.lng}`;
         const destination = `${nextActivity.lat},${nextActivity.lng}`;
-        return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
+        return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=${googleMapsTravelMode}`;
       }
       return null;
     };
@@ -75,7 +93,7 @@ export function ActivityCard({
       // Use activity names for better user experience
       const origin = encodeURIComponent(activity.name);
       const destination = encodeURIComponent(nextActivity.name);
-      const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=${googleMapsTravelMode}`;
       
       Linking.openURL(url).catch(err => {
         console.error('Error opening Google Maps:', err);

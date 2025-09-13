@@ -37,6 +37,7 @@ export const getRoute = /* GraphQL */ `
       polyline
       totalDistance
       totalDuration
+      travelMode
       legs {
         distance
         duration

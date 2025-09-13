@@ -72,6 +72,7 @@
      polyline: String
      totalDistance: Int
      totalDuration: String
+     travelMode: String
      legs: [RouteLeg]
    }
 
