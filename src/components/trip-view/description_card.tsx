@@ -17,6 +17,18 @@ const formatNumber = (num: number) => {
   return num.toLocaleString();
 };
 
+const formatTimeAgo = (timestamp: number) => {
+  const now = Date.now() / 1000;
+  const diff = now - timestamp;
+  
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 31536000) return `${Math.floor(diff / 2592000)}mo ago`;
+  return `${Math.floor(diff / 31536000)}y ago`;
+};
+
 const renderStars = (rating: number) => {
   const stars = [];
   const fullStars = Math.floor(rating);
@@ -68,6 +80,17 @@ const renderStars = (rating: number) => {
 
 export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProps) {
   const [hoursExpanded, setHoursExpanded] = useState(false);
+  const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
+
+  const toggleReviewExpansion = (index: number) => {
+    const newExpanded = new Set(expandedReviews);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedReviews(newExpanded);
+  };
 
   const handleWebsitePress = async () => {
     if (activity.website_uri) {
@@ -345,6 +368,35 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
             {activity.is_recommended ? 'Recommended by Google' : 'Added by you'}
           </Text>
         </View>
+
+        {/* Reviews */}
+        {activity.reviews && activity.reviews.length > 0 && (
+          <View style={styles.reviewsContainer}>
+            <Text style={styles.reviewsLabel}>Reviews</Text>
+            {activity.reviews.slice(0, 5).map((review, index) => (
+              <View key={index} style={styles.reviewItem}>
+                <View style={styles.reviewHeader}>
+                  <Image 
+                    source={{ uri: review.profile_photo_url }} 
+                    style={styles.reviewProfilePhoto}
+                  />
+                  <View style={styles.reviewHeaderText}>
+                    <Text style={styles.reviewAuthorName}>{review.author_name}</Text>
+                    <Text style={styles.reviewTime}>{formatTimeAgo(review.time || 0)}</Text>
+                  </View>
+                </View>
+                <View style={styles.reviewRating}>
+                  {review.rating && renderStars(review.rating)}
+                </View>
+                {review.text && (
+                  <Text style={styles.reviewText} numberOfLines={3}>
+                    {review.text}
+                  </Text>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
         <View style={styles.bottomSpacing} />
       </ScrollView>
     </View>
@@ -569,5 +621,59 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 30,
+  },
+  reviewsContainer: {
+    marginBottom: 30,
+  },
+  reviewsLabel: {
+    fontFamily: 'outfit-bold',
+    fontSize: 16,
+    color: Colors.PRIMARY,
+    marginBottom: 15,
+  },
+  reviewItem: {
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  reviewProfilePhoto: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  reviewHeaderText: {
+    flex: 1,
+  },
+  reviewAuthorName: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  reviewTime: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: Colors.GRAY,
+  },
+  reviewRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    marginLeft: 52,
+  },
+  reviewText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    marginLeft: 52,
   },
 });
