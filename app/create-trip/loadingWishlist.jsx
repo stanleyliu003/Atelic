@@ -57,7 +57,11 @@ export default function LoadingWishlist() {
         const createWishlist = async () => {
             try {
                 setIsLoading(true);
-                
+
+                // Add timing logs to debug timeout issue
+                const requestStartTime = Date.now();
+                console.log(`[TIMING] Request starting at: ${new Date(requestStartTime).toISOString()}`);
+
                 // Build categories text if available
                 let categoriesText = '';
                 if (selectedCategories && selectedCategories.length > 0 && cityCategories) {
@@ -77,83 +81,127 @@ export default function LoadingWishlist() {
                 
                 // Combine city, trip length, categories, and destinations for the API call
                 const combinedText = `User wants to visit ${selectedCity} for ${tripLength} days.${categoriesText}${wishlistText ? ` They also want to visit these specific places or have these interests: ${wishlistText}` : ''}`;
-                
+
+                console.log(`[TIMING] Starting API call at: ${new Date().toISOString()}`);
+                console.log(`[TIMING] Combined text length: ${combinedText.length} characters`);
+
                 // Start the API call and progress animation in parallel
                 const [result] = await Promise.all([
-                    // API call
-                    API.graphql(graphqlOperation(`
-                        query AnalyzeWishlist($wishlist_text: String!, $selectedCity: String!) {
-                            analyzeWishlist(wishlist_text: $wishlist_text, selectedCity: $selectedCity) {
-                                wishlist_activities {
-                                    name
-                                    city
-                                    lat
-                                    lng
-                                    rating
-                                    user_ratings_total
-                                    formatted_address
-                                    types
-                                    place_id
-                                    photo_reference
-                                    is_recommended
-                                    display_name
-                                    website_uri
-                                    regular_opening_hours {
-                                        open_now
-                                        periods {
-                                            open {
-                                                day
-                                                time
-                                                date
-                                                truncated
+                    // API call with timing
+                    (async () => {
+                        try {
+                            const apiStartTime = Date.now();
+                            console.log(`[TIMING] GraphQL API call starting at: ${new Date(apiStartTime).toISOString()}`);
+
+                            const apiResult = await API.graphql(graphqlOperation(`
+                                query AnalyzeWishlist($wishlist_text: String!, $selectedCity: String!) {
+                                    analyzeWishlist(wishlist_text: $wishlist_text, selectedCity: $selectedCity) {
+                                        wishlist_activities {
+                                            name
+                                            city
+                                            lat
+                                            lng
+                                            rating
+                                            user_ratings_total
+                                            formatted_address
+                                            types
+                                            place_id
+                                            photo_reference
+                                            is_recommended
+                                            display_name
+                                            website_uri
+                                            regular_opening_hours {
+                                                open_now
+                                                periods {
+                                                    open {
+                                                        day
+                                                        time
+                                                        date
+                                                        truncated
+                                                    }
+                                                    close {
+                                                        day
+                                                        time
+                                                        date
+                                                        truncated
+                                                    }
+                                                }
+                                                weekday_text
                                             }
-                                            close {
-                                                day
+                                            reviews {
+                                                author_name
+                                                rating
+                                                text
                                                 time
-                                                date
-                                                truncated
+                                                author_url
+                                                profile_photo_url
                                             }
+                                            editorial_summary
+                                            primary_type_display_name
+                                            international_phone_number
                                         }
-                                        weekday_text
                                     }
-                                    reviews {
-                                        author_name
-                                        rating
-                                        text
-                                        time
-                                        author_url
-                                        profile_photo_url
-                                    }
-                                    editorial_summary
-                                    primary_type_display_name
-                                    international_phone_number
                                 }
-                            }
+                            `, { wishlist_text: combinedText, selectedCity: selectedCity }));
+
+                            const apiEndTime = Date.now();
+                            const apiDuration = apiEndTime - apiStartTime;
+                            console.log(`[TIMING] GraphQL API call completed at: ${new Date(apiEndTime).toISOString()}`);
+                            console.log(`[TIMING] GraphQL API call duration: ${apiDuration}ms`);
+
+                            return apiResult;
+                        } catch (apiError) {
+                            const apiErrorTime = Date.now();
+                            console.error(`[TIMING] GraphQL API call failed at: ${new Date(apiErrorTime).toISOString()}`);
+                            console.error(`[TIMING] GraphQL API call duration before error: ${apiErrorTime - requestStartTime}ms`);
+                            console.error(`[TIMING] API Error details:`, apiError);
+                            throw apiError;
                         }
-                    `, { wishlist_text: combinedText, selectedCity: selectedCity })),
+                    })(),
                     // Progress animation (15 seconds total - 5 steps x 3 seconds each)
                     runProgressAnimation()
                 ]);
                 
                 // Extract and print the activities array with proper null checking
                 const activities = result?.data?.analyzeWishlist?.wishlist_activities || [];
+                const requestEndTime = Date.now();
+                const totalDuration = requestEndTime - requestStartTime;
+
+                console.log(`[TIMING] Request completed at: ${new Date(requestEndTime).toISOString()}`);
+                console.log(`[TIMING] Total request duration: ${totalDuration}ms`);
+                console.log(`[TIMING] Activities received: ${activities.length}`);
                 console.log('Extracted activities:', JSON.stringify(activities, null, 2));
-                
+
                 if (activities.length === 0) {
                     console.warn('No activities were returned from the analysis');
                 }
-                
+
                 // Store activities in context
                 updateActivities(activities);
                 updateWishlistText(combinedText);
-                
+
                 // Navigate to the next screen
                 router.replace('/create-trip/wishlist_info');
             } catch (error) {
+                const errorTime = Date.now();
+                const errorDuration = errorTime - requestStartTime;
+
+                console.error(`[TIMING] Error occurred at: ${new Date(errorTime).toISOString()}`);
+                console.error(`[TIMING] Time until error: ${errorDuration}ms`);
                 console.error('Error analyzing wishlist:', error);
+
                 if (error.errors) {
                     console.error('GraphQL Errors:', JSON.stringify(error.errors, null, 2));
+                    // Check for specific timeout error types
+                    const timeoutErrors = error.errors.filter(e =>
+                        e.message?.toLowerCase().includes('timeout') ||
+                        e.errorType?.toLowerCase().includes('timeout')
+                    );
+                    if (timeoutErrors.length > 0) {
+                        console.error(`[TIMING] Timeout errors detected:`, timeoutErrors);
+                    }
                 }
+
                 setProgressText('Something went wrong...');
                 // On error, go back to the previous screen
                 setTimeout(() => router.back(), 1000);
