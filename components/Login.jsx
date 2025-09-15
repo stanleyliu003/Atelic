@@ -11,11 +11,6 @@ Amplify.configure({
   Analytics: {
     disabled: true,
   },
-  API: {
-    GraphQL: {
-      timeout: 60000, // 60 seconds timeout for GraphQL requests
-    }
-  }
 });
 
 console.log('Amplify configured')

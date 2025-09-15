@@ -25,6 +25,7 @@ const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
 const lambdaClient = new LambdaClient({ region: process.env.REGION });
 
 /**
+ * REST API Gateway Lambda handler for wishlist analysis
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
 exports.handler = async (event) => {
@@ -35,15 +36,56 @@ exports.handler = async (event) => {
     const maxExecutionTime = 55000; // 55 seconds, leaving 5 seconds buffer before Lambda timeout
 
     try {
-        // Extract wishlist_text and selectedCity from GraphQL input
-        const { wishlist_text, selectedCity } = event.arguments || {};
+        // Extract wishlist_text and selectedCity from REST API input
+        // For REST API, the data comes from event.body
+        let requestBody = {};
+        if (event.body) {
+            try {
+                requestBody = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+            } catch (parseError) {
+                console.error('Error parsing request body:', parseError);
+                return {
+                    statusCode: 400,
+                    headers: {
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Headers": "*",
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        error: 'Invalid JSON in request body'
+                    })
+                };
+            }
+        }
+
+        const { wishlist_text, selectedCity } = requestBody;
 
         if (!wishlist_text) {
-            throw new Error('wishlist_text is required');
+            return {
+                statusCode: 400,
+                headers: {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Headers": "*",
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    error: 'wishlist_text is required'
+                })
+            };
         }
 
         if (!selectedCity) {
-            throw new Error('selectedCity is required');
+            return {
+                statusCode: 400,
+                headers: {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Headers": "*",
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    error: 'selectedCity is required'
+                })
+            };
         }
 
         // Initialize Gemini with API key from environment
@@ -243,16 +285,32 @@ exports.handler = async (event) => {
         console.log('finalActivities', finalActivities);
 
         return {
-            wishlist_activities: finalActivities,
+            statusCode: 200,
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "*",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                wishlist_activities: finalActivities,
+            })
         };
 
     } catch (error) {
         console.error('Error in Lambda function:', error);
 
-        // Standardize error response for GraphQL
+        // Standardize error response for REST API
         return {
-            wishlist_activities: [], // Return an empty array on error for consistency with GraphQL type
-            error: error.message // Optionally include error message for client-side debugging
+            statusCode: 500,
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "*",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                wishlist_activities: [], // Return an empty array on error
+                error: error.message // Include error message for client-side debugging
+            })
         };
     }
 };

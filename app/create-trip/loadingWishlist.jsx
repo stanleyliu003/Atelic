@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, Animated } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
-import { API, graphqlOperation } from 'aws-amplify';
+import { API } from 'aws-amplify';
 
 export default function LoadingWishlist() {
     const router = useRouter();
@@ -91,69 +91,25 @@ export default function LoadingWishlist() {
                     (async () => {
                         try {
                             const apiStartTime = Date.now();
-                            console.log(`[TIMING] GraphQL API call starting at: ${new Date(apiStartTime).toISOString()}`);
+                            console.log(`[TIMING] REST API call starting at: ${new Date(apiStartTime).toISOString()}`);
 
-                            const apiResult = await API.graphql(graphqlOperation(`
-                                query AnalyzeWishlist($wishlist_text: String!, $selectedCity: String!) {
-                                    analyzeWishlist(wishlist_text: $wishlist_text, selectedCity: $selectedCity) {
-                                        wishlist_activities {
-                                            name
-                                            city
-                                            lat
-                                            lng
-                                            rating
-                                            user_ratings_total
-                                            formatted_address
-                                            types
-                                            place_id
-                                            photo_reference
-                                            is_recommended
-                                            display_name
-                                            website_uri
-                                            regular_opening_hours {
-                                                open_now
-                                                periods {
-                                                    open {
-                                                        day
-                                                        time
-                                                        date
-                                                        truncated
-                                                    }
-                                                    close {
-                                                        day
-                                                        time
-                                                        date
-                                                        truncated
-                                                    }
-                                                }
-                                                weekday_text
-                                            }
-                                            reviews {
-                                                author_name
-                                                rating
-                                                text
-                                                time
-                                                author_url
-                                                profile_photo_url
-                                            }
-                                            editorial_summary
-                                            primary_type_display_name
-                                            international_phone_number
-                                        }
-                                    }
+                            const apiResult = await API.post('WishlistRestAPI', '/analyze/wishlist', {
+                                body: {
+                                    wishlist_text: combinedText,
+                                    selectedCity: selectedCity
                                 }
-                            `, { wishlist_text: combinedText, selectedCity: selectedCity }));
+                            });
 
                             const apiEndTime = Date.now();
                             const apiDuration = apiEndTime - apiStartTime;
-                            console.log(`[TIMING] GraphQL API call completed at: ${new Date(apiEndTime).toISOString()}`);
-                            console.log(`[TIMING] GraphQL API call duration: ${apiDuration}ms`);
+                            console.log(`[TIMING] REST API call completed at: ${new Date(apiEndTime).toISOString()}`);
+                            console.log(`[TIMING] REST API call duration: ${apiDuration}ms`);
 
                             return apiResult;
                         } catch (apiError) {
                             const apiErrorTime = Date.now();
-                            console.error(`[TIMING] GraphQL API call failed at: ${new Date(apiErrorTime).toISOString()}`);
-                            console.error(`[TIMING] GraphQL API call duration before error: ${apiErrorTime - requestStartTime}ms`);
+                            console.error(`[TIMING] REST API call failed at: ${new Date(apiErrorTime).toISOString()}`);
+                            console.error(`[TIMING] REST API call duration before error: ${apiErrorTime - requestStartTime}ms`);
                             console.error(`[TIMING] API Error details:`, apiError);
                             throw apiError;
                         }
@@ -163,7 +119,20 @@ export default function LoadingWishlist() {
                 ]);
                 
                 // Extract and print the activities array with proper null checking
-                const activities = result?.data?.analyzeWishlist?.wishlist_activities || [];
+                // REST API may wrap the response in a body field or return it directly
+                let responseData = result;
+                if (typeof result.body === 'string') {
+                    try {
+                        responseData = JSON.parse(result.body);
+                    } catch (parseError) {
+                        console.error('Error parsing REST API response body:', parseError);
+                        responseData = result;
+                    }
+                } else if (result.body && typeof result.body === 'object') {
+                    responseData = result.body;
+                }
+
+                const activities = responseData?.wishlist_activities || [];
                 const requestEndTime = Date.now();
                 const totalDuration = requestEndTime - requestStartTime;
 
@@ -190,16 +159,15 @@ export default function LoadingWishlist() {
                 console.error(`[TIMING] Time until error: ${errorDuration}ms`);
                 console.error('Error analyzing wishlist:', error);
 
-                if (error.errors) {
-                    console.error('GraphQL Errors:', JSON.stringify(error.errors, null, 2));
-                    // Check for specific timeout error types
-                    const timeoutErrors = error.errors.filter(e =>
-                        e.message?.toLowerCase().includes('timeout') ||
-                        e.errorType?.toLowerCase().includes('timeout')
-                    );
-                    if (timeoutErrors.length > 0) {
-                        console.error(`[TIMING] Timeout errors detected:`, timeoutErrors);
-                    }
+                // Check for REST API specific errors
+                if (error.response) {
+                    console.error('REST API Error Response:', JSON.stringify(error.response, null, 2));
+                }
+
+                // Check for timeout errors
+                if (error.message?.toLowerCase().includes('timeout') ||
+                    error.code?.toLowerCase().includes('timeout')) {
+                    console.error(`[TIMING] Timeout error detected:`, error.message);
                 }
 
                 setProgressText('Something went wrong...');

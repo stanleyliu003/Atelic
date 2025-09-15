@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "paths": {
+    "/analyze/wishlist": {
+      "name": "/analyze/wishlist",
+      "lambdaFunction": "wishlistAnalyzer",
+      "permissions": {
+        "setting": "open"
+      }
+    }
+  }
+}
