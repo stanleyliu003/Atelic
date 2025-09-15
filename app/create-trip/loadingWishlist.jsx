@@ -152,24 +152,6 @@ export default function LoadingWishlist() {
                 // Navigate to the next screen
                 router.replace('/create-trip/wishlist_info');
             } catch (error) {
-                const errorTime = Date.now();
-                const errorDuration = errorTime - requestStartTime;
-
-                console.error(`[TIMING] Error occurred at: ${new Date(errorTime).toISOString()}`);
-                console.error(`[TIMING] Time until error: ${errorDuration}ms`);
-                console.error('Error analyzing wishlist:', error);
-
-                // Check for REST API specific errors
-                if (error.response) {
-                    console.error('REST API Error Response:', JSON.stringify(error.response, null, 2));
-                }
-
-                // Check for timeout errors
-                if (error.message?.toLowerCase().includes('timeout') ||
-                    error.code?.toLowerCase().includes('timeout')) {
-                    console.error(`[TIMING] Timeout error detected:`, error.message);
-                }
-
                 setProgressText('Something went wrong...');
                 // On error, go back to the previous screen
                 setTimeout(() => router.back(), 1000);
