@@ -770,17 +770,10 @@ export default function TripViewMain() {
                             style={styles.publishButton}
                             onPress={() => {
                                 saveTrip();
-                                // Get the last activity data to pass to the success page
-                                const dayCount = getDayCount();
-                                const lastDayActivities = getDayActivities(dayCount);
-                                const lastActivity = lastDayActivities && lastDayActivities.length > 0 
-                                    ? lastDayActivities[lastDayActivities.length - 1] 
-                                    : null;
                                 router.push({
                                     pathname: '/trip-view/publish_success',
                                     params: {
-                                        dayCount: dayCount.toString(),
-                                        lastActivityPhotoRef: lastActivity?.photo_reference || ''
+                                        dayCount: getDayCount().toString()
                                     }
                                 });
                             }}

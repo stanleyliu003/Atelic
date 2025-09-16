@@ -60,7 +60,6 @@ export default function LoadingWishlist() {
 
                 // Add timing logs to debug timeout issue
                 const requestStartTime = Date.now();
-                console.log(`[TIMING] Request starting at: ${new Date(requestStartTime).toISOString()}`);
 
                 // Build categories text if available
                 let categoriesText = '';
@@ -82,17 +81,12 @@ export default function LoadingWishlist() {
                 // Combine city, trip length, categories, and destinations for the API call
                 const combinedText = `User wants to visit ${selectedCity} for ${tripLength} days.${categoriesText}${wishlistText ? ` They also want to visit these specific places or have these interests: ${wishlistText}` : ''}`;
 
-                console.log(`[TIMING] Starting API call at: ${new Date().toISOString()}`);
-                console.log(`[TIMING] Combined text length: ${combinedText.length} characters`);
-
                 // Start the API call and progress animation in parallel
                 const [result] = await Promise.all([
                     // API call with timing
                     (async () => {
                         try {
                             const apiStartTime = Date.now();
-                            console.log(`[TIMING] REST API call starting at: ${new Date(apiStartTime).toISOString()}`);
-
                             const apiResult = await API.post('WishlistRestAPI', '/analyze/wishlist', {
                                 body: {
                                     wishlist_text: combinedText,
@@ -102,8 +96,6 @@ export default function LoadingWishlist() {
 
                             const apiEndTime = Date.now();
                             const apiDuration = apiEndTime - apiStartTime;
-                            console.log(`[TIMING] REST API call completed at: ${new Date(apiEndTime).toISOString()}`);
-                            console.log(`[TIMING] REST API call duration: ${apiDuration}ms`);
 
                             return apiResult;
                         } catch (apiError) {
@@ -135,11 +127,6 @@ export default function LoadingWishlist() {
                 const activities = responseData?.wishlist_activities || [];
                 const requestEndTime = Date.now();
                 const totalDuration = requestEndTime - requestStartTime;
-
-                console.log(`[TIMING] Request completed at: ${new Date(requestEndTime).toISOString()}`);
-                console.log(`[TIMING] Total request duration: ${totalDuration}ms`);
-                console.log(`[TIMING] Activities received: ${activities.length}`);
-                console.log('Extracted activities:', JSON.stringify(activities, null, 2));
 
                 if (activities.length === 0) {
                     console.warn('No activities were returned from the analysis');

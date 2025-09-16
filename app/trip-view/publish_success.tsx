@@ -8,11 +8,21 @@ import { useCreateTrip } from '../../context/CreateTripContext';
 export default function PublishSuccess() {
     const router = useRouter();
     const params = useLocalSearchParams();
-    const { activities, selectedCity } = useCreateTrip();
-    
+    const { activities, selectedCity, dayActivities } = useCreateTrip();
+
     // Extract data from navigation parameters
     const dayCount = parseInt(params.dayCount as string) || 1;
-    const photoReference = params.lastActivityPhotoRef as string;
+
+    // Get first activity from day 1 instead of last activity
+    const getFirstActivityPhotoRef = () => {
+        const day1Activities = dayActivities[1]?.activities;
+        if (day1Activities && day1Activities.length > 0) {
+            return day1Activities[0].photo_reference;
+        }
+        return null;
+    };
+
+    const photoReference = getFirstActivityPhotoRef();
 
     const getDayCountText = () => {
         if (dayCount === 1) return '1 day';
