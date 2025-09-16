@@ -1,6 +1,6 @@
 import { Colors } from '../../constants/Colors';
-import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { View, Text, Animated } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { API } from 'aws-amplify';
@@ -35,23 +35,23 @@ export default function LoadingWishlist() {
         const runProgressAnimation = async () => {
             // Step 1: Initial setup (3 seconds)
             setProgressText('Preparing your preferences...');
-            await animateProgress(0.2, 4000);
+            await animateProgress(0.2, 2600);
             
             // Step 2: Building query (3 seconds)
             setProgressText('Building your travel query...');
-            await animateProgress(0.4, 4000);
+            await animateProgress(0.4, 2600);
             
             // Step 3: Analyzing preferences (3 seconds)
             setProgressText('Analyzing your preferences...');
-            await animateProgress(0.7, 4000);
+            await animateProgress(0.7, 2600);
             
             // Step 4: Processing results (3 seconds)
             setProgressText('Creating your wishlist...');
-            await animateProgress(0.9, 4000);
+            await animateProgress(0.9, 2600);
             
             // Step 5: Finalizing (3 seconds)
             setProgressText('Almost done...');
-            await animateProgress(1.0, 4000);
+            await animateProgress(1.0, 2600);
         };
 
         const createWishlist = async () => {
