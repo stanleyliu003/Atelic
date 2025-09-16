@@ -19,6 +19,7 @@ import { fetchRoutePolyline, RouteData } from '../../src/services/getRoute_graph
 import { optimizeRouteWithHaversine } from '../../src/components/trip-view/logic/optimize_route';
 import { Activity, TabType } from '../../src/types/activity.types';
 import { API, graphqlOperation } from 'aws-amplify';
+import { addAdditionalPlaceWithDedup, buildExistingPlaceIdSet, defaultAddPlacesButtonStyle } from '../../src/services/add_additional_place';
 import { createTrip } from '../../src/graphql/mutations';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Entypo from '@expo/vector-icons/Entypo';
@@ -461,71 +462,15 @@ export default function TripViewMain() {
             setIsAddPlacesModalVisible(false);
             setIsAddingPlace(true);
             
-            // Call the backend to add additional place
-            const result = await API.graphql(graphqlOperation(`
-                query AddAdditionalPlace($placeName: String!, $selectedCity: String!) {
-                    addAdditionalPlace(placeName: $placeName, selectedCity: $selectedCity) {
-                        name
-                        city
-                        lat
-                        lng
-                        place_id
-                        rating
-                        user_ratings_total
-                        formatted_address
-                        types
-                        primaryType
-                        photo_reference
-                        is_recommended
-                        display_name
-                        website_uri
-                        regular_opening_hours {
-                            open_now
-                            weekday_text
-                        }
-                        reviews {
-                            author_name
-                            rating
-                            text
-                            time
-                            author_url
-                            profile_photo_url
-                        }
-                        editorial_summary
-                        primary_type_display_name
-                        international_phone_number
-                    }
-                }
-            `, { 
-                placeName: data.description,
-                selectedCity: selectedCity || 'Unknown City'
-            })) as any;
-            
-            const newActivity = result?.data?.addAdditionalPlace;
+            // Build dedup set and call shared service with dedup
+            const existingPlaceIds = buildExistingPlaceIdSet(activities, dayActivities as any);
+            const { activity: newActivity, duplicate } = await addAdditionalPlaceWithDedup(
+                data.description,
+                selectedCity || 'Unknown City',
+                existingPlaceIds
+            );
             if (newActivity) {
-                // Check for duplicates before adding
-                const existingPlaceIds = new Set();
-                
-                // Collect place_ids from current activities (wishlist)
-                (activities || []).forEach(activity => {
-                    if (activity.place_id) {
-                        existingPlaceIds.add(activity.place_id);
-                    }
-                });
-                
-                // Collect place_ids from all day activities
-                Object.values(dayActivities).forEach(dayObj => {
-                    if (Array.isArray((dayObj as any).activities)) {
-                        (dayObj as any).activities.forEach((activity: Activity) => {
-                            if (activity.place_id) {
-                                existingPlaceIds.add(activity.place_id);
-                            }
-                        });
-                    }
-                });
-                
-                // Check if the new activity is a duplicate
-                if (newActivity.place_id && existingPlaceIds.has(newActivity.place_id)) {
+                if (duplicate) {
                     Alert.alert(
                         'Duplicate Place', 
                         `"${newActivity.name}" is already in your trip.`,
@@ -536,6 +481,10 @@ export default function TripViewMain() {
                     if (activeTab === 'wishlist') {
                         // Add to wishlist (activities list)
                         updateActivities([...activities, newActivity]);
+                        // Auto-select the newly added activity in wishlist selection mode
+                        if (newActivity.place_id) {
+                            toggleActivitySelection(newActivity.place_id);
+                        }
                     } else if (activeTab.startsWith('day')) {
                         // Add to the specific day
                         const dayNumber = parseInt(activeTab.replace('day', ''));
@@ -543,6 +492,9 @@ export default function TripViewMain() {
                     } else {
                         // Fallback to wishlist
                         updateActivities([...activities, newActivity]);
+                        if (newActivity.place_id) {
+                            toggleActivitySelection(newActivity.place_id);
+                        }
                     }
                 }
             } else {
@@ -714,6 +666,7 @@ export default function TripViewMain() {
                                             <AddPlacesButton
                                                 onPress={() => setIsAddPlacesModalVisible(true)}
                                                 isAddingPlace={isAddingPlace}
+                                                style={defaultAddPlacesButtonStyle}
                                             />
                                         </>
                                     )}

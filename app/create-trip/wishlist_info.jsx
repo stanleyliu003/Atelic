@@ -11,6 +11,7 @@ import { AddPlacesButton } from '../../src/components/trip-view/add_places_butto
 import { Colors } from './../../constants/Colors';
 import { API_KEYS } from '../../constants/ApiKeys';
 import { API, graphqlOperation } from 'aws-amplify';
+import { addAdditionalPlaceWithDedup, buildExistingPlaceIdSet, defaultAddPlacesButtonStyle } from '../../src/services/add_additional_place';
 
 export default function WishlistInfo() {
     const router = useRouter();
@@ -96,60 +97,15 @@ export default function WishlistInfo() {
             setIsAddPlacesModalVisible(false);
             setIsAddingPlace(true);
             
-            // Call the backend to add additional place
-            const result = await API.graphql(graphqlOperation(`
-                query AddAdditionalPlace($placeName: String!, $selectedCity: String!) {
-                    addAdditionalPlace(placeName: $placeName, selectedCity: $selectedCity) {
-                        name
-                        city
-                        lat
-                        lng
-                        place_id
-                        rating
-                        user_ratings_total
-                        formatted_address
-                        types
-                        primaryType
-                        photo_reference
-                        is_recommended
-                        display_name
-                        website_uri
-                        regular_opening_hours {
-                            open_now
-                            weekday_text
-                        }
-                        reviews {
-                            author_name
-                            rating
-                            text
-                            time
-                            author_url
-                            profile_photo_url
-                        }
-                        editorial_summary
-                        primary_type_display_name
-                        international_phone_number
-                    }
-                }
-            `, { 
-                placeName: data.description,
-                selectedCity: selectedCity || 'Unknown City'
-            }));
-            
-            const newActivity = result?.data?.addAdditionalPlace;
+            // Build dedup set and call shared service with dedup
+            const existingPlaceIds = buildExistingPlaceIdSet(activities);
+            const { activity: newActivity, duplicate } = await addAdditionalPlaceWithDedup(
+                data.description,
+                selectedCity || 'Unknown City',
+                existingPlaceIds
+            );
             if (newActivity) {
-                // Check for duplicates before adding
-                const existingPlaceIds = new Set();
-                
-                // Collect place_ids from current activities
-                (activities || []).forEach(activity => {
-                    if (activity.place_id) {
-                        existingPlaceIds.add(activity.place_id);
-                    }
-                });
-                
-                // Check if the new activity is a duplicate
-                if (newActivity.place_id && existingPlaceIds.has(newActivity.place_id)) {
+                if (duplicate) {
                     Alert.alert(
                         'Duplicate Place', 
                         `"${newActivity.name}" is already in your trip.`,
@@ -287,7 +243,7 @@ export default function WishlistInfo() {
             <AddPlacesButton
                 onPress={() => setIsAddPlacesModalVisible(true)}
                 isAddingPlace={isAddingPlace}
-                style={{ marginTop: 10, borderColor: Colors.GRAY }}
+                style={defaultAddPlacesButtonStyle}
                 showLoadingIndicator={false}
             />
           </View>
