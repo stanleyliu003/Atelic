@@ -1,16 +1,20 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WishlistActivities } from '../../src/components/trip-view';
 import { ActivityDetailView } from '../../src/components/trip-view/description_card';
+import { AddPlacesButton } from '../../src/components/trip-view/add_places_button';
 import { Colors } from './../../constants/Colors';
+import { API_KEYS } from '../../constants/ApiKeys';
+import { API, graphqlOperation } from 'aws-amplify';
 
 export default function WishlistInfo() {
     const router = useRouter();
-    const { activities, updateActivities, setCityCategories, CACHE_KEYS } = useCreateTrip();
+    const { activities, updateActivities, setCityCategories, CACHE_KEYS, selectedCity } = useCreateTrip();
     
     // State for selected activities - initialize with all activities selected
     const [selectedActivities, setSelectedActivities] = useState([]);
@@ -20,6 +24,10 @@ export default function WishlistInfo() {
     // State for activity detail view
     const [selectedActivityForDetail, setSelectedActivityForDetail] = useState(null);
     const [showActivityDetail, setShowActivityDetail] = useState(false);
+    
+    // State for add places modal
+    const [isAddPlacesModalVisible, setIsAddPlacesModalVisible] = useState(false);
+    const [isAddingPlace, setIsAddingPlace] = useState(false);
 
     // Initialize with no activities selected by default since all are now recommendations
     useEffect(() => {
@@ -66,6 +74,106 @@ export default function WishlistInfo() {
     const handleCloseActivityDetail = () => {
         setShowActivityDetail(false);
         setSelectedActivityForDetail(null);
+    };
+
+    // Get bias location from activities or selectedCity
+    const getBiasLocation = () => {
+        // First try to get coordinates from activities
+        if (activities && activities.length > 0) {
+            const validActivities = activities.filter(activity => activity.lat && activity.lng);
+            if (validActivities.length > 0) {
+                // Use the first activity with valid coordinates
+                const firstActivity = validActivities[0];
+                return `${firstActivity.lat},${firstActivity.lng}`;
+            }
+        }
+        
+        // Fallback to selectedCity if no activities have coordinates
+        if (selectedCity) {
+            return selectedCity;
+        }
+        
+        return null;
+    };
+
+    // Handler for place selection from GooglePlacesAutocomplete
+    const handlePlaceSelect = async (data, details) => {
+        try {
+            setIsAddPlacesModalVisible(false);
+            setIsAddingPlace(true);
+            
+            // Call the backend to add additional place
+            const result = await API.graphql(graphqlOperation(`
+                query AddAdditionalPlace($placeName: String!, $selectedCity: String!) {
+                    addAdditionalPlace(placeName: $placeName, selectedCity: $selectedCity) {
+                        name
+                        city
+                        lat
+                        lng
+                        place_id
+                        rating
+                        user_ratings_total
+                        formatted_address
+                        types
+                        primaryType
+                        photo_reference
+                        is_recommended
+                        display_name
+                        website_uri
+                        regular_opening_hours {
+                            open_now
+                            weekday_text
+                        }
+                        reviews {
+                            author_name
+                            rating
+                            text
+                            time
+                            author_url
+                            profile_photo_url
+                        }
+                        editorial_summary
+                        primary_type_display_name
+                        international_phone_number
+                    }
+                }
+            `, { 
+                placeName: data.description,
+                selectedCity: selectedCity || 'Unknown City'
+            }));
+            
+            const newActivity = result?.data?.addAdditionalPlace;
+            if (newActivity) {
+                // Check for duplicates before adding
+                const existingPlaceIds = new Set();
+                
+                // Collect place_ids from current activities
+                (activities || []).forEach(activity => {
+                    if (activity.place_id) {
+                        existingPlaceIds.add(activity.place_id);
+                    }
+                });
+                
+                // Check if the new activity is a duplicate
+                if (newActivity.place_id && existingPlaceIds.has(newActivity.place_id)) {
+                    Alert.alert(
+                        'Duplicate Place', 
+                        `"${newActivity.name}" is already in your trip.`,
+                        [{ text: 'OK' }]
+                    );
+                } else {
+                    // Add the new activity to the wishlist
+                    updateActivities([...activities, newActivity]);
+                }
+            } else {
+                console.warn('Could not get place details');
+            }
+        } catch (error) {
+            console.error('Error adding place:', error);
+            // Optionally show a user-facing error message
+        } finally {
+            setIsAddingPlace(false);
+        }
     };
 
     // Handle create trip button press
@@ -171,6 +279,16 @@ export default function WishlistInfo() {
               })()}
             </>
           )}
+          
+          {/* Add Places Button - at the very bottom of scroll content */}
+          <View style={styles.addPlacesButtonContainer}>
+            <AddPlacesButton
+                onPress={() => setIsAddPlacesModalVisible(true)}
+                isAddingPlace={isAddingPlace}
+                style={{ marginTop: 10, borderColor: Colors.GRAY }}
+                showLoadingIndicator={false}
+            />
+          </View>
         </ScrollView>
 
         {/* Create Trip Button */}
@@ -204,6 +322,56 @@ export default function WishlistInfo() {
             </View>
           </View>
         )}
+
+        {/* Add Places Modal */}
+        <Modal
+          visible={isAddPlacesModalVisible}
+          animationType="slide"
+          presentationStyle="formSheet"
+          onRequestClose={() => setIsAddPlacesModalVisible(false)}
+        >
+          <KeyboardAvoidingView 
+            style={styles.addPlacesModalContainer}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <View style={styles.addPlacesModalHeader}>
+              <TouchableOpacity 
+                onPress={() => setIsAddPlacesModalVisible(false)}
+                style={styles.addPlacesModalCloseButton}
+              >
+                <Ionicons name="close" size={32} color={Colors.GRAY} />
+              </TouchableOpacity>
+              <Text style={styles.addPlacesModalTitle}>Add Additional Places</Text>
+              <View style={styles.addPlacesModalSpacer} />
+            </View>
+            
+            <View style={styles.addPlacesModalContent}>
+              <GooglePlacesAutocomplete
+                placeholder={`Search places in ${selectedCity}`}
+                onPress={handlePlaceSelect}
+                query={{
+                  key: API_KEYS.GOOGLE_MAPS,
+                  language: 'en',
+                  ...(getBiasLocation() && {
+                    location: getBiasLocation(),
+                    radius: 10000, // 10km radius around the bias location
+                  }),
+                }}
+                styles={{
+                  container: styles.googlePlacesContainer,
+                  textInputContainer: styles.googlePlacesTextInputContainer,
+                  textInput: styles.googlePlacesInput,
+                  listView: styles.googlePlacesList,
+                  row: styles.googlePlacesRow,
+                  description: styles.googlePlacesDescription,
+                }}
+                fetchDetails={false}
+                enablePoweredByContainer={false}
+                debounce={200}
+              />
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </View>
     )
 }
@@ -231,6 +399,12 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
       paddingBottom: 20,
+    },
+    addPlacesButtonContainer: {
+      alignItems: 'center',
+      padding: 20,
+      marginTop: -40,
+      marginBottom: 0, // Extra space to ensure it's at the very bottom
     },
 
     citySection: {
@@ -270,7 +444,7 @@ const styles = StyleSheet.create({
     userAddedTitle: {
       fontFamily: 'outfit-bold',
       fontSize: 24,
-      marginTop: 25,
+      marginTop: -10,
       marginBottom: 10,
       textAlign: 'center',
       color: Colors.PRIMARY, // Slightly different color to distinguish from recommended
@@ -298,5 +472,77 @@ const styles = StyleSheet.create({
       borderTopLeftRadius: 25,
       borderTopRightRadius: 25,
       paddingTop: 25,
+    },
+    addPlacesModalContainer: {
+      height: '50%', // Reduced to 50% of screen height
+      backgroundColor: Colors.WHITE,
+    },
+    addPlacesModalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingTop: 60,
+      paddingBottom: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: '#E5E5E5',
+    },
+    addPlacesModalCloseButton: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addPlacesModalTitle: {
+      fontFamily: 'outfit-bold',
+      fontSize: 24,
+      color: '#1a1a1a',
+    },
+    addPlacesModalSpacer: {
+      width: 40,
+    },
+    addPlacesModalContent: {
+      flex: 1,
+      padding: 20,
+    },
+    googlePlacesContainer: {
+      flex: 0,
+      zIndex: 1,
+    },
+    googlePlacesTextInputContainer: {
+      flexDirection: 'row',
+      width: '100%',
+    },
+    googlePlacesInput: {
+      height: 50,
+      color: '#1a1a1a',
+      fontSize: 16,
+      fontFamily: 'outfit',
+      borderWidth: 1,
+      borderRadius: 15,
+      borderColor: '#1a1a1a',
+      paddingHorizontal: 15,
+      flex: 1,
+    },
+    googlePlacesList: {
+      backgroundColor: 'white',
+      borderRadius: 15,
+      marginTop: 5,
+      elevation: 3,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    },
+    googlePlacesRow: {
+      backgroundColor: 'white',
+      padding: 13,
+      height: 44,
+      flexDirection: 'row',
+    },
+    googlePlacesDescription: {
+      fontFamily: 'outfit',
+      fontSize: 16,
+      color: '#1a1a1a',
     }
 });
