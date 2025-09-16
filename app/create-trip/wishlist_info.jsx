@@ -3,13 +3,14 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WishlistActivities } from '../../src/components/trip-view';
 import { ActivityDetailView } from '../../src/components/trip-view/description_card';
 import { Colors } from './../../constants/Colors';
 
 export default function WishlistInfo() {
     const router = useRouter();
-    const { activities, updateActivities } = useCreateTrip();
+    const { activities, updateActivities, setCityCategories, CACHE_KEYS } = useCreateTrip();
     
     // State for selected activities - initialize with all activities selected
     const [selectedActivities, setSelectedActivities] = useState([]);
@@ -26,6 +27,23 @@ export default function WishlistInfo() {
             // Start with no activities selected - user can choose which ones they want
             setSelectedActivities([]);
         }
+    }, [activities]);
+
+    // Once activities are loaded, clear city categories and its cache so earlier steps won't display them
+    useEffect(() => {
+        const clearCategoriesIfLoaded = async () => {
+            if (activities && activities.length > 0) {
+                try {
+                    setCityCategories(null);
+                    await AsyncStorage.removeItem(CACHE_KEYS.CITY_CATEGORIES);
+                } catch (e) {
+                    console.warn('Failed clearing cached city categories in wishlist_info', e);
+                }
+            }
+        };
+        clearCategoriesIfLoaded();
+        // We intentionally do not add setCityCategories or CACHE_KEYS to deps to avoid re-clearing unnecessarily
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activities]);
 
     // Handle activity selection
