@@ -11,6 +11,7 @@ import { ActivityImage } from './activity/activity_image';
 interface ActivityDetailViewProps {
   activity: Activity;
   onClose: () => void;
+  variant?: 'trip' | 'wishlist';
 }
 
 const formatNumber = (num: number) => {
@@ -78,7 +79,7 @@ const renderStars = (rating: number) => {
   return stars;
 };
 
-export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProps) {
+export function ActivityDetailView({ activity, onClose, variant = 'trip' }: ActivityDetailViewProps) {
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
 
@@ -236,8 +237,8 @@ export function ActivityDetailView({ activity, onClose }: ActivityDetailViewProp
   return (
     <View style={styles.container}>
       {/* Close Button - positioned relative to entire container */}
-      <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-        <Ionicons name="close" size={20} color="#000" />
+      <TouchableOpacity onPress={onClose} style={[styles.closeButton, variant === 'wishlist' && styles.closeButtonWishlist]}>
+        <Ionicons name="close" size={24} color="#000" />
       </TouchableOpacity>
       
       {/* Fixed Header with Activity Name */}
@@ -448,16 +449,20 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 30,
-    height: 30,
+    top: -10,
+    right: -15,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#E5E7EB',
-    borderRadius: 15,
+    borderRadius: 20,
     zIndex: 2000,
     elevation: 4,
+  },
+  closeButtonWishlist: {
+    top: -10,
+    right: 15,
   },
   content: {
     flex: 1,

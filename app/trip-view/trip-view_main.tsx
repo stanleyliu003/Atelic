@@ -850,10 +850,10 @@ export default function TripViewMain() {
             
             <TouchableOpacity 
                 style={styles.homeButton} 
-                onPress={() => {
+                onPress={async () => {
+                    const dayCountVal = getDayCount();
+                    await saveTrip();
                     if (restoreTrip) {
-                        // Get last activity photoReference and dayCount
-                        const dayCountVal = getDayCount();
                         let lastActivityPhotoRef = '';
                         if (dayCountVal > 0) {
                             const lastDayActivities = getDayActivities(dayCountVal);
@@ -869,7 +869,12 @@ export default function TripViewMain() {
                             }
                         });
                     } else {
-                        router.push('/create-trip/wishlist_info');
+                        router.push({
+                            pathname: '/trip-view/publish_success',
+                            params: {
+                                dayCount: dayCountVal.toString(),
+                            }
+                        });
                     }
                 }}
             >

@@ -199,6 +199,7 @@ export default function WishlistInfo() {
               <ActivityDetailView 
                 activity={selectedActivityForDetail}
                 onClose={handleCloseActivityDetail}
+                variant="wishlist"
               />
             </View>
           </View>
