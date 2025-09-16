@@ -13,13 +13,13 @@ export default function PublishSuccess() {
     // Extract data from navigation parameters
     const dayCount = parseInt(params.dayCount as string) || 1;
 
-    // Get first activity from day 1 instead of last activity
+    // Get first activity from day 1; if none, fall back to first wishlist activity
     const getFirstActivityPhotoRef = () => {
         const day1Activities = dayActivities[1]?.activities;
-        if (day1Activities && day1Activities.length > 0) {
-            return day1Activities[0].photo_reference;
-        }
-        return null;
+        const firstDayActivity = day1Activities && day1Activities.length > 0 ? day1Activities[0] : null;
+        const firstWishlistActivity = (!firstDayActivity && activities && activities.length > 0) ? activities[0] : null;
+
+        return firstDayActivity?.photo_reference || firstWishlistActivity?.photo_reference || null;
     };
 
     const photoReference = getFirstActivityPhotoRef();

@@ -854,12 +854,13 @@ export default function TripViewMain() {
                     const dayCountVal = getDayCount();
                     await saveTrip();
                     if (restoreTrip) {
+                        // Use first activity from day 1; if none, fallback to first wishlist activity
                         let lastActivityPhotoRef = '';
-                        if (dayCountVal > 0) {
-                            const lastDayActivities = getDayActivities(dayCountVal);
-                            if (lastDayActivities && lastDayActivities.length > 0) {
-                                lastActivityPhotoRef = lastDayActivities[lastDayActivities.length - 1]?.photo_reference || '';
-                            }
+                        const day1Activities = getDayActivities(1);
+                        if (day1Activities && day1Activities.length > 0) {
+                            lastActivityPhotoRef = day1Activities[0]?.photo_reference || '';
+                        } else if (activities && activities.length > 0) {
+                            lastActivityPhotoRef = activities[0]?.photo_reference || '';
                         }
                         router.push({
                             pathname: '/profile',

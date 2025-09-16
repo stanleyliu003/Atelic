@@ -9,9 +9,23 @@ import { useCreateTrip } from '../../context/CreateTripContext';
 
 export default function Profile() {
   const params = useLocalSearchParams();
-  const photoReference = params.photoReference || '';
+  const photoReferenceParam = params.photoReference || '';
   const dayCount = parseInt(params.dayCount, 10) || 1;
-  const { activities, createdAt, selectedCity } = useCreateTrip();
+  const { activities, createdAt, selectedCity, dayActivities } = useCreateTrip();
+  
+  // Derive a fallback photo reference: first activity from day 1, else first wishlist activity
+  const derivedPhotoReference = (() => {
+    const day1Activities = dayActivities?.[1]?.activities;
+    if (day1Activities && day1Activities.length > 0) {
+      return day1Activities[0]?.photo_reference || '';
+    }
+    if (activities && activities.length > 0) {
+      return activities[0]?.photo_reference || '';
+    }
+    return '';
+  })();
+  
+  const photoReference = photoReferenceParam || derivedPhotoReference;
 
   const [fullName, setFullName] = useState('');
 
