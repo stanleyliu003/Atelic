@@ -1,0 +1,10 @@
+{
+  "resourceName": "categoryStorage",
+  "tableName": "categoryTable",
+  "partitionKey": {
+    "fieldName": "regionName",
+    "fieldType": "string"
+  },
+  "gsi": [],
+  "triggerFunctions": []
+}

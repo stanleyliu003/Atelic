@@ -9,5 +9,15 @@
       "cloudFormationParameterName": "googlePlacesApiKey",
       "environmentVariableName": "GOOGLE_PLACES_API_KEY"
     }
-  ]
+  ],
+  "permissions": {
+    "storage": {
+      "categoryStorage": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    }
+  }
 }

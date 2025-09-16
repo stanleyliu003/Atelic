@@ -79,7 +79,17 @@
   "function": {
     "CityCategories": {
       "build": true,
-      "dependsOn": [],
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "categoryStorage"
+        }
+      ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
@@ -386,6 +396,10 @@
       "service": "DynamoDB"
     },
     "TripStorage": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    },
+    "categoryStorage": {
       "providerPlugin": "awscloudformation",
       "service": "DynamoDB"
     },

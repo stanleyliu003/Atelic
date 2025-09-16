@@ -21,6 +21,8 @@ import { Activity, TabType } from '../../src/types/activity.types';
 import { API, graphqlOperation } from 'aws-amplify';
 import { createTrip } from '../../src/graphql/mutations';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Entypo from '@expo/vector-icons/Entypo';
+
 
 export default function TripViewMain() {
     const router = useRouter();
@@ -847,7 +849,7 @@ export default function TripViewMain() {
             </View>
             
             <TouchableOpacity 
-                style={styles.backButton} 
+                style={styles.homeButton} 
                 onPress={() => {
                     if (restoreTrip) {
                         // Get last activity photoReference and dayCount
@@ -871,7 +873,7 @@ export default function TripViewMain() {
                     }
                 }}
             >
-                <Ionicons name="arrow-back-circle-sharp" size={40} color={Colors.PRIMARY} />
+                <Entypo name="home" size={30} color={Colors.PRIMARY} />
             </TouchableOpacity>
         </>
     );
@@ -886,13 +888,22 @@ const styles = StyleSheet.create({
         paddingTop: 10,
         marginTop: -30,
     },
-    backButton: {
+    homeButton: {
         position: 'absolute',
         top: 60,
         left: 20,
         zIndex: 1, // Ensure it's above the map
         backgroundColor: 'white',
-        borderRadius: 20,
+        borderRadius: 25,
+        width: 50,
+        height: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
     tabContent: {
         flex: 1,

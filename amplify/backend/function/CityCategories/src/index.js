@@ -1,10 +1,19 @@
 /* Amplify Params - DO NOT EDIT
 	ENV
 	REGION
+	STORAGE_CATEGORYSTORAGE_ARN
+	STORAGE_CATEGORYSTORAGE_NAME
+	STORAGE_CATEGORYSTORAGE_STREAMARN
 	GEMINI_API_KEY
 Amplify Params - DO NOT EDIT */
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
+
+// DynamoDB setup
+const dynamoClient = new DynamoDBClient();
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
@@ -23,8 +32,24 @@ exports.handler = async (event) => {
             throw new Error('selectedCity is required');
         }
         
+        // Check DynamoDB cache first
+        const cachedCategories = await getCachedCategories(selectedCity);
+        if (cachedCategories) {
+            console.log(`Returning cached categories for ${selectedCity}`);
+            return {
+                city: selectedCity,
+                categories: cachedCategories
+            };
+        }
+        
         // Generate city categories using Gemini AI
         const cityCategories = await generateCityCategories(selectedCity);
+        
+        // Cache the result if successful
+        if (cityCategories && cityCategories.length > 0) {
+            await cacheCategories(selectedCity, cityCategories);
+            console.log(`Cached categories for ${selectedCity}`);
+        }
         
         console.log('Retrieved categories:', cityCategories);
         
@@ -46,6 +71,53 @@ exports.handler = async (event) => {
         };
         console.log('Returning error result:', JSON.stringify(errorResult));
         return errorResult;
+    }
+};
+
+// Helper function to get cached categories from DynamoDB
+const getCachedCategories = async (cityName) => {
+    try {
+        const command = new GetCommand({
+            TableName: process.env.STORAGE_CATEGORYSTORAGE_NAME,
+            Key: {
+                regionName: cityName.toLowerCase().trim()
+            }
+        });
+        
+        console.log(`Checking cache for ${cityName}`);
+        const result = await docClient.send(command);
+        
+        if (result.Item && result.Item.categoryInfo) {
+            console.log(`Found cached categories for ${cityName}`);
+            return JSON.parse(result.Item.categoryInfo);
+        } else {
+            console.log(`No cached categories found for ${cityName}`);
+            return null;
+        }
+    } catch (error) {
+        console.error(`Error retrieving cached categories for ${cityName}:`, error);
+        return null; // Continue with API call if cache fails
+    }
+};
+
+// Helper function to cache categories in DynamoDB
+const cacheCategories = async (cityName, categories) => {
+    try {
+        const command = new PutCommand({
+            TableName: process.env.STORAGE_CATEGORYSTORAGE_NAME,
+            Item: {
+                regionName: cityName.toLowerCase().trim(),
+                categoryInfo: JSON.stringify(categories),
+                cachedAt: new Date().toISOString()
+            }
+        });
+        
+        console.log(`Caching categories for ${cityName}`);
+        await docClient.send(command);
+        console.log(`Successfully cached categories for ${cityName}`);
+    } catch (error) {
+        console.error(`Error caching categories for ${cityName}:`, error);
+        // Don't throw error - caching failure shouldn't break the main functionality
     }
 };
 

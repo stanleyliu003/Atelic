@@ -40,9 +40,9 @@
         "RetrieveTripStorage": {},
         "CityCategories": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/CityCategories-377a51596861446a5637-build.zip",
-          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
-          "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw"
+          "s3Key": "amplify-builds/CityCategories-55696551587270446d59-build.zip",
+          "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
         },
         "regionImage": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
@@ -60,7 +60,8 @@
       "storage": {
         "TripStorage": {},
         "regionImageStorage": {},
-        "PlacesAPIActivityStorage": {}
+        "PlacesAPIActivityStorage": {},
+        "categoryStorage": {}
       }
     }
   }
