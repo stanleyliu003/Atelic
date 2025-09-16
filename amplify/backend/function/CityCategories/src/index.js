@@ -153,6 +153,7 @@ RULES
 - No duplicates across categories or items
 - Select an emoji that is relevant to the category
 - Output valid JSON ONLY - no prose, no markdown, no trailing commas
+- Don't reccomend neighborhoods or areas, only specific locations
 
 OUTPUT FORMAT
 [

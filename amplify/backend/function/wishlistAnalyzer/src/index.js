@@ -105,6 +105,7 @@ exports.handler = async (event) => {
        2. When users mention broad categories (like "night markets", "temples", "coastal areas"), extract only 1-2 SPECIFIC examples within ${selectedCity}
        3. Generate exactly 7 recommendations that are WITHIN ${selectedCity} only
        4. Use precise, official names suitable for Google Places API
+       5. Don't reccomend neighborhoods or areas, only specific locations
 
        TASK 1 - EXTRACT SPECIFIC LOCATIONS:
        From the wishlist text, identify specific location names, landmarks, or points of interest mentioned by the user.
