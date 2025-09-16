@@ -150,7 +150,6 @@ RULES
 - Prioritize local favorites and authentic experiences over tourist traps
 - Keep categories mutually distinct with no overlap
 - Cover diverse interests (culture, food, neighborhoods, landmarks, nature, etc.)
-- Use correct diacritics and proper spelling
 - No duplicates across categories or items
 - Select an emoji that is relevant to the category
 - Output valid JSON ONLY - no prose, no markdown, no trailing commas
@@ -159,10 +158,6 @@ OUTPUT FORMAT
 [
   { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2"], "emoji": "Category Emoji" },
   { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2"], "emoji": "Category Emoji" },
-  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2"], "emoji": "Category Emoji" },
-  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2"], "emoji": "Category Emoji" },
-  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2"], "emoji": "Category Emoji" },
-  { "category": "Distinctive Category Name", "category_items": ["Item 1, Item 2"], "emoji": "Category Emoji" }
 ]
 
 EXAMPLE (for reference only; do NOT include unless input is exactly "Paris, France"):
@@ -170,10 +165,6 @@ Input: Paris, France
 Output:
 [
   { "category": "Art & Museums", "category_items": ["Louvre, Musée d'Orsay"], "emoji": "🎨" },
-  { "category": "Café Culture", "category_items": ["Café de Flore, Les Deux Magots"], "emoji": "☕" },
-  { "category": "Iconic Landmarks", "category_items": ["Eiffel Tower, Arc de Triomphe"], "emoji": "🗼" },
-  { "category": "Michelin Dining", "category_items": ["L'Ambroisie, Guy Savoy"], "emoji": "🍴" },
-  { "category": "Bohemian Quarters", "category_items": ["Montmartre, Le Marais"], "emoji": "🎭" },
   { "category": "Seine Experiences", "category_items": ["Bateaux Parisiens, Pont Neuf"], "emoji": "🚢" }
 ]
 
