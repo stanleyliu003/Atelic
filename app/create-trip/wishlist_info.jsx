@@ -29,13 +29,7 @@ export default function WishlistInfo() {
     const [isAddPlacesModalVisible, setIsAddPlacesModalVisible] = useState(false);
     const [isAddingPlace, setIsAddingPlace] = useState(false);
 
-    // Initialize with no activities selected by default since all are now recommendations
-    useEffect(() => {
-        if (activities && activities.length > 0) {
-            // Start with no activities selected - user can choose which ones they want
-            setSelectedActivities([]);
-        }
-    }, [activities]);
+    // Note: Do not reset selectedActivities when activities change to preserve user selections
 
     // Once activities are loaded, clear city categories and its cache so earlier steps won't display them
     useEffect(() => {
@@ -164,6 +158,14 @@ export default function WishlistInfo() {
                 } else {
                     // Add the new activity to the wishlist
                     updateActivities([...activities, newActivity]);
+                    // Auto-select the newly added activity while preserving existing selections
+                    if (newActivity.place_id) {
+                        setSelectedActivities(prev => (
+                            prev.includes(newActivity.place_id)
+                                ? prev
+                                : [...prev, newActivity.place_id]
+                        ));
+                    }
                 }
             } else {
                 console.warn('Could not get place details');
