@@ -6,7 +6,7 @@ import { Auth } from 'aws-amplify';
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { useCreateTrip } from '../../context/CreateTripContext';
-import { listUserTripsFromCloud } from '../../src/services/lambdaService';
+import { listUserTripsFromCloud, retrieveTripFromCloud } from '../../src/services/lambdaService';
 
 export default function Profile() {
   const params = useLocalSearchParams();
@@ -65,6 +65,52 @@ export default function Profile() {
         }
 
         setUserTrips(tripSummaries || []);
+
+        // Test getUserTrips Lambda with the first trip (if any exist)
+        if (tripSummaries && tripSummaries.length > 0) {
+          const firstTrip = tripSummaries[0];
+          console.log(`[Profile] Testing getUserTrips Lambda with tripID: ${firstTrip.tripId}`);
+
+          try {
+            const tripDetails = await retrieveTripFromCloud(userID, firstTrip.tripId);
+            console.log('[Profile] getUserTrips Lambda Response:', tripDetails);
+            console.log('[Profile] Trip details structure:', {
+              tripId: tripDetails?.tripId,
+              selectedCity: tripDetails?.selectedCity,
+              tripPhotoReference: tripDetails?.tripPhotoReference,
+              createdAt: tripDetails?.createdAt,
+              tripLength: tripDetails?.tripLength,
+              daysCount: tripDetails?.days?.length || 0,
+              wishlistCount: tripDetails?.wishlist?.length || 0
+            });
+
+            // Log first day activities if they exist
+            if (tripDetails?.days && tripDetails.days.length > 0) {
+              const firstDay = tripDetails.days[0];
+              console.log('[Profile] First day details:', {
+                dayNumber: firstDay.dayNumber,
+                activitiesCount: firstDay.activities?.length || 0,
+                hasPolyline: !!firstDay.encodedPolyline
+              });
+
+              // Log first activity if it exists
+              if (firstDay.activities && firstDay.activities.length > 0) {
+                const firstActivity = firstDay.activities[0];
+                console.log('[Profile] First activity details:', {
+                  name: firstActivity.name,
+                  city: firstActivity.city,
+                  photo_reference: firstActivity.photo_reference,
+                  place_id: firstActivity.place_id
+                });
+              }
+            }
+
+          } catch (getUserTripsError) {
+            console.error('[Profile] Error testing getUserTrips Lambda:', getUserTripsError);
+          }
+        } else {
+          console.log('[Profile] No trips found to test getUserTrips Lambda');
+        }
 
       } catch (error) {
         console.error('[Profile] Error loading user data or trips:', error);

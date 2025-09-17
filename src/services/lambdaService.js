@@ -1,5 +1,5 @@
 import { API } from 'aws-amplify';
-import { getUserTripDetails as getUserTripDetailsQuery, getTripIDs as getTripIDsQuery } from '../graphql/queries';
+import { getUserTrips as getUserTripsQuery, getTripIDs as getTripIDsQuery } from '../graphql/queries';
 
 /**
  * Use API.post to invoke Lambda function with higher timeout than GraphQL
@@ -80,7 +80,7 @@ export const retrieveTripFromCloud = async (userID, tripID) => {
         console.log('[Lambda Service] UserID:', userID, 'TripID:', tripID);
 
         const result = await API.graphql({
-            query: getUserTripDetailsQuery,
+            query: getUserTripsQuery,
             variables: {
                 userID: userID,
                 tripID: tripID
