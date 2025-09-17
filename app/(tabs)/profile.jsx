@@ -6,6 +6,7 @@ import { Auth } from 'aws-amplify';
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { useCreateTrip } from '../../context/CreateTripContext';
+import { listUserTripsFromCloud } from '../../src/services/lambdaService';
 
 export default function Profile() {
   const params = useLocalSearchParams();
@@ -28,16 +29,51 @@ export default function Profile() {
   const photoReference = photoReferenceParam || derivedPhotoReference;
 
   const [fullName, setFullName] = useState('');
+  const [userTrips, setUserTrips] = useState([]);
 
   useEffect(() => {
-    Auth.currentAuthenticatedUser()
-      .then(user => {
+    const loadUserData = async () => {
+      try {
+        // Get current user info
+        const user = await Auth.currentAuthenticatedUser();
         const name = user.attributes?.name || '';
+        const userID = user.attributes?.sub || user.username;
+
         setFullName(name);
-      })
-      .catch((err) => {
+
+        console.log('[Profile] Current userID:', userID);
+
+        // Test getTripIDs Lambda call
+        console.log('[Profile] Calling getTripIDs Lambda...');
+        const tripSummaries = await listUserTripsFromCloud(userID);
+
+        console.log('[Profile] getTripIDs Lambda Response:', tripSummaries);
+        console.log('[Profile] Number of trips found:', tripSummaries?.length || 0);
+
+        // Log each trip summary
+        if (tripSummaries && tripSummaries.length > 0) {
+          tripSummaries.forEach((trip, index) => {
+            console.log(`[Profile] Trip ${index + 1}:`, {
+              tripId: trip.tripId,
+              selectedCity: trip.selectedCity,
+              tripPhotoReference: trip.tripPhotoReference,
+              createdAt: trip.createdAt
+            });
+          });
+        } else {
+          console.log('[Profile] No trips found for user');
+        }
+
+        setUserTrips(tripSummaries || []);
+
+      } catch (error) {
+        console.error('[Profile] Error loading user data or trips:', error);
         setFullName('');
-      });
+        setUserTrips([]);
+      }
+    };
+
+    loadUserData();
   }, []);
 
   // Find the activity with the matching photo_reference
