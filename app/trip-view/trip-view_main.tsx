@@ -30,7 +30,7 @@ export default function TripViewMain() {
     const navigation = useNavigation();
     const params = useLocalSearchParams();
     const { restoreTrip } = params;
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -546,6 +546,7 @@ export default function TripViewMain() {
             wishlist,
             tripLength: tripLength || days.length,
             selectedCity,
+            tripPhotoReference: tripPhotoReference || '',
             createdAt: tripCreatedAt,
         };
 

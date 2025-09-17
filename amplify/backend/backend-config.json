@@ -380,6 +380,22 @@
         }
       ]
     },
+    "AMPLIFY_function_getTripIDs_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getTripIDs"
+        }
+      ]
+    },
+    "AMPLIFY_function_getTripIDs_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getTripIDs"
+        }
+      ]
+    },
     "AMPLIFY_function_getUserTrips_deploymentBucketName": {
       "usedBy": [
         {

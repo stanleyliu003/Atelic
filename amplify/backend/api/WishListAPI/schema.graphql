@@ -105,6 +105,8 @@
    getCityCategories(selectedCity: String!): CityCategoriesResult @function(name: "CityCategories-${env}")
    getCityPhoto(selectedCity: String!): CityPhotoResult @function(name: "CityCategories-${env}")
    addAdditionalPlace(placeName: String!, selectedCity: String!): Activity @function(name: "getLocationCoordinates-${env}")
+   getTripIDs(userID: String!): [TripSummary] @function(name: "getTripIDs-${env}") @auth(rules: [{ allow: public }])
+   getUserTrips(userID: String!, tripID: String!): Trip @function(name: "getUserTrips-${env}") @auth(rules: [{ allow: public }])
  }
 
    input WaypointInput {
@@ -119,6 +121,14 @@
      wishlist: [Activity!]!
      tripLength: Int
      selectedCity: String
+     tripPhotoReference: String
+     createdAt: String
+   }
+
+   type TripSummary {
+     tripId: String!
+     selectedCity: String
+     tripPhotoReference: String
      createdAt: String
    }
 
@@ -169,6 +179,7 @@
      wishlist: [ActivityInput!]!
      tripLength: Int
      selectedCity: String
+     tripPhotoReference: String
      createdAt: String
    }
 

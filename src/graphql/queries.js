@@ -124,6 +124,54 @@ export const addAdditionalPlace = /* GraphQL */ `
     }
   }
 `;
+export const getTripIDs = /* GraphQL */ `
+  query GetTripIDs($userID: String!) {
+    getTripIDs(userID: $userID) {
+      tripId
+      selectedCity
+      tripPhotoReference
+      createdAt
+      __typename
+    }
+  }
+`;
+export const getUserTrips = /* GraphQL */ `
+  query GetUserTrips($userID: String!, $tripID: String!) {
+    getUserTrips(userID: $userID, tripID: $tripID) {
+      tripId
+      days {
+        dayNumber
+        encodedPolyline
+        __typename
+      }
+      wishlist {
+        name
+        city
+        lat
+        lng
+        rating
+        user_ratings_total
+        formatted_address
+        types
+        primaryType
+        place_id
+        photo_reference
+        is_recommended
+        display_name
+        website_uri
+        editorial_summary
+        primary_type_display_name
+        international_phone_number
+        __typename
+      }
+      tripLength
+      selectedCity
+      tripPhotoReference
+      createdAt
+      __typename
+    }
+  }
+`;
 export const getWishlistAnalysis = /* GraphQL */ `
   query GetWishlistAnalysis($id: ID!) {
     getWishlistAnalysis(id: $id) {
@@ -180,74 +228,6 @@ export const listWishlistAnalyses = /* GraphQL */ `
         __typename
       }
       nextToken
-      __typename
-    }
-  }
-`;
-export const getUserTripDetails = /* GraphQL */ `
-  query GetUserTripDetails($userID: String!, $tripID: String!) {
-    getUserTrips(userID: $userID, tripID: $tripID) {
-      tripId
-      days {
-        dayNumber
-        encodedPolyline
-        activities {
-          name
-          city
-          lat
-          lng
-          rating
-          user_ratings_total
-          formatted_address
-          types
-          primaryType
-          place_id
-          photo_reference
-          is_recommended
-          display_name
-          website_uri
-          editorial_summary
-          primary_type_display_name
-          international_phone_number
-          __typename
-        }
-        __typename
-      }
-      wishlist {
-        name
-        city
-        lat
-        lng
-        rating
-        user_ratings_total
-        formatted_address
-        types
-        primaryType
-        place_id
-        photo_reference
-        is_recommended
-        display_name
-        website_uri
-        editorial_summary
-        primary_type_display_name
-        international_phone_number
-        __typename
-      }
-      tripLength
-      selectedCity
-      tripPhotoReference
-      createdAt
-      __typename
-    }
-  }
-`;
-export const listUserTrips = /* GraphQL */ `
-  query ListUserTrips($userID: String!) {
-    getTripIDs(userID: $userID) {
-      tripId
-      selectedCity
-      tripPhotoReference
-      createdAt
       __typename
     }
   }

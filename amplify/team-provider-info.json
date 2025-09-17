@@ -35,7 +35,7 @@
         },
         "CreateTripStorage": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/CreateTripStorage-71617142507636387039-build.zip"
+          "s3Key": "amplify-builds/CreateTripStorage-50527233384f796f6369-build.zip"
         },
         "RetrieveTripStorage": {},
         "CityCategories": {
@@ -51,9 +51,12 @@
         },
         "getUserTrips": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/getUserTrips-33743851576955416e62-build.zip"
+          "s3Key": "amplify-builds/getUserTrips-5677594d2f4b51346c43-build.zip"
         },
-        "getTripIDs": {}
+        "getTripIDs": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/getTripIDs-746b53664a7448706d41-build.zip"
+        }
       },
       "auth": {
         "amplifybackend59ccdbf8": {}
