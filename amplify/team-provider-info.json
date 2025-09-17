@@ -35,7 +35,7 @@
         },
         "CreateTripStorage": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/CreateTripStorage-536f64726d4f51506a79-build.zip"
+          "s3Key": "amplify-builds/CreateTripStorage-4f757339456d4b674150-build.zip"
         },
         "RetrieveTripStorage": {},
         "CityCategories": {

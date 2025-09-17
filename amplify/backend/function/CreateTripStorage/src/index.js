@@ -27,7 +27,7 @@ exports.handler = async (event) => {
     tripLength: input.tripLength,
     selectedCity: input.selectedCity,
     wishlist: input.wishlist,
-    createdAt: new Date().toISOString(),
+    createdAt: input.createdAt
   };
 
   console.log('item to put:', item);
@@ -45,6 +45,9 @@ exports.handler = async (event) => {
       tripId: input.tripId,
       days: input.days || [],
       wishlist: input.wishlist || [],
+      tripLength: input.tripLength,
+      selectedCity: input.selectedCity,
+      createdAt: item.createdAt,
     };
   } catch (error) {
     console.error('DynamoDB put error:', error);

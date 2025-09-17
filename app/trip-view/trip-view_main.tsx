@@ -544,10 +544,9 @@ export default function TripViewMain() {
             tripId: currentTripId,
             days,
             wishlist,
-            createdAt: tripCreatedAt,
             tripLength: tripLength || days.length,
             selectedCity,
-            wishlistText,
+            createdAt: tripCreatedAt,
         };
 
         console.log('[trip-view_main] Saving trip with data:', tripData);

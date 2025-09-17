@@ -117,6 +117,9 @@
      tripId: String!
      days: [Day!]!
      wishlist: [Activity!]!
+     tripLength: Int
+     selectedCity: String
+     createdAt: String
    }
 
    type Day {
@@ -163,6 +166,9 @@
      tripId: String!
      days: [DayInput!]!
      wishlist: [ActivityInput!]!
+     tripLength: Int
+     selectedCity: String
+     createdAt: String
    }
 
 

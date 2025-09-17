@@ -68,6 +68,9 @@ export const createTrip = /* GraphQL */ `
         international_phone_number
         __typename
       }
+      tripLength
+      selectedCity
+      createdAt
       __typename
     }
   }
