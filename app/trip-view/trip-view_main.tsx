@@ -30,7 +30,7 @@ export default function TripViewMain() {
     const navigation = useNavigation();
     const params = useLocalSearchParams();
     const { restoreTrip } = params;
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setDayPolylinesDeleteDay, selectedCity } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -527,24 +527,41 @@ export default function TripViewMain() {
         const dayActivityIds = days.flatMap(day => day.activities.map(a => a.place_id)).filter(Boolean);
         const wishlist = (activities || []).filter((activity) => !activity.place_id || !dayActivityIds.includes(activity.place_id));
         // Compose trip data object
+        // Generate tripId if it doesn't exist (first time save)
+        let currentTripId = tripId;
+        if (!currentTripId) {
+            currentTripId = generateTripId();
+            console.log('[trip-view_main] Generated new tripId:', currentTripId);
+        }
+
         let tripCreatedAt = createdAt;
         if (!tripCreatedAt) {
             tripCreatedAt = new Date().toISOString();
             setCreatedAt(tripCreatedAt);
         }
+
         const tripData = {
-            tripId,
+            tripId: currentTripId,
             days,
             wishlist,
             createdAt: tripCreatedAt,
-            tripLength: tripLength || days.length, // Include tripLength in saved data
+            tripLength: tripLength || days.length,
+            selectedCity,
+            wishlistText,
         };
-        // Commented out GraphQL save trip call
-        // const result = await API.graphql(
-        //     graphqlOperation(createTrip, { input: tripData })
-        // );
-        setTripId(tripData.tripId); // Update tripId in context after successful save
-        await AsyncStorage.setItem('lastSavedTrip', JSON.stringify(tripData));
+
+        console.log('[trip-view_main] Saving trip with data:', tripData);
+
+        try {
+            const result = await API.graphql(
+                graphqlOperation(createTrip, { input: tripData })
+            );
+            console.log('[trip-view_main] Trip saved successfully:', result);
+            await AsyncStorage.setItem('lastSavedTrip', JSON.stringify(tripData));
+        } catch (error) {
+            console.error('[trip-view_main] Error saving trip:', error);
+            throw error;
+        }
     };
 
     useEffect(() => {

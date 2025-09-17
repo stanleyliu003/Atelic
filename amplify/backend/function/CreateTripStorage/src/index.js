@@ -24,6 +24,8 @@ exports.handler = async (event) => {
     userID: userId,
     tripID: input.tripId,
     days: input.days,
+    tripLength: input.tripLength,
+    selectedCity: input.selectedCity,
     wishlist: input.wishlist,
     createdAt: new Date().toISOString(),
   };

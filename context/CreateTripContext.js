@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// import { v4 as uuidv4 } from 'uuid'; // Commented out for now
+import { randomUUID } from 'expo-crypto';
 
 // Define the shape of our context data
 const CreateTripContext = createContext();
@@ -23,8 +23,7 @@ export const useCreateTrip = () => {
 
 // Provider component
 export const CreateTripProvider = ({ children }) => {
-    // const [tripId, setTripId] = useState(null); // Commented out for now
-    const [tripId, setTripId] = useState('test-trip-id'); // Use fixed tripId for testing
+    const [tripId, setTripId] = useState(null);
     const [activities, setActivities] = useState([]); // Each activity now supports formatted_address
     const [wishlistText, setWishlistText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -119,11 +118,11 @@ export const CreateTripProvider = ({ children }) => {
     };
 
     // Helper to generate and set a new tripId (UUID)
-    // const generateTripId = () => {
-    //     const newId = uuidv4();
-    //     setTripId(newId);
-    //     return newId;
-    // };
+    const generateTripId = () => {
+        const newId = randomUUID();
+        setTripId(newId);
+        return newId;
+    };
 
     // Reset all trip state for a new trip
     const resetTrip = () => {
@@ -168,7 +167,7 @@ export const CreateTripProvider = ({ children }) => {
     const value = {
         tripId,
         setTripId: setTripIdWithLog,
-        // generateTripId, // Commented out for now
+        generateTripId,
         activities,
         wishlistText,
         isLoading,
