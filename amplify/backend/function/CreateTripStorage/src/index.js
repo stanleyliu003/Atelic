@@ -7,8 +7,18 @@ const docClient = DynamoDBDocumentClient.from(client);
 exports.handler = async (event) => {
   console.log('Received event:', JSON.stringify(event));
 
-  // Get userId from Cognito identity or use anonymous user for public access
-  const userId = event.identity && event.identity.sub ? event.identity.sub : 'anonymous-user';
+  // Get userId from Cognito identity - authentication required
+  // When using @auth with Lambda resolvers, the identity is passed in event.identity.username or event.identity.sub
+  let userId;
+
+  if (event.identity) {
+    userId = event.identity.sub || event.identity.username || event.identity.claims?.sub;
+  }
+
+  if (!userId) {
+    console.error('No user identity found in event:', JSON.stringify(event.identity));
+    throw new Error('Authentication required to create trips');
+  }
 
   // Get trip data from GraphQL input
   const input = event.arguments.input;

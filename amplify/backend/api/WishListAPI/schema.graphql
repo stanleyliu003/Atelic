@@ -129,8 +129,8 @@
    }
 
    type Mutation {
-     optimizeRoute(activities: [ActivityInput!]!): [Activity] @function(name: "OptimizeRoute-${env}")
-     createTrip(input: CreateTripInput!): Trip @function(name: "CreateTripStorage-${env}")
+     optimizeRoute(activities: [ActivityInput!]!): [Activity] @function(name: "OptimizeRoute-${env}") @auth(rules: [{ allow: private }])
+     createTrip(input: CreateTripInput!): Trip @function(name: "CreateTripStorage-${env}") @auth(rules: [{ allow: private }])
    }
 
    input ActivityInput {

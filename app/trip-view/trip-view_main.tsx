@@ -18,7 +18,7 @@ import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
 import { fetchRoutePolyline, RouteData } from '../../src/services/getRoute_graphQL_call';
 import { optimizeRouteWithHaversine } from '../../src/components/trip-view/logic/optimize_route';
 import { Activity, TabType } from '../../src/types/activity.types';
-import { API, graphqlOperation } from 'aws-amplify';
+import { API, graphqlOperation, Auth } from 'aws-amplify';
 import { addAdditionalPlaceWithDedup, buildExistingPlaceIdSet, defaultAddPlacesButtonStyle } from '../../src/services/add_additional_place';
 import { createTrip } from '../../src/graphql/mutations';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -552,13 +552,55 @@ export default function TripViewMain() {
         console.log('[trip-view_main] Saving trip with data:', tripData);
 
         try {
-            const result = await API.graphql(
-                graphqlOperation(createTrip, { input: tripData })
-            );
+            // Debug: Check current user authentication state
+            try {
+                const currentUser = await Auth.currentAuthenticatedUser();
+                console.log('[trip-view_main] Current authenticated user:', {
+                    username: currentUser.username,
+                    userId: currentUser.attributes?.sub,
+                    signInUserSession: currentUser.signInUserSession ? 'Present' : 'Missing'
+                });
+
+                // Get the ID token to verify it exists
+                const session = await Auth.currentSession();
+                console.log('[trip-view_main] Session info:', {
+                    isValid: session.isValid(),
+                    accessToken: session.getAccessToken() ? 'Present' : 'Missing',
+                    idToken: session.getIdToken() ? 'Present' : 'Missing',
+                    idTokenJWT: session.getIdToken().getJwtToken() ? 'Present (first 20 chars): ' + session.getIdToken().getJwtToken().substring(0, 20) + '...' : 'Missing'
+                });
+            } catch (authError) {
+                console.error('[trip-view_main] Auth check failed:', authError);
+                Alert.alert('Authentication Error', 'Please sign in to save your trip');
+                return;
+            }
+
+            // Make the API call with explicit auth mode
+            console.log('[trip-view_main] Making API call with AMAZON_COGNITO_USER_POOLS auth mode');
+            const result = await API.graphql({
+                query: createTrip,
+                variables: { input: tripData },
+                authMode: 'AMAZON_COGNITO_USER_POOLS'
+            });
             console.log('[trip-view_main] Trip saved successfully:', result);
-        await AsyncStorage.setItem('lastSavedTrip', JSON.stringify(tripData));
+
+            // Save to local storage as backup
+            await AsyncStorage.setItem('lastSavedTrip', JSON.stringify(tripData));
         } catch (error) {
-            console.error('[trip-view_main] Error saving trip:', error);
+            console.error('[trip-view_main] Error saving trip - Full error:', JSON.stringify(error, null, 2));
+
+            // More detailed error logging
+            if (error.errors) {
+                error.errors.forEach((err, index) => {
+                    console.error(`[trip-view_main] Error ${index + 1}:`, {
+                        message: err.message,
+                        errorType: err.errorType,
+                        path: err.path,
+                        data: err.data
+                    });
+                });
+            }
+
             throw error;
         }
     };
