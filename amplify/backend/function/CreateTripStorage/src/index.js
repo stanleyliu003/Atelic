@@ -7,8 +7,11 @@ const docClient = DynamoDBDocumentClient.from(client);
 exports.handler = async (event) => {
   console.log('Received event:', JSON.stringify(event));
 
-  // Get userId from Cognito identity
-  const userId = event.identity && event.identity.sub ? event.identity.sub : 'unknown-user';
+  // Get userId from Cognito identity - require authentication
+  if (!event.identity || !event.identity.sub) {
+    throw new Error('User must be authenticated to create trips');
+  }
+  const userId = event.identity.sub;
 
   // Get trip data from GraphQL input
   const input = event.arguments.input;
