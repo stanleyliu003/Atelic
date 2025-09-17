@@ -52,7 +52,8 @@
         "getUserTrips": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
           "s3Key": "amplify-builds/getUserTrips-33743851576955416e62-build.zip"
-        }
+        },
+        "getTripIDs": {}
       },
       "auth": {
         "amplifybackend59ccdbf8": {}

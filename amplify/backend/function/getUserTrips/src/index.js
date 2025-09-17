@@ -38,13 +38,14 @@ exports.handler = async (event) => {
 
     console.log('Retrieved trip:', JSON.stringify(result.Item));
 
-    // Return the trip data in the same format as CreateTripStorage
+    // Return the complete trip data including tripPhotoReference
     return {
       tripId: result.Item.tripID,
       days: result.Item.days || [],
       wishlist: result.Item.wishlist || [],
       tripLength: result.Item.tripLength,
       selectedCity: result.Item.selectedCity,
+      tripPhotoReference: result.Item.tripPhotoReference,
       createdAt: result.Item.createdAt,
     };
 

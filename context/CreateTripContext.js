@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { randomUUID } from 'expo-crypto';
+import { retrieveTripFromCloud, listUserTripsFromCloud } from '../src/services/lambdaService';
 
 // Define the shape of our context data
 const CreateTripContext = createContext();
@@ -33,6 +34,7 @@ export const CreateTripProvider = ({ children }) => {
     const [tripLength, setTripLength] = useState(null);
     const [cityCategories, setCityCategories] = useState(null);
     const [selectedCategories, setSelectedCategories] = useState([]);
+    const [tripPhotoReference, setTripPhotoReference] = useState('');
     
     // Add logging to setTripLength
     const setTripLengthWithLog = (length) => {
@@ -81,6 +83,21 @@ export const CreateTripProvider = ({ children }) => {
         setDayActivities(newVal);
     };
 
+    // Helper function to get first activity photo reference (from publish_success.tsx logic)
+    const getFirstActivityPhotoRef = () => {
+        const day1Activities = dayActivities[1]?.activities;
+        const firstDayActivity = day1Activities && day1Activities.length > 0 ? day1Activities[0] : null;
+        const firstWishlistActivity = (!firstDayActivity && activities && activities.length > 0) ? activities[0] : null;
+
+        return firstDayActivity?.photo_reference || firstWishlistActivity?.photo_reference || '';
+    };
+
+    // Auto-update tripPhotoReference when activities or dayActivities change
+    useEffect(() => {
+        const photoRef = getFirstActivityPhotoRef();
+        setTripPhotoReference(photoRef);
+    }, [activities, dayActivities]);
+
     // Restore all trip state from a trip object
     const restoreTripFromObject = (trip) => {
         setTripId(trip.tripId);
@@ -93,6 +110,10 @@ export const CreateTripProvider = ({ children }) => {
         } else if (trip.days && trip.days.length > 0) {
             // Derive tripLength from the number of days if not explicitly stored
             setTripLength(trip.days.length);
+        }
+        // Restore tripPhotoReference if available
+        if (trip.tripPhotoReference) {
+            setTripPhotoReference(trip.tripPhotoReference);
         }
     };
 
@@ -131,6 +152,7 @@ export const CreateTripProvider = ({ children }) => {
         setWishlistText('');
         setDayPolylines({});
         setDayActivities({});
+        setTripPhotoReference('');
         // Note: Don't reset selectedCity and tripLength during create trip flow
         // setSelectedCity('');
         // setTripLength(null);
@@ -151,7 +173,7 @@ export const CreateTripProvider = ({ children }) => {
     const completeReset = async () => {
         // Clear cached data first
         await clearTripCreationCache();
-        
+
         // Then reset all context state
         setTripId('');
         setActivities([]);
@@ -162,6 +184,58 @@ export const CreateTripProvider = ({ children }) => {
         setTripLength(null);
         setCityCategories(null);
         setSelectedCategories([]);
+        setTripPhotoReference('');
+    };
+
+    // Load trip from cloud storage
+    const loadTripFromCloud = async (userID, tripID) => {
+        try {
+            setIsLoading(true);
+            console.log('[CreateTripContext] Loading trip from cloud:', { userID, tripID });
+
+            const cloudTrip = await retrieveTripFromCloud(userID, tripID);
+
+            if (cloudTrip) {
+                console.log('[CreateTripContext] Successfully loaded trip from cloud:', cloudTrip);
+                restoreTripFromObject(cloudTrip);
+                return cloudTrip;
+            } else {
+                throw new Error('Trip not found in cloud storage');
+            }
+        } catch (error) {
+            console.error('[CreateTripContext] Error loading trip from cloud:', error);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // List all user trips from cloud storage (summary data only)
+    const listUserTrips = async (userID) => {
+        try {
+            setIsLoading(true);
+            console.log('[CreateTripContext] Loading user trips from cloud:', { userID });
+
+            const tripSummaries = await listUserTripsFromCloud(userID);
+            console.log('[CreateTripContext] Successfully loaded trip summaries:', tripSummaries);
+            return tripSummaries;
+        } catch (error) {
+            console.error('[CreateTripContext] Error loading user trips from cloud:', error);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Check if trip exists in cloud storage
+    const checkTripExistsInCloud = async (userID, tripID) => {
+        try {
+            const cloudTrip = await retrieveTripFromCloud(userID, tripID);
+            return !!cloudTrip;
+        } catch (error) {
+            console.log('[CreateTripContext] Trip does not exist in cloud:', error.message);
+            return false;
+        }
     };
 
     const value = {
@@ -186,6 +260,9 @@ export const CreateTripProvider = ({ children }) => {
         resetTrip,
         completeReset,
         clearTripCreationCache,
+        loadTripFromCloud,
+        listUserTrips,
+        checkTripExistsInCloud,
         createdAt,
         setCreatedAt,
         isCreatingTrip,
@@ -198,6 +275,9 @@ export const CreateTripProvider = ({ children }) => {
         setCityCategories,
         selectedCategories,
         setSelectedCategories,
+        tripPhotoReference,
+        setTripPhotoReference,
+        getFirstActivityPhotoRef,
         CACHE_KEYS,
     };
 

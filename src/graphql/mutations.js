@@ -70,6 +70,7 @@ export const createTrip = /* GraphQL */ `
       }
       tripLength
       selectedCity
+      tripPhotoReference
       createdAt
       __typename
     }

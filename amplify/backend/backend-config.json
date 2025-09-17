@@ -187,6 +187,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "getTripIDs": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "getUserTrips": {
       "build": true,
       "dependsOn": [

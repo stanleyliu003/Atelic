@@ -1,4 +1,5 @@
 import { API } from 'aws-amplify';
+import { getUserTripDetails as getUserTripDetailsQuery, listUserTrips as listUserTripsQuery } from '../graphql/queries';
 
 /**
  * Use API.post to invoke Lambda function with higher timeout than GraphQL
@@ -42,6 +43,55 @@ export const analyzeWishlistDirect = async (wishlistText, selectedCity) => {
 
         // If the REST API fails, fallback to the original GraphQL approach
         console.log('[Lambda Service] Falling back to GraphQL...');
+        throw error;
+    }
+};
+
+/**
+ * List all trips for a user (summary data only)
+ */
+export const listUserTripsFromCloud = async (userID) => {
+    try {
+        console.log('[Lambda Service] Listing user trips from cloud storage...');
+        console.log('[Lambda Service] UserID:', userID);
+
+        const result = await API.graphql({
+            query: listUserTripsQuery,
+            variables: {
+                userID: userID
+            }
+        });
+
+        console.log('[Lambda Service] Retrieved trip summaries:', result.data.getTripIDs);
+        return result.data.getTripIDs;
+
+    } catch (error) {
+        console.error('[Lambda Service] Error listing user trips from cloud:', error);
+        throw error;
+    }
+};
+
+/**
+ * Retrieve detailed trip data from cloud storage using getUserTrips Lambda function
+ */
+export const retrieveTripFromCloud = async (userID, tripID) => {
+    try {
+        console.log('[Lambda Service] Retrieving trip details from cloud storage...');
+        console.log('[Lambda Service] UserID:', userID, 'TripID:', tripID);
+
+        const result = await API.graphql({
+            query: getUserTripDetailsQuery,
+            variables: {
+                userID: userID,
+                tripID: tripID
+            }
+        });
+
+        console.log('[Lambda Service] Retrieved trip details:', result.data.getUserTrips);
+        return result.data.getUserTrips;
+
+    } catch (error) {
+        console.error('[Lambda Service] Error retrieving trip details from cloud:', error);
         throw error;
     }
 };

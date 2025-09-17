@@ -30,6 +30,7 @@ exports.handler = async (event) => {
     tripLength: input.tripLength,
     selectedCity: input.selectedCity,
     wishlist: input.wishlist,
+    tripPhotoReference: input.tripPhotoReference,
     createdAt: input.createdAt
   };
 
@@ -50,6 +51,7 @@ exports.handler = async (event) => {
       wishlist: input.wishlist || [],
       tripLength: input.tripLength,
       selectedCity: input.selectedCity,
+      tripPhotoReference: input.tripPhotoReference,
       createdAt: item.createdAt,
     };
   } catch (error) {
