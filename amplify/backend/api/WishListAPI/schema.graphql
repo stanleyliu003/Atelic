@@ -129,8 +129,8 @@
    }
 
    type Mutation {
-     optimizeRoute(activities: [ActivityInput!]!): [Activity] @function(name: "OptimizeRoute-${env}") @auth(rules: [{ allow: private }])
-     createTrip(input: CreateTripInput!): Trip @function(name: "CreateTripStorage-${env}") @auth(rules: [{ allow: private }])
+     optimizeRoute(activities: [ActivityInput!]!): [Activity] @function(name: "OptimizeRoute-${env}") @auth(rules: [{ allow: public }])
+     createTrip(input: CreateTripInput!): Trip @function(name: "CreateTripStorage-${env}") @auth(rules: [{ allow: public }])
    }
 
    input ActivityInput {
@@ -164,6 +164,7 @@
 
    input CreateTripInput {
      tripId: String!
+     userID: String!
      days: [DayInput!]!
      wishlist: [ActivityInput!]!
      tripLength: Int

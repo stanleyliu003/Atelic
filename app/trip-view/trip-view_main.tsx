@@ -552,35 +552,30 @@ export default function TripViewMain() {
         console.log('[trip-view_main] Saving trip with data:', tripData);
 
         try {
-            // Debug: Check current user authentication state
+            // Get current user ID for the trip data
+            let userID;
             try {
                 const currentUser = await Auth.currentAuthenticatedUser();
-                console.log('[trip-view_main] Current authenticated user:', {
-                    username: currentUser.username,
-                    userId: currentUser.attributes?.sub,
-                    signInUserSession: currentUser.signInUserSession ? 'Present' : 'Missing'
-                });
-
-                // Get the ID token to verify it exists
-                const session = await Auth.currentSession();
-                console.log('[trip-view_main] Session info:', {
-                    isValid: session.isValid(),
-                    accessToken: session.getAccessToken() ? 'Present' : 'Missing',
-                    idToken: session.getIdToken() ? 'Present' : 'Missing',
-                    idTokenJWT: session.getIdToken().getJwtToken() ? 'Present (first 20 chars): ' + session.getIdToken().getJwtToken().substring(0, 20) + '...' : 'Missing'
-                });
+                userID = currentUser.attributes?.sub || currentUser.username;
+                console.log('[trip-view_main] Using userID:', userID);
             } catch (authError) {
                 console.error('[trip-view_main] Auth check failed:', authError);
                 Alert.alert('Authentication Error', 'Please sign in to save your trip');
                 return;
             }
 
-            // Make the API call with explicit auth mode
-            console.log('[trip-view_main] Making API call with AMAZON_COGNITO_USER_POOLS auth mode');
+            // Add userID to trip data
+            const tripDataWithUser = {
+                ...tripData,
+                userID: userID
+            };
+
+            console.log('[trip-view_main] Saving trip with user data:', tripDataWithUser);
+
+            // Make the API call (now using public auth)
             const result = await API.graphql({
                 query: createTrip,
-                variables: { input: tripData },
-                authMode: 'AMAZON_COGNITO_USER_POOLS'
+                variables: { input: tripDataWithUser }
             });
             console.log('[trip-view_main] Trip saved successfully:', result);
 

@@ -1,6 +1,80 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
+export const optimizeRoute = /* GraphQL */ `
+  mutation OptimizeRoute($activities: [ActivityInput!]!) {
+    optimizeRoute(activities: $activities) {
+      name
+      city
+      lat
+      lng
+      rating
+      user_ratings_total
+      formatted_address
+      types
+      primaryType
+      place_id
+      photo_reference
+      is_recommended
+      display_name
+      website_uri
+      regular_opening_hours {
+        open_now
+        weekday_text
+        __typename
+      }
+      reviews {
+        author_name
+        rating
+        text
+        time
+        author_url
+        profile_photo_url
+        __typename
+      }
+      editorial_summary
+      primary_type_display_name
+      international_phone_number
+      __typename
+    }
+  }
+`;
+export const createTrip = /* GraphQL */ `
+  mutation CreateTrip($input: CreateTripInput!) {
+    createTrip(input: $input) {
+      tripId
+      days {
+        dayNumber
+        encodedPolyline
+        __typename
+      }
+      wishlist {
+        name
+        city
+        lat
+        lng
+        rating
+        user_ratings_total
+        formatted_address
+        types
+        primaryType
+        place_id
+        photo_reference
+        is_recommended
+        display_name
+        website_uri
+        editorial_summary
+        primary_type_display_name
+        international_phone_number
+        __typename
+      }
+      tripLength
+      selectedCity
+      createdAt
+      __typename
+    }
+  }
+`;
 export const createWishlistAnalysis = /* GraphQL */ `
   mutation CreateWishlistAnalysis(
     $input: CreateWishlistAnalysisInput!
@@ -108,80 +182,6 @@ export const deleteWishlistAnalysis = /* GraphQL */ `
       }
       createdAt
       updatedAt
-      __typename
-    }
-  }
-`;
-export const optimizeRoute = /* GraphQL */ `
-  mutation OptimizeRoute($activities: [ActivityInput!]!) {
-    optimizeRoute(activities: $activities) {
-      name
-      city
-      lat
-      lng
-      rating
-      user_ratings_total
-      formatted_address
-      types
-      primaryType
-      place_id
-      photo_reference
-      is_recommended
-      display_name
-      website_uri
-      regular_opening_hours {
-        open_now
-        weekday_text
-        __typename
-      }
-      reviews {
-        author_name
-        rating
-        text
-        time
-        author_url
-        profile_photo_url
-        __typename
-      }
-      editorial_summary
-      primary_type_display_name
-      international_phone_number
-      __typename
-    }
-  }
-`;
-export const createTrip = /* GraphQL */ `
-  mutation CreateTrip($input: CreateTripInput!) {
-    createTrip(input: $input) {
-      tripId
-      days {
-        dayNumber
-        encodedPolyline
-        __typename
-      }
-      wishlist {
-        name
-        city
-        lat
-        lng
-        rating
-        user_ratings_total
-        formatted_address
-        types
-        primaryType
-        place_id
-        photo_reference
-        is_recommended
-        display_name
-        website_uri
-        editorial_summary
-        primary_type_display_name
-        international_phone_number
-        __typename
-      }
-      tripLength
-      selectedCity
-      createdAt
       __typename
     }
   }
