@@ -48,6 +48,10 @@
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
           "s3Key": "amplify-builds/regionImage-46374134756348724752-build.zip",
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
+        },
+        "getUserTrips": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/getUserTrips-33743851576955416e62-build.zip"
         }
       },
       "auth": {

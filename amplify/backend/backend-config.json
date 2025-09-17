@@ -187,6 +187,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "getUserTrips": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "regionImage": {
       "build": true,
       "dependsOn": [
@@ -345,6 +361,22 @@
         {
           "category": "function",
           "resourceName": "getLocationCoordinates"
+        }
+      ]
+    },
+    "AMPLIFY_function_getUserTrips_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getUserTrips"
+        }
+      ]
+    },
+    "AMPLIFY_function_getUserTrips_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getUserTrips"
         }
       ]
     },
