@@ -557,7 +557,7 @@ export default function TripViewMain() {
                 graphqlOperation(createTrip, { input: tripData })
             );
             console.log('[trip-view_main] Trip saved successfully:', result);
-            await AsyncStorage.setItem('lastSavedTrip', JSON.stringify(tripData));
+        await AsyncStorage.setItem('lastSavedTrip', JSON.stringify(tripData));
         } catch (error) {
             console.error('[trip-view_main] Error saving trip:', error);
             throw error;
