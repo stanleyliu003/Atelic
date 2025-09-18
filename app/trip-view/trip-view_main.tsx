@@ -514,17 +514,28 @@ export default function TripViewMain() {
         }
     }, [shouldScrollToActive]);
 
+    // Helper function to sanitize activity objects for GraphQL input
+    const sanitizeActivity = (activity: Activity & { __typename?: string }) => {
+        const {
+            __typename,
+            ...sanitized
+        } = activity;
+        return sanitized;
+    };
+
     // Serialize trip data for saving
     const saveTrip = async () => {
-        // Gather days and their activities
+        // Gather days and their activities (sanitize activities for GraphQL input)
         const days = Object.keys(dayActivities).map(dayNumber => ({
             dayNumber: Number(dayNumber),
-            activities: dayActivities[dayNumber].activities,
+            activities: dayActivities[dayNumber].activities.map(sanitizeActivity),
             encodedPolyline: dayPolylines[dayNumber] || null,
         }));
-        // Gather wishlist activities (not assigned to any day)
+        // Gather wishlist activities (not assigned to any day) and sanitize them
         const dayActivityIds = days.flatMap(day => day.activities.map(a => a.place_id)).filter(Boolean);
-        const wishlist = (activities || []).filter((activity) => !activity.place_id || !dayActivityIds.includes(activity.place_id));
+        const wishlist = (activities || [])
+            .filter((activity) => !activity.place_id || !dayActivityIds.includes(activity.place_id))
+            .map(sanitizeActivity);
         // Compose trip data object
         // Generate tripId if it doesn't exist (first time save)
         let currentTripId = tripId;
