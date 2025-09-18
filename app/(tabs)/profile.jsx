@@ -1,6 +1,5 @@
 import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useLocalSearchParams } from 'expo-router';
 import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Auth } from 'aws-amplify';
 import { useEffect, useState } from 'react';
@@ -161,14 +160,14 @@ export default function Profile() {
                       {trip.selectedCity || 'Unknown City'}
                     </Text>
                     <Text style={styles.tripCardDate}>
-                      {trip.createdAt ? new Date(trip.createdAt).toLocaleDateString(undefined, {
+                      Created {trip.createdAt ? new Date(trip.createdAt).toLocaleDateString(undefined, {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric'
                       }) : 'No date'}
                     </Text>
                     <Text style={styles.tripCardLength}>
-                      {trip.tripLength ? `${trip.tripLength} day${trip.tripLength > 1 ? 's' : ''}` : 'Unknown length'}
+                      {trip.tripLength != null ? `${trip.tripLength} day${trip.tripLength > 1 ? 's' : ''}` : 'Unknown length'}
                     </Text>
                   </View>
                   {selectedTripId === trip.tripId && isLoadingTrip && (
