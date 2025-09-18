@@ -137,7 +137,7 @@ export default function Profile() {
             <Text style={styles.loadingText}>Loading trips...</Text>
           </View>
         ) : userTrips.length > 0 ? (
-          <ScrollView style={styles.tripsScrollView} showsVerticalScrollIndicator={false}>
+          <ScrollView style={styles.tripsScrollView} showsVerticalScrollIndicator={true}>
             {userTrips.map((trip) => (
               <TouchableOpacity
                 key={trip.tripId}
@@ -175,7 +175,7 @@ export default function Profile() {
                       }) : 'No date'}
                     </Text>
                     <Text style={styles.tripCardLength}>
-                      {trip.tripLength != null ? `${trip.tripLength} day${trip.tripLength > 1 ? 's' : ''}` : 'Unknown length'}
+                      {trip.tripLength != null ? `${trip.tripLength} day trip` : 'Unknown length'}
                     </Text>
                   </View>
                   {selectedTripId === trip.tripId && isLoadingTrip && (
@@ -217,6 +217,7 @@ const styles = StyleSheet.create({
   },
   myTripsSection: {
     marginTop: 30,
+    flex: 1,
   },
   sectionTitle: {
     fontFamily: 'outfit-bold',
@@ -259,12 +260,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   tripsScrollView: {
-    maxHeight: 2000,
+    flex: 1,
   },
   tripCard: {
     backgroundColor: Colors.WHITE,
     borderRadius: 12,
-    marginBottom: 15,
+    marginBottom: 25,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -283,10 +284,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tripCardImage: {
-    width: 80,
-    height: 80,
+    width: 110,
+    height: 110,
     borderRadius: 8,
-    marginRight: 15,
+    marginRight: 30,
   },
   tripCardImagePlaceholder: {
     width: 80,
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
     marginRight: 15,
   },
   tripCardTitle: {
-    fontFamily: 'outfit-bold',
+    fontFamily: 'outfit-medium',
     fontSize: 18,
     color: Colors.PRIMARY,
     marginBottom: 4,
