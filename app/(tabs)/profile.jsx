@@ -3,7 +3,8 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Auth } from 'aws-amplify';
 import { useEffect, useState } from 'react';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { listUserTripsFromCloud, retrieveTripFromCloud } from '../../src/services/lambdaService';
 
@@ -17,25 +18,32 @@ export default function Profile() {
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [isLoadingTrip, setIsLoadingTrip] = useState(false);
 
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const user = await Auth.currentAuthenticatedUser();
-        const name = user.attributes?.name || '';
-        const userID = user.attributes?.sub || user.username;
-        setFullName(name);
+  const loadUserData = useCallback(async () => {
+    try {
+      const user = await Auth.currentAuthenticatedUser();
+      const name = user.attributes?.name || '';
+      const userID = user.attributes?.sub || user.username;
+      setFullName(name);
 
-        // Load user trips from cloud
-        await loadUserTrips(userID);
-      } catch (error) {
-        console.error('[Profile] Error loading user data:', error);
-        setFullName('');
-        setTripsError('Failed to load user data');
-      }
-    };
-
-    loadUserData();
+      // Load user trips from cloud
+      await loadUserTrips(userID);
+    } catch (error) {
+      console.error('[Profile] Error loading user data:', error);
+      setFullName('');
+      setTripsError('Failed to load user data');
+    }
   }, []);
+
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
+
+  // Reload data every time the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadUserData();
+    }, [loadUserData])
+  );
 
   const loadUserTrips = async (userID) => {
     try {
@@ -251,7 +259,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   tripsScrollView: {
-    maxHeight: 400,
+    maxHeight: 2000,
   },
   tripCard: {
     backgroundColor: Colors.WHITE,
