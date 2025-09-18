@@ -1,7 +1,7 @@
 import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useLocalSearchParams } from 'expo-router';
-import { Image, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Auth } from 'aws-amplify';
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
@@ -12,7 +12,7 @@ export default function Profile() {
   const params = useLocalSearchParams();
   const photoReferenceParam = params.photoReference || '';
   const dayCount = parseInt(params.dayCount, 10) || 1;
-  const { activities, createdAt, selectedCity, dayActivities } = useCreateTrip();
+  const { activities, createdAt, selectedCity, dayActivities, restoreTripFromObject, setSelectedCity } = useCreateTrip();
   
   // Derive a fallback photo reference: first activity from day 1, else first wishlist activity
   const derivedPhotoReference = (() => {
@@ -30,100 +30,81 @@ export default function Profile() {
 
   const [fullName, setFullName] = useState('');
   const [userTrips, setUserTrips] = useState([]);
+  const [isLoadingTrips, setIsLoadingTrips] = useState(false);
+  const [tripsError, setTripsError] = useState(null);
+  const [selectedTripId, setSelectedTripId] = useState(null);
+  const [isLoadingTrip, setIsLoadingTrip] = useState(false);
 
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        // Get current user info
         const user = await Auth.currentAuthenticatedUser();
         const name = user.attributes?.name || '';
         const userID = user.attributes?.sub || user.username;
-
         setFullName(name);
 
-        console.log('[Profile] Current userID:', userID);
-
-        // Test getTripIDs Lambda call
-        console.log('[Profile] Calling getTripIDs Lambda...');
-        const tripSummaries = await listUserTripsFromCloud(userID);
-
-        console.log('[Profile] getTripIDs Lambda Response:', tripSummaries);
-        console.log('[Profile] Number of trips found:', tripSummaries?.length || 0);
-
-        // Log each trip summary
-        if (tripSummaries && tripSummaries.length > 0) {
-          tripSummaries.forEach((trip, index) => {
-            console.log(`[Profile] Trip ${index + 1}:`, {
-              tripId: trip.tripId,
-              selectedCity: trip.selectedCity,
-              tripPhotoReference: trip.tripPhotoReference,
-              createdAt: trip.createdAt
-            });
-          });
-        } else {
-          console.log('[Profile] No trips found for user');
-        }
-
-        setUserTrips(tripSummaries || []);
-
-        // Test getUserTrips Lambda with the first trip (if any exist)
-        if (tripSummaries && tripSummaries.length > 0) {
-          const firstTrip = tripSummaries[0];
-          console.log(`[Profile] Testing getUserTrips Lambda with tripID: ${firstTrip.tripId}`);
-
-          try {
-            const tripDetails = await retrieveTripFromCloud(userID, firstTrip.tripId);
-            console.log('[Profile] getUserTrips Lambda Response:', tripDetails);
-            console.log('[Profile] Trip details structure:', {
-              tripId: tripDetails?.tripId,
-              selectedCity: tripDetails?.selectedCity,
-              tripPhotoReference: tripDetails?.tripPhotoReference,
-              createdAt: tripDetails?.createdAt,
-              tripLength: tripDetails?.tripLength,
-              daysCount: tripDetails?.days?.length || 0,
-              wishlistCount: tripDetails?.wishlist?.length || 0
-            });
-
-            // Log first day activities if they exist
-            if (tripDetails?.days && tripDetails.days.length > 0) {
-              const firstDay = tripDetails.days[0];
-              console.log('[Profile] First day details:', {
-                dayNumber: firstDay.dayNumber,
-                activitiesCount: firstDay.activities?.length || 0,
-                hasPolyline: !!firstDay.encodedPolyline
-              });
-
-              // Log first activity if it exists
-              if (firstDay.activities && firstDay.activities.length > 0) {
-                const firstActivity = firstDay.activities[0];
-                console.log('[Profile] First activity details:', {
-                  name: firstActivity.name,
-                  city: firstActivity.city,
-                  photo_reference: firstActivity.photo_reference,
-                  place_id: firstActivity.place_id
-                });
-              }
-            }
-
-          } catch (getUserTripsError) {
-            console.error('[Profile] Error testing getUserTrips Lambda:', getUserTripsError);
-          }
-        } else {
-          console.log('[Profile] No trips found to test getUserTrips Lambda');
-        }
-
+        // Load user trips from cloud
+        await loadUserTrips(userID);
       } catch (error) {
-        console.error('[Profile] Error loading user data or trips:', error);
+        console.error('[Profile] Error loading user data:', error);
         setFullName('');
-        setUserTrips([]);
+        setTripsError('Failed to load user data');
       }
     };
 
     loadUserData();
   }, []);
 
-  // Find the activity with the matching photo_reference
-  const activity = activities.find((a) => a.photo_reference === photoReference);
+  const loadUserTrips = async (userID) => {
+    try {
+      setIsLoadingTrips(true);
+      setTripsError(null);
+
+      const tripSummaries = await listUserTripsFromCloud(userID);
+      setUserTrips(tripSummaries || []);
+    } catch (error) {
+      console.error('[Profile] Error loading trips:', error);
+      setTripsError('Failed to load trips');
+      setUserTrips([]);
+    } finally {
+      setIsLoadingTrips(false);
+    }
+  };
+
+  const handleLoadTrip = async (tripId) => {
+    try {
+      setIsLoadingTrip(true);
+      const user = await Auth.currentAuthenticatedUser();
+      const userID = user.attributes?.sub || user.username;
+
+      const tripDetails = await retrieveTripFromCloud(userID, tripId);
+
+      if (tripDetails) {
+        // Load trip data into context
+        restoreTripFromObject(tripDetails);
+        setSelectedCity(tripDetails.selectedCity);
+
+        Alert.alert(
+          'Trip Loaded',
+          `Successfully loaded "${tripDetails.selectedCity}" trip`,
+          [
+            {
+              text: 'View Trip',
+              onPress: () => router.push('/trip-view/trip-view_main')
+            },
+            { text: 'OK' }
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('[Profile] Error loading trip:', error);
+      Alert.alert('Error', 'Failed to load trip. Please try again.');
+    } finally {
+      setIsLoadingTrip(false);
+      setSelectedTripId(null);
+    }
+  };
+
 
   const getDayCountText = () => {
     if (dayCount === 1) return '1 day';
@@ -153,21 +134,17 @@ export default function Profile() {
         }}>Welcome back, {fullName}!</Text>
       ) : null}
 
-      {/* Trip Summary (if params present) */}
+      {/* Current Trip Summary (if params present) */}
       {(photoReference || params.dayCount) && (
         <TouchableOpacity
           style={styles.tripSummaryContainer}
           onPress={() => {
-            // Navigate back to trip-view_main with a restore flag
-            // This will trigger the useEffect in trip-view_main to restore the trip
-            // from the context or storage.
             router.push({
               pathname: '/trip-view/trip-view_main',
               params: { restoreTrip: 'true' }
             });
           }}
         >
-          {/* Top left quadrant image */}
           {photoReference ? (
             <Image
               source={{ uri: getImageUrl(photoReference) }}
@@ -191,6 +168,89 @@ export default function Profile() {
           </View>
         </TouchableOpacity>
       )}
+
+      {/* My Trips Section */}
+      <View style={styles.myTripsSection}>
+        <Text style={styles.sectionTitle}>My Trips</Text>
+
+        {tripsError && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{tripsError}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={async () => {
+                const user = await Auth.currentAuthenticatedUser();
+                const userID = user.attributes?.sub || user.username;
+                await loadUserTrips(userID);
+              }}
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {isLoadingTrips ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.PRIMARY} />
+            <Text style={styles.loadingText}>Loading trips...</Text>
+          </View>
+        ) : userTrips.length > 0 ? (
+          <ScrollView style={styles.tripsScrollView} showsVerticalScrollIndicator={false}>
+            {userTrips.map((trip) => (
+              <TouchableOpacity
+                key={trip.tripId}
+                style={[
+                  styles.tripCard,
+                  selectedTripId === trip.tripId && isLoadingTrip && styles.tripCardLoading
+                ]}
+                onPress={() => {
+                  setSelectedTripId(trip.tripId);
+                  handleLoadTrip(trip.tripId);
+                }}
+                disabled={isLoadingTrip}
+              >
+                <View style={styles.tripCardContent}>
+                  {trip.tripPhotoReference ? (
+                    <Image
+                      source={{ uri: getImageUrl(trip.tripPhotoReference) }}
+                      style={styles.tripCardImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.tripCardImagePlaceholder}>
+                      <FontAwesome name="map-marker" size={30} color={Colors.GRAY} />
+                    </View>
+                  )}
+                  <View style={styles.tripCardInfo}>
+                    <Text style={styles.tripCardTitle}>
+                      {trip.selectedCity || 'Unknown City'}
+                    </Text>
+                    <Text style={styles.tripCardDate}>
+                      {trip.createdAt ? new Date(trip.createdAt).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      }) : 'No date'}
+                    </Text>
+                    <Text style={styles.tripCardLength}>
+                      {trip.tripLength ? `${trip.tripLength} day${trip.tripLength > 1 ? 's' : ''}` : 'Unknown length'}
+                    </Text>
+                  </View>
+                  {selectedTripId === trip.tripId && isLoadingTrip && (
+                    <ActivityIndicator size="small" color={Colors.PRIMARY} />
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={styles.noTripsContainer}>
+            <FontAwesome name="suitcase" size={50} color={Colors.GRAY} />
+            <Text style={styles.noTripsText}>No trips found</Text>
+            <Text style={styles.noTripsSubtext}>Create your first trip to get started!</Text>
+          </View>
+        )}
+      </View>
     </View>
   )
 }
@@ -250,5 +310,125 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.GRAY,
     marginTop: 6,
+  },
+  myTripsSection: {
+    marginTop: 30,
+  },
+  sectionTitle: {
+    fontFamily: 'outfit-bold',
+    fontSize: 24,
+    color: Colors.PRIMARY,
+    marginBottom: 20,
+  },
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  errorText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: '#c62828',
+    marginBottom: 8,
+  },
+  retryButton: {
+    backgroundColor: Colors.PRIMARY,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  retryButtonText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 14,
+    color: Colors.WHITE,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    padding: 30,
+  },
+  loadingText: {
+    fontFamily: 'outfit',
+    fontSize: 16,
+    color: Colors.GRAY,
+    marginTop: 10,
+  },
+  tripsScrollView: {
+    maxHeight: 400,
+  },
+  tripCard: {
+    backgroundColor: Colors.WHITE,
+    borderRadius: 12,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  tripCardLoading: {
+    opacity: 0.7,
+  },
+  tripCardContent: {
+    flexDirection: 'row',
+    padding: 15,
+    alignItems: 'center',
+  },
+  tripCardImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    marginRight: 15,
+  },
+  tripCardImagePlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    marginRight: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tripCardInfo: {
+    flex: 1,
+    marginRight: 15,
+  },
+  tripCardTitle: {
+    fontFamily: 'outfit-bold',
+    fontSize: 18,
+    color: Colors.PRIMARY,
+    marginBottom: 4,
+  },
+  tripCardDate: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    marginBottom: 2,
+  },
+  tripCardLength: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+  },
+  noTripsContainer: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  noTripsText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
+    color: Colors.GRAY,
+    marginTop: 15,
+    marginBottom: 5,
+  },
+  noTripsSubtext: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    textAlign: 'center',
   },
 });
