@@ -158,21 +158,15 @@ export const CreateTripProvider = ({ children }) => {
         // setTripLength(null);
     };
 
-    // Clear cached trip creation data
-    const clearTripCreationCache = async () => {
-        try {
-            await AsyncStorage.multiRemove([CACHE_KEYS.SELECTED_CITY, CACHE_KEYS.CITY_PHOTO_REF, CACHE_KEYS.CITY_CATEGORIES]);
-            // Don't immediately clear selectedCity from context state
-            // Let the individual components handle their own state clearing
-        } catch (error) {
-            console.error('Error clearing trip creation cache:', error);
-        }
-    };
 
     // Complete reset for starting a brand new trip
     const completeReset = async () => {
-        // Clear cached data first
-        await clearTripCreationCache();
+        // Clear essential cached data for create_trip steps 1-4
+        try {
+            await AsyncStorage.multiRemove([CACHE_KEYS.SELECTED_CITY, CACHE_KEYS.CITY_PHOTO_REF, CACHE_KEYS.CITY_CATEGORIES]);
+        } catch (error) {
+            console.error('Error clearing essential trip creation cache:', error);
+        }
 
         // Then reset all context state
         setTripId('');
@@ -259,7 +253,6 @@ export const CreateTripProvider = ({ children }) => {
         setDayActivities: setDayActivitiesWithLog,
         resetTrip,
         completeReset,
-        clearTripCreationCache,
         loadTripFromCloud,
         listUserTrips,
         checkTripExistsInCloud,

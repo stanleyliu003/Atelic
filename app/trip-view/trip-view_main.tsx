@@ -21,7 +21,6 @@ import { Activity, TabType } from '../../src/types/activity.types';
 import { API, graphqlOperation, Auth } from 'aws-amplify';
 import { addAdditionalPlaceWithDedup, buildExistingPlaceIdSet, defaultAddPlacesButtonStyle } from '../../src/services/add_additional_place';
 import { createTrip } from '../../src/graphql/mutations';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Entypo from '@expo/vector-icons/Entypo';
 
 
@@ -580,8 +579,6 @@ export default function TripViewMain() {
             });
             console.log('[trip-view_main] Trip saved successfully:', result);
 
-            // Save to local storage as backup
-            await AsyncStorage.setItem('lastSavedTrip', JSON.stringify(tripData));
         } catch (error) {
             console.error('[trip-view_main] Error saving trip - Full error:', JSON.stringify(error, null, 2));
 
@@ -607,22 +604,6 @@ export default function TripViewMain() {
         });
     }, []);
 
-    useEffect(() => {
-        if (restoreTrip) {
-            (async () => {
-                // Example: load from AsyncStorage or other storage
-                // For now, let's assume you have a function to get the saved trip
-                // Replace this with your actual loading logic
-                const saved = await (window as any).getLastSavedTrip?.(); // placeholder for your loading logic
-                if (saved) {
-                    restoreTripFromObject(saved);
-                    // Log restored dayActivities
-                    setTimeout(() => {
-                    }, 500); // Delay to allow state update
-                }
-            })();
-        }
-    }, [restoreTrip, restoreTripFromObject]);
 
     // Log getDayActivities for each day
     useEffect(() => {
