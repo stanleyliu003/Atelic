@@ -9,24 +9,7 @@ import { useCreateTrip } from '../../context/CreateTripContext';
 import { listUserTripsFromCloud, retrieveTripFromCloud } from '../../src/services/lambdaService';
 
 export default function Profile() {
-  const params = useLocalSearchParams();
-  const photoReferenceParam = params.photoReference || '';
-  const dayCount = parseInt(params.dayCount, 10) || 1;
-  const { activities, createdAt, selectedCity, dayActivities, restoreTripFromObject, setSelectedCity } = useCreateTrip();
-  
-  // Derive a fallback photo reference: first activity from day 1, else first wishlist activity
-  const derivedPhotoReference = (() => {
-    const day1Activities = dayActivities?.[1]?.activities;
-    if (day1Activities && day1Activities.length > 0) {
-      return day1Activities[0]?.photo_reference || '';
-    }
-    if (activities && activities.length > 0) {
-      return activities[0]?.photo_reference || '';
-    }
-    return '';
-  })();
-  
-  const photoReference = photoReferenceParam || derivedPhotoReference;
+  const { restoreTripFromObject, setSelectedCity } = useCreateTrip();
 
   const [fullName, setFullName] = useState('');
   const [userTrips, setUserTrips] = useState([]);
@@ -84,17 +67,8 @@ export default function Profile() {
         restoreTripFromObject(tripDetails);
         setSelectedCity(tripDetails.selectedCity);
 
-        Alert.alert(
-          'Trip Loaded',
-          `Successfully loaded "${tripDetails.selectedCity}" trip`,
-          [
-            {
-              text: 'View Trip',
-              onPress: () => router.push('/trip-view/trip-view_main')
-            },
-            { text: 'OK' }
-          ]
-        );
+        // Navigate directly to trip view
+        router.push('/trip-view/trip-view_main');
       }
     } catch (error) {
       console.error('[Profile] Error loading trip:', error);
@@ -106,10 +80,6 @@ export default function Profile() {
   };
 
 
-  const getDayCountText = () => {
-    if (dayCount === 1) return '1 day';
-    return `${dayCount} day`;
-  };
 
   const getImageUrl = (photoReference) => {
     const { GOOGLE_PLACES_API_KEY } = require('../../src/constants/api');
@@ -133,41 +103,6 @@ export default function Profile() {
           color: Colors.PRIMARY
         }}>Welcome back, {fullName}!</Text>
       ) : null}
-
-      {/* Current Trip Summary (if params present) */}
-      {(photoReference || params.dayCount) && (
-        <TouchableOpacity
-          style={styles.tripSummaryContainer}
-          onPress={() => {
-            router.push({
-              pathname: '/trip-view/trip-view_main',
-              params: { restoreTrip: 'true' }
-            });
-          }}
-        >
-          {photoReference ? (
-            <Image
-              source={{ uri: getImageUrl(photoReference) }}
-              style={styles.tripSummaryImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={styles.tripSummaryImagePlaceholder}>
-              <FontAwesome name="user-circle" size={60} color={Colors.GRAY} />
-            </View>
-          )}
-          <View style={styles.tripSummaryTextContainer}>
-            <Text style={styles.tripSummaryText}>
-              {getDayCountText()} Trip{selectedCity ? ` to ${selectedCity}` : ''}
-            </Text>
-            {createdAt && (
-              <Text style={styles.tripSummaryDate}>
-                {`Created on: ${new Date(createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}`}
-              </Text>
-            )}
-          </View>
-        </TouchableOpacity>
-      )}
 
       {/* My Trips Section */}
       <View style={styles.myTripsSection}>
@@ -272,44 +207,6 @@ const styles = StyleSheet.create({
   headerText: {
     fontFamily: 'outfit-bold',
     fontSize: 35,
-  },
-  tripSummaryContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 40,
-    marginBottom: 30,
-    borderRadius: 1,
-  },
-  tripSummaryImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 16,
-    marginRight: 20,
-  },
-  tripSummaryImagePlaceholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 16,
-    backgroundColor: '#f0f0f0',
-    marginRight: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tripSummaryTextContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  tripSummaryText: {
-    fontFamily: 'outfit-medium',
-    marginTop: 25,
-    fontSize: 22,
-    color: Colors.PRIMARY,
-  },
-  tripSummaryDate: {
-    fontFamily: 'outfit',
-    fontSize: 15,
-    color: Colors.GRAY,
-    marginTop: 6,
   },
   myTripsSection: {
     marginTop: 30,
