@@ -852,8 +852,11 @@ export default function TripViewMain() {
                 onPress={async () => {
                     const dayCountVal = getDayCount();
                     await saveTrip();
-                    if (restoreTrip) {
-                        // Use first activity from day 1; if none, fallback to first wishlist activity
+                    // Check if this is an existing trip (loaded from cloud) or a new trip
+                    const isExistingTrip = createdAt && tripId;
+
+                    if (isExistingTrip) {
+                        // This trip was loaded from cloud storage, go back to profile
                         let lastActivityPhotoRef = '';
                         const day1Activities = getDayActivities(1);
                         if (day1Activities && day1Activities.length > 0) {
@@ -869,6 +872,7 @@ export default function TripViewMain() {
                             }
                         });
                     } else {
+                        // This is a new trip, show publish success page
                         router.push({
                             pathname: '/trip-view/publish_success',
                             params: {
