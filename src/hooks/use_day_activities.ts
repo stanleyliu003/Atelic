@@ -66,15 +66,17 @@ export function useDayActivities() {
   const transferActivitiesToWishlist = useCallback((activityIds: string[], dayNumber: number) => {
     setDayActivities((prev: any) => {
       const dayObj = prev[dayNumber] || { dayNumber, activities: [] };
-      return {
+      const newDayActivities = {
         ...prev,
         [dayNumber]: {
           ...dayObj,
           activities: dayObj.activities.filter((activity: Activity) => !activity.place_id || !activityIds.includes(activity.place_id)),
         },
       };
+      return newDayActivities;
     });
-    return dayActivities[dayNumber]?.activities.filter((activity: Activity) => activity.place_id && activityIds.includes(activity.place_id)) || [];
+    const transferredActivities = dayActivities[dayNumber]?.activities.filter((activity: Activity) => activity.place_id && activityIds.includes(activity.place_id)) || [];
+    return transferredActivities;
   }, [setDayActivities, dayActivities]);
 
   const getDayActivities = useCallback((dayNumber: number): Activity[] => {

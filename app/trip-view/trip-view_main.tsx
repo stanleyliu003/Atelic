@@ -130,28 +130,6 @@ export default function TripViewMain() {
         }
     };
 
-    // Remove local state and handlers for transfer modal and related logic
-    // Use the custom hook for all transfer modal and activity transfer logic
-    const {
-        isModalVisible,
-        setIsModalVisible,
-        selectedDay,
-        setSelectedDay,
-        daysArray,
-        handleOpenTransferModal,
-        handleConfirmTransfer,
-        handleTransferToWishlist,
-    } = useTransferActivities({
-        activities: activities || [],
-        activeTab,
-        getSelectedActivities,
-        transferActivitiesToDay,
-        transferActivitiesToWishlist,
-        clearSelection,
-        getDayCount,
-        onTabChange: handleTabChange, // Pass the tab change handler
-    });
-
     // Get activities for the current tab
     const getActivitiesForTab = (tab: TabType) => {
         if (tab === 'wishlist') {
@@ -170,6 +148,42 @@ export default function TripViewMain() {
             return getDayActivities(dayNumber) || [];
         }
     };
+
+    // Function to add activities back to the wishlist
+    const addActivitiesToWishlist = (newActivities: Activity[]) => {
+        // Combine existing activities with new ones, removing duplicates by place_id
+        const combinedActivities = [...(activities || []), ...newActivities];
+        const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
+            if (!activity.place_id) return true; // Keep activities without place_id
+            // Keep only the first occurrence of each place_id
+            return arr.findIndex(a => a.place_id === activity.place_id) === index;
+        });
+
+        updateActivities(deduplicatedActivities);
+    };
+
+    // Remove local state and handlers for transfer modal and related logic
+    // Use the custom hook for all transfer modal and activity transfer logic
+    const {
+        isModalVisible,
+        setIsModalVisible,
+        selectedDay,
+        setSelectedDay,
+        daysArray,
+        handleOpenTransferModal,
+        handleConfirmTransfer,
+        handleTransferToWishlist,
+    } = useTransferActivities({
+        activities: getActivitiesForTab(activeTab), // Pass current tab's activities instead of just wishlist
+        activeTab,
+        getSelectedActivities,
+        transferActivitiesToDay,
+        transferActivitiesToWishlist,
+        clearSelection,
+        getDayCount,
+        onTabChange: handleTabChange, // Pass the tab change handler
+        updateWishlistActivities: addActivitiesToWishlist, // Pass function to add activities back to wishlist
+    });
 
     // Helper to hash activities for cache key
     function hashActivities(activities: Activity[]): string {
