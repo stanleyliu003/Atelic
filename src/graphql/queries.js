@@ -131,6 +131,7 @@ export const getTripIDs = /* GraphQL */ `
       selectedCity
       tripPhotoReference
       createdAt
+      tripLength
       __typename
     }
   }

@@ -157,18 +157,18 @@ export default function TripViewMain() {
     const getActivitiesForTab = (tab: TabType) => {
         if (tab === 'wishlist') {
             // Filter out activities that are already in days
-            const dayActivityIds = Object.values(dayActivities)
+            const dayActivityIds = Object.values(dayActivities || {})
                 .flatMap(dayObj => Array.isArray((dayObj as any).activities) ? (dayObj as any).activities : [])
                 .map((activity: Activity) => activity.place_id)
                 .filter(Boolean);
-            
-            return (activities || []).filter((activity: Activity) => 
+
+            return (activities || []).filter((activity: Activity) =>
                 !activity.place_id || !dayActivityIds.includes(activity.place_id)
             );
         } else {
             // Extract day number from tab (e.g., 'day2' -> 2)
             const dayNumber = parseInt(tab.replace('day', ''));
-            return getDayActivities(dayNumber);
+            return getDayActivities(dayNumber) || [];
         }
     };
 
@@ -340,15 +340,15 @@ export default function TripViewMain() {
         
         // Add deleted day activities back to wishlist (with deduplication)
         if (deletedDayActivities.length > 0) {
-            const combinedActivities = [...activities, ...deletedDayActivities];
-            
+            const combinedActivities = [...(activities || []), ...deletedDayActivities];
+
             // Remove duplicates based on place_id
             const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
                 if (!activity.place_id) return true; // Keep activities without place_id
                 // Keep only the first occurrence of each place_id
                 return arr.findIndex(a => a.place_id === activity.place_id) === index;
             });
-            
+
             updateActivities(deduplicatedActivities);
         }
         
@@ -406,7 +406,7 @@ export default function TripViewMain() {
     // Get bias location from activities or selectedCity
     const getBiasLocation = () => {
         // First try to get coordinates from activities
-        if (activities && activities.length > 0) {
+        if (activities && Array.isArray(activities) && activities.length > 0) {
             const validActivities = activities.filter(activity => activity.lat && activity.lng);
             if (validActivities.length > 0) {
                 // Use the first activity with valid coordinates
@@ -480,7 +480,7 @@ export default function TripViewMain() {
                     // Add the new activity to the active tab
                     if (activeTab === 'wishlist') {
                         // Add to wishlist (activities list)
-                        updateActivities([...activities, newActivity]);
+                        updateActivities([...(activities || []), newActivity]);
                         // Auto-select the newly added activity in wishlist selection mode
                         if (newActivity.place_id) {
                             toggleActivitySelection(newActivity.place_id);
@@ -491,7 +491,7 @@ export default function TripViewMain() {
                         addActivityToDay(newActivity, dayNumber);
                     } else {
                         // Fallback to wishlist
-                        updateActivities([...activities, newActivity]);
+                        updateActivities([...(activities || []), newActivity]);
                         if (newActivity.place_id) {
                             toggleActivitySelection(newActivity.place_id);
                         }
@@ -866,7 +866,7 @@ export default function TripViewMain() {
                         const day1Activities = getDayActivities(1);
                         if (day1Activities && day1Activities.length > 0) {
                             lastActivityPhotoRef = day1Activities[0]?.photo_reference || '';
-                        } else if (activities && activities.length > 0) {
+                        } else if (activities && Array.isArray(activities) && activities.length > 0) {
                             lastActivityPhotoRef = activities[0]?.photo_reference || '';
                         }
                         router.push({

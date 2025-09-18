@@ -130,6 +130,7 @@
      selectedCity: String
      tripPhotoReference: String
      createdAt: String
+     tripLength: Int
    }
 
    type Day {

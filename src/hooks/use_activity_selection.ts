@@ -57,7 +57,7 @@ export function useActivitySelection() {
   }, []);
 
   const getSelectedActivities = useCallback((allActivities: Activity[]) => {
-    return allActivities.filter(activity => 
+    return (allActivities || []).filter(activity =>
       activity.place_id && selectionState.selectedActivities.includes(activity.place_id)
     );
   }, [selectionState.selectedActivities]);

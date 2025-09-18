@@ -25,7 +25,7 @@ exports.handler = async (event) => {
       ':userID': userID
     },
     // Project only the fields needed for trip summary
-    ProjectionExpression: 'tripID, selectedCity, tripPhotoReference, createdAt'
+    ProjectionExpression: 'tripID, selectedCity, tripPhotoReference, createdAt, tripLength'
   };
 
   console.log('DynamoDB query params:', JSON.stringify(params));
@@ -40,7 +40,8 @@ exports.handler = async (event) => {
       tripId: item.tripID,
       selectedCity: item.selectedCity,
       tripPhotoReference: item.tripPhotoReference,
-      createdAt: item.createdAt
+      createdAt: item.createdAt,
+      tripLength: item.tripLength
     }));
 
     return tripSummaries;
