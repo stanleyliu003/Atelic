@@ -171,6 +171,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "deleteTrip": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "getLocationCoordinates": {
       "build": true,
       "dependsOn": [
@@ -353,6 +369,22 @@
         {
           "category": "function",
           "resourceName": "OptimizeRoute"
+        }
+      ]
+    },
+    "AMPLIFY_function_deleteTrip_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "deleteTrip"
+        }
+      ]
+    },
+    "AMPLIFY_function_deleteTrip_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "deleteTrip"
         }
       ]
     },

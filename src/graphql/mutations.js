@@ -76,6 +76,16 @@ export const createTrip = /* GraphQL */ `
     }
   }
 `;
+export const deleteTrip = /* GraphQL */ `
+  mutation DeleteTrip($userID: String!, $tripID: String!) {
+    deleteTrip(userID: $userID, tripID: $tripID) {
+      success
+      message
+      deletedTripID
+      __typename
+    }
+  }
+`;
 export const createWishlistAnalysis = /* GraphQL */ `
   mutation CreateWishlistAnalysis(
     $input: CreateWishlistAnalysisInput!

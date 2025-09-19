@@ -98,6 +98,12 @@
    categories: [CategoryItem]
  }
 
+ type DeleteTripResult {
+   success: Boolean!
+   message: String!
+   deletedTripID: String!
+ }
+
  type Query {
    analyzeWishlist(wishlist_text: String!, selectedCity: String!): WishlistAnalysisResult @function(name: "wishlistAnalyzer-dev")
    getRoute(waypoints: [WaypointInput!]!): RouteResult @function(name: "GetRoute-dev")
@@ -142,6 +148,7 @@
    type Mutation {
      optimizeRoute(activities: [ActivityInput!]!): [Activity] @function(name: "OptimizeRoute-${env}") @auth(rules: [{ allow: public }])
      createTrip(input: CreateTripInput!): Trip @function(name: "CreateTripStorage-${env}") @auth(rules: [{ allow: public }])
+     deleteTrip(userID: String!, tripID: String!): DeleteTripResult @function(name: "deleteTrip-${env}") @auth(rules: [{ allow: public }])
    }
 
    input ActivityInput {

@@ -1,5 +1,6 @@
 import { API } from 'aws-amplify';
-import { getUserTrips as getUserTripsQuery, getTripIDs as getTripIDsQuery } from '../graphql/queries';
+import { getTripIDs as getTripIDsQuery } from '../graphql/queries';
+import { getUserTripsDetailed as getUserTripsQuery } from '../graphql/customQueries';
 
 /**
  * Use API.post to invoke Lambda function with higher timeout than GraphQL
