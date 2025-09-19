@@ -55,7 +55,7 @@
         },
         "getTripIDs": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/getTripIDs-746b53664a7448706d41-build.zip"
+          "s3Key": "amplify-builds/getTripIDs-734d32704b4f79785441-build.zip"
         }
       },
       "auth": {
