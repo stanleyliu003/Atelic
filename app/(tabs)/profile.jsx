@@ -1,6 +1,7 @@
 import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
 import { Auth, API } from 'aws-amplify';
 import { useEffect, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
@@ -19,6 +20,7 @@ export default function Profile() {
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [isLoadingTrip, setIsLoadingTrip] = useState(false);
   const [deletingTripId, setDeletingTripId] = useState(null);
+  const [menuVisible, setMenuVisible] = useState(null); // stores tripId of open menu
 
   const loadUserData = useCallback(async () => {
     try {
@@ -107,6 +109,7 @@ export default function Profile() {
             style: 'destructive',
             onPress: async () => {
               try {
+                setMenuVisible(null); // Close menu
                 setDeletingTripId(tripId);
                 console.log('[Profile] Deleting trip:', { userID, tripID: tripId });
 
@@ -236,20 +239,16 @@ export default function Profile() {
                   </View>
                 </TouchableOpacity>
 
-                {/* Delete button */}
+                {/* Menu button */}
                 <TouchableOpacity
-                  style={styles.deleteButton}
+                  style={styles.menuButton}
                   onPress={(e) => {
                     e.stopPropagation();
-                    handleDeleteTrip(trip.tripId);
+                    setMenuVisible(trip.tripId);
                   }}
                   disabled={isLoadingTrip || deletingTripId === trip.tripId}
                 >
-                  {deletingTripId === trip.tripId ? (
-                    <ActivityIndicator size="small" color="#FF4444" />
-                  ) : (
-                    <FontAwesome name="trash" size={16} color="#FF4444" />
-                  )}
+                  <FontAwesome name="ellipsis-h" size={16} color={Colors.GRAY} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -262,6 +261,62 @@ export default function Profile() {
           </View>
         )}
       </View>
+
+      {/* Menu Modal */}
+      <Modal
+        visible={menuVisible !== null}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setMenuVisible(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setMenuVisible(null)}
+        >
+          <View style={styles.modalSpacer} />
+          <TouchableOpacity
+            style={styles.menuModal}
+            activeOpacity={1}
+            onPress={() => {}} // Prevent closing when tapping inside modal
+          >
+            {/* Header with close button */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHandle} />
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setMenuVisible(null)}
+              >
+                <Ionicons name="close" size={32} color={Colors.GRAY} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Menu Content */}
+            <View style={styles.modalContent}>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuVisible(null);
+                  handleDeleteTrip(menuVisible);
+                }}
+                disabled={deletingTripId === menuVisible}
+              >
+                {deletingTripId === menuVisible ? (
+                  <>
+                    <ActivityIndicator size="small" color="#FF4444" />
+                    <Text style={[styles.menuItemText, { color: '#FF4444' }]}>Deleting...</Text>
+                  </>
+                ) : (
+                  <>
+                    <FontAwesome name="trash" size={18} color="#FF4444" />
+                    <Text style={[styles.menuItemText, { color: '#FF4444' }]}>Delete</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   )
 }
@@ -409,16 +464,78 @@ const styles = StyleSheet.create({
     color: Colors.GRAY,
     textAlign: 'center',
   },
-  deleteButton: {
+  menuButton: {
     position: 'absolute',
-    bottom: 5,
-    right: 5,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    top: 10,
+    right: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 3,
+    elevation: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'flex-end',
+  },
+  modalSpacer: {
+    flex: 0.67, // Takes up 67% of screen, leaving 33% for modal
+  },
+  menuModal: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    flex: 0.33, // Takes up 33% of screen height
+    paddingTop: 8,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: Colors.GRAY,
+    borderRadius: 2,
+    opacity: 0.3,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    marginVertical: 4,
+  },
+  menuItemText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    marginLeft: 12,
   },
 });
