@@ -1,6 +1,7 @@
 import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import AntDesign from '@expo/vector-icons/AntDesign';
 import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
 import { Auth, API } from 'aws-amplify';
 import { useEffect, useState } from 'react';
@@ -138,6 +139,15 @@ export default function Profile() {
       console.error('[Profile] Error getting user info:', error);
       Alert.alert('Error', 'Failed to get user information');
     }
+  };
+
+  // Handle invite collaborators button press
+  const handleInviteCollaborators = () => {
+    Alert.alert(
+      'Invite Collaborators',
+      'Feature Coming Soon',
+      [{ text: 'OK', style: 'default' }]
+    );
   };
 
   const getImageUrl = (photoReference) => {
@@ -293,6 +303,18 @@ export default function Profile() {
 
             {/* Menu Content */}
             <View style={styles.modalContent}>
+              {/* Invite Collaborators */}
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  handleInviteCollaborators();
+                }}
+              >
+                <AntDesign name="adduser" size={18} color="black" />
+                <Text style={styles.menuItemText}>Invite Collaborators</Text>
+              </TouchableOpacity>
+
+              {/* Delete Trip */}
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
