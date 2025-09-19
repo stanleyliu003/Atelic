@@ -1,12 +1,13 @@
 import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import { Auth } from 'aws-amplify';
+import { Auth, API } from 'aws-amplify';
 import { useEffect, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { listUserTripsFromCloud, retrieveTripFromCloud } from '../../src/services/lambdaService';
+import { deleteTrip } from '../../src/graphql/customMutations';
 
 export default function Profile() {
   const { restoreTripFromObject, setSelectedCity } = useCreateTrip();
@@ -17,6 +18,7 @@ export default function Profile() {
   const [tripsError, setTripsError] = useState(null);
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [isLoadingTrip, setIsLoadingTrip] = useState(false);
+  const [deletingTripId, setDeletingTripId] = useState(null);
 
   const loadUserData = useCallback(async () => {
     try {
@@ -86,7 +88,54 @@ export default function Profile() {
     }
   };
 
+  const handleDeleteTrip = async (tripId) => {
+    try {
+      const user = await Auth.currentAuthenticatedUser();
+      const userID = user.attributes?.sub || user.username;
 
+      // Show confirmation dialog
+      Alert.alert(
+        'Delete Trip',
+        'Are you sure you want to delete this trip? This action cannot be undone.',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                setDeletingTripId(tripId);
+                console.log('[Profile] Deleting trip:', { userID, tripID: tripId });
+
+                const result = await API.graphql({
+                  query: deleteTrip,
+                  variables: { userID, tripID: tripId }
+                });
+
+                console.log('[Profile] Trip deleted successfully:', result);
+
+                // Reload the trips list
+                await loadUserTrips(userID);
+
+              } catch (error) {
+                console.error('[Profile] Error deleting trip:', error);
+                Alert.alert('Error', 'Failed to delete trip. Please try again.');
+              } finally {
+                setDeletingTripId(null);
+              }
+            }
+          }
+        ]
+      );
+
+    } catch (error) {
+      console.error('[Profile] Error getting user info:', error);
+      Alert.alert('Error', 'Failed to get user information');
+    }
+  };
 
   const getImageUrl = (photoReference) => {
     const { GOOGLE_PLACES_API_KEY } = require('../../src/constants/api');
@@ -139,50 +188,70 @@ export default function Profile() {
         ) : userTrips.length > 0 ? (
           <ScrollView style={styles.tripsScrollView} showsVerticalScrollIndicator={true}>
             {userTrips.map((trip) => (
-              <TouchableOpacity
+              <View
                 key={trip.tripId}
                 style={[
                   styles.tripCard,
                   selectedTripId === trip.tripId && isLoadingTrip && styles.tripCardLoading
                 ]}
-                onPress={() => {
-                  setSelectedTripId(trip.tripId);
-                  handleLoadTrip(trip.tripId);
-                }}
-                disabled={isLoadingTrip}
               >
-                <View style={styles.tripCardContent}>
-                  {trip.tripPhotoReference ? (
-                    <Image
-                      source={{ uri: getImageUrl(trip.tripPhotoReference) }}
-                      style={styles.tripCardImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.tripCardImagePlaceholder}>
-                      <FontAwesome name="map-marker" size={30} color={Colors.GRAY} />
+                <TouchableOpacity
+                  style={styles.tripCardMainArea}
+                  onPress={() => {
+                    setSelectedTripId(trip.tripId);
+                    handleLoadTrip(trip.tripId);
+                  }}
+                  disabled={isLoadingTrip || deletingTripId === trip.tripId}
+                >
+                  <View style={styles.tripCardContent}>
+                    {trip.tripPhotoReference ? (
+                      <Image
+                        source={{ uri: getImageUrl(trip.tripPhotoReference) }}
+                        style={styles.tripCardImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.tripCardImagePlaceholder}>
+                        <FontAwesome name="map-marker" size={30} color={Colors.GRAY} />
+                      </View>
+                    )}
+                    <View style={styles.tripCardInfo}>
+                      <Text style={styles.tripCardTitle}>
+                        {trip.selectedCity || 'Unknown City'}
+                      </Text>
+                      <Text style={styles.tripCardDate}>
+                        Created {trip.createdAt ? new Date(trip.createdAt).toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        }) : 'No date'}
+                      </Text>
+                      <Text style={styles.tripCardLength}>
+                        {trip.tripLength != null ? `${trip.tripLength} day trip` : 'Unknown length'}
+                      </Text>
                     </View>
-                  )}
-                  <View style={styles.tripCardInfo}>
-                    <Text style={styles.tripCardTitle}>
-                      {trip.selectedCity || 'Unknown City'}
-                    </Text>
-                    <Text style={styles.tripCardDate}>
-                      Created {trip.createdAt ? new Date(trip.createdAt).toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      }) : 'No date'}
-                    </Text>
-                    <Text style={styles.tripCardLength}>
-                      {trip.tripLength != null ? `${trip.tripLength} day trip` : 'Unknown length'}
-                    </Text>
+                    {selectedTripId === trip.tripId && isLoadingTrip && (
+                      <ActivityIndicator size="small" color={Colors.PRIMARY} />
+                    )}
                   </View>
-                  {selectedTripId === trip.tripId && isLoadingTrip && (
-                    <ActivityIndicator size="small" color={Colors.PRIMARY} />
+                </TouchableOpacity>
+
+                {/* Delete button */}
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleDeleteTrip(trip.tripId);
+                  }}
+                  disabled={isLoadingTrip || deletingTripId === trip.tripId}
+                >
+                  {deletingTripId === trip.tripId ? (
+                    <ActivityIndicator size="small" color="#FF4444" />
+                  ) : (
+                    <FontAwesome name="trash" size={16} color="#FF4444" />
                   )}
-                </View>
-              </TouchableOpacity>
+                </TouchableOpacity>
+              </View>
             ))}
           </ScrollView>
         ) : (
@@ -274,6 +343,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
+    position: 'relative',
+  },
+  tripCardMainArea: {
+    flex: 1,
   },
   tripCardLoading: {
     opacity: 0.7,
@@ -335,5 +408,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.GRAY,
     textAlign: 'center',
+  },
+  deleteButton: {
+    position: 'absolute',
+    bottom: 5,
+    right: 5,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
   },
 });
