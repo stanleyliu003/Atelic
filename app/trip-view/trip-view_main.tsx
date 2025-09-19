@@ -3,7 +3,7 @@ import { API_KEYS } from '../../constants/ApiKeys';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, AppState } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { encodePolyline } from '../../src/utils/polyline';
@@ -599,7 +599,7 @@ export default function TripViewMain() {
                 userID: userID
             };
 
-            console.log('[trip-view_main] Saving trip with user data:', tripDataWithUser);
+            console.log('[trip-view_main] Saving trip with user data:');
 
             // Make the API call (now using public auth)
             const result = await API.graphql({
@@ -632,6 +632,27 @@ export default function TripViewMain() {
           headerShown: false
         });
     }, []);
+
+    // AppState listener for autosave when app goes to background
+    useEffect(() => {
+        const handleAppStateChange = (nextAppState: string) => {
+            if (nextAppState === 'background') {
+                console.log('[trip-view_main] App going to background - autosaving trip');
+                // Only autosave if we have a trip with activities or days
+                if (tripId || activities.length > 0 || Object.keys(dayActivities).length > 0) {
+                    saveTrip().catch(error => {
+                        console.error('[trip-view_main] Autosave failed on app background:', error);
+                    });
+                }
+            }
+        };
+
+        const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+        return () => {
+            subscription?.remove();
+        };
+    }, [tripId, activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt]);
 
 
     // Log getDayActivities for each day
