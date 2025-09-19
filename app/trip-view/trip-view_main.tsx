@@ -29,7 +29,7 @@ export default function TripViewMain() {
     const navigation = useNavigation();
     const params = useLocalSearchParams();
     const { restoreTrip } = params;
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -336,6 +336,8 @@ export default function TripViewMain() {
 
     const handleAddDay = () => {
         const newDayNumber = addNewDay();
+        // Update tripLength to reflect the new day count
+        setTripLength(getDayCount());
         // Switch to the newly created day
         setActiveTab(`day${newDayNumber}`);
         // Trigger auto-scroll to the new day
@@ -394,6 +396,8 @@ export default function TripViewMain() {
         
         // Switch to appropriate tab after deletion
         const remainingDayCount = getDayCount() - 1; // Count after deletion
+        // Update tripLength to reflect the new day count
+        setTripLength(remainingDayCount);
         if (remainingDayCount === 0 || dayToDelete === 1) {
             // If no days left or deleting day 1, go to wishlist
             setActiveTab('wishlist');
@@ -568,7 +572,7 @@ export default function TripViewMain() {
             tripId: currentTripId,
             days,
             wishlist,
-            tripLength: tripLength || days.length,
+            tripLength: days.length, // Use actual day count instead of potentially outdated tripLength
             selectedCity,
             tripPhotoReference: tripPhotoReference || '',
             createdAt: tripCreatedAt,
