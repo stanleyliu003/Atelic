@@ -536,9 +536,52 @@ export default function TripViewMain() {
     const sanitizeActivity = (activity: Activity & { __typename?: string }) => {
         const {
             __typename,
+            regular_opening_hours,
+            reviews,
             ...sanitized
         } = activity;
-        return sanitized;
+
+        // Clean regular_opening_hours if it exists
+        let cleanOpeningHours = null;
+        if (regular_opening_hours) {
+            const { __typename: openingTypename, periods, ...openingHoursRest } = regular_opening_hours as any;
+            cleanOpeningHours = {
+                ...openingHoursRest,
+                ...(periods && {
+                    periods: periods.map((period: any) => {
+                        const { __typename: periodTypename, open, close, ...periodRest } = period;
+                        const cleanPeriod: any = { ...periodRest };
+
+                        if (open) {
+                            const { __typename: openTypename, ...openRest } = open;
+                            cleanPeriod.open = openRest;
+                        }
+
+                        if (close) {
+                            const { __typename: closeTypename, ...closeRest } = close;
+                            cleanPeriod.close = closeRest;
+                        }
+
+                        return cleanPeriod;
+                    })
+                })
+            };
+        }
+
+        // Clean reviews if they exist
+        let cleanReviews = null;
+        if (reviews && Array.isArray(reviews)) {
+            cleanReviews = reviews.map((review: any) => {
+                const { __typename: reviewTypename, ...reviewRest } = review;
+                return reviewRest;
+            });
+        }
+
+        return {
+            ...sanitized,
+            ...(cleanOpeningHours && { regular_opening_hours: cleanOpeningHours }),
+            ...(cleanReviews && { reviews: cleanReviews })
+        };
     };
 
     // Serialize trip data for saving
@@ -572,7 +615,7 @@ export default function TripViewMain() {
             tripId: currentTripId,
             days,
             wishlist,
-            tripLength: days.length, // Use actual day count instead of potentially outdated tripLength
+            tripLength: days.length, // Use tripLength state variable, fallback to days.length
             selectedCity,
             tripPhotoReference: tripPhotoReference || '',
             createdAt: tripCreatedAt,

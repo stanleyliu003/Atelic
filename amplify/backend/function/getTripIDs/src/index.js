@@ -36,14 +36,20 @@ exports.handler = async (event) => {
     console.log('Retrieved trips:', JSON.stringify(result.Items));
 
     // Return array of trip summaries
-    const tripSummaries = result.Items.map(item => ({
-      tripId: item.tripID,
-      selectedCity: item.selectedCity,
-      tripPhotoReference: item.tripPhotoReference,
-      createdAt: item.createdAt,
-      tripLength: item.tripLength
-    }));
+    const tripSummaries = result.Items.map(item => {
+      console.log('Processing item:', JSON.stringify(item));
+      console.log('item.tripLength value:', item.tripLength, 'type:', typeof item.tripLength);
 
+      return {
+        tripId: item.tripID,
+        selectedCity: item.selectedCity,
+        tripPhotoReference: item.tripPhotoReference,
+        createdAt: item.createdAt,
+        tripLength: item.tripLength
+      };
+    });
+
+    console.log('Final trip summaries:', JSON.stringify(tripSummaries));
     return tripSummaries;
 
   } catch (error) {
