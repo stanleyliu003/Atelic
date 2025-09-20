@@ -235,6 +235,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "manageCollaborators": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "regionImage": {
       "build": true,
       "dependsOn": [
@@ -464,6 +480,22 @@
         {
           "category": "function",
           "resourceName": "getUserTrips"
+        }
+      ]
+    },
+    "AMPLIFY_function_manageCollaborators_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "manageCollaborators"
+        }
+      ]
+    },
+    "AMPLIFY_function_manageCollaborators_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "manageCollaborators"
         }
       ]
     },

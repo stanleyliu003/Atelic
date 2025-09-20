@@ -64,6 +64,10 @@
         "searchUsers": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
           "s3Key": "amplify-builds/searchUsers-71484446434265377934-build.zip"
+        },
+        "manageCollaborators": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/manageCollaborators-4c484a4c753076475131-build.zip"
         }
       },
       "auth": {

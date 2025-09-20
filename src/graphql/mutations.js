@@ -94,6 +94,161 @@ export const deleteTrip = /* GraphQL */ `
     }
   }
 `;
+export const addCollaborator = /* GraphQL */ `
+  mutation AddCollaborator(
+    $tripId: String!
+    $userID: String!
+    $userEmail: String!
+    $fullName: String!
+    $role: CollaboratorRole!
+  ) {
+    addCollaborator(
+      tripId: $tripId
+      userID: $userID
+      userEmail: $userEmail
+      fullName: $fullName
+      role: $role
+    ) {
+      tripId
+      days {
+        dayNumber
+        encodedPolyline
+        __typename
+      }
+      wishlist {
+        name
+        city
+        lat
+        lng
+        rating
+        user_ratings_total
+        formatted_address
+        types
+        primaryType
+        place_id
+        photo_reference
+        is_recommended
+        display_name
+        website_uri
+        editorial_summary
+        primary_type_display_name
+        international_phone_number
+        __typename
+      }
+      tripLength
+      selectedCity
+      tripPhotoReference
+      createdAt
+      collaborators {
+        email
+        fullName
+        userID
+        role
+        addedBy
+        __typename
+      }
+      __typename
+    }
+  }
+`;
+export const removeCollaborator = /* GraphQL */ `
+  mutation RemoveCollaborator($tripId: String!, $userEmail: String!) {
+    removeCollaborator(tripId: $tripId, userEmail: $userEmail) {
+      tripId
+      days {
+        dayNumber
+        encodedPolyline
+        __typename
+      }
+      wishlist {
+        name
+        city
+        lat
+        lng
+        rating
+        user_ratings_total
+        formatted_address
+        types
+        primaryType
+        place_id
+        photo_reference
+        is_recommended
+        display_name
+        website_uri
+        editorial_summary
+        primary_type_display_name
+        international_phone_number
+        __typename
+      }
+      tripLength
+      selectedCity
+      tripPhotoReference
+      createdAt
+      collaborators {
+        email
+        fullName
+        userID
+        role
+        addedBy
+        __typename
+      }
+      __typename
+    }
+  }
+`;
+export const updateCollaboratorRole = /* GraphQL */ `
+  mutation UpdateCollaboratorRole(
+    $tripId: String!
+    $userEmail: String!
+    $role: CollaboratorRole!
+  ) {
+    updateCollaboratorRole(
+      tripId: $tripId
+      userEmail: $userEmail
+      role: $role
+    ) {
+      tripId
+      days {
+        dayNumber
+        encodedPolyline
+        __typename
+      }
+      wishlist {
+        name
+        city
+        lat
+        lng
+        rating
+        user_ratings_total
+        formatted_address
+        types
+        primaryType
+        place_id
+        photo_reference
+        is_recommended
+        display_name
+        website_uri
+        editorial_summary
+        primary_type_display_name
+        international_phone_number
+        __typename
+      }
+      tripLength
+      selectedCity
+      tripPhotoReference
+      createdAt
+      collaborators {
+        email
+        fullName
+        userID
+        role
+        addedBy
+        __typename
+      }
+      __typename
+    }
+  }
+`;
 export const createWishlistAnalysis = /* GraphQL */ `
   mutation CreateWishlistAnalysis(
     $input: CreateWishlistAnalysisInput!

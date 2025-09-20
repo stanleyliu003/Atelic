@@ -1,0 +1,308 @@
+/* Amplify Params - DO NOT EDIT
+	ENV
+	REGION
+	STORAGE_TRIPSTORAGE_ARN
+	STORAGE_TRIPSTORAGE_NAME
+	STORAGE_TRIPSTORAGE_STREAMARN
+Amplify Params - DO NOT EDIT */
+
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+
+const client = new DynamoDBClient();
+const docClient = DynamoDBDocumentClient.from(client);
+
+/**
+ * Manage trip collaborators - add, remove, update roles
+ * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
+ */
+exports.handler = async (event) => {
+  console.log('Received event:', JSON.stringify(event));
+
+  const { fieldName } = event.info;
+  const { tripId } = event.arguments;
+
+  // Validate required parameters
+  if (!tripId) {
+    throw new Error('Missing required parameter: tripId');
+  }
+
+  console.log('Operation:', fieldName, 'for tripId:', tripId);
+
+  const tableName = process.env.STORAGE_TRIPSTORAGE_NAME || 'Trips-dev';
+
+  try {
+    // Get current user from context (requester)
+    const requesterId = event.identity?.claims?.sub;
+    if (!requesterId) {
+      throw new Error('Authentication required');
+    }
+
+    // Since we don't know the owner's userID, we need to scan for the trip
+    // This is not ideal but necessary for this structure
+    const trip = await findTripById(tripId, tableName);
+    if (!trip) {
+      throw new Error('Trip not found');
+    }
+
+    // Validate permissions
+    const requesterRole = getUserRoleInTrip(trip, requesterId);
+    if (!requesterRole) {
+      throw new Error('Access denied: You are not a collaborator on this trip');
+    }
+
+    // Handle different operations
+    switch (fieldName) {
+      case 'addCollaborator':
+        return await handleAddCollaborator(trip, event.arguments, requesterId, requesterRole, tableName);
+
+      case 'removeCollaborator':
+        return await handleRemoveCollaborator(trip, event.arguments, requesterId, requesterRole, tableName);
+
+      case 'updateCollaboratorRole':
+        return await handleUpdateCollaboratorRole(trip, event.arguments, requesterId, requesterRole, tableName);
+
+      default:
+        throw new Error(`Unknown operation: ${fieldName}`);
+    }
+
+  } catch (error) {
+    console.error('manageCollaborators error:', error);
+    throw error;
+  }
+};
+
+// Helper function to find trip by ID (scan operation)
+async function findTripById(tripId, tableName) {
+  const { ScanCommand } = require('@aws-sdk/lib-dynamodb');
+
+  const params = {
+    TableName: tableName,
+    FilterExpression: 'tripID = :tripId',
+    ExpressionAttributeValues: {
+      ':tripId': tripId
+    }
+  };
+
+  const result = await docClient.send(new ScanCommand(params));
+  return result.Items && result.Items.length > 0 ? result.Items[0] : null;
+}
+
+// Helper function to get user's role in trip
+function getUserRoleInTrip(trip, userId) {
+  if (!trip.collaborators || !Array.isArray(trip.collaborators)) {
+    return null;
+  }
+
+  const collaborator = trip.collaborators.find(c => c.userID === userId);
+  return collaborator ? collaborator.role : null;
+}
+
+// Helper function to check if user can perform action
+function canPerformAction(requesterRole, targetRole, action) {
+  switch (action) {
+    case 'add':
+      // Owner can add anyone, Editor can only add viewers
+      return requesterRole === 'owner' || (requesterRole === 'editor' && targetRole === 'viewer');
+
+    case 'remove':
+      // Only owner can remove collaborators
+      return requesterRole === 'owner';
+
+    case 'updateRole':
+      // Only owner can change roles
+      return requesterRole === 'owner';
+
+    default:
+      return false;
+  }
+}
+
+// Add collaborator handler
+async function handleAddCollaborator(trip, args, requesterId, requesterRole, tableName) {
+  const { userID, userEmail, fullName, role } = args;
+
+  // Validate permissions
+  if (!canPerformAction(requesterRole, role, 'add')) {
+    throw new Error('Permission denied: You cannot add collaborators with this role');
+  }
+
+  // Check if user is already a collaborator
+  const existingCollaborator = trip.collaborators.find(c => c.email === userEmail);
+  if (existingCollaborator) {
+    throw new Error('User is already a collaborator on this trip');
+  }
+
+  const requesterName = getCollaboratorName(trip, requesterId);
+
+  const newCollaborator = {
+    email: userEmail,
+    fullName: fullName,
+    userID: userID,
+    role: role,
+    addedBy: requesterName
+  };
+
+  // Add to collaborators array
+  const updatedCollaborators = [...trip.collaborators, newCollaborator];
+
+  // Update DynamoDB
+  const updateParams = {
+    TableName: tableName,
+    Key: {
+      userID: trip.userID,
+      tripID: trip.tripID
+    },
+    UpdateExpression: 'SET collaborators = :collaborators',
+    ExpressionAttributeValues: {
+      ':collaborators': updatedCollaborators
+    },
+    ReturnValues: 'ALL_NEW'
+  };
+
+  const result = await docClient.send(new UpdateCommand(updateParams));
+  return convertDynamoItemToTrip(result.Attributes);
+}
+
+// Remove collaborator handler
+async function handleRemoveCollaborator(trip, args, requesterId, requesterRole, tableName) {
+  const { userEmail } = args;
+
+  // Validate permissions
+  if (!canPerformAction(requesterRole, null, 'remove')) {
+    throw new Error('Permission denied: Only trip owners can remove collaborators');
+  }
+
+  // Cannot remove the owner
+  const targetCollaborator = trip.collaborators.find(c => c.email === userEmail);
+  if (!targetCollaborator) {
+    throw new Error('User is not a collaborator on this trip');
+  }
+
+  if (targetCollaborator.role === 'owner') {
+    throw new Error('Cannot remove the trip owner');
+  }
+
+  // Remove from collaborators array
+  const updatedCollaborators = trip.collaborators.filter(c => c.email !== userEmail);
+
+  // Update DynamoDB
+  const updateParams = {
+    TableName: tableName,
+    Key: {
+      userID: trip.userID,
+      tripID: trip.tripID
+    },
+    UpdateExpression: 'SET collaborators = :collaborators',
+    ExpressionAttributeValues: {
+      ':collaborators': updatedCollaborators
+    },
+    ReturnValues: 'ALL_NEW'
+  };
+
+  const result = await docClient.send(new UpdateCommand(updateParams));
+  return convertDynamoItemToTrip(result.Attributes);
+}
+
+// Update collaborator role handler
+async function handleUpdateCollaboratorRole(trip, args, requesterId, requesterRole, tableName) {
+  const { userEmail, role } = args;
+
+  // Validate permissions
+  if (!canPerformAction(requesterRole, role, 'updateRole')) {
+    throw new Error('Permission denied: Only trip owners can change collaborator roles');
+  }
+
+  // Find the collaborator
+  const collaboratorIndex = trip.collaborators.findIndex(c => c.email === userEmail);
+  if (collaboratorIndex === -1) {
+    throw new Error('User is not a collaborator on this trip');
+  }
+
+  // Cannot change owner role
+  if (trip.collaborators[collaboratorIndex].role === 'owner') {
+    throw new Error('Cannot change the role of the trip owner');
+  }
+
+  // Update the role
+  const updatedCollaborators = [...trip.collaborators];
+  updatedCollaborators[collaboratorIndex] = {
+    ...updatedCollaborators[collaboratorIndex],
+    role: role
+  };
+
+  // Update DynamoDB
+  const updateParams = {
+    TableName: tableName,
+    Key: {
+      userID: trip.userID,
+      tripID: trip.tripID
+    },
+    UpdateExpression: 'SET collaborators = :collaborators',
+    ExpressionAttributeValues: {
+      ':collaborators': updatedCollaborators
+    },
+    ReturnValues: 'ALL_NEW'
+  };
+
+  const result = await docClient.send(new UpdateCommand(updateParams));
+  return convertDynamoItemToTrip(result.Attributes);
+}
+
+// Helper function to get collaborator name
+function getCollaboratorName(trip, userId) {
+  const collaborator = trip.collaborators.find(c => c.userID === userId);
+  return collaborator ? collaborator.fullName : 'Unknown User';
+}
+
+// Helper function to get user details by email from Cognito
+async function getUserDetailsByEmail(email) {
+  const {
+    CognitoIdentityProviderClient,
+    ListUsersCommand
+  } = require('@aws-sdk/client-cognito-identity-provider');
+
+  const cognitoClient = new CognitoIdentityProviderClient();
+  const userPoolId = process.env.AUTH_AMPLIFYBACKEND59CCDBF8_USERPOOLID;
+
+  try {
+    const params = {
+      UserPoolId: userPoolId,
+      AttributesToGet: ['email', 'name'],
+      Filter: `email = "${email}"`
+    };
+
+    const result = await cognitoClient.send(new ListUsersCommand(params));
+
+    if (result.Users && result.Users.length > 0) {
+      const user = result.Users[0];
+      const emailAttr = user.Attributes.find(attr => attr.Name === 'email');
+      const nameAttr = user.Attributes.find(attr => attr.Name === 'name');
+
+      return {
+        userID: user.Username,
+        email: emailAttr ? emailAttr.Value : '',
+        fullName: nameAttr ? nameAttr.Value : ''
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error getting user details:', error);
+    return null;
+  }
+}
+
+// Helper function to convert DynamoDB item to GraphQL Trip format
+function convertDynamoItemToTrip(item) {
+  return {
+    tripId: item.tripID,
+    days: item.days || [],
+    wishlist: item.wishlist || [],
+    tripLength: item.tripLength,
+    selectedCity: item.selectedCity,
+    tripPhotoReference: item.tripPhotoReference,
+    createdAt: item.createdAt,
+    collaborators: item.collaborators || []
+  };
+}
