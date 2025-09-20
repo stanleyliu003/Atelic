@@ -626,9 +626,13 @@ export default function TripViewMain() {
         try {
             // Get current user ID for the trip data
             let userID;
+            let userEmail;
+            let userName;
             try {
                 const currentUser = await Auth.currentAuthenticatedUser();
                 userID = currentUser.attributes?.sub || currentUser.username;
+                userEmail = currentUser.attributes?.email || '';
+                userName = currentUser.attributes?.name || '';
                 console.log('[trip-view_main] Using userID:', userID);
             } catch (authError) {
                 console.error('[trip-view_main] Auth check failed:', authError);
@@ -636,10 +640,17 @@ export default function TripViewMain() {
                 return;
             }
 
-            // Add userID to trip data
+            // Add userID and collaborators to trip data
             const tripDataWithUser = {
                 ...tripData,
-                userID: userID
+                userID: userID,
+                collaborators: [{
+                    email: userEmail,
+                    fullName: userName,
+                    userID: userID,
+                    role: 'owner',
+                    addedBy: userName
+                }]
             };
 
             console.log('[trip-view_main] Saving trip with user data:');

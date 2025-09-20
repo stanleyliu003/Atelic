@@ -121,6 +121,20 @@
      lng: Float!
    }
 
+   type Collaborator {
+     email: String!
+     fullName: String!
+     userID: String!
+     role: CollaboratorRole!
+     addedBy: String!
+   }
+
+   enum CollaboratorRole {
+     owner
+     editor
+     viewer
+   }
+
    type Trip {
      tripId: String!
      days: [Day!]!
@@ -129,6 +143,7 @@
      selectedCity: String
      tripPhotoReference: String
      createdAt: String
+     collaborators: [Collaborator!]!
    }
 
    type TripSummary {
@@ -137,6 +152,7 @@
      tripPhotoReference: String
      createdAt: String
      tripLength: Int
+     userRole: CollaboratorRole
    }
 
    type Day {
@@ -180,6 +196,14 @@
      encodedPolyline: String
    }
 
+   input CollaboratorInput {
+     email: String!
+     fullName: String!
+     userID: String!
+     role: CollaboratorRole!
+     addedBy: String!
+   }
+
    input CreateTripInput {
      tripId: String!
      userID: String!
@@ -189,6 +213,7 @@
      selectedCity: String
      tripPhotoReference: String
      createdAt: String
+     collaborators: [CollaboratorInput!]!
    }
 
 

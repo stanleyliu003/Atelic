@@ -31,7 +31,8 @@ exports.handler = async (event) => {
     selectedCity: input.selectedCity,
     wishlist: input.wishlist,
     tripPhotoReference: input.tripPhotoReference,
-    createdAt: input.createdAt
+    createdAt: input.createdAt,
+    collaborators: input.collaborators || []
   };
 
   console.log('item to put:', item);
@@ -53,6 +54,7 @@ exports.handler = async (event) => {
       selectedCity: input.selectedCity,
       tripPhotoReference: input.tripPhotoReference,
       createdAt: item.createdAt,
+      collaborators: item.collaborators
     };
   } catch (error) {
     console.error('DynamoDB put error:', error);
