@@ -213,6 +213,11 @@ async function handleUpdateCollaboratorRole(trip, args, requesterId, requesterRo
     throw new Error('Permission denied: Only trip owners can change collaborator roles');
   }
 
+  // Cannot set role to owner
+  if (role === 'owner') {
+    throw new Error('Cannot change collaborator role to owner. There can only be one trip owner.');
+  }
+
   // Find the collaborator
   const collaboratorIndex = trip.collaborators.findIndex(c => c.email === userEmail);
   if (collaboratorIndex === -1) {
