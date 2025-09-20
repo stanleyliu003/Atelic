@@ -132,6 +132,7 @@ export const getTripIDs = /* GraphQL */ `
       tripPhotoReference
       createdAt
       tripLength
+      userRole
       __typename
     }
   }
@@ -169,6 +170,14 @@ export const getUserTrips = /* GraphQL */ `
       selectedCity
       tripPhotoReference
       createdAt
+      collaborators {
+        email
+        fullName
+        userID
+        role
+        addedBy
+        __typename
+      }
       __typename
     }
   }
