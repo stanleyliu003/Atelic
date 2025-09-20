@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "auth": {
+      "amplifybackend59ccdbf8": [
+        "read"
+      ]
+    },
+    "storage": {
+      "TripStorage": [
+        "read"
+      ]
+    }
+  },
+  "lambdaLayers": []
+}

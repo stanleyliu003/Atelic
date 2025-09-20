@@ -251,6 +251,29 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "searchUsers": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "wishlistAnalyzer": {
       "build": true,
       "dependsOn": [
@@ -465,6 +488,22 @@
         {
           "category": "function",
           "resourceName": "regionImage"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchUsers_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchUsers"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchUsers_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchUsers"
         }
       ]
     },

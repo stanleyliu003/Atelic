@@ -104,6 +104,12 @@
    deletedTripID: String!
  }
 
+ type UserProfile {
+   userID: String!
+   email: String!
+   fullName: String!
+ }
+
  type Query {
    analyzeWishlist(wishlist_text: String!, selectedCity: String!): WishlistAnalysisResult @function(name: "wishlistAnalyzer-dev")
    getRoute(waypoints: [WaypointInput!]!): RouteResult @function(name: "GetRoute-dev")
@@ -113,6 +119,7 @@
    addAdditionalPlace(placeName: String!, selectedCity: String!): Activity @function(name: "getLocationCoordinates-${env}")
    getTripIDs(userID: String!): [TripSummary] @function(name: "getTripIDs-${env}") @auth(rules: [{ allow: public }])
    getUserTrips(userID: String!, tripID: String!): Trip @function(name: "getUserTrips-${env}") @auth(rules: [{ allow: public }])
+   searchUsers(searchTerm: String!): [UserProfile] @function(name: "searchUsers-${env}") @auth(rules: [{ allow: public }])
  }
 
    input WaypointInput {

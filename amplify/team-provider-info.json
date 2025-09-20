@@ -60,6 +60,10 @@
         "deleteTrip": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
           "s3Key": "amplify-builds/deleteTrip-4f466372564241776f39-build.zip"
+        },
+        "searchUsers": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/searchUsers-71484446434265377934-build.zip"
         }
       },
       "auth": {
