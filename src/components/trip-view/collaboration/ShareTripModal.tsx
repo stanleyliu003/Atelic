@@ -410,6 +410,8 @@ const styles = StyleSheet.create({
   },
   roleDropdownContainer: {
     width: 120,
+    zIndex: 99999,
+    elevation: 1000,
   },
   roleDropdown: {
     flexDirection: 'row',
@@ -420,6 +422,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
     height: 44,
+    backgroundColor: '#F8F9FA',
+    zIndex: 99999,
+    elevation: 1000,
   },
   roleDropdownText: {
     fontSize: 16,
@@ -439,7 +444,12 @@ const styles = StyleSheet.create({
     top: 46,
     left: 0,
     right: 0,
-    zIndex: 1000,
+    zIndex: 99999,
+    elevation: 1000,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
   },
   roleOption: {
     padding: 12,
@@ -459,6 +469,8 @@ const styles = StyleSheet.create({
   },
   messageSection: {
     marginTop: 0,
+    zIndex: -1,
+    elevation: -1,
   },
   messageCheckboxRow: {
     flexDirection: 'row',
@@ -500,6 +512,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     textAlignVertical: 'top',
     minHeight: 150,
+    zIndex: -1,
+    elevation: -1,
   },
   messageInputActive: {
     borderColor: '#0957D0',
@@ -510,6 +524,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
     gap: 8,
+    zIndex: -1,
+    elevation: -1,
   },
   cancelButton: {
     paddingVertical: 12,
