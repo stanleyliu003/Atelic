@@ -196,7 +196,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
             {/* Invite Section */}
             {canInvite() && (
               <View style={styles.inviteSection}>
-                <Text style={styles.sectionTitle}>Invite people</Text>
+                <Text style={styles.sectionTitle}>Invite Collaborators</Text>
                 <View style={styles.inviteRow}>
                   <View style={styles.searchFieldContainer}>
                     <UserSearchField
@@ -255,15 +255,18 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
                 {selectedUser && (
                   <View style={styles.messageSection}>
                     <TouchableOpacity
-                      style={[
-                        styles.messageCheckbox,
-                        includeMessage && styles.messageCheckboxSelected
-                      ]}
+                      style={styles.messageCheckboxRow}
                       onPress={() => setIncludeMessage(!includeMessage)}
                     >
-                      {includeMessage && (
-                        <Text style={styles.checkmark}>✓</Text>
-                      )}
+                      <View style={[
+                        styles.messageCheckbox,
+                        includeMessage && styles.messageCheckboxSelected
+                      ]}>
+                        {includeMessage && (
+                          <Text style={styles.checkmark}>✓</Text>
+                        )}
+                      </View>
+                      <Text style={styles.messageCheckboxLabel}>Notify people</Text>
                     </TouchableOpacity>
 
                     {includeMessage && (
@@ -277,7 +280,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
                         value={message}
                         onChangeText={setMessage}
                         multiline
-                        numberOfLines={3}
+                        numberOfLines={4}
                       />
                     )}
                   </View>
@@ -407,6 +410,8 @@ const styles = StyleSheet.create({
   },
   roleDropdownContainer: {
     width: 120,
+    elevation: 1000,
+    zIndex: 99999,
   },
   roleDropdown: {
     flexDirection: 'row',
@@ -417,6 +422,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
     height: 44,
+    elevation: 1000,
+    zIndex: 99999,
+    backgroundColor: '#F8F9FA',
   },
   roleDropdownText: {
     fontSize: 16,
@@ -436,12 +444,18 @@ const styles = StyleSheet.create({
     top: 46,
     left: 0,
     right: 0,
-    zIndex: 1000,
+    zIndex: 99999,
+    elevation: 1000,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
   },
   roleOption: {
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+    elevation: 100
   },
   roleOptionSelected: {
     backgroundColor: '#F0F8FF',
@@ -455,7 +469,14 @@ const styles = StyleSheet.create({
     color: '#007AFF',
   },
   messageSection: {
-    marginTop: 1,
+    marginTop: 0,
+    zIndex: -1,
+    elevation: -1,
+  },
+  messageCheckboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   messageCheckbox: {
     width: 24,
@@ -466,6 +487,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
+  },
+  messageCheckboxLabel: {
+    fontSize: 16,
+    color: '#333333',
+    fontWeight: '500',
   },
   messageCheckboxSelected: {
     backgroundColor: '#0957D0',
@@ -485,7 +512,9 @@ const styles = StyleSheet.create({
     color: '#333333',
     backgroundColor: '#FFFFFF',
     textAlignVertical: 'top',
-    minHeight: 40,
+    minHeight: 150,
+    zIndex: -1,
+    elevation: -1,
   },
   messageInputActive: {
     borderColor: '#0957D0',
@@ -494,8 +523,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    marginTop: 20,
-    gap: 16,
+    marginTop: 10,
+    gap: 8,
+    zIndex: -1,
+    elevation: -1,
   },
   cancelButton: {
     paddingVertical: 12,
