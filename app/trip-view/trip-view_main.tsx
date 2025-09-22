@@ -653,16 +653,30 @@ export default function TripViewMain() {
                     addedBy: userName
                 }];
             } else {
-                // EXISTING TRIP: Use existing collaborators from context
-                collaboratorsToSave = collaborators && collaborators.length > 0
-                    ? collaborators
-                    : [{ // Fallback if no collaborators in context
-                        email: userEmail,
-                        fullName: userName,
-                        userID: userID,
-                        role: 'owner',
-                        addedBy: userName
-                    }];
+                // EXISTING TRIP: Validate collaborators data exists
+                if (!collaborators || collaborators.length === 0) {
+                    console.error('[trip-view_main] Cannot save trip: collaborators data not loaded');
+                    Alert.alert('Save Error', 'Trip collaboration data not loaded. Please reload the trip and try again.');
+                    return;
+                }
+
+                // Verify current user is in collaborators
+                const currentUserCollaborator = collaborators.find(c => c.userID === userID);
+                if (!currentUserCollaborator) {
+                    console.error('[trip-view_main] Current user not found in collaborators:', userID);
+                    Alert.alert('Permission Error', 'You are not a collaborator on this trip and cannot save changes.');
+                    return;
+                }
+
+                // Verify current user has permission to save (owner or editor only)
+                if (!['owner', 'editor'].includes(currentUserCollaborator.role)) {
+                    console.error('[trip-view_main] User does not have save permissions. Role:', currentUserCollaborator.role);
+                    Alert.alert('Permission Denied', 'Only trip owners and editors can save changes. You have view-only access.');
+                    return;
+                }
+
+                console.log('[trip-view_main] Current user role:', currentUserCollaborator.role);
+                collaboratorsToSave = collaborators;
             }
 
             // Add userID and collaborators to trip data
