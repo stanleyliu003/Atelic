@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import {View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import {View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, Alert, ActivityIndicator, TextInput } from 'react-native';
 import { API } from 'aws-amplify';
 import { addCollaborator, removeCollaborator, updateCollaboratorRole } from '../../../graphql/mutations';
 import { UserSearchField } from './UserSearchField';
@@ -43,6 +43,8 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [selectedRole, setSelectedRole] = useState<CollaboratorRole>('editor');
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [includeMessage, setIncludeMessage] = useState(false);
+  const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const canInvite = () => {
@@ -95,6 +97,8 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
   const clearSelectedUser = () => {
     setSelectedUser(null);
     setSelectedRole('editor');
+    setIncludeMessage(false);
+    setMessage('');
   };
 
   const getAvailableRoles = (): CollaboratorRole[] => {
@@ -247,13 +251,53 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
                   )}
                 </View>
 
+                {/* Message Section - shown when user is selected */}
                 {selectedUser && (
-                  <TouchableOpacity
-                    style={styles.sendInviteButton}
-                    onPress={handleInviteUser}
-                  >
-                    <Text style={styles.sendInviteButtonText}>Send Invite</Text>
-                  </TouchableOpacity>
+                  <View style={styles.messageSection}>
+                    <TouchableOpacity
+                      style={[
+                        styles.messageCheckbox,
+                        includeMessage && styles.messageCheckboxSelected
+                      ]}
+                      onPress={() => setIncludeMessage(!includeMessage)}
+                    >
+                      {includeMessage && (
+                        <Text style={styles.checkmark}>✓</Text>
+                      )}
+                    </TouchableOpacity>
+
+                    {includeMessage && (
+                      <TextInput
+                        style={[
+                          styles.messageInput,
+                          message.length > 0 && styles.messageInputActive
+                        ]}
+                        placeholder="Message"
+                        placeholderTextColor="#999999"
+                        value={message}
+                        onChangeText={setMessage}
+                        multiline
+                        numberOfLines={3}
+                      />
+                    )}
+                  </View>
+                )}
+
+                {selectedUser && (
+                  <View style={styles.buttonRow}>
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={clearSelectedUser}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.shareButton}
+                      onPress={handleInviteUser}
+                    >
+                      <Text style={styles.shareButtonText}>Share</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
             )}
@@ -368,7 +412,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F8F9FA',
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
@@ -411,14 +454,65 @@ const styles = StyleSheet.create({
   roleOptionTextSelected: {
     color: '#007AFF',
   },
-  sendInviteButton: {
+  messageSection: {
+    marginTop: 1,
+  },
+  messageCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  messageCheckboxSelected: {
+    backgroundColor: '#0957D0',
+    borderColor: '#0957D0',
+  },
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  messageInput: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#333333',
+    backgroundColor: '#FFFFFF',
+    textAlignVertical: 'top',
+    minHeight: 40,
+  },
+  messageInputActive: {
+    borderColor: '#0957D0',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginTop: 20,
+    gap: 16,
+  },
+  cancelButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  cancelButtonText: {
+    color: '#0957D0',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  shareButton: {
     backgroundColor: '#0957D0',
     borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 90,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
   },
-  sendInviteButtonText: {
+  shareButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
