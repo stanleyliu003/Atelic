@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Alert
+  Alert,
+  Modal
 } from 'react-native';
 import { API } from 'aws-amplify';
 import { searchUsers } from '../../../graphql/queries';
@@ -93,7 +94,10 @@ export const UserSearchField: React.FC<UserSearchFieldProps> = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.searchInputContainer}>
+      <View style={[
+        styles.searchInputContainer,
+        searchTerm.length > 0 && styles.searchInputContainerActive
+      ]}>
         <TextInput
           style={styles.searchInput}
           placeholder={placeholder}
@@ -113,33 +117,45 @@ export const UserSearchField: React.FC<UserSearchFieldProps> = ({
         )}
       </View>
 
-      {showResults && searchResults.length > 0 && (
-        <View style={styles.resultsContainer}>
-          {searchResults.map((user) => (
-            <TouchableOpacity
-              key={user.userID}
-              style={styles.resultItem}
-              onPress={() => handleUserSelect(user)}
-            >
-              <View style={styles.userAvatar}>
-                <Text style={styles.avatarText}>
-                  {user.fullName.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-              <View style={styles.userInfo}>
-                <Text style={styles.userName}>{user.fullName}</Text>
-                <Text style={styles.userEmail}>{user.email}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {showResults && searchTerm.length >= 2 && searchResults.length === 0 && !isSearching && (
-        <View style={styles.resultsContainer}>
-          <Text style={styles.noResultsText}>No users found</Text>
-        </View>
-      )}
+      {/* Render results in a Modal to ensure it's above everything */}
+      <Modal
+        visible={showResults}
+        transparent={true}
+        animationType="none"
+        onRequestClose={() => setShowResults(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowResults(false)}
+        >
+          <View style={styles.resultsContainer}>
+            {searchResults.length > 0 ? (
+              searchResults.map((user) => (
+                <TouchableOpacity
+                  key={user.userID}
+                  style={styles.resultItem}
+                  onPress={() => handleUserSelect(user)}
+                >
+                  <View style={styles.userAvatar}>
+                    <Text style={styles.avatarText}>
+                      {user.fullName.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.userInfo}>
+                    <Text style={styles.userName}>{user.fullName}</Text>
+                    <Text style={styles.userEmail}>{user.email}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            ) : (
+              searchTerm.length >= 2 && !isSearching && (
+                <Text style={styles.noResultsText}>No users found</Text>
+              )
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -148,6 +164,7 @@ const styles = StyleSheet.create({
   container: {
     position: 'relative',
     marginBottom: 16,
+    zIndex: 10000,
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -157,6 +174,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     backgroundColor: '#FFFFFF',
+    zIndex: 10000,
+  },
+  searchInputContainerActive: {
+    borderColor: '#0957D0',
   },
   searchInput: {
     flex: 1,
@@ -167,24 +188,24 @@ const styles = StyleSheet.create({
   searchSpinner: {
     marginLeft: 8,
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-start',
+    paddingTop: 270, // Position below search input in ShareTripModal
+    paddingHorizontal: 16,
+  },
   resultsContainer: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E9EEF6',
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    borderTopWidth: 0,
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
+    borderRadius: 8,
     maxHeight: 200,
-    zIndex: 1000,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+    elevation: 1000,
   },
   resultItem: {
     flexDirection: 'row',
