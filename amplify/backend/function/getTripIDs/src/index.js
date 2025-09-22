@@ -20,7 +20,7 @@ exports.handler = async (event) => {
   try {
     // 1. Query for trips owned by the user (existing logic)
     const ownedTripsParams = {
-      TableName: 'Trips-dev',
+      TableName: process.env.STORAGE_TRIPSTORAGE_NAME,
       KeyConditionExpression: 'userID = :userID',
       ExpressionAttributeValues: {
         ':userID': userID
@@ -33,7 +33,7 @@ exports.handler = async (event) => {
 
     // 2. Scan for trips where user is a collaborator
     const collaboratedTripsParams = {
-      TableName: 'Trips-dev',
+      TableName: process.env.STORAGE_TRIPSTORAGE_NAME,
       FilterExpression: 'contains(collaborators, :userID) AND userID <> :userID',
       ExpressionAttributeValues: {
         ':userID': userID

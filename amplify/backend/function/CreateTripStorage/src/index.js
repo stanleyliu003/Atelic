@@ -39,7 +39,7 @@ exports.handler = async (event) => {
 
   // Store in DynamoDB
   const params = {
-    TableName: 'Trips-dev',
+    TableName: process.env.STORAGE_TRIPSTORAGE_NAME,
     Item: item,
   };
 

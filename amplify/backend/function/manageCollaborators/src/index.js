@@ -29,7 +29,7 @@ exports.handler = async (event) => {
 
   console.log('Operation:', fieldName, 'for tripId:', tripId);
 
-  const tableName = process.env.STORAGE_TRIPSTORAGE_NAME || 'Trips-dev';
+  const tableName = process.env.STORAGE_TRIPSTORAGE_NAME;
 
   try {
     // Get current user from context (requester)

@@ -32,7 +32,7 @@ exports.handler = async (event) => {
 
 
        const params = {
-           TableName: 'Trips-dev',
+           TableName: process.env.STORAGE_TRIPSTORAGE_NAME,
            Key: {
                userID: userID,
                tripID: tripID
