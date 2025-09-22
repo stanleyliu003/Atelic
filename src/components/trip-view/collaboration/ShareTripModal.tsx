@@ -196,7 +196,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
             {/* Invite Section */}
             {canInvite() && (
               <View style={styles.inviteSection}>
-                <Text style={styles.sectionTitle}>Invite Collaborators</Text>
+                <Text style={styles.sectionTitle}>Invite collaborators</Text>
                 <View style={styles.inviteRow}>
                   <View style={styles.searchFieldContainer}>
                     <UserSearchField
@@ -308,7 +308,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
             {/* Current Collaborators Section */}
             <View style={styles.collaboratorsSection}>
               <Text style={styles.sectionTitle}>
-                People with access ({collaborators.length})
+                People with access
               </Text>
 
               <View style={styles.collaboratorsList}>
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     backgroundColor: '#0957D0',
-    borderRadius: 8,
+    borderRadius: 20,
     paddingVertical: 12,
     paddingHorizontal: 24,
   },
@@ -549,6 +549,8 @@ const styles = StyleSheet.create({
   },
   collaboratorsSection: {
     flex: 1,
+    marginTop: 12,
+    paddingHorizontal: 16,
   },
   collaboratorsList: {
     backgroundColor: '#FFFFFF',
