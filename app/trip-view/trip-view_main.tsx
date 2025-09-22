@@ -11,6 +11,7 @@ import { AddPlacesButton, DaySchedule, TabBar, WishlistActivities } from '../../
 import { TripMapView } from '../../src/components/trip-view/map_view';
 import { TransferActivitiesModal } from '../../src/components/trip-view/transfer_activities_modal';
 import { TransferButtonContainer } from '../../src/components/trip-view/transfer_delete_button_containor';
+import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import { ActivityDetailView } from '../../src/components/trip-view/description_card';
 import { useActivitySelection } from '../../src/hooks/use_activity_selection';
 import { useDayActivities } from '../../src/hooks/use_day_activities';
@@ -29,7 +30,7 @@ export default function TripViewMain() {
     const navigation = useNavigation();
     const params = useLocalSearchParams();
     const { restoreTrip } = params;
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference, collaborators } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference, collaborators, currentUserRole, setCollaborators, isOwner } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -44,7 +45,9 @@ export default function TripViewMain() {
     
     // State for add places modal
     const [isAddPlacesModalVisible, setIsAddPlacesModalVisible] = useState(false);
+    const [isShareModalVisible, setIsShareModalVisible] = useState(false);
     const [isAddingPlace, setIsAddingPlace] = useState(false);
+    const [currentUserID, setCurrentUserID] = useState<string>('');
 
     // State for activity detail view
     const [selectedActivityForDetail, setSelectedActivityForDetail] = useState<Activity | null>(null);
@@ -643,8 +646,8 @@ export default function TripViewMain() {
             // Handle collaborators based on whether this is a new or existing trip
             let collaboratorsToSave;
 
-            if (!createdAt || !tripId) {
-                // NEW TRIP: Current user becomes owner
+            if (!createdAt || !tripId || !collaborators || collaborators.length === 0) {
+                // NEW TRIP OR FIRST SAVE: Current user becomes owner
                 collaboratorsToSave = [{
                     email: userEmail,
                     fullName: userName,
@@ -653,12 +656,7 @@ export default function TripViewMain() {
                     addedBy: userName
                 }];
             } else {
-                // EXISTING TRIP: Validate collaborators data exists
-                if (!collaborators || collaborators.length === 0) {
-                    console.error('[trip-view_main] Cannot save trip: collaborators data not loaded');
-                    Alert.alert('Save Error', 'Trip collaboration data not loaded. Please reload the trip and try again.');
-                    return;
-                }
+                // EXISTING TRIP WITH COLLABORATORS: Validate permissions
 
                 // Verify current user is in collaborators
                 const currentUserCollaborator = collaborators.find(c => c.userID === userID);
@@ -740,6 +738,34 @@ export default function TripViewMain() {
             subscription?.remove();
         };
     }, [tripId, activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt]);
+
+    // Get current user ID for collaboration features
+    useEffect(() => {
+        const getCurrentUser = async () => {
+            try {
+                const user = await Auth.currentAuthenticatedUser();
+                const userID = user.attributes?.sub || user.username;
+                setCurrentUserID(userID);
+            } catch (error) {
+                console.error('[trip-view_main] Error getting current user:', error);
+            }
+        };
+
+        getCurrentUser();
+    }, []);
+
+    // Handle collaboration modal
+    const handleShareTrip = () => {
+        if (!isOwner()) {
+            Alert.alert('Permission Denied', 'Only trip owners can manage sharing');
+            return;
+        }
+        setIsShareModalVisible(true);
+    };
+
+    const handleCollaboratorsUpdate = (updatedCollaborators: any[]) => {
+        setCollaborators(updatedCollaborators);
+    };
 
 
     // Log getDayActivities for each day
@@ -972,9 +998,22 @@ export default function TripViewMain() {
                 </KeyboardAvoidingView>
                 </Modal>
             </View>
-            
-            <TouchableOpacity 
-                style={styles.homeButton} 
+
+            {/* Share Trip Modal */}
+            {tripId && currentUserID && currentUserRole && collaborators && (
+                <ShareTripModal
+                    visible={isShareModalVisible}
+                    onClose={() => setIsShareModalVisible(false)}
+                    tripId={tripId}
+                    collaborators={collaborators}
+                    currentUserRole={currentUserRole}
+                    currentUserID={currentUserID}
+                    onCollaboratorsUpdate={handleCollaboratorsUpdate}
+                />
+            )}
+
+            <TouchableOpacity
+                style={styles.homeButton}
                 onPress={async () => {
                     const dayCountVal = getDayCount();
                     await saveTrip();
@@ -1010,6 +1049,7 @@ export default function TripViewMain() {
             >
                 <Entypo name="home" size={30} color={Colors.PRIMARY} />
             </TouchableOpacity>
+
         </>
     );
 }

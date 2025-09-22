@@ -13,6 +13,9 @@ interface MapViewProps {
   selectedActivities?: string[]; // Add selected activities prop
   onMarkerPress?: (activity: Activity) => void; // Add callback for marker press
   selectedMarker?: string | null; // Add selected marker prop
+  // Collaboration props
+  isOwner?: boolean;
+  onShareTrip?: () => void;
 }
 
 // Custom numbered marker component with selection state
@@ -41,14 +44,16 @@ const NumberedMarker = ({
   </View>
 );
 
-export function TripMapView({ 
-  activities, 
-  activeTab, 
-  routeCoordinates = [], 
+export function TripMapView({
+  activities,
+  activeTab,
+  routeCoordinates = [],
   routeLoading = false,
   selectedActivities = [], // Add default value
   onMarkerPress, // Add callback prop
-  selectedMarker = null // Add selected marker prop
+  selectedMarker = null, // Add selected marker prop
+  isOwner = false, // Add collaboration props
+  onShareTrip
 }: MapViewProps) {
   const mapRef = useRef<MapView>(null);
 
@@ -57,11 +62,11 @@ export function TripMapView({
 
   // Handle invite collaborators button press
   const handleInviteCollaborators = () => {
-    Alert.alert(
-      'Invite Collaborators',
-      'Feature Coming Soon',
-      [{ text: 'OK', style: 'default' }]
-    );
+    if (!isOwner) {
+      Alert.alert('Permission Denied', 'Only trip owners can manage sharing');
+      return;
+    }
+    onShareTrip?.();
   };
 
   // Prepare markers
