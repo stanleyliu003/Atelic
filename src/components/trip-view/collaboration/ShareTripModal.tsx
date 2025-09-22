@@ -1,18 +1,8 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  Modal,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  ActivityIndicator
-} from 'react-native';
+import {View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { API } from 'aws-amplify';
 import { addCollaborator, removeCollaborator, updateCollaboratorRole } from '../../../graphql/mutations';
 import { UserSearchField } from './UserSearchField';
-import { RoleSelectionModal } from './RoleSelectionModal';
 import { CollaboratorListItem } from './CollaboratorListItem';
 
 interface UserProfile {
@@ -50,8 +40,9 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
   currentUserID,
   onCollaboratorsUpdate
 }) => {
-  const [showRoleModal, setShowRoleModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [selectedRole, setSelectedRole] = useState<CollaboratorRole>('editor');
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const canInvite = () => {
@@ -61,7 +52,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
   const handleUserSelect = (user: UserProfile) => {
     console.log('[ShareTripModal] User selected for invitation:', user);
     setSelectedUser(user);
-    setShowRoleModal(true);
+    setSelectedRole('editor'); // Default to editor as requested
   };
 
   const handleInviteConfirm = async (user: UserProfile, role: CollaboratorRole) => {
@@ -86,14 +77,33 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
         onCollaboratorsUpdate(updatedTrip.collaborators);
       }
 
-      setShowRoleModal(false);
       setSelectedUser(null);
+      setSelectedRole('editor');
     } catch (error) {
       console.error('[ShareTripModal] Error adding collaborator:', error);
       Alert.alert('Error', 'Failed to add collaborator. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleInviteUser = async () => {
+    if (!selectedUser) return;
+    await handleInviteConfirm(selectedUser, selectedRole);
+  };
+
+  const clearSelectedUser = () => {
+    setSelectedUser(null);
+    setSelectedRole('editor');
+  };
+
+  const getAvailableRoles = (): CollaboratorRole[] => {
+    if (currentUserRole === 'owner') {
+      return ['editor', 'viewer'];
+    } else if (currentUserRole === 'editor') {
+      return ['viewer'];
+    }
+    return [];
   };
 
   const handleRoleChange = async (email: string, newRole: CollaboratorRole) => {
@@ -183,11 +193,68 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
             {canInvite() && (
               <View style={styles.inviteSection}>
                 <Text style={styles.sectionTitle}>Invite people</Text>
-                <UserSearchField
-                  onUserSelect={handleUserSelect}
-                  existingCollaborators={collaborators}
-                  placeholder="Search by name or email..."
-                />
+                <View style={styles.inviteRow}>
+                  <View style={styles.searchFieldContainer}>
+                    <UserSearchField
+                      onUserSelect={handleUserSelect}
+                      existingCollaborators={collaborators}
+                      placeholder="Search by name or email..."
+                      selectedUser={selectedUser}
+                      onClearUser={clearSelectedUser}
+                    />
+                  </View>
+
+                  {/* Role Selection Dropdown - shown when user is selected */}
+                  {selectedUser && (
+                    <View style={styles.roleDropdownContainer}>
+                      <TouchableOpacity
+                        style={styles.roleDropdown}
+                        onPress={() => setShowRoleDropdown(!showRoleDropdown)}
+                      >
+                        <Text style={styles.roleDropdownText}>
+                          {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}
+                        </Text>
+                        <Text style={styles.roleDropdownArrow}>
+                          {showRoleDropdown ? '▲' : '▼'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {showRoleDropdown && (
+                        <View style={styles.roleOptions}>
+                          {getAvailableRoles().map((role) => (
+                            <TouchableOpacity
+                              key={role}
+                              style={[
+                                styles.roleOption,
+                                selectedRole === role && styles.roleOptionSelected
+                              ]}
+                              onPress={() => {
+                                setSelectedRole(role);
+                                setShowRoleDropdown(false);
+                              }}
+                            >
+                              <Text style={[
+                                styles.roleOptionText,
+                                selectedRole === role && styles.roleOptionTextSelected
+                              ]}>
+                                {role.charAt(0).toUpperCase() + role.slice(1)}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+
+                {selectedUser && (
+                  <TouchableOpacity
+                    style={styles.sendInviteButton}
+                    onPress={handleInviteUser}
+                  >
+                    <Text style={styles.sendInviteButtonText}>Send Invite</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
@@ -236,17 +303,6 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
         </View>
       </Modal>
 
-      {/* Role Selection Modal */}
-      <RoleSelectionModal
-        visible={showRoleModal}
-        selectedUser={selectedUser}
-        currentUserRole={currentUserRole}
-        onConfirm={handleInviteConfirm}
-        onCancel={() => {
-          setShowRoleModal(false);
-          setSelectedUser(null);
-        }}
-      />
     </>
   );
 };
@@ -296,6 +352,76 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333333',
     marginBottom: 16,
+  },
+  inviteRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  searchFieldContainer: {
+    flex: 1,
+  },
+  roleDropdownContainer: {
+    width: 120,
+  },
+  roleDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    height: 44,
+  },
+  roleDropdownText: {
+    fontSize: 16,
+    color: '#333333',
+    fontWeight: '500',
+  },
+  roleDropdownArrow: {
+    fontSize: 12,
+    color: '#666666',
+  },
+  roleOptions: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    position: 'absolute',
+    top: 46,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+  },
+  roleOption: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  roleOptionSelected: {
+    backgroundColor: '#F0F8FF',
+  },
+  roleOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333333',
+  },
+  roleOptionTextSelected: {
+    color: '#007AFF',
+  },
+  sendInviteButton: {
+    backgroundColor: '#0957D0',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 90,
+  },
+  sendInviteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   collaboratorsSection: {
     flex: 1,

@@ -22,12 +22,16 @@ interface UserSearchFieldProps {
   onUserSelect: (user: UserProfile) => void;
   existingCollaborators?: UserProfile[];
   placeholder?: string;
+  selectedUser?: UserProfile | null;
+  onClearUser?: () => void;
 }
 
 export const UserSearchField: React.FC<UserSearchFieldProps> = ({
   onUserSelect,
   existingCollaborators = [],
-  placeholder = "Search by name or email..."
+  placeholder = "Search by name or email...",
+  selectedUser = null,
+  onClearUser
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
@@ -96,19 +100,25 @@ export const UserSearchField: React.FC<UserSearchFieldProps> = ({
     <View style={styles.container}>
       <View style={[
         styles.searchInputContainer,
-        searchTerm.length > 0 && styles.searchInputContainerActive
+        (searchTerm.length > 0 || selectedUser) && styles.searchInputContainerActive
       ]}>
         <TextInput
           style={styles.searchInput}
-          placeholder={placeholder}
-          value={searchTerm}
-          onChangeText={setSearchTerm}
-          onFocus={() => searchResults.length > 0 && setShowResults(true)}
-          onBlur={handleInputBlur}
+          placeholder={selectedUser ? selectedUser.fullName : placeholder}
+          value={selectedUser ? selectedUser.fullName : searchTerm}
+          onChangeText={selectedUser ? undefined : setSearchTerm}
+          onFocus={() => selectedUser ? undefined : (searchResults.length > 0 && setShowResults(true))}
+          onBlur={selectedUser ? undefined : handleInputBlur}
           autoCapitalize="none"
           autoCorrect={false}
+          editable={!selectedUser}
         />
-        {isSearching && (
+        {selectedUser && onClearUser && (
+          <TouchableOpacity onPress={onClearUser} style={styles.clearButton}>
+            <Text style={styles.clearButtonText}>✕</Text>
+          </TouchableOpacity>
+        )}
+        {isSearching && !selectedUser && (
           <ActivityIndicator
             size="small"
             color="#666"
@@ -119,7 +129,7 @@ export const UserSearchField: React.FC<UserSearchFieldProps> = ({
 
       {/* Render results in a Modal to ensure it's above everything */}
       <Modal
-        visible={showResults}
+        visible={showResults && !selectedUser}
         transparent={true}
         animationType="none"
         onRequestClose={() => setShowResults(false)}
@@ -187,6 +197,15 @@ const styles = StyleSheet.create({
   },
   searchSpinner: {
     marginLeft: 8,
+  },
+  clearButton: {
+    marginLeft: 8,
+    padding: 4,
+  },
+  clearButtonText: {
+    fontSize: 16,
+    color: '#666666',
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
