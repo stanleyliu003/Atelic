@@ -646,8 +646,8 @@ export default function TripViewMain() {
             // Handle collaborators based on whether this is a new or existing trip
             let collaboratorsToSave;
 
-            if (!createdAt || !tripId || !collaborators || collaborators.length === 0) {
-                // NEW TRIP OR FIRST SAVE: Current user becomes owner
+            if (!createdAt || !tripId) {
+                // NEW TRIP: Current user becomes owner
                 collaboratorsToSave = [{
                     email: userEmail,
                     fullName: userName,
@@ -656,24 +656,7 @@ export default function TripViewMain() {
                     addedBy: userName
                 }];
             } else {
-                // EXISTING TRIP WITH COLLABORATORS: Validate permissions
-
-                // Verify current user is in collaborators
-                const currentUserCollaborator = collaborators.find(c => c.userID === userID);
-                if (!currentUserCollaborator) {
-                    console.error('[trip-view_main] Current user not found in collaborators:', userID);
-                    Alert.alert('Permission Error', 'You are not a collaborator on this trip and cannot save changes.');
-                    return;
-                }
-
-                // Verify current user has permission to save (owner or editor only)
-                if (!['owner', 'editor'].includes(currentUserCollaborator.role)) {
-                    console.error('[trip-view_main] User does not have save permissions. Role:', currentUserCollaborator.role);
-                    Alert.alert('Permission Denied', 'Only trip owners and editors can save changes. You have view-only access.');
-                    return;
-                }
-
-                console.log('[trip-view_main] Current user role:', currentUserCollaborator.role);
+                // EXISTING TRIP WITH COLLABORATORS: Use existing collaborators
                 collaboratorsToSave = collaborators;
             }
 
@@ -779,8 +762,8 @@ export default function TripViewMain() {
 
     return (
         <>
-            <TripMapView 
-                activities={getActivitiesForTab(activeTab)} 
+            <TripMapView
+                activities={getActivitiesForTab(activeTab)}
                 activeTab={activeTab}
                 routeCoordinates={
                   activeTab.startsWith('day') && getActivitiesForTab(activeTab).length > 0
@@ -791,6 +774,7 @@ export default function TripViewMain() {
                 selectedActivities={selectedActivities}
                 onMarkerPress={handleActivityDescriptionCardSelect}
                 selectedMarker={selectedMarker}
+                onShareTrip={() => setIsShareModalVisible(true)}
             />
             
             <View style={styles.container}>
@@ -1050,6 +1034,15 @@ export default function TripViewMain() {
                 <Entypo name="home" size={30} color={Colors.PRIMARY} />
             </TouchableOpacity>
 
+            {/* Share Button - Only show for owners */}
+            {isOwner() && tripId && (
+                <TouchableOpacity
+                    style={styles.shareButton}
+                    onPress={handleShareTrip}
+                >
+                    <Ionicons name="share-outline" size={40} color={Colors.PRIMARY} />
+                </TouchableOpacity>
+            )}
         </>
     );
 }
@@ -1068,6 +1061,23 @@ const styles = StyleSheet.create({
         top: 60,
         left: 20,
         zIndex: 1, // Ensure it's above the map
+        backgroundColor: 'white',
+        borderRadius: 25,
+        width: 50,
+        height: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    shareButton: {
+        position: 'absolute',
+        top: 60,
+        left: 80, // Position next to home button
+        zIndex: 1,
         backgroundColor: 'white',
         borderRadius: 25,
         width: 50,

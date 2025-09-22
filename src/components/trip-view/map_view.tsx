@@ -14,7 +14,6 @@ interface MapViewProps {
   onMarkerPress?: (activity: Activity) => void; // Add callback for marker press
   selectedMarker?: string | null; // Add selected marker prop
   // Collaboration props
-  isOwner?: boolean;
   onShareTrip?: () => void;
 }
 
@@ -52,7 +51,6 @@ export function TripMapView({
   selectedActivities = [], // Add default value
   onMarkerPress, // Add callback prop
   selectedMarker = null, // Add selected marker prop
-  isOwner = false, // Add collaboration props
   onShareTrip
 }: MapViewProps) {
   const mapRef = useRef<MapView>(null);
@@ -62,10 +60,6 @@ export function TripMapView({
 
   // Handle invite collaborators button press
   const handleInviteCollaborators = () => {
-    if (!isOwner) {
-      Alert.alert('Permission Denied', 'Only trip owners can manage sharing');
-      return;
-    }
     onShareTrip?.();
   };
 
@@ -223,8 +217,8 @@ export function TripMapView({
       </MapView>
       
       {/* Invite collaborators button overlay */}
-      <TouchableOpacity 
-        style={styles.shareButton} 
+      <TouchableOpacity
+        style={styles.shareButton}
         onPress={handleInviteCollaborators}
         activeOpacity={0.7}
       >
