@@ -155,12 +155,55 @@ export default function Profile() {
     return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`;
   };
 
+  const handleLogout = async () => {
+    try {
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to logout?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          },
+          {
+            text: 'Logout',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await Auth.signOut();
+                // Clear any stored user data
+                setFullName('');
+                setUserTrips([]);
+                // Navigate to login/onboarding screen
+                router.replace('/');
+              } catch (error) {
+                console.error('[Profile] Error signing out:', error);
+                Alert.alert('Error', 'Failed to logout. Please try again.');
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('[Profile] Error in logout handler:', error);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Profile Header */}
       <View style={styles.header}>
         <Text style={styles.headerText}>Profile</Text>
-        <FontAwesome name="user-circle" size={40} color="black" />
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out-outline" size={24} color={Colors.GRAY} />
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+          <FontAwesome name="user-circle" size={40} color="black" />
+        </View>
       </View>
 
       {/* Welcome Back Full Name */}
@@ -360,6 +403,25 @@ const styles = StyleSheet.create({
   headerText: {
     fontFamily: 'outfit-bold',
     fontSize: 35,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  logoutText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    marginLeft: 6,
   },
   myTripsSection: {
     marginTop: 30,
