@@ -656,8 +656,14 @@ export default function TripViewMain() {
                     addedBy: userName
                 }];
             } else {
-                // EXISTING TRIP WITH COLLABORATORS: Use existing collaborators
-                collaboratorsToSave = collaborators;
+                // EXISTING TRIP WITH COLLABORATORS: Use existing collaborators (sanitized)
+                collaboratorsToSave = collaborators.map(collaborator => ({
+                    email: collaborator.email,
+                    fullName: collaborator.fullName,
+                    userID: collaborator.userID,
+                    role: collaborator.role,
+                    addedBy: collaborator.addedBy
+                }));
             }
 
             // Add userID and collaborators to trip data
