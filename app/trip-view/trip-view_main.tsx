@@ -29,7 +29,7 @@ export default function TripViewMain() {
     const navigation = useNavigation();
     const params = useLocalSearchParams();
     const { restoreTrip } = params;
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference, collaborators } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -640,17 +640,36 @@ export default function TripViewMain() {
                 return;
             }
 
-            // Add userID and collaborators to trip data
-            const tripDataWithUser = {
-                ...tripData,
-                userID: userID,
-                collaborators: [{
+            // Handle collaborators based on whether this is a new or existing trip
+            let collaboratorsToSave;
+
+            if (!createdAt || !tripId) {
+                // NEW TRIP: Current user becomes owner
+                collaboratorsToSave = [{
                     email: userEmail,
                     fullName: userName,
                     userID: userID,
                     role: 'owner',
                     addedBy: userName
-                }]
+                }];
+            } else {
+                // EXISTING TRIP: Use existing collaborators from context
+                collaboratorsToSave = collaborators && collaborators.length > 0
+                    ? collaborators
+                    : [{ // Fallback if no collaborators in context
+                        email: userEmail,
+                        fullName: userName,
+                        userID: userID,
+                        role: 'owner',
+                        addedBy: userName
+                    }];
+            }
+
+            // Add userID and collaborators to trip data
+            const tripDataWithUser = {
+                ...tripData,
+                userID: userID,
+                collaborators: collaboratorsToSave
             };
 
             console.log('[trip-view_main] Saving trip with user data:');

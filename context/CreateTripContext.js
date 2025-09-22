@@ -35,7 +35,25 @@ export const CreateTripProvider = ({ children }) => {
     const [cityCategories, setCityCategories] = useState(null);
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [tripPhotoReference, setTripPhotoReference] = useState('');
-    
+
+    // Collaboration state
+    const [currentUserRole, setCurrentUserRole] = useState(null);
+    const [collaborators, setCollaborators] = useState([]);
+
+    // Permission helpers
+    const canEdit = () => ['owner','editor'].includes(currentUserRole);
+    const canInviteEditors = () => currentUserRole === 'owner';
+    const canInviteViewers = () => ['owner','editor'].includes(currentUserRole);
+    const isOwner = () => currentUserRole === 'owner';
+
+    // Helper functions
+    const getOwner = () => collaborators.find(c => c.role === 'owner');
+    const getCurrentUser = (currentUserID) => collaborators.find(c => c.userID === currentUserID);
+    const getUserRoleInTrip = (trip, userID) => {
+        const collaborator = trip.collaborators?.find(c => c.userID === userID);
+        return collaborator?.role || null;
+    };
+
     // Add logging to setTripLength
     const setTripLengthWithLog = (length) => {
         setTripLength(length);
@@ -99,7 +117,7 @@ export const CreateTripProvider = ({ children }) => {
     }, [activities, dayActivities]);
 
     // Restore all trip state from a trip object
-    const restoreTripFromObject = (trip) => {
+    const restoreTripFromObject = (trip, currentUserID = null) => {
         setTripId(trip.tripId);
         updateActivities(trip.wishlist);
         setAllDayActivities(trip.days);
@@ -114,6 +132,12 @@ export const CreateTripProvider = ({ children }) => {
         // Restore tripPhotoReference if available
         if (trip.tripPhotoReference) {
             setTripPhotoReference(trip.tripPhotoReference);
+        }
+        // Restore collaboration state
+        setCollaborators(trip.collaborators || []);
+        if (currentUserID) {
+            const userRole = getUserRoleInTrip(trip, currentUserID);
+            setCurrentUserRole(userRole);
         }
     };
 
@@ -153,6 +177,8 @@ export const CreateTripProvider = ({ children }) => {
         setDayPolylines({});
         setDayActivities({});
         setTripPhotoReference('');
+        setCollaborators([]);
+        setCurrentUserRole(null);
         // Note: Don't reset selectedCity and tripLength during create trip flow
         // setSelectedCity('');
         // setTripLength(null);
@@ -179,6 +205,8 @@ export const CreateTripProvider = ({ children }) => {
         setCityCategories(null);
         setSelectedCategories([]);
         setTripPhotoReference('');
+        setCollaborators([]);
+        setCurrentUserRole(null);
     };
 
     // Load trip from cloud storage
@@ -272,6 +300,18 @@ export const CreateTripProvider = ({ children }) => {
         setTripPhotoReference,
         getFirstActivityPhotoRef,
         CACHE_KEYS,
+        // Collaboration state and functions
+        currentUserRole,
+        setCurrentUserRole,
+        collaborators,
+        setCollaborators,
+        canEdit,
+        canInviteEditors,
+        canInviteViewers,
+        isOwner,
+        getOwner,
+        getCurrentUser,
+        getUserRoleInTrip,
     };
 
     return (
