@@ -38,7 +38,7 @@ exports.handler = async (event) => {
 
     console.log('Retrieved trip:', JSON.stringify(result.Item));
 
-    // Return the complete trip data including tripPhotoReference
+    // Return the complete trip data including tripPhotoReference and collaborators
     return {
       tripId: result.Item.tripID,
       days: result.Item.days || [],
@@ -47,6 +47,7 @@ exports.handler = async (event) => {
       selectedCity: result.Item.selectedCity,
       tripPhotoReference: result.Item.tripPhotoReference,
       createdAt: result.Item.createdAt,
+      collaborators: result.Item.collaborators || [],
     };
 
   } catch (error) {

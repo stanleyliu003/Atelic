@@ -743,6 +743,7 @@ export default function TripViewMain() {
         getCurrentUser();
     }, []);
 
+
     // Handle collaboration modal
     const handleShareTrip = () => {
         if (!isOwner()) {

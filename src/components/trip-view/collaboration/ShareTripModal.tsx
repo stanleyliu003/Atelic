@@ -47,6 +47,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+
   const canInvite = () => {
     return currentUserRole === 'owner' || currentUserRole === 'editor';
   };

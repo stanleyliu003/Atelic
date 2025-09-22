@@ -75,8 +75,8 @@ export default function Profile() {
       const tripDetails = await retrieveTripFromCloud(userID, tripId);
 
       if (tripDetails) {
-        // Load trip data into context
-        restoreTripFromObject(tripDetails);
+        // Load trip data into context with currentUserID
+        restoreTripFromObject(tripDetails, userID);
         setSelectedCity(tripDetails.selectedCity);
 
         // Navigate directly to trip view
