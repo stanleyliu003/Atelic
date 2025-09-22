@@ -984,13 +984,13 @@ export default function TripViewMain() {
             </View>
 
             {/* Share Trip Modal */}
-            {tripId && currentUserID && currentUserRole && collaborators && (
+            {tripId && currentUserID && (
                 <ShareTripModal
                     visible={isShareModalVisible}
                     onClose={() => setIsShareModalVisible(false)}
                     tripId={tripId}
-                    collaborators={collaborators}
-                    currentUserRole={currentUserRole}
+                    collaborators={collaborators || []}
+                    currentUserRole={currentUserRole || 'owner'}
                     currentUserID={currentUserID}
                     onCollaboratorsUpdate={handleCollaboratorsUpdate}
                 />

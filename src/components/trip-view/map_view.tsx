@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import MapView, { Marker, Polyline, Region } from 'react-native-maps';
 import { getMarkerColor } from '../../constants/mapColors';
 import { Activity, TabType } from '../../types/activity.types';
