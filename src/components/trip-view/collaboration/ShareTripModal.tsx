@@ -197,7 +197,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
           </TouchableOpacity>
 
           {/* Content */}
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <ScrollView style={styles.content} showsVerticalScrollIndicator={true}>
             {/* Invite Section */}
             {canInvite() && (
               <View style={styles.inviteSection}>

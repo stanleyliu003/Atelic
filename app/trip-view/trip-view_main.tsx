@@ -899,36 +899,6 @@ export default function TripViewMain() {
                 onDeletePress={handleDeleteActivities}
                 />
 
-                {/* Publish Trip Button - Only show on last day with activities and no selection */}
-                {activeTab.startsWith('day') && (() => {
-                const currentDayNumber = parseInt(activeTab.replace('day', ''));
-                const currentDayActivities = getDayActivities(currentDayNumber);
-                const isLastDay = currentDayNumber === getDayCount();
-                const hasActivities = currentDayActivities && currentDayActivities.length > 0;
-                const noSelection = selectedActivities.length === 0;
-                const noActivityDetail = !showActivityDetail;
-                
-                if (isLastDay && hasActivities && noSelection && noActivityDetail) {
-                    return (
-                        <TouchableOpacity 
-                            style={styles.publishButton}
-                            onPress={() => {
-                                saveTrip();
-                                router.push({
-                                    pathname: '/trip-view/publish_success',
-                                    params: {
-                                        dayCount: getDayCount().toString()
-                                    }
-                                });
-                            }}
-                        >
-                            <Text style={styles.publishButtonText}>Save Trip</Text>
-                        </TouchableOpacity>
-                    );
-                }
-                return null;
-                })()}
-
                 {/* Transfer Modal */}
                 <TransferActivitiesModal
                 visible={isModalVisible}
@@ -1010,7 +980,7 @@ export default function TripViewMain() {
                     const dayCountVal = getDayCount();
                     await saveTrip();
                     // Check if this is an existing trip (loaded from cloud) or a new trip
-                    const isExistingTrip = createdAt && tripId;
+                    const isExistingTrip = tripId;
 
                     if (isExistingTrip) {
                         // This trip was loaded from cloud storage, go back to profile
@@ -1096,28 +1066,6 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         padding: 20,
         marginBottom: 40, // Space for transfer button
-    },
-    publishButton: {
-        position: 'absolute',
-        bottom: 30,
-        left: 20,
-        right: 20,
-        backgroundColor: Colors.PRIMARY,
-        paddingVertical: 16,
-        paddingHorizontal: 24,
-        borderRadius: 12,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-    },
-    publishButtonText: {
-        color: Colors.WHITE,
-        fontSize: 18,
-        fontFamily: 'outfit-bold',
-        fontWeight: '600',
     },
     citySection: {
         marginBottom: 5,
