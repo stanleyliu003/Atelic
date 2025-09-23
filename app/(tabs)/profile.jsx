@@ -10,6 +10,7 @@ import { useCallback } from 'react';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { listUserTripsFromCloud, retrieveTripFromCloud } from '../../src/services/lambdaService';
 import { deleteTrip } from '../../src/graphql/customMutations';
+import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 
 export default function Profile() {
   const { restoreTripFromObject, setSelectedCity } = useCreateTrip();
@@ -22,6 +23,9 @@ export default function Profile() {
   const [isLoadingTrip, setIsLoadingTrip] = useState(false);
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [menuVisible, setMenuVisible] = useState(null); // stores tripId of open menu
+  const [isShareModalVisible, setIsShareModalVisible] = useState(false);
+  const [selectedTripForSharing, setSelectedTripForSharing] = useState(null);
+  const [currentUserID, setCurrentUserID] = useState('');
 
   const loadUserData = useCallback(async () => {
     try {
@@ -29,6 +33,7 @@ export default function Profile() {
       const name = user.attributes?.name || '';
       const userID = user.attributes?.sub || user.username;
       setFullName(name);
+      setCurrentUserID(userID);
 
       // Load user trips from cloud
       await loadUserTrips(userID);
@@ -142,11 +147,24 @@ export default function Profile() {
   };
 
   // Handle invite collaborators button press
-  const handleInviteCollaborators = () => {
-    Alert.alert(
-      'Invite Collaborators',
-      'Feature Coming Soon',
-      [{ text: 'OK', style: 'default' }]
+  const handleInviteCollaborators = (tripId) => {
+    const trip = userTrips.find(t => t.tripId === tripId);
+    if (trip) {
+      setSelectedTripForSharing(trip);
+      setIsShareModalVisible(true);
+      setMenuVisible(null); // Close the menu
+    }
+  };
+
+  // Handle collaborators update
+  const handleCollaboratorsUpdate = (updatedCollaborators) => {
+    // Update the trip in the userTrips state
+    setUserTrips(prevTrips =>
+      prevTrips.map(trip =>
+        trip.tripId === selectedTripForSharing?.tripId
+          ? { ...trip, collaborators: updatedCollaborators }
+          : trip
+      )
     );
   };
 
@@ -350,7 +368,7 @@ export default function Profile() {
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
-                  handleInviteCollaborators();
+                  handleInviteCollaborators(menuVisible);
                 }}
               >
                 <AntDesign name="adduser" size={18} color="black" />
@@ -382,6 +400,23 @@ export default function Profile() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* Share Trip Modal */}
+      {selectedTripForSharing && currentUserID && (
+        <ShareTripModal
+          visible={isShareModalVisible}
+          onClose={() => {
+            setIsShareModalVisible(false);
+            setSelectedTripForSharing(null);
+          }}
+          tripId={selectedTripForSharing.tripId}
+          collaborators={selectedTripForSharing.collaborators || []}
+          currentUserRole={selectedTripForSharing.collaborators?.find(c => c.userID === currentUserID)?.role || 'owner'}
+          currentUserID={currentUserID}
+          selectedCity={selectedTripForSharing.selectedCity}
+          onCollaboratorsUpdate={handleCollaboratorsUpdate}
+        />
+      )}
     </View>
   )
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, Alert, ActivityIndicator, TextInput } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { API } from 'aws-amplify';
 import { addCollaborator, removeCollaborator, updateCollaboratorRole } from '../../../graphql/mutations';
 import { UserSearchField } from './UserSearchField';
@@ -28,6 +29,7 @@ interface ShareTripModalProps {
   collaborators: Collaborator[];
   currentUserRole: CollaboratorRole;
   currentUserID: string;
+  selectedCity?: string;
   onCollaboratorsUpdate: (updatedCollaborators: Collaborator[]) => void;
 }
 
@@ -38,6 +40,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
   collaborators,
   currentUserRole,
   currentUserID,
+  selectedCity,
   onCollaboratorsUpdate
 }) => {
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
@@ -171,7 +174,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
 
   const handleCopyLink = () => {
     // Copy trip link to clipboard
-    Alert.alert('Link Copied', 'Trip link copied to clipboard');
+    Alert.alert('Share link', 'Feature coming soon');
   };
 
   return (
@@ -185,12 +188,13 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>Done</Text>
-            </TouchableOpacity>
             <Text style={styles.headerTitle}>Share Trip</Text>
-            <View style={styles.headerSpacer} />
           </View>
+
+          {/* Close Button */}
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color="#000" />
+          </TouchableOpacity>
 
           {/* Content */}
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -363,12 +367,12 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
-    paddingTop: 50, // Account for status bar
+    paddingTop: 35, // Account for status bar
   },
   closeButton: {
     position: 'absolute',
@@ -384,7 +388,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 26,
+    fontFamily: 'outfit-bold',
     fontWeight: '600',
     color: '#333333',
   },
@@ -392,12 +397,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   inviteSection: {
+    marginTop: 15,
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
   sectionTitle: {
     fontSize: 18,
+    fontFamily: 'outfit-medium',
     fontWeight: '600',
     color: '#333333',
     marginBottom: 16,

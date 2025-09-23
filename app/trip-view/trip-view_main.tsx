@@ -999,6 +999,7 @@ export default function TripViewMain() {
                     collaborators={collaborators || []}
                     currentUserRole={currentUserRole || 'owner'}
                     currentUserID={currentUserID}
+                    selectedCity={selectedCity}
                     onCollaboratorsUpdate={handleCollaboratorsUpdate}
                 />
             )}
