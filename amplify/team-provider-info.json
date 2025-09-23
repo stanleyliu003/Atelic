@@ -139,7 +139,7 @@
         },
         "getTripIDs": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/getTripIDs-74534869674a6b396b74-build.zip"
+          "s3Key": "amplify-builds/getTripIDs-57687a7a50767a4a3245-build.zip"
         },
         "getUserTrips": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",

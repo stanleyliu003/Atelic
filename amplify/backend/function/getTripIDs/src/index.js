@@ -32,9 +32,11 @@ exports.handler = async (event) => {
     const ownedTripsResult = await docClient.send(new QueryCommand(ownedTripsParams));
 
     // 2. Scan for trips where user is a collaborator
+    // Note: DynamoDB FilterExpression can't easily search nested arrays, so we'll scan all trips
+    // and filter in JavaScript code below
     const collaboratedTripsParams = {
       TableName: process.env.STORAGE_TRIPSTORAGE_NAME,
-      FilterExpression: 'contains(collaborators, :userID) AND userID <> :userID',
+      FilterExpression: 'attribute_exists(collaborators) AND userID <> :userID',
       ExpressionAttributeValues: {
         ':userID': userID
       },
@@ -43,6 +45,8 @@ exports.handler = async (event) => {
 
     console.log('Scanning for collaborated trips:', JSON.stringify(collaboratedTripsParams));
     const collaboratedTripsResult = await docClient.send(new ScanCommand(collaboratedTripsParams));
+
+    console.log('Raw collaborated trips scan results:', JSON.stringify(collaboratedTripsResult.Items, null, 2));
 
     // Helper function to get user's role in a trip
     const getUserRole = (trip, userId) => {
@@ -72,7 +76,7 @@ exports.handler = async (event) => {
     const collaboratedTripSummaries = collaboratedTripsResult.Items
       .filter(item => {
         const role = getUserRole(item, userID);
-        return role !== null;
+        return role !== null && role !== 'owner'; // Exclude if already an owner (covered in owned trips)
       })
       .map(item => ({
         tripId: item.tripID,

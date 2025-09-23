@@ -17,6 +17,8 @@ export default function Profile() {
 
   const [fullName, setFullName] = useState('');
   const [userTrips, setUserTrips] = useState([]);
+  const [ownedTrips, setOwnedTrips] = useState([]);
+  const [sharedTrips, setSharedTrips] = useState([]);
   const [isLoadingTrips, setIsLoadingTrips] = useState(false);
   const [tripsError, setTripsError] = useState(null);
   const [selectedTripId, setSelectedTripId] = useState(null);
@@ -62,11 +64,21 @@ export default function Profile() {
       setTripsError(null);
 
       const tripSummaries = await listUserTripsFromCloud(userID);
-      setUserTrips(tripSummaries || []);
+      const allTrips = tripSummaries || [];
+
+      // Separate trips by user role
+      const owned = allTrips.filter(trip => trip.userRole === 'owner');
+      const shared = allTrips.filter(trip => trip.userRole === 'editor' || trip.userRole === 'viewer');
+
+      setUserTrips(allTrips);
+      setOwnedTrips(owned);
+      setSharedTrips(shared);
     } catch (error) {
       console.error('[Profile] Error loading trips:', error);
       setTripsError('Failed to load trips');
       setUserTrips([]);
+      setOwnedTrips([]);
+      setSharedTrips([]);
     } finally {
       setIsLoadingTrips(false);
     }
@@ -281,9 +293,9 @@ export default function Profile() {
             <ActivityIndicator size="large" color={Colors.PRIMARY} />
             <Text style={styles.loadingText}>Loading trips...</Text>
           </View>
-        ) : userTrips.length > 0 ? (
+        ) : ownedTrips.length > 0 ? (
           <ScrollView style={styles.tripsScrollView} showsVerticalScrollIndicator={true}>
-            {userTrips.map((trip) => (
+            {ownedTrips.map((trip) => (
               <View
                 key={trip.tripId}
                 style={[
@@ -354,6 +366,82 @@ export default function Profile() {
           </View>
         )}
       </View>
+
+      {/* Shared With Me Section */}
+      {sharedTrips.length > 0 && (
+        <View style={styles.myTripsSection}>
+          <Text style={styles.sectionTitle}>Shared With Me</Text>
+          <ScrollView style={styles.tripsScrollView} showsVerticalScrollIndicator={true}>
+            {sharedTrips.map((trip) => (
+              <View
+                key={trip.tripId}
+                style={[
+                  styles.tripCard,
+                  selectedTripId === trip.tripId && isLoadingTrip && styles.tripCardLoading
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.tripCardMainArea}
+                  onPress={() => {
+                    setSelectedTripId(trip.tripId);
+                    handleLoadTrip(trip.tripId);
+                  }}
+                  disabled={isLoadingTrip || deletingTripId === trip.tripId}
+                >
+                  <View style={styles.tripCardContent}>
+                    {trip.tripPhotoReference ? (
+                      <Image
+                        source={{ uri: getImageUrl(trip.tripPhotoReference) }}
+                        style={styles.tripCardImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.tripCardImagePlaceholder}>
+                        <FontAwesome name="map-marker" size={30} color={Colors.GRAY} />
+                      </View>
+                    )}
+                    <View style={styles.tripCardInfo}>
+                      <Text style={styles.tripCardTitle}>
+                        {trip.selectedCity || 'Unknown City'}
+                      </Text>
+                      <Text style={styles.tripCardDate}>
+                        Created {trip.createdAt ? new Date(trip.createdAt).toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        }) : 'No date'}
+                      </Text>
+                      <Text style={styles.tripCardLength}>
+                        {trip.tripLength != null ? `${trip.tripLength} day trip` : 'Unknown length'}
+                      </Text>
+                      <Text style={styles.userRoleText}>
+                        Role: {trip.userRole === 'editor' ? 'Editor' : 'Viewer'}
+                      </Text>
+                    </View>
+                    {selectedTripId === trip.tripId && isLoadingTrip && (
+                      <ActivityIndicator size="small" color={Colors.PRIMARY} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+
+                {/* Menu button - only show for editors */}
+                {trip.userRole === 'editor' && (
+                  <TouchableOpacity
+                    style={styles.menuButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      setMenuVisible(trip.tripId);
+                    }}
+                    disabled={isLoadingTrip || deletingTripId === trip.tripId}
+                  >
+                    <FontAwesome name="ellipsis-h" size={16} color={Colors.GRAY} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Menu Modal */}
       <Modal
@@ -597,6 +685,12 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit',
     fontSize: 14,
     color: Colors.GRAY,
+  },
+  userRoleText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 12,
+    color: Colors.PRIMARY,
+    marginTop: 2,
   },
   noTripsContainer: {
     alignItems: 'center',
