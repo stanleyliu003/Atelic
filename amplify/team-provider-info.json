@@ -139,11 +139,11 @@
         },
         "getTripIDs": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/getTripIDs-57687a7a50767a4a3245-build.zip"
+          "s3Key": "amplify-builds/getTripIDs-43674d58556b70457069-build.zip"
         },
         "getUserTrips": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/getUserTrips-42466f72664a53557247-build.zip"
+          "s3Key": "amplify-builds/getUserTrips-2b7371704563442b6446-build.zip"
         },
         "manageCollaborators": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",

@@ -1,5 +1,5 @@
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, GetCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
@@ -30,28 +30,67 @@ exports.handler = async (event) => {
   console.log('DynamoDB get params:', JSON.stringify(params));
 
   try {
+    // First, try to get the trip as the owner (existing logic)
     const result = await docClient.send(new GetCommand(params));
 
-    if (!result.Item) {
-      throw new Error(`Trip not found for userID: ${userID}, tripID: ${tripID}`);
+    if (result.Item) {
+      console.log('Retrieved trip as owner:', JSON.stringify(result.Item));
+
+      // Return the complete trip data including tripPhotoReference and collaborators
+      return {
+        tripId: result.Item.tripID,
+        days: result.Item.days || [],
+        wishlist: result.Item.wishlist || [],
+        tripLength: result.Item.tripLength,
+        selectedCity: result.Item.selectedCity,
+        tripPhotoReference: result.Item.tripPhotoReference,
+        createdAt: result.Item.createdAt,
+        collaborators: result.Item.collaborators || [],
+      };
     }
 
-    console.log('Retrieved trip:', JSON.stringify(result.Item));
+    // If not found as owner, try to find as collaborator
+    console.log('Trip not found as owner, searching as collaborator...');
 
-    // Return the complete trip data including tripPhotoReference and collaborators
-    return {
-      tripId: result.Item.tripID,
-      days: result.Item.days || [],
-      wishlist: result.Item.wishlist || [],
-      tripLength: result.Item.tripLength,
-      selectedCity: result.Item.selectedCity,
-      tripPhotoReference: result.Item.tripPhotoReference,
-      createdAt: result.Item.createdAt,
-      collaborators: result.Item.collaborators || [],
+    const scanParams = {
+      TableName: process.env.STORAGE_TRIPSTORAGE_NAME,
+      FilterExpression: 'tripID = :tripID AND attribute_exists(collaborators)',
+      ExpressionAttributeValues: {
+        ':tripID': tripID
+      }
     };
 
+    console.log('Scanning for trip as collaborator:', JSON.stringify(scanParams));
+    const scanResult = await docClient.send(new ScanCommand(scanParams));
+
+    if (scanResult.Items && scanResult.Items.length > 0) {
+      // Check if the user is actually a collaborator on any of these trips
+      for (const item of scanResult.Items) {
+        if (item.collaborators && Array.isArray(item.collaborators)) {
+          const isCollaborator = item.collaborators.some(c => c.userID === userID);
+          if (isCollaborator) {
+            console.log('Retrieved trip as collaborator:');
+
+            return {
+              tripId: item.tripID,
+              days: item.days || [],
+              wishlist: item.wishlist || [],
+              tripLength: item.tripLength,
+              selectedCity: item.selectedCity,
+              tripPhotoReference: item.tripPhotoReference,
+              createdAt: item.createdAt,
+              collaborators: item.collaborators || [],
+            };
+          }
+        }
+      }
+    }
+
+    // If still not found, throw error
+    throw new Error(`Trip not found for userID: ${userID}, tripID: ${tripID} (checked as owner and collaborator)`);
+
   } catch (error) {
-    console.error('DynamoDB get error:', error);
+    console.error('DynamoDB error:', error);
     throw new Error('Failed to retrieve trip');
   }
 };
