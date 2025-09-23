@@ -1,7 +1,6 @@
 import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import AntDesign from '@expo/vector-icons/AntDesign';
 import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
 import { Auth, API } from 'aws-amplify';
 import { useEffect, useState } from 'react';
@@ -486,33 +485,38 @@ export default function Profile() {
                   </>
                 ) : (
                   <>
-                    <AntDesign name="adduser" size={18} color="black" />
-                    <Text style={styles.menuItemText}>Invite Collaborators</Text>
+                    <Ionicons name="share-outline" size={30} color={Colors.PRIMARY} />
+                    <Text style={styles.menuItemText}>Share Trip</Text>
                   </>
                 )}
               </TouchableOpacity>
 
-              {/* Delete Trip */}
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setMenuVisible(null);
-                  handleDeleteTrip(menuVisible);
-                }}
-                disabled={deletingTripId === menuVisible}
-              >
-                {deletingTripId === menuVisible ? (
-                  <>
-                    <ActivityIndicator size="small" color="#FF4444" />
-                    <Text style={[styles.menuItemText, { color: '#FF4444' }]}>Deleting...</Text>
-                  </>
-                ) : (
-                  <>
-                    <FontAwesome name="trash" size={18} color="#FF4444" />
-                    <Text style={[styles.menuItemText, { color: '#FF4444' }]}>Delete</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+              {/* Delete Trip - only show for owners */}
+              {(() => {
+                const currentTrip = userTrips.find(trip => trip.tripId === menuVisible);
+                return currentTrip?.userRole === 'owner' ? (
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      setMenuVisible(null);
+                      handleDeleteTrip(menuVisible);
+                    }}
+                    disabled={deletingTripId === menuVisible}
+                  >
+                    {deletingTripId === menuVisible ? (
+                      <>
+                        <ActivityIndicator size="small" color="#FF4444" />
+                        <Text style={[styles.menuItemText, { color: '#FF4444' }]}>Deleting...</Text>
+                      </>
+                    ) : (
+                      <>
+                        <FontAwesome name="trash" size={30} color="#FF4444" />
+                        <Text style={[styles.menuItemText, { color: '#FF4444' }]}> Delete Trip</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                ) : null;
+              })()}
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -781,7 +785,7 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     fontFamily: 'outfit-medium',
-    fontSize: 16,
+    fontSize: 20,
     marginLeft: 12,
   },
 });
