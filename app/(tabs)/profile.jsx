@@ -26,6 +26,7 @@ export default function Profile() {
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
   const [selectedTripForSharing, setSelectedTripForSharing] = useState(null);
   const [currentUserID, setCurrentUserID] = useState('');
+  const [isLoadingTripData, setIsLoadingTripData] = useState(false);
 
   const loadUserData = useCallback(async () => {
     try {
@@ -147,18 +148,39 @@ export default function Profile() {
   };
 
   // Handle invite collaborators button press
-  const handleInviteCollaborators = (tripId) => {
-    const trip = userTrips.find(t => t.tripId === tripId);
-    if (trip) {
-      setSelectedTripForSharing(trip);
-      setIsShareModalVisible(true);
-      setMenuVisible(null); // Close the menu
+  const handleInviteCollaborators = async (tripId) => {
+    try {
+      setIsLoadingTripData(true);
+      setMenuVisible(null); // Close the menu immediately
+
+      const user = await Auth.currentAuthenticatedUser();
+      const userID = user.attributes?.sub || user.username;
+
+      // Fetch full trip data including collaborators
+      const fullTripData = await retrieveTripFromCloud(userID, tripId);
+
+      if (fullTripData) {
+        setSelectedTripForSharing(fullTripData);
+        setIsShareModalVisible(true);
+      } else {
+        Alert.alert('Error', 'Failed to load trip data. Please try again.');
+      }
+    } catch (error) {
+      console.error('[Profile] Error loading trip for sharing:', error);
+      Alert.alert('Error', 'Failed to load trip data. Please try again.');
+    } finally {
+      setIsLoadingTripData(false);
     }
   };
 
   // Handle collaborators update
   const handleCollaboratorsUpdate = (updatedCollaborators) => {
-    // Update the trip in the userTrips state
+    // Update the selectedTripForSharing to reflect changes in the modal
+    setSelectedTripForSharing(prevTrip =>
+      prevTrip ? { ...prevTrip, collaborators: updatedCollaborators } : null
+    );
+
+    // Update the trip in the userTrips state (for future reference, though userTrips summaries don't show collaborators)
     setUserTrips(prevTrips =>
       prevTrips.map(trip =>
         trip.tripId === selectedTripForSharing?.tripId
@@ -370,9 +392,19 @@ export default function Profile() {
                 onPress={() => {
                   handleInviteCollaborators(menuVisible);
                 }}
+                disabled={isLoadingTripData}
               >
-                <AntDesign name="adduser" size={18} color="black" />
-                <Text style={styles.menuItemText}>Invite Collaborators</Text>
+                {isLoadingTripData ? (
+                  <>
+                    <ActivityIndicator size="small" color="black" />
+                    <Text style={styles.menuItemText}>Loading...</Text>
+                  </>
+                ) : (
+                  <>
+                    <AntDesign name="adduser" size={18} color="black" />
+                    <Text style={styles.menuItemText}>Invite Collaborators</Text>
+                  </>
+                )}
               </TouchableOpacity>
 
               {/* Delete Trip */}
