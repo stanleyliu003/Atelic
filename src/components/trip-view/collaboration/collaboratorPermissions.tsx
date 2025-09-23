@@ -35,16 +35,31 @@ export const CollaboratorListItem: React.FC<CollaboratorListItemProps> = ({
   isCurrentUser
 }) => {
   const canManageCollaborator = () => {
-    // Only owners can manage collaborators
+    // Owners can manage editors and viewers
+    // Editors can manage viewers only
     // Can't manage yourself or other owners
-    return currentUserRole === 'owner' &&
-           !isCurrentUser &&
-           collaborator.role !== 'owner';
+    if (isCurrentUser || collaborator.role === 'owner') {
+      return false;
+    }
+
+    if (currentUserRole === 'owner') {
+      return collaborator.role === 'editor' || collaborator.role === 'viewer';
+    }
+
+    if (currentUserRole === 'editor') {
+      return collaborator.role === 'viewer';
+    }
+
+    return false;
   };
 
   const getAvailableRoles = (): CollaboratorRole[] => {
     if (currentUserRole === 'owner') {
       return ['editor', 'viewer'];
+    } else if (currentUserRole === 'editor') {
+      // Editors can only change viewers (but only to viewer, so no actual role changes)
+      // However, they can remove viewers, so we still need to show the menu
+      return ['viewer'];
     }
     return [];
   };

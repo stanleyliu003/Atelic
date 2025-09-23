@@ -4,7 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { API } from 'aws-amplify';
 import { addCollaborator, removeCollaborator, updateCollaboratorRole } from '../../../graphql/mutations';
 import { UserSearchField } from './UserSearchField';
-import { CollaboratorListItem } from './CollaboratorListItem';
+import { CollaboratorListItem } from './collaboratorPermissions';
 
 interface UserProfile {
   userID: string;
@@ -44,7 +44,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
   onCollaboratorsUpdate
 }) => {
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const [selectedRole, setSelectedRole] = useState<CollaboratorRole>('editor');
+  const [selectedRole, setSelectedRole] = useState<CollaboratorRole>(currentUserRole === 'owner' ? 'editor' : 'viewer');
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [includeMessage, setIncludeMessage] = useState(false);
   const [message, setMessage] = useState('');
@@ -59,7 +59,11 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
   const handleUserSelect = (user: UserProfile) => {
     console.log('[ShareTripModal] User selected for invitation:', user);
     setSelectedUser(user);
-    setSelectedRole('editor'); // Default to editor as requested
+    // Default role based on current user's role:
+    // - Owners default to 'editor'
+    // - Editors default to 'viewer'
+    const defaultRole = currentUserRole === 'owner' ? 'editor' : 'viewer';
+    setSelectedRole(defaultRole);
   };
 
   const handleInviteConfirm = async (user: UserProfile, role: CollaboratorRole) => {
@@ -101,7 +105,9 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
 
   const clearSelectedUser = () => {
     setSelectedUser(null);
-    setSelectedRole('editor');
+    // Reset to default role based on current user's role
+    const defaultRole = currentUserRole === 'owner' ? 'editor' : 'viewer';
+    setSelectedRole(defaultRole);
     setIncludeMessage(false);
     setMessage('');
   };
@@ -110,7 +116,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
     if (currentUserRole === 'owner') {
       return ['editor', 'viewer'];
     } else if (currentUserRole === 'editor') {
-      return ['viewer'];
+      return ['viewer']; // Editors can only invite viewers
     }
     return [];
   };
