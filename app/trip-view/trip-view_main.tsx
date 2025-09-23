@@ -1040,16 +1040,6 @@ export default function TripViewMain() {
             >
                 <Entypo name="home" size={30} color={Colors.PRIMARY} />
             </TouchableOpacity>
-
-            {/* Share Button - Only show for owners */}
-            {isOwner() && tripId && (
-                <TouchableOpacity
-                    style={styles.shareButton}
-                    onPress={handleShareTrip}
-                >
-                    <Ionicons name="share-outline" size={40} color={Colors.PRIMARY} />
-                </TouchableOpacity>
-            )}
         </>
     );
 }

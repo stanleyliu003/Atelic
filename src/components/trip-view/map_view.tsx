@@ -3,7 +3,8 @@ import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import MapView, { Marker, Polyline, Region } from 'react-native-maps';
 import { getMarkerColor } from '../../constants/mapColors';
 import { Activity, TabType } from '../../types/activity.types';
-import AntDesign from '@expo/vector-icons/AntDesign';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Colors } from '../../../constants/Colors';
 
 interface MapViewProps {
   activities: Activity[];
@@ -222,7 +223,7 @@ export function TripMapView({
         onPress={handleInviteCollaborators}
         activeOpacity={0.7}
       >
-        <AntDesign name="adduser" size={30} color="black" />
+        <Ionicons name="share-outline" size={30} color={Colors.PRIMARY} />
       </TouchableOpacity>
     </View>
   );
