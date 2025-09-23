@@ -13,9 +13,10 @@ interface TabBarProps {
   onDeleteDay: () => void;
   shouldScrollToActive?: boolean;
   tabLabels?: TabType[];
+  currentUserRole?: 'owner' | 'editor' | 'viewer';
 }
 
-export function TabBar({ activeTab, onTabChange, dayCount, onAddDay, onDeleteDay, shouldScrollToActive = false, tabLabels }: TabBarProps) {
+export function TabBar({ activeTab, onTabChange, dayCount, onAddDay, onDeleteDay, shouldScrollToActive = false, tabLabels, currentUserRole }: TabBarProps) {
   const scrollViewRef = useRef<ScrollView>(null);
   
   // Generate tab order: use tabLabels if provided, otherwise default
@@ -62,8 +63,8 @@ export function TabBar({ activeTab, onTabChange, dayCount, onAddDay, onDeleteDay
         ))}
       </ScrollView>
       
-      {/* Delete Day Button - Only show when activeTab is a day */}
-      {activeTab.startsWith('day') && (
+      {/* Delete Day Button - Only show when activeTab is a day and user is not a viewer */}
+      {activeTab.startsWith('day') && currentUserRole !== 'viewer' && (
         <TouchableOpacity
           style={styles.deleteDayButton}
           onPress={onDeleteDay}
@@ -72,13 +73,15 @@ export function TabBar({ activeTab, onTabChange, dayCount, onAddDay, onDeleteDay
         </TouchableOpacity>
       )}
       
-      {/* Add Day Button - Fixed position */}
-      <TouchableOpacity
-        style={styles.addDayButton}
-        onPress={onAddDay}
-      >
-        <Ionicons name="add" size={20} color={Colors.PRIMARY} />
-      </TouchableOpacity>
+      {/* Add Day Button - Fixed position - hide for viewers */}
+      {currentUserRole !== 'viewer' && (
+        <TouchableOpacity
+          style={styles.addDayButton}
+          onPress={onAddDay}
+        >
+          <Ionicons name="add" size={20} color={Colors.PRIMARY} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

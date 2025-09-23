@@ -11,6 +11,7 @@ interface TransferButtonContainerProps {
   selectedActivities: string[];
   onTransferPress: () => void;
   onDeletePress: () => void; // New prop for delete functionality
+  currentUserRole?: 'owner' | 'editor' | 'viewer';
 }
 
 export const TransferButtonContainer: React.FC<TransferButtonContainerProps> = ({
@@ -19,8 +20,9 @@ export const TransferButtonContainer: React.FC<TransferButtonContainerProps> = (
   selectedActivities,
   onTransferPress,
   onDeletePress,
+  currentUserRole,
 }) => {
-  if (!isSelectionMode || selectedActivities.length === 0) return null;
+  if (!isSelectionMode || selectedActivities.length === 0 || currentUserRole === 'viewer') return null;
 
   let buttonText = '';
   if (activeTab === 'wishlist') {

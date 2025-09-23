@@ -812,6 +812,7 @@ export default function TripViewMain() {
                         onDeleteDay={handleDeleteDay}
                         shouldScrollToActive={shouldScrollToActive}
                         tabLabels={tabLabels}
+                        currentUserRole={currentUserRole}
                     />
                 )}
 
@@ -844,14 +845,17 @@ export default function TripViewMain() {
                                             {selectedCity && (
                                                 <Text style={styles.cityTitle}>{selectedCity}</Text>
                                             )}
-                                            <View style={{ marginTop: 10, alignItems: 'center', padding: 20 }}>
-                                                <AddPlacesButton
-                                                    onPress={() => setIsAddPlacesModalVisible(true)}
-                                                    isAddingPlace={isAddingPlace}
-                                                    style={{ marginTop: 10, borderColor: Colors.GRAY }}
-                                                    showLoadingIndicator={false}
-                                                />
-                                            </View>
+                                            {/* Add places button when no wishlist activities - hide for viewers */}
+                                            {currentUserRole !== 'viewer' && (
+                                                <View style={{ marginTop: 10, alignItems: 'center', padding: 20 }}>
+                                                    <AddPlacesButton
+                                                        onPress={() => setIsAddPlacesModalVisible(true)}
+                                                        isAddingPlace={isAddingPlace}
+                                                        style={{ marginTop: 10, borderColor: Colors.GRAY }}
+                                                        showLoadingIndicator={false}
+                                                    />
+                                                </View>
+                                            )}
                                         </View>
                                     ) : (
                                         <>
@@ -861,20 +865,22 @@ export default function TripViewMain() {
                                                     <WishlistActivities 
                                                         activities={cityActivities}
                                                         selectedActivities={selectedActivities}
-                                                        onActivitySelect={toggleActivitySelection}
-                                                        onActivityDeselect={toggleActivitySelection}
+                                                        onActivitySelect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
+                                                        onActivityDeselect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
                                                         onDescriptionCardPress={handleActivityDescriptionCardSelect}
-                                                        showSelectionIndicator={isSelectionMode}
+                                                        showSelectionIndicator={isSelectionMode && currentUserRole !== 'viewer'}
                                                     />
                                                 </View>
                                             ))}
                                             
-                                            {/* Add additional places button */}
-                                            <AddPlacesButton
-                                                onPress={() => setIsAddPlacesModalVisible(true)}
-                                                isAddingPlace={isAddingPlace}
-                                                style={defaultAddPlacesButtonStyle}
-                                            />
+                                            {/* Add additional places button - hide for viewers */}
+                                            {currentUserRole !== 'viewer' && (
+                                                <AddPlacesButton
+                                                    onPress={() => setIsAddPlacesModalVisible(true)}
+                                                    isAddingPlace={isAddingPlace}
+                                                    style={defaultAddPlacesButtonStyle}
+                                                />
+                                            )}
                                         </>
                                     )}
                                 </ScrollView>
@@ -888,14 +894,14 @@ export default function TripViewMain() {
                                     dayNumber={currentDayNumber}
                                     activities={getActivitiesForTab(activeTab)}
                                     selectedActivities={selectedActivities}
-                                    onActivitySelect={toggleActivitySelection}
-                                    onActivityDeselect={toggleActivitySelection}
+                                    onActivitySelect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
+                                    onActivityDeselect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
                                     onDescriptionCardPress={handleActivityDescriptionCardSelect}
                                     onTransferToWishlist={handleTransferToWishlist}
-                                    onOptimizeRoute={handleOptimizeRoute}
-                                    showSelectionIndicator={isSelectionMode}
+                                    onOptimizeRoute={currentUserRole !== 'viewer' ? handleOptimizeRoute : undefined}
+                                    showSelectionIndicator={isSelectionMode && currentUserRole !== 'viewer'}
                                     routeLegs={routeData.legs}
-                                    onAddPlace={() => setIsAddPlacesModalVisible(true)}
+                                    onAddPlace={currentUserRole !== 'viewer' ? () => setIsAddPlacesModalVisible(true) : undefined}
                                     isAddingPlace={isAddingPlace}
                                     scrollPosition={dayScrollPositions[currentDayNumber] || 0}
                                     onScrollPositionChange={(position) => handleScrollPositionChange(currentDayNumber, position)}
@@ -915,6 +921,7 @@ export default function TripViewMain() {
                 selectedActivities={selectedActivities}
                 onTransferPress={handleOpenTransferModal}
                 onDeletePress={handleDeleteActivities}
+                currentUserRole={currentUserRole}
                 />
 
                 {/* Transfer Modal */}
