@@ -293,8 +293,9 @@ export default function Profile() {
             <ActivityIndicator size="large" color={Colors.PRIMARY} />
             <Text style={styles.loadingText}>Loading trips...</Text>
           </View>
-        ) : ownedTrips.length > 0 ? (
+        ) : (ownedTrips.length > 0 || sharedTrips.length > 0) ? (
           <ScrollView style={styles.tripsScrollView} showsVerticalScrollIndicator={true}>
+            {/* Owned Trips */}
             {ownedTrips.map((trip) => (
               <View
                 key={trip.tripId}
@@ -357,21 +358,13 @@ export default function Profile() {
                 </TouchableOpacity>
               </View>
             ))}
-          </ScrollView>
-        ) : (
-          <View style={styles.noTripsContainer}>
-            <FontAwesome name="suitcase" size={50} color={Colors.GRAY} />
-            <Text style={styles.noTripsText}>No trips found</Text>
-            <Text style={styles.noTripsSubtext}>Create your first trip to get started!</Text>
-          </View>
-        )}
-      </View>
 
-      {/* Shared With Me Section */}
+            {/* Shared With Me Section Header */}
       {sharedTrips.length > 0 && (
-        <View style={styles.myTripsSection}>
-          <Text style={styles.sectionTitle}>Shared With Me</Text>
-          <ScrollView style={styles.tripsScrollView} showsVerticalScrollIndicator={true}>
+              <Text style={styles.sharedTripsSectionTitle}>Shared With Me</Text>
+            )}
+
+            {/* Shared Trips */}
             {sharedTrips.map((trip) => (
               <View
                 key={trip.tripId}
@@ -414,9 +407,6 @@ export default function Profile() {
                       <Text style={styles.tripCardLength}>
                         {trip.tripLength != null ? `${trip.tripLength} day trip` : 'Unknown length'}
                       </Text>
-                      <Text style={styles.userRoleText}>
-                        Role: {trip.userRole === 'editor' ? 'Editor' : 'Viewer'}
-                      </Text>
                     </View>
                     {selectedTripId === trip.tripId && isLoadingTrip && (
                       <ActivityIndicator size="small" color={Colors.PRIMARY} />
@@ -440,8 +430,15 @@ export default function Profile() {
               </View>
             ))}
           </ScrollView>
+        ) : (
+          <View style={styles.noTripsContainer}>
+            <FontAwesome name="suitcase" size={50} color={Colors.GRAY} />
+            <Text style={styles.noTripsText}>No trips found</Text>
+            <Text style={styles.noTripsSubtext}>Create your first trip to get started!</Text>
         </View>
       )}
+      </View>
+
 
       {/* Menu Modal */}
       <Modal
@@ -588,6 +585,13 @@ const styles = StyleSheet.create({
     color: Colors.PRIMARY,
     marginBottom: 20,
   },
+  sharedTripsSectionTitle: {
+    fontFamily: 'outfit-bold',
+    fontSize: 28,
+    color: Colors.PRIMARY,
+    marginBottom: 20,
+    marginTop: 30,
+  },
   errorContainer: {
     backgroundColor: '#ffebee',
     padding: 15,
@@ -686,11 +690,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.GRAY,
   },
-  userRoleText: {
-    fontFamily: 'outfit-medium',
-    fontSize: 12,
-    color: Colors.PRIMARY,
-    marginTop: 2,
+  sharedTripsSpacer: {
+    marginTop: 20,
   },
   noTripsContainer: {
     alignItems: 'center',
