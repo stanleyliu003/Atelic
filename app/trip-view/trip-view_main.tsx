@@ -781,7 +781,13 @@ export default function TripViewMain() {
                 selectedActivities={selectedActivities}
                 onMarkerPress={handleActivityDescriptionCardSelect}
                 selectedMarker={selectedMarker}
-                onShareTrip={() => setIsShareModalVisible(true)}
+                onShareTrip={async () => {
+                    if (!tripId) {
+                        // Save trip first if it doesn't exist
+                        await saveTrip();
+                    }
+                    setIsShareModalVisible(true);
+                }}
             />
             
             <View style={styles.container}>
@@ -961,11 +967,11 @@ export default function TripViewMain() {
             </View>
 
             {/* Share Trip Modal */}
-            {tripId && currentUserID && (
+            {currentUserID && (
                 <ShareTripModal
-                    visible={isShareModalVisible}
+                    visible={isShareModalVisible && !!tripId}
                     onClose={() => setIsShareModalVisible(false)}
-                    tripId={tripId}
+                    tripId={tripId || ''}
                     collaborators={collaborators || []}
                     currentUserRole={currentUserRole || 'owner'}
                     currentUserID={currentUserID}
