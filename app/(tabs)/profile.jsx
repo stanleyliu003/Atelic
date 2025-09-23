@@ -269,7 +269,9 @@ export default function Profile() {
 
       {/* My Trips Section */}
       <View style={styles.myTripsSection}>
-        <Text style={styles.sectionTitle}>My Trips</Text>
+        {ownedTrips.length > 0 && (
+          <Text style={styles.sectionTitle}>My Trips</Text>
+        )}
 
         {tripsError && (
           <View style={styles.errorContainer}>
@@ -297,7 +299,7 @@ export default function Profile() {
             {/* Owned Trips */}
             {ownedTrips.map((trip) => (
               <View
-                key={trip.tripId}
+                key={`owned-${trip.tripId}`}
                 style={[
                   styles.tripCard,
                   selectedTripId === trip.tripId && isLoadingTrip && styles.tripCardLoading
@@ -366,7 +368,7 @@ export default function Profile() {
             {/* Shared Trips */}
             {sharedTrips.map((trip) => (
               <View
-                key={trip.tripId}
+                key={`shared-${trip.tripId}`}
                 style={[
                   styles.tripCard,
                   selectedTripId === trip.tripId && isLoadingTrip && styles.tripCardLoading

@@ -627,36 +627,47 @@ export default function TripViewMain() {
         console.log('[trip-view_main] Saving trip with data:', tripData);
 
         try {
-            // Get current user ID for the trip data
-            let userID;
-            let userEmail;
-            let userName;
+            // Get current user information
+            let currentUserID;
+            let currentUserEmail;
+            let currentUserName;
             try {
                 const currentUser = await Auth.currentAuthenticatedUser();
-                userID = currentUser.attributes?.sub || currentUser.username;
-                userEmail = currentUser.attributes?.email || '';
-                userName = currentUser.attributes?.name || '';
-                console.log('[trip-view_main] Using userID:', userID);
+                currentUserID = currentUser.attributes?.sub || currentUser.username;
+                currentUserEmail = currentUser.attributes?.email || '';
+                currentUserName = currentUser.attributes?.name || '';
+                console.log('[trip-view_main] Current user ID:', currentUserID);
             } catch (authError) {
                 console.error('[trip-view_main] Auth check failed:', authError);
                 Alert.alert('Authentication Error', 'Please sign in to save your trip');
                 return;
             }
 
-            // Handle collaborators based on whether this is a new or existing trip
+            // Handle collaborators and determine the owner's userID
             let collaboratorsToSave;
+            let ownerUserID; // This will be used as the partition key in DynamoDB
 
             if (!createdAt || !tripId) {
                 // NEW TRIP: Current user becomes owner
+                ownerUserID = currentUserID;
                 collaboratorsToSave = [{
-                    email: userEmail,
-                    fullName: userName,
-                    userID: userID,
+                    email: currentUserEmail,
+                    fullName: currentUserName,
+                    userID: currentUserID,
                     role: 'owner',
-                    addedBy: userName
+                    addedBy: currentUserName
                 }];
             } else {
-                // EXISTING TRIP WITH COLLABORATORS: Use existing collaborators (sanitized)
+                // EXISTING TRIP WITH COLLABORATORS: Find the owner's userID
+                const owner = collaborators.find(c => c.role === 'owner');
+                if (!owner) {
+                    console.error('[trip-view_main] No owner found in collaborators');
+                    Alert.alert('Error', 'Trip owner information is missing. Cannot save trip.');
+                    return;
+                }
+                ownerUserID = owner.userID; // Always use owner's userID as partition key
+                
+                // Use existing collaborators (sanitized)
                 collaboratorsToSave = collaborators.map(collaborator => ({
                     email: collaborator.email,
                     fullName: collaborator.fullName,
@@ -666,10 +677,11 @@ export default function TripViewMain() {
                 }));
             }
 
-            // Add userID and collaborators to trip data
+            // Add OWNER's userID and collaborators to trip data
+            // This ensures we always use the owner's userID as the partition key in DynamoDB
             const tripDataWithUser = {
                 ...tripData,
-                userID: userID,
+                userID: ownerUserID, // Always use owner's userID, not current user's userID
                 collaborators: collaboratorsToSave
             };
 
