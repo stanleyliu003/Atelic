@@ -371,21 +371,22 @@ const styles = StyleSheet.create({
     paddingTop: 50, // Account for status bar
   },
   closeButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  closeButtonText: {
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '600',
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E5E7EB',
+    borderRadius: 20,
+    zIndex: 2000,
+    elevation: 4,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#333333',
-  },
-  headerSpacer: {
-    width: 50, // Match close button width for centering
   },
   content: {
     flex: 1,
