@@ -155,22 +155,6 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
-    "OptimizeRoute": {
-      "build": true,
-      "dependsOn": [
-        {
-          "attributes": [
-            "GraphQLAPIIdOutput",
-            "GraphQLAPIEndpointOutput",
-            "GraphQLAPIKeyOutput"
-          ],
-          "category": "api",
-          "resourceName": "WishListAPI"
-        }
-      ],
-      "providerPlugin": "awscloudformation",
-      "service": "Lambda"
-    },
     "deleteTrip": {
       "build": true,
       "dependsOn": [
@@ -246,22 +230,6 @@
           ],
           "category": "storage",
           "resourceName": "TripStorage"
-        }
-      ],
-      "providerPlugin": "awscloudformation",
-      "service": "Lambda"
-    },
-    "regionImage": {
-      "build": true,
-      "dependsOn": [
-        {
-          "attributes": [
-            "Name",
-            "Arn",
-            "StreamArn"
-          ],
-          "category": "storage",
-          "resourceName": "regionImageStorage"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -387,30 +355,6 @@
         }
       ]
     },
-    "AMPLIFY_function_OptimizeRoute_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "OptimizeRoute"
-        }
-      ]
-    },
-    "AMPLIFY_function_OptimizeRoute_googleRoutesApiKey": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "OptimizeRoute"
-        }
-      ]
-    },
-    "AMPLIFY_function_OptimizeRoute_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "OptimizeRoute"
-        }
-      ]
-    },
     "AMPLIFY_function_deleteTrip_deploymentBucketName": {
       "usedBy": [
         {
@@ -496,30 +440,6 @@
         {
           "category": "function",
           "resourceName": "manageCollaborators"
-        }
-      ]
-    },
-    "AMPLIFY_function_regionImage_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "regionImage"
-        }
-      ]
-    },
-    "AMPLIFY_function_regionImage_googlePlacesApiKey": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "regionImage"
-        }
-      ]
-    },
-    "AMPLIFY_function_regionImage_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "regionImage"
         }
       ]
     },

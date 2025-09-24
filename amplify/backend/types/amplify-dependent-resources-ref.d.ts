@@ -42,13 +42,6 @@ export type AmplifyDependentResourcesAttributes = {
       "Name": "string",
       "Region": "string"
     },
-    "OptimizeRoute": {
-      "Arn": "string",
-      "LambdaExecutionRole": "string",
-      "LambdaExecutionRoleArn": "string",
-      "Name": "string",
-      "Region": "string"
-    },
     "deleteTrip": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
@@ -78,13 +71,6 @@ export type AmplifyDependentResourcesAttributes = {
       "Region": "string"
     },
     "manageCollaborators": {
-      "Arn": "string",
-      "LambdaExecutionRole": "string",
-      "LambdaExecutionRoleArn": "string",
-      "Name": "string",
-      "Region": "string"
-    },
-    "regionImage": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",

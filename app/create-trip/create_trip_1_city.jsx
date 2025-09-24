@@ -128,7 +128,7 @@ export default function create_trip_1_city() {
         if (!selectedCity || !tripLength) {
             return;
         }
-        router.push('/create-trip/create_trip_3_categories');
+        router.push('/create-trip/create_trip_interactive');
     };
 
     const dayOptions = Array.from({ length: 14 }, (_, i) => i + 1);
