@@ -124,6 +124,42 @@ export const addAdditionalPlace = /* GraphQL */ `
     }
   }
 `;
+export const generateCategoryActivities = /* GraphQL */ `
+  query GenerateCategoryActivities(
+    $selectedCity: String!
+    $category: String!
+    $existingCategoryActivities: [String!]
+  ) {
+    generateCategoryActivities(
+      selectedCity: $selectedCity
+      category: $category
+      existingCategoryActivities: $existingCategoryActivities
+    ) {
+      activities {
+        name
+        city
+        lat
+        lng
+        rating
+        user_ratings_total
+        formatted_address
+        types
+        primaryType
+        place_id
+        photo_reference
+        is_recommended
+        display_name
+        website_uri
+        editorial_summary
+        primary_type_display_name
+        international_phone_number
+        __typename
+      }
+      category
+      __typename
+    }
+  }
+`;
 export const getTripIDs = /* GraphQL */ `
   query GetTripIDs($userID: String!) {
     getTripIDs(userID: $userID) {
