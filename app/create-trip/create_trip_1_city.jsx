@@ -2,9 +2,10 @@ import 'react-native-get-random-values';
 import { Colors } from '../../constants/Colors';
 import { API_KEYS } from '../../constants/ApiKeys';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { API } from 'aws-amplify';
@@ -14,16 +15,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function create_trip_1_city() {
     const router = useRouter();
     const navigation = useNavigation();
-    const { 
-        setIsCreatingTrip, 
-        selectedCity, 
-        setSelectedCity, 
+    const {
+        setIsCreatingTrip,
+        selectedCity,
+        setSelectedCity,
         clearTripCreationCache,
         cityCategories,
         setCityCategories,
+        tripLength,
+        setTripLength,
         CACHE_KEYS
     } = useCreateTrip();
     const googlePlacesRef = useRef(null);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     // Note: CACHE_KEYS now comes from context
 
@@ -121,11 +125,13 @@ export default function create_trip_1_city() {
     };
 
     const handleNext = () => {
-        if (!selectedCity) {
+        if (!selectedCity || !tripLength) {
             return;
         }
-        router.push('/create-trip/create_trip_2_length');
+        router.push('/create-trip/create_trip_3_categories');
     };
+
+    const dayOptions = Array.from({ length: 14 }, (_, i) => i + 1);
 
     return (
         <KeyboardAvoidingView
@@ -144,28 +150,18 @@ export default function create_trip_1_city() {
                     <TouchableOpacity onPress={() => router.replace('(tabs)/create_new_trip')} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={32} color="black" />
                     </TouchableOpacity>
-                    <Text style={styles.titleText}>Plan Your Trip</Text>
-                </View>
-
-                {/* Progress Bar */}
-                <View style={styles.progressSection}>
-                    <View style={styles.progressTrack}>
-                        <View style={styles.progressFill1}></View>
-                    </View>
-                                            <Text style={styles.progressLabel}>Step 1 of 4</Text>
                 </View>
 
                 {/* Destination Prompt */}
                 <View style={styles.promptSection}>                    
                     <Text style={styles.promptTitle}>Where do you want to go?</Text>
-                    <Text style={styles.promptSubtitle}>Select your destination</Text>
                 </View>
 
                 {/* Enter City */}
-                <View style={{
-                    marginTop: 15
-                }}>
-                    
+                <View style={styles.searchContainer}>
+                    <View style={styles.searchIconInsideContainer}>
+                        <Feather name="search" size={24} color="black" />
+                    </View>
                     <GooglePlacesAutocomplete
                         ref={googlePlacesRef}
                         placeholder='Ex: Boston, MA, USA'
@@ -189,15 +185,21 @@ export default function create_trip_1_city() {
                                 width: '100%',
                             },
                             textInput: {
-                                height: 50,
+                                height: 55,
                                 color: '#1a1a1a',
                                 fontSize: 16,
                                 fontFamily: 'outfit',
-                                borderWidth: 1,
-                                borderRadius: 15,
-                                borderColor: '#1a1a1a',
+                                borderWidth: 0,
+                                borderRadius: 20,
+                                backgroundColor: '#ffffff',
                                 paddingHorizontal: 15,
+                                paddingLeft: 50,
                                 flex: 1,
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 8,
+                                elevation: 4,
                             },
                             listView: {
                                 backgroundColor: 'white',
@@ -227,20 +229,74 @@ export default function create_trip_1_city() {
                     />
                 </View>
 
+                {/* Trip Length Selection - Only show when destination is selected */}
+                {selectedCity && (
+                    <View style={styles.tripLengthSection}>
+                        <View style={styles.promptSection}>
+                            <Text style={styles.promptTitle}>How long is your trip?</Text>
+                        </View>
 
+                        <View style={{
+                            marginTop: -10
+                        }}>
+                            <View style={styles.dropdownContainer}>
+                                <TouchableOpacity
+                                    style={styles.dropdownButton}
+                                    onPress={() => setIsDropdownOpen(!isDropdownOpen)}
+                                >
+                                    <View style={styles.dropdownContent}>
+                                        <MaterialCommunityIcons name="calendar-clock-outline" size={20} color="black" />
+                                        <Text style={[styles.dropdownButtonText, !tripLength && styles.placeholderText]}>
+                                            {tripLength ? `${tripLength} day${tripLength > 1 ? 's' : ''}` : 'Select number of days'}
+                                        </Text>
+                                    </View>
+                                    <Text style={[styles.dropdownArrow, isDropdownOpen && styles.dropdownArrowOpen]}>
+                                        ▼
+                                    </Text>
+                                </TouchableOpacity>
 
-                
+                                {isDropdownOpen && (
+                                    <View style={styles.dropdownList}>
+                                        <ScrollView style={styles.optionsList} nestedScrollEnabled={true}>
+                                            {dayOptions.map(day => (
+                                                <TouchableOpacity
+                                                    key={day}
+                                                    style={[
+                                                        styles.option,
+                                                        tripLength === day && styles.selectedOption
+                                                    ]}
+                                                    onPress={() => {
+                                                        setTripLength(day);
+                                                        setIsDropdownOpen(false);
+                                                    }}
+                                                >
+                                                    <Text style={[
+                                                        styles.optionText,
+                                                        tripLength === day && styles.selectedOptionText
+                                                    ]}>
+                                                        {day} day{day > 1 ? 's' : ''}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
+                                    </View>
+                                )}
+                            </View>
+                        </View>
+                    </View>
+                )}
+
                 {/* Next Button */}
                 <View style={{ position: 'absolute', bottom: 50, left: 25, right: 25 }}>
                     <TouchableOpacity
                         onPress={handleNext}
                         style={{
                             padding: 20,
-                            backgroundColor: selectedCity ? Colors.PRIMARY : Colors.GRAY,
-                            opacity: selectedCity ? 1 : 0.6,
+                            backgroundColor: (selectedCity && tripLength) ? Colors.PRIMARY : Colors.GRAY,
+                            opacity: (selectedCity && tripLength) ? 1 : 0.6,
                             borderRadius: 15,
                         }}
-                        disabled={!selectedCity}
+                        disabled={!selectedCity || !tripLength}
                     >
                         <Text style={{
                             color: Colors.WHITE,
@@ -277,47 +333,112 @@ const styles = StyleSheet.create({
         color: '#1a1a1a',
         flex: 1,
     },
-    progressSection: {
-        padding: 20,
-        backgroundColor: 'white',
-    },
-    progressTrack: {
-        height: 6,
-        backgroundColor: '#e0e0e0',
-        borderRadius: 3,
-        overflow: 'hidden',
-        position: 'relative',
-    },
-    progressFill1: {
-        height: '100%',
-        width: '25%',
-        backgroundColor: '#333',
-        borderRadius: 3,
-    },
     promptSection: {
         paddingHorizontal: 20,
         paddingVertical: 25,
-        alignItems: 'center',
+        alignItems: 'left',
       },
       promptTitle: {
         fontFamily: 'outfit-bold',
         fontSize: 24,
         color: '#1a1a1a',
-        textAlign: 'center',
+        textAlign: 'left',
+        marginLeft: -20,
         marginBottom: 8,
       },
-      promptSubtitle: {
+    tripLengthSection: {
+        marginTop: 20,
+    },
+    dropdownContainer: {
+        position: 'relative',
+        zIndex: 1000,
+    },
+    dropdownButton: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 15,
+        borderWidth: 0,
+        borderRadius: 20,
+        backgroundColor: 'white',
+        height: 55,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    dropdownButtonText: {
         fontFamily: 'outfit',
         fontSize: 16,
+        color: '#1a1a1a',
+    },
+    dropdownArrow: {
+        fontFamily: 'outfit',
+        fontSize: 12,
         color: '#666',
+        transform: [{ rotate: '0deg' }],
+    },
+    dropdownArrowOpen: {
+        transform: [{ rotate: '180deg' }],
+    },
+    dropdownList: {
+        position: 'absolute',
+        top: 65,
+        left: 0,
+        right: 0,
+        backgroundColor: 'white',
+        borderWidth: 0,
+        borderRadius: 20,
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        zIndex: 1001,
+    },
+    optionsList: {
+        maxHeight: 200,
+    },
+    option: {
+        padding: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    selectedOption: {
+        backgroundColor: Colors.PRIMARY + '20',
+    },
+    optionText: {
+        fontFamily: 'outfit',
+        fontSize: 16,
+        color: '#1a1a1a',
         textAlign: 'center',
-      },
-    progressLabel: {
-        marginTop: 10,
-        fontSize: 13,
-        color: '#666',
-        fontWeight: '500',
-        fontFamily: 'outfit-medium',
+    },
+    selectedOptionText: {
+        fontFamily: 'outfit-bold',
+        color: Colors.PRIMARY,
+    },
+    searchContainer: {
+        position: 'relative',
+        marginTop: -15,
+    },
+    searchIconInsideContainer: {
+        position: 'absolute',
+        left: 15,
+        top: 15,
+        zIndex: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: 24,
+        width: 24,
+    },
+    dropdownContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    placeholderText: {
+        color: '#999999',
     },
 
 })
