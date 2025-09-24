@@ -192,7 +192,7 @@ export const CollaboratorListItem: React.FC<CollaboratorListItemProps> = ({
             </Text>
           </View>
           <Text style={styles.userEmail}>{collaborator.email}</Text>
-          {/* {collaborator.addedBy && collaborator.addedBy !== 'Self' && (
+          {/* Commented out for now to hide the added by text. Backlog item to do {collaborator.addedBy && collaborator.addedBy !== 'Self' && (
             <Text style={styles.addedByText}>Added by {collaborator.addedBy}</Text>
           )} */}
         </View>

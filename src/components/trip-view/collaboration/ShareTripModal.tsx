@@ -330,16 +330,22 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
               </Text>
 
               <View style={styles.collaboratorsList}>
-                {collaborators.map((collaborator) => (
-                  <CollaboratorListItem
-                    key={collaborator.email}
-                    collaborator={collaborator}
-                    currentUserRole={currentUserRole}
-                    onRoleChange={handleRoleChange}
-                    onRemove={handleRemoveCollaborator}
-                    isCurrentUser={collaborator.userID === currentUserID}
-                  />
-                ))}
+                {collaborators
+                  .sort((a, b) => {
+                    // Define role priority: owner = 0, editor = 1, viewer = 2
+                    const roleOrder = { owner: 0, editor: 1, viewer: 2 };
+                    return roleOrder[a.role] - roleOrder[b.role];
+                  })
+                  .map((collaborator) => (
+                    <CollaboratorListItem
+                      key={collaborator.email}
+                      collaborator={collaborator}
+                      currentUserRole={currentUserRole}
+                      onRoleChange={handleRoleChange}
+                      onRemove={handleRemoveCollaborator}
+                      isCurrentUser={collaborator.userID === currentUserID}
+                    />
+                  ))}
               </View>
             </View>
 
