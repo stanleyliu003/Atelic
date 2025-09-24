@@ -4,12 +4,11 @@ import { API_KEYS } from '../../constants/ApiKeys';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { API } from 'aws-amplify';
-import { getRegionImage, getCityCategories } from '../../src/graphql/queries';
-import { ActivityImage } from '../../src/components/trip-view/activity/activity_image';
+import { getCityCategories } from '../../src/graphql/queries';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function create_trip_1_city() {
@@ -24,8 +23,6 @@ export default function create_trip_1_city() {
         setCityCategories,
         CACHE_KEYS
     } = useCreateTrip();
-    const [cityPhotoRef, setCityPhotoRef] = useState(null);
-    const [isLoadingPhoto, setIsLoadingPhoto] = useState(false);
     const googlePlacesRef = useRef(null);
 
     // Note: CACHE_KEYS now comes from context
@@ -34,9 +31,8 @@ export default function create_trip_1_city() {
     const loadCachedValues = async () => {
         try {
             const cachedCity = await AsyncStorage.getItem(CACHE_KEYS.SELECTED_CITY);
-            const cachedPhotoRef = await AsyncStorage.getItem(CACHE_KEYS.CITY_PHOTO_REF);
             const cachedCategories = await AsyncStorage.getItem(CACHE_KEYS.CITY_CATEGORIES);
-            
+
             if (cachedCity) {
                 setSelectedCity(cachedCity);
                 // Set GooglePlacesAutocomplete text directly when loading from cache
@@ -46,11 +42,7 @@ export default function create_trip_1_city() {
                     }
                 }, 300); // Slightly longer delay to ensure component is ready
             }
-            
-            if (cachedPhotoRef) {
-                setCityPhotoRef(cachedPhotoRef);
-            }
-            
+
             if (cachedCategories) {
                 setCityCategories(JSON.parse(cachedCategories));
             }
@@ -59,14 +51,11 @@ export default function create_trip_1_city() {
         }
     };
 
-    // Save city, photo reference, and categories to cache
-    const saveCityToCache = async (city, photoRef, categories) => {
+    // Save city and categories to cache
+    const saveCityToCache = async (city, categories) => {
         try {
             if (city) {
                 await AsyncStorage.setItem(CACHE_KEYS.SELECTED_CITY, city);
-            }
-            if (photoRef) {
-                await AsyncStorage.setItem(CACHE_KEYS.CITY_PHOTO_REF, photoRef);
             }
             if (categories) {
                 await AsyncStorage.setItem(CACHE_KEYS.CITY_CATEGORIES, JSON.stringify(categories));
@@ -79,7 +68,7 @@ export default function create_trip_1_city() {
     // Clear cache (useful when trip is completed or user wants to start fresh)
     const clearCache = async () => {
         try {
-            await AsyncStorage.multiRemove([CACHE_KEYS.SELECTED_CITY, CACHE_KEYS.CITY_PHOTO_REF, CACHE_KEYS.CITY_CATEGORIES]);
+            await AsyncStorage.multiRemove([CACHE_KEYS.SELECTED_CITY, CACHE_KEYS.CITY_CATEGORIES]);
         } catch (error) {
             console.error('Error clearing cache:', error);
         }
@@ -102,40 +91,13 @@ export default function create_trip_1_city() {
         };
     }, [])
 
-    // Clear photo reference and categories when selectedCity is cleared, but don't interfere with user input
+    // Clear categories when selectedCity is cleared, but don't interfere with user input
     useEffect(() => {
         if (!selectedCity) {
-            setCityPhotoRef(null);
             setCityCategories(null);
-            setIsLoadingPhoto(false);
         }
     }, [selectedCity, setCityCategories])
 
-    // Fetch city photo independently - this should be fast
-    const fetchCityPhoto = async (cityName) => {
-        try {
-            setIsLoadingPhoto(true);
-            
-            const imageResult = await API.graphql({
-                query: getRegionImage,
-                variables: { selectedCity: cityName }
-            });
-            
-            const photoRef = imageResult.data.getRegionImage.photo_reference;
-            setCityPhotoRef(photoRef);
-            
-            // Save photo to cache immediately
-            await saveCityToCache(cityName, photoRef, null);
-            
-        } catch (error) {
-            console.error('Error fetching city photo:', error);
-            setCityPhotoRef(null);
-            // Still save the city name even if photo fetch fails
-            await saveCityToCache(cityName, null, null);
-        } finally {
-            setIsLoadingPhoto(false);
-        }
-    };
 
     // Fetch city categories independently - this can be slow due to Gemini
     const fetchCityCategories = async (cityName) => {
@@ -148,10 +110,9 @@ export default function create_trip_1_city() {
             const categories = categoriesResult.data.getCityCategories.categories;
             setCityCategories(categories);
             
-            // Update cache with categories (preserving existing photo)
+            // Update cache with categories
             const existingCity = await AsyncStorage.getItem(CACHE_KEYS.SELECTED_CITY);
-            const existingPhoto = await AsyncStorage.getItem(CACHE_KEYS.CITY_PHOTO_REF);
-            await saveCityToCache(existingCity || cityName, existingPhoto, categories);
+            await saveCityToCache(existingCity || cityName, categories);
             
         } catch (error) {
             console.error('Error fetching city categories:', error);
@@ -210,9 +171,7 @@ export default function create_trip_1_city() {
                         placeholder='Ex: Boston, MA, USA'
                         onPress={async (data) => {
                             setSelectedCity(data.description);
-                            // Fetch city photo and categories independently
-                            // Photo should load quickly, categories may take longer due to Gemini
-                            fetchCityPhoto(data.description); // Don't await - let it run independently
+                            // Fetch city categories for trip planning
                             fetchCityCategories(data.description); // Don't await - let it run independently
                         }}
                         query={{
@@ -268,22 +227,6 @@ export default function create_trip_1_city() {
                     />
                 </View>
 
-                {/* City Photo Preview */}
-                {selectedCity && (
-                    <View style={styles.cityPhotoSection}>
-                        {isLoadingPhoto ? (
-                            <View style={styles.loadingContainer}>
-                                <ActivityIndicator size="large" color={Colors.PRIMARY} />
-                                <Text style={styles.loadingText}>Loading destination photo...</Text>
-                            </View>
-                        ) : (
-                            <ActivityImage 
-                                photo_reference={cityPhotoRef || ''}
-                                style={styles.cityImage}
-                            />
-                        )}
-                    </View>
-                )}
 
 
                 
@@ -375,34 +318,6 @@ const styles = StyleSheet.create({
         color: '#666',
         fontWeight: '500',
         fontFamily: 'outfit-medium',
-    },
-    cityPhotoSection: {
-        marginTop: 20,
-        padding: 15,
-    },
-    cityPhotoLabel: {
-        fontFamily: 'outfit-medium',
-        fontSize: 16,
-        color: '#1a1a1a',
-        marginBottom: 10,
-    },
-    cityImage: {
-        width: '100%',
-        height: 200,
-        borderRadius: 15,
-    },
-    loadingContainer: {
-        height: 200,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#f5f5f5',
-        borderRadius: 15,
-    },
-    loadingText: {
-        marginTop: 10,
-        fontFamily: 'outfit',
-        fontSize: 14,
-        color: '#666',
     },
 
 })
