@@ -154,7 +154,7 @@ export default function create_trip_1_city() {
 
                 {/* Destination Prompt */}
                 <View style={styles.promptSection}>                    
-                    <Text style={styles.promptTitle}>Where do you want to go?</Text>
+                    <Text style={styles.promptTitleCity}>Where do you want to go?</Text>
                 </View>
 
                 {/* Enter City */}
@@ -245,7 +245,7 @@ export default function create_trip_1_city() {
                                     onPress={() => setIsDropdownOpen(!isDropdownOpen)}
                                 >
                                     <View style={styles.dropdownContent}>
-                                        <MaterialCommunityIcons name="calendar-clock-outline" size={20} color="black" />
+                                        <MaterialCommunityIcons name="calendar-clock-outline" size={24} color="black" />
                                         <Text style={[styles.dropdownButtonText, !tripLength && styles.placeholderText]}>
                                             {tripLength ? `${tripLength} day${tripLength > 1 ? 's' : ''}` : 'Select number of days'}
                                         </Text>
@@ -337,6 +337,15 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 25,
         alignItems: 'left',
+      },
+      promptTitleCity: {
+        fontFamily: 'outfit-bold',
+        fontSize: 24,
+        color: '#1a1a1a',
+        textAlign: 'left',
+        marginTop: 40,
+        marginLeft: -20,
+        marginBottom: 8,
       },
       promptTitle: {
         fontFamily: 'outfit-bold',
