@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "storage": {
+      "PlacesAPIActivityStorage": [
+        "create",
+        "read"
+      ]
+    }
+  },
+  "lambdaLayers": [],
+  "environmentVariableList": [
+    {
+      "cloudFormationParameterName": "googlePlacesApiKey",
+      "environmentVariableName": "GOOGLE_PLACES_API_KEY"
+    }
+  ]
+}

@@ -158,7 +158,12 @@
         "WishListAPI": {},
         "TripStorage": {},
         "PlacesAPIActivityStorage": {},
-        "regionImageStorage": {}
+        "regionImageStorage": {},
+        "generateCategoryActivities": {
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/generateCategoryActivities-3657436b79766a32474a-build.zip"
+        }
       },
       "api": {
         "WishListAPI": {},

@@ -171,6 +171,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "generateCategoryActivities": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "PlacesAPIActivityStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "getLocationCoordinates": {
       "build": true,
       "dependsOn": [
@@ -368,6 +384,30 @@
         {
           "category": "function",
           "resourceName": "deleteTrip"
+        }
+      ]
+    },
+    "AMPLIFY_function_generateCategoryActivities_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "generateCategoryActivities"
+        }
+      ]
+    },
+    "AMPLIFY_function_generateCategoryActivities_googlePlacesApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "generateCategoryActivities"
+        }
+      ]
+    },
+    "AMPLIFY_function_generateCategoryActivities_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "generateCategoryActivities"
         }
       ]
     },
