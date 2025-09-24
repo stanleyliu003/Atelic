@@ -101,6 +101,7 @@ export const addCollaborator = /* GraphQL */ `
     $userEmail: String!
     $fullName: String!
     $role: CollaboratorRole!
+    $addedBy: String
   ) {
     addCollaborator(
       tripId: $tripId
@@ -108,6 +109,7 @@ export const addCollaborator = /* GraphQL */ `
       userEmail: $userEmail
       fullName: $fullName
       role: $role
+      addedBy: $addedBy
     ) {
       tripId
       days {

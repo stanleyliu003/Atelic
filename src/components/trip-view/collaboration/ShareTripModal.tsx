@@ -5,6 +5,7 @@ import { API } from 'aws-amplify';
 import { addCollaborator, removeCollaborator, updateCollaboratorRole } from '../../../graphql/mutations';
 import { UserSearchField } from './UserSearchField';
 import { CollaboratorListItem } from './collaboratorPermissions';
+import { useCreateTrip } from '../../../../context/CreateTripContext';
 
 interface UserProfile {
   userID: string;
@@ -43,6 +44,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
   selectedCity,
   onCollaboratorsUpdate
 }) => {
+  const { getCurrentUser } = useCreateTrip();
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [selectedRole, setSelectedRole] = useState<CollaboratorRole>(currentUserRole === 'owner' ? 'editor' : 'viewer');
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
@@ -71,6 +73,9 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
       setIsLoading(true);
       console.log('[ShareTripModal] Adding collaborator:', user, 'with role:', role);
 
+      const currentUser = getCurrentUser(currentUserID);
+      const addedBy = currentUser?.fullName || 'Self';
+
       const result = await API.graphql({
         query: addCollaborator,
         variables: {
@@ -78,7 +83,8 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
           userID: user.userID,
           userEmail: user.email,
           fullName: user.fullName,
-          role
+          role,
+          addedBy
         }
       }) as any;
 

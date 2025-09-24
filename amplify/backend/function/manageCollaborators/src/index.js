@@ -134,7 +134,7 @@ function canPerformAction(requesterRole, targetRole, action) {
 
 // Add collaborator handler
 async function handleAddCollaborator(trip, args, requesterId, requesterRole, tableName) {
-  const { userID, userEmail, fullName, role } = args;
+  const { userID, userEmail, fullName, role, addedBy } = args;
 
   // Validate permissions
   if (!canPerformAction(requesterRole, role, 'add')) {
@@ -147,14 +147,12 @@ async function handleAddCollaborator(trip, args, requesterId, requesterRole, tab
     throw new Error('User is already a collaborator on this trip');
   }
 
-  const requesterName = getCollaboratorName(trip, requesterId);
-
   const newCollaborator = {
     email: userEmail,
     fullName: fullName,
     userID: userID,
     role: role,
-    addedBy: requesterName
+    addedBy: addedBy || 'Self'
   };
 
   // Add to collaborators array
@@ -268,49 +266,7 @@ async function handleUpdateCollaboratorRole(trip, args, requesterId, requesterRo
   return convertDynamoItemToTrip(result.Attributes);
 }
 
-// Helper function to get collaborator name
-function getCollaboratorName(trip, userId) {
-  const collaborator = trip.collaborators.find(c => c.userID === userId);
-  return collaborator ? collaborator.fullName : 'Unknown User';
-}
 
-// Helper function to get user details by email from Cognito
-async function getUserDetailsByEmail(email) {
-  const {
-    CognitoIdentityProviderClient,
-    ListUsersCommand
-  } = require('@aws-sdk/client-cognito-identity-provider');
-
-  const cognitoClient = new CognitoIdentityProviderClient();
-  const userPoolId = process.env.AUTH_AMPLIFYBACKEND59CCDBF8_USERPOOLID;
-
-  try {
-    const params = {
-      UserPoolId: userPoolId,
-      AttributesToGet: ['email', 'name'],
-      Filter: `email = "${email}"`
-    };
-
-    const result = await cognitoClient.send(new ListUsersCommand(params));
-
-    if (result.Users && result.Users.length > 0) {
-      const user = result.Users[0];
-      const emailAttr = user.Attributes.find(attr => attr.Name === 'email');
-      const nameAttr = user.Attributes.find(attr => attr.Name === 'name');
-
-      return {
-        userID: user.Username,
-        email: emailAttr ? emailAttr.Value : '',
-        fullName: nameAttr ? nameAttr.Value : ''
-      };
-    }
-
-    return null;
-  } catch (error) {
-    console.error('Error getting user details:', error);
-    return null;
-  }
-}
 
 // Helper function to convert DynamoDB item to GraphQL Trip format
 function convertDynamoItemToTrip(item) {
