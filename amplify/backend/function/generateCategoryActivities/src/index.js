@@ -5,80 +5,185 @@
 	STORAGE_PLACESAPIACTIVITYSTORAGE_ARN
 	STORAGE_PLACESAPIACTIVITYSTORAGE_STREAMARN
 	GOOGLE_PLACES_API_KEY
+	GEMINI_API_KEY
+	FUNCTION_GETLOCATIONCOORDINATES_NAME
 Amplify Params - DO NOT EDIT */
 
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
 const AWS = require('aws-sdk');
-const https = require('https');
 
-// Initialize DynamoDB client
+// Initialize clients
 const dynamodb = new AWS.DynamoDB.DocumentClient();
+const lambdaClient = new LambdaClient({ region: process.env.REGION });
 const tableName = process.env.STORAGE_PLACESAPIACTIVITYSTORAGE_NAME;
-const googlePlacesApiKey = process.env.GOOGLE_PLACES_API_KEY;
 
 /**
- * Lambda function to generate activities for a specific category using Google Places API
- * Leverages existing caching and deduplication patterns from getLocationCoordinates and CityCategories
+ * Lambda function to generate activities for a specific category using Gemini AI
+ * Leverages existing caching and geocoding patterns from wishlistAnalyzer
  */
 exports.handler = async (event) => {
     console.log('generateCategoryActivities input:', JSON.stringify(event, null, 2));
 
     try {
-        const { selectedCity, category, count = 4, existingActivityIds = [] } = event.arguments || event;
+        const { selectedCity, category, existingCategoryActivities = [] } = event.arguments || event;
 
         if (!selectedCity || !category) {
             throw new Error('selectedCity and category are required parameters');
         }
 
         // Check cache first (similar to CityCategories pattern)
-        const cacheKey = `category-activities-${selectedCity}-${category}-${count}`;
+        const cacheKey = `category-activities-${selectedCity}-${category}-4`;
         const cachedResult = await getCachedResult(cacheKey);
 
-        if (cachedResult) {
+        if (cachedResult && cachedResult.activities) {
             console.log('Returning cached category activities');
             // Apply deduplication to cached results
-            const deduplicatedActivities = deduplicateActivities(cachedResult.activities, existingActivityIds);
+            const deduplicatedActivities = deduplicateActivities(cachedResult.activities, existingCategoryActivities);
             return {
-                activities: deduplicatedActivities.slice(0, count),
+                activities: deduplicatedActivities.slice(0, 4),
                 category: category
             };
         }
 
-        // Generate category-specific search query
-        const searchQuery = buildCategorySearchQuery(category, selectedCity);
-        console.log('Search query:', searchQuery);
+        // Initialize Gemini with API key from environment
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-        // Search for places using Google Places Text Search API
-        const searchResults = await searchPlacesByCategory(searchQuery, selectedCity, count * 2); // Get extra for deduplication
+        // Create category-specific prompt for Gemini with existing activities to avoid duplicates
+        const prompt = buildCategoryPrompt(selectedCity, category, existingCategoryActivities);
+        console.log('Gemini prompt created for category:', category);
 
-        if (!searchResults || searchResults.length === 0) {
-            console.log('No places found for category:', category);
-            return {
-                activities: [],
-                category: category
-            };
+        // Call Gemini API
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const geminiResponse = response.text();
+
+        // Parse the response from Gemini
+        let analysisResult;
+        try {
+            const jsonString = geminiResponse.match(/{.*}/s)[0];
+            analysisResult = JSON.parse(jsonString);
+        } catch (parseError) {
+            console.error('Error parsing Gemini response into JSON:', parseError, 'Raw response:', geminiResponse);
+            throw new Error('Failed to parse category activities from AI response.');
         }
 
-        // Get detailed information for each place (reusing getLocationCoordinates logic)
-        const detailedActivities = await Promise.all(
-            searchResults.map(place => getPlaceDetails(place.place_id, selectedCity))
-        );
+        const { recommendations } = analysisResult;
 
-        // Filter out null results and apply deduplication
-        const validActivities = detailedActivities.filter(activity => activity !== null);
-        const deduplicatedActivities = deduplicateActivities(validActivities, existingActivityIds);
-        const finalActivities = deduplicatedActivities.slice(0, count);
+        if (!recommendations || !Array.isArray(recommendations)) {
+            throw new Error('Invalid JSON structure from AI. Missing "recommendations" array.');
+        }
 
-        // Cache the result (cache more than we return for future requests)
+        console.log(`Gemini generated ${recommendations.length} recommendations for category: ${category}`);
+
+        // Get city coordinates for geocoding bias (following wishlistAnalyzer pattern)
+        console.log(`Getting bias coordinates for city: ${selectedCity}`);
+        const cityInvokeCommand = new InvokeCommand({
+            FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
+            Payload: JSON.stringify({ locations: [selectedCity] }),
+        });
+        const cityResponse = await lambdaClient.send(cityInvokeCommand);
+        const cityPayload = JSON.parse(new TextDecoder().decode(cityResponse.Payload));
+        const cityCoordsArr = JSON.parse(cityPayload.body);
+
+        // Create city-specific location bias for precise geocoding
+        let cityBias = null;
+        if (cityCoordsArr && cityCoordsArr.length > 0) {
+            cityBias = { lat: cityCoordsArr[0].lat, lng: cityCoordsArr[0].lng };
+            console.log(`Successfully got bias for ${selectedCity}:`, cityBias);
+        } else {
+            console.warn(`Could not get coordinates for city "${selectedCity}". Proceeding without bias.`);
+        }
+
+        // Geocode the recommendations (following wishlistAnalyzer batch processing pattern)
+        console.log(`Geocoding ${recommendations.length} recommendations with city-specific bias.`);
+        const batchSize = 5;
+        const geocodedLocations = [];
+
+        for (let i = 0; i < recommendations.length; i += batchSize) {
+            const batch = recommendations.slice(i, i + batchSize);
+
+            const batchPromises = batch.map(async (recommendationObj) => {
+                const { name } = recommendationObj;
+
+                console.log(`Geocoding "${name}" in "${selectedCity}" with bias:`, cityBias);
+
+                const locationInvokeCommand = new InvokeCommand({
+                    FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
+                    Payload: JSON.stringify({
+                        locations: [name],
+                        bias: cityBias
+                    }),
+                });
+
+                try {
+                    const locationResponse = await lambdaClient.send(locationInvokeCommand);
+                    const locationPayload = JSON.parse(new TextDecoder().decode(locationResponse.Payload));
+                    const locationResult = JSON.parse(locationPayload.body);
+
+                    if (locationResult && locationResult.length > 0) {
+                        return locationResult;
+                    } else {
+                        console.warn(`No geocoding results for "${name}" in "${selectedCity}"`);
+                        return [];
+                    }
+                } catch (error) {
+                    console.error(`Error geocoding "${name}" in "${selectedCity}":`, error);
+                    return [];
+                }
+            });
+
+            const batchResults = await Promise.all(batchPromises);
+            batchResults.forEach(results => {
+                if (results.length > 0) {
+                    geocodedLocations.push(...results);
+                }
+            });
+
+            console.log(`Completed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(recommendations.length/batchSize)}, total geocoded: ${geocodedLocations.length}`);
+        }
+
+        // Create final activities array (following wishlistAnalyzer pattern)
+        const finalActivities = recommendations.map(recommendationObj => {
+            const coordData = geocodedLocations.find(c => c.name === recommendationObj.name);
+            return {
+                name: recommendationObj.name,
+                city: selectedCity,
+                lat: coordData ? coordData.lat : null,
+                lng: coordData ? coordData.lng : null,
+                rating: coordData ? coordData.rating : null,
+                user_ratings_total: coordData ? coordData.user_ratings_total : null,
+                formatted_address: coordData ? coordData.formatted_address : null,
+                types: coordData ? coordData.types : [],
+                primaryType: coordData ? coordData.primaryType : null,
+                place_id: coordData ? coordData.place_id : null,
+                photo_reference: coordData ? coordData.photo_reference : null,
+                is_recommended: true, // Category-generated activities are recommended
+                display_name: coordData ? coordData.display_name : null,
+                website_uri: coordData ? coordData.website_uri : null,
+                regular_opening_hours: coordData ? coordData.regular_opening_hours : null,
+                reviews: coordData ? coordData.reviews : null,
+                editorial_summary: coordData ? coordData.editorial_summary : null,
+                primary_type_display_name: coordData ? coordData.primary_type_display_name : null,
+                international_phone_number: coordData ? coordData.international_phone_number : null,
+            };
+        });
+
+        // Apply deduplication against existing activities (by name)
+        const deduplicatedActivities = deduplicateActivities(finalActivities, existingCategoryActivities);
+
+        // Cache the result
         await cacheResult(cacheKey, {
-            activities: validActivities,
+            activities: finalActivities,
             category: category,
             timestamp: new Date().toISOString()
         });
 
-        console.log(`Returning ${finalActivities.length} activities for category: ${category}`);
+        console.log(`Returning ${deduplicatedActivities.length} activities for category: ${category}`);
 
         return {
-            activities: finalActivities,
+            activities: deduplicatedActivities.slice(0, 4),
             category: category
         };
 
@@ -95,176 +200,68 @@ exports.handler = async (event) => {
 };
 
 /**
- * Build category-specific search query for Google Places API
- * Uses category mapping similar to CityCategories Lambda
+ * Build category-specific prompt for Gemini AI
+ * Based on wishlistAnalyzer prompt structure with category focus
+ * Includes existing activities to avoid duplicates
  */
-function buildCategorySearchQuery(category, city) {
-    const categoryMappings = {
-        'Museums': `museums in ${city}`,
-        'Restaurants': `best restaurants in ${city}`,
-        'Shopping': `shopping centers malls in ${city}`,
-        'Parks': `parks gardens in ${city}`,
-        'Entertainment': `entertainment venues attractions in ${city}`,
-        'Nightlife': `bars clubs nightlife in ${city}`,
-        'Culture': `cultural sites temples churches in ${city}`,
-        'Food Markets': `food markets street food in ${city}`,
-        'Viewpoints': `viewpoints observation decks in ${city}`,
-        'Sports': `sports venues stadiums in ${city}`,
-        'Art': `art galleries exhibitions in ${city}`,
-        'History': `historical sites monuments in ${city}`,
-        'Nature': `nature reserves hiking trails in ${city}`,
-        'Adventure': `adventure activities outdoor sports in ${city}`,
-        'Family': `family attractions kid-friendly in ${city}`,
-        'Relaxation': `spas wellness centers in ${city}`,
-        'Local Experiences': `local experiences authentic places in ${city}`,
-        'Street Food': `street food vendors markets in ${city}`,
-        'Rooftop Bars': `rooftop bars sky lounges in ${city}`,
-        'Hidden Gems': `hidden gems secret spots in ${city}`
-    };
-
-    return categoryMappings[category] || `${category} in ${city}`;
-}
-
-/**
- * Search for places using Google Places Text Search API
- * Based on getLocationCoordinates API call pattern
- */
-async function searchPlacesByCategory(query, city, maxResults = 10) {
-    try {
-        const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?` +
-            `query=${encodeURIComponent(query)}&` +
-            `key=${googlePlacesApiKey}&` +
-            `type=point_of_interest`;
-
-        const searchResponse = await makeHttpsRequest(url);
-        const searchData = JSON.parse(searchResponse);
-
-        if (searchData.status !== 'OK' && searchData.status !== 'ZERO_RESULTS') {
-            throw new Error(`Places API search failed: ${searchData.status} - ${searchData.error_message}`);
-        }
-
-        if (searchData.status === 'ZERO_RESULTS') {
-            console.log('No results found for query:', query);
-            return [];
-        }
-
-        // Return up to maxResults places
-        return searchData.results.slice(0, maxResults).map(place => ({
-            place_id: place.place_id,
-            name: place.name,
-            rating: place.rating,
-            geometry: place.geometry
-        }));
-
-    } catch (error) {
-        console.error('Error searching places:', error);
-        throw error;
+function buildCategoryPrompt(selectedCity, category, existingCategoryActivities) {
+    // Build the existing activities context
+    let existingActivitiesContext = "";
+    if (existingCategoryActivities && existingCategoryActivities.length > 0) {
+        // existingCategoryActivities is now just an array of activity names
+        const existingNames = existingCategoryActivities.join(', ');
+        existingActivitiesContext = `
+AVOID DUPLICATES:
+The user already has the following ${category} activities: ${existingNames}
+DO NOT recommend any of these existing locations. Generate 4 DIFFERENT ${category} recommendations.
+        `;
     }
+
+    return `
+You are an expert travel assistant. Generate exactly 4 high-quality ${category} recommendations for ${selectedCity}.
+
+CRITICAL CONSTRAINTS:
+1. ONLY focus on ${selectedCity} - do NOT include other regions, cities, or areas
+2. Generate exactly 4 specific ${category} locations that are WITHIN ${selectedCity} only
+3. Use precise, official names suitable for Google Places API
+4. Don't recommend neighborhoods or areas, only specific locations
+5. Focus on well-regarded, authentic ${category} experiences
+6. Avoid generic chains or overly niche attractions
+${existingActivitiesContext}
+
+CATEGORY FOCUS: ${category}
+Generate 4 recommendations that are:
+- Highly rated and well-regarded ${category} locations
+- Authentic to ${selectedCity}'s character
+- Accessible to visitors
+- NOT generic chains (unless they're iconic to the city)
+- Specific venues, not districts or neighborhoods
+- DIFFERENT from any existing activities the user already has
+
+STRICT OUTPUT FORMAT:
+Return ONLY this JSON structure with no additional text:
+{"recommendations":[{"name":"Specific ${category} Name 1","region":"${selectedCity}"},{"name":"Specific ${category} Name 2","region":"${selectedCity}"},{"name":"Specific ${category} Name 3","region":"${selectedCity}"},{"name":"Specific ${category} Name 4","region":"${selectedCity}"}]}
+
+EXAMPLES OF CORRECT BEHAVIOR:
+- For "Museums" in "Paris": {"recommendations":[{"name":"Louvre Museum","region":"Paris"},{"name":"Musée d'Orsay","region":"Paris"},{"name":"Centre Pompidou","region":"Paris"},{"name":"Musée Rodin","region":"Paris"}]}
+- For "Restaurants" in "Tokyo": {"recommendations":[{"name":"Sukiyabashi Jiro","region":"Tokyo"},{"name":"Narisawa","region":"Tokyo"},{"name":"Florilège","region":"Tokyo"},{"name":"Den","region":"Tokyo"}]}
+
+Generate 4 specific ${category} recommendations for ${selectedCity} now:
+    `;
 }
 
-/**
- * Get detailed place information using Place Details API
- * Reuses exact logic from getLocationCoordinates Lambda
- */
-async function getPlaceDetails(placeId, city) {
-    try {
-        // Check if we have this place cached first
-        const cachedPlace = await getCachedPlace(placeId);
-        if (cachedPlace) {
-            console.log('Returning cached place details for:', placeId);
-            return cachedPlace;
-        }
-
-        const fields = [
-            'name', 'geometry', 'formatted_address', 'rating', 'user_ratings_total',
-            'types', 'place_id', 'photos', 'reviews', 'opening_hours', 'website',
-            'editorial_summary', 'primary_type_display_name', 'international_phone_number'
-        ].join(',');
-
-        const url = `https://maps.googleapis.com/maps/api/place/details/json?` +
-            `place_id=${placeId}&` +
-            `fields=${fields}&` +
-            `key=${googlePlacesApiKey}`;
-
-        const response = await makeHttpsRequest(url);
-        const data = JSON.parse(response);
-
-        if (data.status !== 'OK') {
-            console.error(`Place details API failed for ${placeId}: ${data.status}`);
-            return null;
-        }
-
-        const place = data.result;
-
-        // Transform to Activity schema (exact mapping from getLocationCoordinates)
-        const activity = {
-            name: place.name || 'Unknown',
-            city: city,
-            lat: place.geometry?.location?.lat || 0,
-            lng: place.geometry?.location?.lng || 0,
-            rating: place.rating || null,
-            user_ratings_total: place.user_ratings_total || null,
-            formatted_address: place.formatted_address || '',
-            types: place.types || [],
-            primaryType: place.types?.[0] || '',
-            place_id: place.place_id || '',
-            photo_reference: place.photos?.[0]?.photo_reference || '',
-            is_recommended: true, // Category-generated activities are considered recommended
-            display_name: place.name || '',
-            website_uri: place.website || '',
-            regular_opening_hours: place.opening_hours ? {
-                open_now: place.opening_hours.open_now,
-                periods: place.opening_hours.periods?.map(period => ({
-                    open: period.open ? {
-                        day: period.open.day,
-                        time: period.open.time,
-                        date: period.open.date,
-                        truncated: period.open.truncated
-                    } : null,
-                    close: period.close ? {
-                        day: period.close.day,
-                        time: period.close.time,
-                        date: period.close.date,
-                        truncated: period.close.truncated
-                    } : null
-                })) || [],
-                weekday_text: place.opening_hours.weekday_text || []
-            } : null,
-            reviews: place.reviews?.slice(0, 3).map(review => ({
-                author_name: review.author_name || '',
-                rating: review.rating || 0,
-                text: review.text || '',
-                time: review.time || 0,
-                author_url: review.author_url || '',
-                profile_photo_url: review.profile_photo_url || ''
-            })) || [],
-            editorial_summary: place.editorial_summary || '',
-            primary_type_display_name: place.primary_type_display_name || '',
-            international_phone_number: place.international_phone_number || ''
-        };
-
-        // Cache the result for future requests
-        await cachePlace(placeId, activity);
-
-        return activity;
-
-    } catch (error) {
-        console.error('Error getting place details for:', placeId, error);
-        return null;
-    }
-}
 
 /**
- * Deduplication logic - remove activities that already exist
+ * Deduplication logic - remove activities that already exist by name
  * Based on addAdditionalPlace deduplication pattern
  */
-function deduplicateActivities(activities, existingActivityIds) {
-    if (!existingActivityIds || existingActivityIds.length === 0) {
+function deduplicateActivities(activities, existingActivityNames) {
+    if (!existingActivityNames || existingActivityNames.length === 0) {
         return activities;
     }
 
-    const existingIdSet = new Set(existingActivityIds);
-    return activities.filter(activity => !existingIdSet.has(activity.place_id));
+    const existingNamesSet = new Set(existingActivityNames);
+    return activities.filter(activity => !existingNamesSet.has(activity.name));
 }
 
 /**
@@ -318,61 +315,3 @@ async function cacheResult(cacheKey, data) {
     }
 }
 
-async function getCachedPlace(placeId) {
-    try {
-        const params = {
-            TableName: tableName,
-            Key: { id: placeId }
-        };
-
-        const result = await dynamodb.get(params).promise();
-        return result.Item || null;
-    } catch (error) {
-        console.error('Error getting cached place:', error);
-        return null;
-    }
-}
-
-async function cachePlace(placeId, activity) {
-    try {
-        const params = {
-            TableName: tableName,
-            Item: {
-                id: placeId,
-                ...activity,
-                timestamp: new Date().toISOString(),
-                ttl: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days TTL for places
-            }
-        };
-
-        await dynamodb.put(params).promise();
-    } catch (error) {
-        console.error('Error caching place:', error);
-    }
-}
-
-/**
- * HTTP request helper - reused from existing Lambda functions
- */
-function makeHttpsRequest(url) {
-    return new Promise((resolve, reject) => {
-        const request = https.get(url, (response) => {
-            let data = '';
-            response.on('data', (chunk) => {
-                data += chunk;
-            });
-            response.on('end', () => {
-                resolve(data);
-            });
-        });
-
-        request.on('error', (error) => {
-            reject(error);
-        });
-
-        request.setTimeout(10000, () => {
-            request.destroy();
-            reject(new Error('Request timeout'));
-        });
-    });
-}

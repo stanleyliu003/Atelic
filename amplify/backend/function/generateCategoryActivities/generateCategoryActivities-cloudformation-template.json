@@ -16,9 +16,6 @@
     "s3Key": {
       "Type": "String"
     },
-    "googlePlacesApiKey": {
-      "Type": "String"
-    },
     "storagePlacesAPIActivityStorageName": {
       "Type": "String",
       "Default": "storagePlacesAPIActivityStorageName"
@@ -30,6 +27,12 @@
     "storagePlacesAPIActivityStorageStreamArn": {
       "Type": "String",
       "Default": "storagePlacesAPIActivityStorageStreamArn"
+    },
+    "googlePlacesApiKey": {
+      "Type": "String"
+    },
+    "geminiApiKey": {
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -96,6 +99,9 @@
             },
             "GOOGLE_PLACES_API_KEY": {
               "Ref": "googlePlacesApiKey"
+            },
+            "GEMINI_API_KEY": {
+              "Ref": "geminiApiKey"
             }
           }
         },

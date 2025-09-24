@@ -395,6 +395,14 @@
         }
       ]
     },
+    "AMPLIFY_function_generateCategoryActivities_geminiApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "generateCategoryActivities"
+        }
+      ]
+    },
     "AMPLIFY_function_generateCategoryActivities_googlePlacesApiKey": {
       "usedBy": [
         {
