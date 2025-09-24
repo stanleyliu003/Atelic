@@ -68,15 +68,6 @@ export default function create_trip_4_additional_info() {
                         <TouchableOpacity onPress={() => router.replace('/create-trip/create_trip_3_categories')} style={styles.backButton}>
                             <Ionicons name="arrow-back" size={32} color="black" />
                         </TouchableOpacity>
-                        <Text style={styles.titleText}>Plan Your Trip</Text>
-                    </View>
-
-                    {/* Progress Bar */}
-                    <View style={styles.progressSection}>
-                        <View style={styles.progressTrack}>
-                            <View style={styles.progressFill4}></View>
-                        </View>
-                        <Text style={styles.progressLabel}>Step 4 of 4</Text>
                     </View>
 
                     {/* Additional Info Prompt */}
@@ -134,30 +125,6 @@ const styles = StyleSheet.create({
         paddingTop: 15,
         color: '#1a1a1a'
     },
-    progressSection: {
-        padding: 20,
-        backgroundColor: 'white',
-    },
-    progressTrack: {
-        height: 6,
-        backgroundColor: '#e0e0e0',
-        borderRadius: 3,
-        overflow: 'hidden',
-        position: 'relative',
-    },
-    progressFill4: {
-        height: '100%',
-        width: '100%',
-        backgroundColor: '#333',
-        borderRadius: 3,
-    },
-    progressLabel: {
-        marginTop: 10,
-        fontSize: 13,
-        color: '#666',
-        fontWeight: '500',
-        fontFamily: 'outfit-medium',
-    },
     promptSection: {
         paddingHorizontal: 20,
         paddingVertical: 25,
@@ -184,11 +151,5 @@ const styles = StyleSheet.create({
     },
     backButton: {
         marginRight: 15,
-    },
-    titleText: {
-        fontFamily: 'outfit-bold',
-        fontSize: 32,
-        color: '#1a1a1a',
-        flex: 1,
     },
 })

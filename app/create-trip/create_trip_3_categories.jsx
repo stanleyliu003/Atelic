@@ -58,19 +58,11 @@ export default function create_trip_3_categories() {
                 }}>
                     {/* Header Row */}
                     <View style={styles.headerRow}>
-                        <TouchableOpacity onPress={() => router.replace('/create-trip/create_trip_2_length')} style={styles.backButton}>
+                        <TouchableOpacity onPress={() => router.replace('/create-trip/create_trip_1_city')} style={styles.backButton}>
                             <Ionicons name="arrow-back" size={32} color="black" />
                         </TouchableOpacity>
-                        <Text style={styles.titleText}>Plan Your Trip</Text>
                     </View>
 
-                    {/* Progress Bar */}
-                    <View style={styles.progressSection}>
-                        <View style={styles.progressTrack}>
-                            <View style={styles.progressFill3}></View>
-                        </View>
-                        <Text style={styles.progressLabel}>Step 3 of 4</Text>
-                    </View>
                     {/* Categories Prompt */}
                     <View style={styles.promptSection}>                    
                         <Text style={styles.promptTitle}>What kind of experiences in {selectedCity} interest you?</Text>
@@ -144,30 +136,6 @@ export default function create_trip_3_categories() {
 }
 
 const styles = StyleSheet.create({
-    progressSection: {
-        padding: 20,
-        backgroundColor: 'white',
-    },
-    progressTrack: {
-        height: 6,
-        backgroundColor: '#e0e0e0',
-        borderRadius: 3,
-        overflow: 'hidden',
-        position: 'relative',
-    },
-    progressFill3: {
-        height: '100%',
-        width: '75%',
-        backgroundColor: '#333',
-        borderRadius: 3,
-    },
-    progressLabel: {
-        marginTop: 10,
-        fontSize: 13,
-        color: '#666',
-        fontWeight: '500',
-        fontFamily: 'outfit-medium',
-    },
     promptSection: {
         paddingHorizontal: 20,
         paddingVertical: 25,
@@ -194,12 +162,6 @@ const styles = StyleSheet.create({
     },
     backButton: {
         marginRight: 15,
-    },
-    titleText: {
-        fontFamily: 'outfit-bold',
-        fontSize: 32,
-        color: '#1a1a1a',
-        flex: 1,
     },
     categoriesSection: {
         marginTop: 10,

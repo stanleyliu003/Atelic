@@ -327,12 +327,6 @@ const styles = StyleSheet.create({
     backButton: {
         marginRight: 15,
     },
-    titleText: {
-        fontFamily: 'outfit-bold',
-        fontSize: 32,
-        color: '#1a1a1a',
-        flex: 1,
-    },
     promptSection: {
         paddingHorizontal: 20,
         paddingVertical: 25,
