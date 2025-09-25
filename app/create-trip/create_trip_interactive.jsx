@@ -228,8 +228,8 @@ export default function create_trip_interactive() {
                                         {/* Category Name Subtitle */}
                                         <Text style={styles.categorySubtitle}>{categoryName}</Text>
 
-                                        {/* Loading State */}
-                                        {isLoading && (
+                                        {/* Loading State - Only show when no activities exist yet (initial load) */}
+                                        {isLoading && activities.length === 0 && (
                                             <View style={styles.categoryLoadingContainer}>
                                                 <ActivityIndicator size="small" color={Colors.PRIMARY} />
                                                 <Text style={styles.categoryLoadingText}>
@@ -238,8 +238,8 @@ export default function create_trip_interactive() {
                                             </View>
                                         )}
 
-                                        {/* Activity Cards */}
-                                        {!isLoading && activities.length > 0 && (
+                                        {/* Activity Cards - Always show if activities exist */}
+                                        {activities.length > 0 && (
                                             <View style={styles.activityCardsContainer}>
                                                 <WishlistActivities
                                                     activities={activities}
@@ -287,7 +287,7 @@ export default function create_trip_interactive() {
                         onPress={() => router.replace('/create-trip/create_trip_4_additional_info')}
                         style={styles.fixedNextButton}
                     >
-                        <Text style={styles.nextButtonText}>Jesus is Lord! Next</Text>
+                        <Text style={styles.nextButtonText}>Load Wishlist</Text>
                     </TouchableOpacity>
                 </View>
             )}
