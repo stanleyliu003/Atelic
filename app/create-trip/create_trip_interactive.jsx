@@ -1,10 +1,11 @@
 import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { WishlistActivities } from '../../src/components/trip-view/wishlist_activities';
+import { ActivityDetailView } from '../../src/components/trip-view/description_card';
 
 export default function create_trip_interactive() {
     const router = useRouter();
@@ -23,6 +24,10 @@ export default function create_trip_interactive() {
     } = useCreateTrip();
 
     const { selectedCity, tripLength } = useCreateTrip();
+
+    // State for activity detail view
+    const [selectedActivityForDetail, setSelectedActivityForDetail] = useState(null);
+    const [showActivityDetail, setShowActivityDetail] = useState(false);
 
     useEffect(() => {
         navigation.setOptions({
@@ -65,6 +70,18 @@ export default function create_trip_interactive() {
         } catch (error) {
             console.error('Error generating more activities for category:', categoryName, error);
         }
+    };
+
+    // Handler for activity description card selection
+    const handleActivityDescriptionCardSelect = (activity) => {
+        setSelectedActivityForDetail(activity);
+        setShowActivityDetail(true);
+    };
+
+    // Handler for closing activity detail view
+    const handleCloseActivityDetail = () => {
+        setShowActivityDetail(false);
+        setSelectedActivityForDetail(null);
     };
 
     return (
@@ -183,6 +200,7 @@ export default function create_trip_interactive() {
                                                     selectedActivities={selectedActivityIds}
                                                     onActivitySelect={toggleActivitySelection}
                                                     onActivityDeselect={toggleActivitySelection}
+                                                    onDescriptionCardPress={handleActivityDescriptionCardSelect}
                                                     showSelectionIndicator={true}
                                                 />
                                             </View>
@@ -195,7 +213,7 @@ export default function create_trip_interactive() {
                                                 onPress={() => handleGenerateMoreActivities(categoryName)}
                                             >
                                                 <Text style={styles.generateMoreButtonText}>
-                                                    Generate more {categoryName.toLowerCase()} activities
+                                                    More {categoryName.toLowerCase()}
                                                 </Text>
                                             </TouchableOpacity>
                                         )}
@@ -216,6 +234,24 @@ export default function create_trip_interactive() {
                     >
                         <Text style={styles.nextButtonText}>Jesus is Lord! Next</Text>
                     </TouchableOpacity>
+                </View>
+            )}
+
+            {/* Activity Detail View Overlay */}
+            {showActivityDetail && selectedActivityForDetail && (
+                <View style={styles.activityDetailOverlay}>
+                    <TouchableOpacity
+                        style={styles.overlayBackground}
+                        onPress={handleCloseActivityDetail}
+                        activeOpacity={1}
+                    />
+                    <View style={styles.bottomPopup}>
+                        <ActivityDetailView
+                            activity={selectedActivityForDetail}
+                            onClose={handleCloseActivityDetail}
+                            variant="wishlist"
+                        />
+                    </View>
                 </View>
             )}
         </KeyboardAvoidingView>
@@ -253,7 +289,7 @@ const styles = StyleSheet.create({
     categoriesSection: {
         marginTop: -8,
         marginBottom: 20,
-        paddingBottom: 100, // Add extra padding so users can scroll to see bottom categories above the fixed button
+        paddingBottom: 0, // Add extra padding so users can scroll to see bottom categories above the fixed button
     },
     categoriesTitle: {
         fontFamily: 'outfit-medium',
@@ -407,7 +443,7 @@ const styles = StyleSheet.create({
     },
     // Selected Category Activities Styles
     selectedCategoriesActivitiesSection: {
-        marginTop: 20,
+        marginTop: 20, // Reduced by 50px (from 20 to -30)
         paddingHorizontal: 0,
     },
     categoryActivitiesContainer: {
@@ -415,7 +451,7 @@ const styles = StyleSheet.create({
     },
     categorySubtitle: {
         fontFamily: 'outfit-bold',
-        fontSize: 18,
+        fontSize: 24,
         color: '#1a1a1a',
         marginBottom: 15,
         paddingHorizontal: 5,
@@ -436,6 +472,7 @@ const styles = StyleSheet.create({
         marginBottom: 15,
     },
     generateMoreButton: {
+        marginTop: -20,
         backgroundColor: '#f8f9fa',
         borderWidth: 1,
         borderColor: Colors.PRIMARY,
@@ -450,5 +487,30 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: Colors.PRIMARY,
         fontWeight: '500',
+    },
+    // Activity Detail Modal Styles
+    activityDetailOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1000,
+        justifyContent: 'flex-end',
+    },
+    overlayBackground: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    bottomPopup: {
+        height: '67%',
+        backgroundColor: Colors.WHITE,
+        borderTopLeftRadius: 25,
+        borderTopRightRadius: 25,
+        paddingTop: 25,
     },
 })

@@ -224,30 +224,22 @@ DO NOT recommend any of these existing locations. Generate 4 DIFFERENT ${categor
 You are an expert travel assistant. Generate exactly 4 high-quality ${category} recommendations for ${selectedCity}.
 
 CRITICAL CONSTRAINTS:
-1. ONLY focus on ${selectedCity} - do NOT include other regions, cities, or areas
+1. ONLY focus on ${selectedCity}
 2. Generate exactly 4 specific ${category} locations that are WITHIN ${selectedCity} only
 3. Use precise, official names suitable for Google Places API
 4. Don't recommend neighborhoods or areas, only specific locations
 5. Focus on well-regarded, authentic ${category} experiences
-6. Avoid generic chains or overly niche attractions
 ${existingActivitiesContext}
 
 CATEGORY FOCUS: ${category}
 Generate 4 recommendations that are:
 - Highly rated and well-regarded ${category} locations
-- Authentic to ${selectedCity}'s character
 - Accessible to visitors
-- NOT generic chains (unless they're iconic to the city)
 - Specific venues, not districts or neighborhoods
-- DIFFERENT from any existing activities the user already has
 
 STRICT OUTPUT FORMAT:
 Return ONLY this JSON structure with no additional text:
-{"recommendations":[{"name":"Specific ${category} Name 1","region":"${selectedCity}"},{"name":"Specific ${category} Name 2","region":"${selectedCity}"},{"name":"Specific ${category} Name 3","region":"${selectedCity}"},{"name":"Specific ${category} Name 4","region":"${selectedCity}"}]}
-
-EXAMPLES OF CORRECT BEHAVIOR:
-- For "Museums" in "Paris": {"recommendations":[{"name":"Louvre Museum","region":"Paris"},{"name":"Musée d'Orsay","region":"Paris"},{"name":"Centre Pompidou","region":"Paris"},{"name":"Musée Rodin","region":"Paris"}]}
-- For "Restaurants" in "Tokyo": {"recommendations":[{"name":"Sukiyabashi Jiro","region":"Tokyo"},{"name":"Narisawa","region":"Tokyo"},{"name":"Florilège","region":"Tokyo"},{"name":"Den","region":"Tokyo"}]}
+{"recommendations":[{"name":"Specific ${category} Name 1","region":"${selectedCity}"},{"name":"Specific ${category} Name 2","region":"${selectedCity}"}]}
 
 Generate 4 specific ${category} recommendations for ${selectedCity} now:
     `;
