@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { randomUUID } from 'expo-crypto';
 import { retrieveTripFromCloud, listUserTripsFromCloud } from '../src/services/lambdaService';
+import { generateCategoryActivities as generateCategoryActivitiesGraphQL } from '../src/services/generateCategoryActivities';
 
 // Define the shape of our context data
 const CreateTripContext = createContext();
@@ -286,22 +287,26 @@ export const CreateTripProvider = ({ children }) => {
             console.log(`[CreateTripContext] Generating ${count} activities for category: ${category} in ${selectedCity}`);
             console.log(`[CreateTripContext] Existing activities to avoid:`, existingActivityNames);
 
-            // TODO: Replace with actual GraphQL call to generateCategoryActivities
-            // For now, this is a placeholder that will be implemented in Phase 3
-            const mockResponse = {
-                activities: [], // This will be populated by the GraphQL call
-                category: category
-            };
+            // Call GraphQL mutation to generateCategoryActivities Lambda function
+            const response = await generateCategoryActivitiesGraphQL(
+                selectedCity,
+                category,
+                existingActivityNames
+            );
 
-            console.log(`[CreateTripContext] Generated ${mockResponse.activities.length} activities for ${category}`);
+            if (!response) {
+                throw new Error('No response from generateCategoryActivities service');
+            }
+
+            console.log(`[CreateTripContext] Generated ${response.activities.length} activities for ${category}`);
 
             // Update categoryActivities state
             setCategoryActivities(prev => ({
                 ...prev,
-                [category]: mockResponse.activities
+                [category]: response.activities
             }));
 
-            return mockResponse.activities;
+            return response.activities;
         } catch (error) {
             console.error(`[CreateTripContext] Error generating activities for category ${category}:`, error);
             throw error;
