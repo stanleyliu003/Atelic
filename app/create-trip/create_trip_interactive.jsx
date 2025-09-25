@@ -65,8 +65,8 @@ export default function create_trip_interactive() {
 
                     {/* Categories Prompt */}
                     <View style={styles.promptSection}>                    
-                        <Text style={styles.promptTitle}>What kind of experiences in {selectedCity} interest you?</Text>
-                        <Text style={styles.promptSubtitle}>Select all that apply</Text>
+                        <Text style={styles.promptTitle}>Create your {selectedCity} wishlist</Text>
+                        <Text style={styles.promptSubtitle}>Select your interests</Text>
                     </View>
 
                     {/* City Categories Display */}
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
       },
       promptTitle: {
         fontFamily: 'outfit-bold',
-        fontSize: 24,
+        fontSize: 28,
         color: '#1a1a1a',
         textAlign: 'center',
         marginBottom: 8,
@@ -201,10 +201,11 @@ const styles = StyleSheet.create({
         paddingRight: 40,
     },
     categoryCard: {
-        width: 150,
+        width: 145,
+        height: 125,
         backgroundColor: '#f8f9fa',
         borderRadius: 12,
-        padding: 15,
+        padding: 10,
         marginRight: 15,
         borderWidth: 1,
         borderColor: '#e9ecef',
@@ -232,7 +233,7 @@ const styles = StyleSheet.create({
         fontFamily: 'outfit',
         fontSize: 10,
         color: '#666',
-        lineHeight: 16,
+        lineHeight: 12,
         textAlign: 'center',
     },
     selectionIndicator: {
@@ -262,8 +263,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     emojiContainer: {
-        width: 50,
-        height: 50,
+        width: 45,
+        height: 45,
         borderRadius: 25,
         backgroundColor: '#e9ecef',
         justifyContent: 'center',
