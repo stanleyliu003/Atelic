@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
     },
     categoryCard: {
         width: 145,
-        height: 125,
+        height: 140,
         backgroundColor: '#f8f9fa',
         borderRadius: 12,
         padding: 10,
