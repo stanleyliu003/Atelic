@@ -1,43 +1,19 @@
-import { Colors } from '../../constants/Colors';
-import { useRouter } from 'expo-router';
-import { Text, View } from 'react-native';
-import StartNewTripCard from '../create-trip/start_new_trip';
-import Start2ndTripCard from '../create-trip/start_2nd_trip';
+import { useEffect } from 'react';
 import { useCreateTrip } from '../../context/CreateTripContext';
+import CreateTrip1City from '../create-trip/create_trip_1_city';
 
 export default function Create_New_Trip() {
+  const { completeReset } = useCreateTrip();
 
-  const router = useRouter();
-  const { activities, wishlistText } = useCreateTrip();
+  useEffect(() => {
+    const initializeNewTrip = async () => {
+      // Reset all trip data and cache before starting fresh
+      await completeReset();
+    };
 
-  // Check if user has existing trip data
-  const hasExistingTrip = activities && activities.length > 0 && wishlistText;
+    initializeNewTrip();
+  }, []);
 
-  return (
-    
-    <View style={{
-        padding:25,
-        paddingTop:55,
-        backgroundColor:Colors.WHITE,
-        height: '100%'
-    }}>
-
-        <View
-        style={{
-            display:'flex',
-            flexDirection:'row',
-            alignContent:'center',
-            justifyContent:'space-between',
-            paddingTop:25,
-        }
-        }>
-            <Text style={{
-                fontFamily:'outfit-bold',
-                fontSize:33
-            }}>Create New Trip</Text>
-        </View>
-        
-        {hasExistingTrip ? <Start2ndTripCard /> : <StartNewTripCard />}
-    </View>
-  )
+  // Render the city selection component directly within this tab
+  return <CreateTrip1City showBackButton={false} />;
 }

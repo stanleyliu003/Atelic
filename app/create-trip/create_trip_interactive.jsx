@@ -160,7 +160,7 @@ export default function create_trip_interactive() {
                 }}>
                     {/* Header Row */}
                     <View style={styles.headerRow}>
-                        <TouchableOpacity onPress={() => router.replace('/create-trip/create_trip_1_city')} style={styles.backButton}>
+                        <TouchableOpacity onPress={() => router.replace('(tabs)/create_new_trip')} style={styles.backButton}>
                             <Ionicons name="arrow-back" size={32} color="black" />
                         </TouchableOpacity>
                     </View>

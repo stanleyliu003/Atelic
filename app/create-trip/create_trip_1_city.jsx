@@ -12,7 +12,7 @@ import { API } from 'aws-amplify';
 import { getCityCategories } from '../../src/graphql/queries';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export default function create_trip_1_city() {
+export default function create_trip_1_city({ showBackButton = true }) {
     const router = useRouter();
     const navigation = useNavigation();
     const {
@@ -146,11 +146,13 @@ export default function create_trip_1_city() {
                 minHeight: '100%'
             }}>
                 {/* Header Row */}
-                <View style={styles.headerRow}>
-                    <TouchableOpacity onPress={() => router.replace('(tabs)/create_new_trip')} style={styles.backButton}>
-                        <Ionicons name="arrow-back" size={32} color="black" />
-                    </TouchableOpacity>
-                </View>
+                {showBackButton && (
+                    <View style={styles.headerRow}>
+                        <TouchableOpacity onPress={() => router.replace('(tabs)/create_new_trip')} style={styles.backButton}>
+                            <Ionicons name="arrow-back" size={32} color="black" />
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 {/* Destination Prompt */}
                 <View style={styles.promptSection}>                    
@@ -337,7 +339,7 @@ const styles = StyleSheet.create({
         fontSize: 24,
         color: '#1a1a1a',
         textAlign: 'left',
-        marginTop: 40,
+        marginTop: 80,
         marginLeft: -20,
         marginBottom: 8,
       },
