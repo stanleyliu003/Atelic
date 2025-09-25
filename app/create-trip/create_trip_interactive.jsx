@@ -143,21 +143,21 @@ export default function create_trip_interactive() {
 const styles = StyleSheet.create({
     promptSection: {
         paddingHorizontal: 20,
-        paddingVertical: 25,
-        alignItems: 'center',
+        paddingVertical: 15,
+        alignItems: 'flex-start',
       },
       promptTitle: {
         fontFamily: 'outfit-bold',
         fontSize: 28,
         color: '#1a1a1a',
-        textAlign: 'center',
-        marginBottom: 8,
+        textAlign: 'left',
+        marginBottom: 26,
       },
       promptSubtitle: {
         fontFamily: 'outfit',
         fontSize: 16,
         color: '#666',
-        textAlign: 'center',
+        textAlign: 'left',
       },
     headerRow: {
         flexDirection: 'row',
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
         marginRight: 15,
     },
     categoriesSection: {
-        marginTop: 10,
+        marginTop: -8,
         marginBottom: 20,
         paddingBottom: 100, // Add extra padding so users can scroll to see bottom categories above the fixed button
     },
