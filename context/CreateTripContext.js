@@ -36,6 +36,11 @@ export const CreateTripProvider = ({ children }) => {
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [tripPhotoReference, setTripPhotoReference] = useState('');
 
+    // Category activities state
+    const [categoryActivities, setCategoryActivities] = useState({}); // {categoryName: [activities]}
+    const [selectedActivityIds, setSelectedActivityIds] = useState([]); // User selections
+    const [loadingCategories, setLoadingCategories] = useState({}); // Loading states per category
+
     // Collaboration state
     const [currentUserRole, setCurrentUserRole] = useState(null);
     const [collaborators, setCollaborators] = useState([]);
@@ -204,6 +209,9 @@ export const CreateTripProvider = ({ children }) => {
         setTripLength(null);
         setCityCategories(null);
         setSelectedCategories([]);
+        setCategoryActivities({});
+        setSelectedActivityIds([]);
+        setLoadingCategories({});
         setTripPhotoReference('');
         setCollaborators([]);
         setCurrentUserRole(null);
@@ -260,6 +268,75 @@ export const CreateTripProvider = ({ children }) => {
         }
     };
 
+    // Category Management Functions
+    const generateActivitiesForCategory = async (category, count = 4) => {
+        if (!selectedCity) {
+            console.error('[CreateTripContext] Cannot generate activities: selectedCity is required');
+            return;
+        }
+
+        // Set loading state for this category
+        setLoadingCategories(prev => ({ ...prev, [category]: true }));
+
+        try {
+            // Get existing activities for this category to avoid duplicates
+            const existingCategoryActivities = categoryActivities[category] || [];
+            const existingActivityNames = existingCategoryActivities.map(activity => activity.name);
+
+            console.log(`[CreateTripContext] Generating ${count} activities for category: ${category} in ${selectedCity}`);
+            console.log(`[CreateTripContext] Existing activities to avoid:`, existingActivityNames);
+
+            // TODO: Replace with actual GraphQL call to generateCategoryActivities
+            // For now, this is a placeholder that will be implemented in Phase 3
+            const mockResponse = {
+                activities: [], // This will be populated by the GraphQL call
+                category: category
+            };
+
+            console.log(`[CreateTripContext] Generated ${mockResponse.activities.length} activities for ${category}`);
+
+            // Update categoryActivities state
+            setCategoryActivities(prev => ({
+                ...prev,
+                [category]: mockResponse.activities
+            }));
+
+            return mockResponse.activities;
+        } catch (error) {
+            console.error(`[CreateTripContext] Error generating activities for category ${category}:`, error);
+            throw error;
+        } finally {
+            // Clear loading state for this category
+            setLoadingCategories(prev => ({ ...prev, [category]: false }));
+        }
+    };
+
+    const toggleActivitySelection = (activityId) => {
+        setSelectedActivityIds(prev => {
+            if (prev.includes(activityId)) {
+                // Remove from selection
+                return prev.filter(id => id !== activityId);
+            } else {
+                // Add to selection
+                return [...prev, activityId];
+            }
+        });
+    };
+
+    const getSelectedActivities = () => {
+        const allActivities = [];
+
+        // Collect all activities from all categories
+        Object.values(categoryActivities).forEach(activities => {
+            allActivities.push(...activities);
+        });
+
+        // Filter by selectedActivityIds and return complete activity objects
+        return allActivities.filter(activity =>
+            selectedActivityIds.includes(activity.place_id)
+        );
+    };
+
     const value = {
         tripId,
         setTripId: setTripIdWithLog,
@@ -296,6 +373,15 @@ export const CreateTripProvider = ({ children }) => {
         setCityCategories,
         selectedCategories,
         setSelectedCategories,
+        categoryActivities,
+        setCategoryActivities,
+        selectedActivityIds,
+        setSelectedActivityIds,
+        loadingCategories,
+        setLoadingCategories,
+        generateActivitiesForCategory,
+        toggleActivitySelection,
+        getSelectedActivities,
         tripPhotoReference,
         setTripPhotoReference,
         getFirstActivityPhotoRef,
