@@ -14,6 +14,9 @@ const CACHE_KEYS = {
     CITY_CATEGORIES: 'create_trip_city_categories'
 };
 
+// Activity generation limit per category
+const ACTIVITY_GENERATION_LIMIT = 8;
+
 // Custom hook to use the context
 export const useCreateTrip = () => {
     const context = useContext(CreateTripContext);
@@ -269,11 +272,23 @@ export const CreateTripProvider = ({ children }) => {
         }
     };
 
+    // Helper function to check if activity generation limit is reached for a category
+    const isActivityLimitReached = (category) => {
+        const existingActivities = categoryActivities[category] || [];
+        return existingActivities.length >= ACTIVITY_GENERATION_LIMIT;
+    };
+
     // Category Management Functions
     const generateActivitiesForCategory = async (category, count = 4) => {
         if (!selectedCity) {
             console.error('[CreateTripContext] Cannot generate activities: selectedCity is required');
             return;
+        }
+
+        // Check if activity limit is reached for this category
+        if (isActivityLimitReached(category)) {
+            console.log(`[CreateTripContext] Activity generation limit reached for category: ${category}`);
+            throw new Error(`Activity generation limit reached for ${category} category`);
         }
 
         // Set loading state for this category
@@ -285,7 +300,7 @@ export const CreateTripProvider = ({ children }) => {
             const existingActivityNames = existingCategoryActivities.map(activity => activity.name);
 
             console.log(`[CreateTripContext] Generating ${count} activities for category: ${category} in ${selectedCity}`);
-            console.log(`[CreateTripContext] Existing activities to avoid:`, existingActivityNames);
+            console.log(`[CreateTripContext] Existing activities (${existingCategoryActivities.length}/${ACTIVITY_GENERATION_LIMIT}):`, existingActivityNames);
 
             // Call GraphQL mutation to generateCategoryActivities Lambda function
             const response = await generateCategoryActivitiesGraphQL(
@@ -405,6 +420,8 @@ export const CreateTripProvider = ({ children }) => {
         toggleActivitySelection,
         getSelectedActivities,
         unselectActivitiesFromCategory,
+        isActivityLimitReached,
+        ACTIVITY_GENERATION_LIMIT,
         tripPhotoReference,
         setTripPhotoReference,
         getFirstActivityPhotoRef,

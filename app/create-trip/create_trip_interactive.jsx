@@ -3,7 +3,7 @@ import Feather from '@expo/vector-icons/Feather';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { WishlistActivities } from '../../src/components/trip-view/wishlist_activities';
 import { ActivityDetailView } from '../../src/components/trip-view/description_card';
@@ -23,7 +23,9 @@ export default function create_trip_interactive() {
         toggleActivitySelection,
         getSelectedActivities,
         updateActivities,
-        unselectActivitiesFromCategory
+        unselectActivitiesFromCategory,
+        isActivityLimitReached,
+        ACTIVITY_GENERATION_LIMIT
     } = useCreateTrip();
 
     const { selectedCity, tripLength } = useCreateTrip();
@@ -65,7 +67,6 @@ export default function create_trip_interactive() {
                 try {
                     await generateActivitiesForCategory(categoryName);
                 } catch (error) {
-                    console.error('Error generating activities for category:', categoryName, error);
                 }
             }
         }
@@ -76,7 +77,21 @@ export default function create_trip_interactive() {
         try {
             await generateActivitiesForCategory(categoryName);
         } catch (error) {
-            console.error('Error generating more activities for category:', categoryName, error);
+            // Check if this is a limit reached error
+            if (error.message && error.message.includes('Activity generation limit reached')) {
+                Alert.alert(
+                    'Activity Limit Reached',
+                    `Generation limit reached for ${categoryName} category.`,
+                    [{ text: 'OK', style: 'default' }]
+                );
+            } else {
+                // Show generic error for other types of errors
+                Alert.alert(
+                    'Error',
+                    `Failed to generate more activities for ${categoryName}. Please try again.`,
+                    [{ text: 'OK', style: 'default' }]
+                );
+            }
         }
     };
 
