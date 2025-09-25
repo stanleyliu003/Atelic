@@ -127,12 +127,16 @@ export default function create_trip_interactive() {
         let activeDot = 0;
         if (totalWidth > 0) {
             const scrollPercentage = scrollX / totalWidth;
-            if (scrollPercentage < 0.33) {
+            if (scrollPercentage < 0.2) {
                 activeDot = 0;
-            } else if (scrollPercentage < 0.66) {
+            } else if (scrollPercentage < 0.4) {
                 activeDot = 1;
-            } else {
+            } else if (scrollPercentage < 0.6) {
                 activeDot = 2;
+            } else if (scrollPercentage < 0.8) {
+                activeDot = 3;
+            } else {
+                activeDot = 4;
             }
         }
         
@@ -232,6 +236,14 @@ export default function create_trip_interactive() {
                                     <View style={[
                                         styles.scrollIndicatorDot, 
                                         scrollPosition === 2 && styles.activeDot
+                                    ]} />
+                                    <View style={[
+                                        styles.scrollIndicatorDot, 
+                                        scrollPosition === 3 && styles.activeDot
+                                    ]} />
+                                    <View style={[
+                                        styles.scrollIndicatorDot, 
+                                        scrollPosition === 4 && styles.activeDot
                                     ]} />
                                 </View>
                             </View>
