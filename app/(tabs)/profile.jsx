@@ -57,6 +57,7 @@ export default function Profile() {
     }, [loadUserData])
   );
 
+
   const loadUserTrips = async (userID) => {
     try {
       setIsLoadingTrips(true);

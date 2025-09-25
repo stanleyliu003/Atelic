@@ -31,29 +31,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
 
     // Note: CACHE_KEYS now comes from context
 
-    // Load cached values on component mount
-    const loadCachedValues = async () => {
-        try {
-            const cachedCity = await AsyncStorage.getItem(CACHE_KEYS.SELECTED_CITY);
-            const cachedCategories = await AsyncStorage.getItem(CACHE_KEYS.CITY_CATEGORIES);
-
-            if (cachedCity) {
-                setSelectedCity(cachedCity);
-                // Set GooglePlacesAutocomplete text directly when loading from cache
-                setTimeout(() => {
-                    if (googlePlacesRef.current) {
-                        googlePlacesRef.current.setAddressText(cachedCity);
-                    }
-                }, 300); // Slightly longer delay to ensure component is ready
-            }
-
-            if (cachedCategories) {
-                setCityCategories(JSON.parse(cachedCategories));
-            }
-        } catch (error) {
-            console.error('Error loading cached values:', error);
-        }
-    };
+    // No longer loading cached values - fields should always start empty
 
     // Save city and categories to cache
     const saveCityToCache = async (city, categories) => {
@@ -86,8 +64,12 @@ export default function create_trip_1_city({ showBackButton = true }) {
         // Set flag that user is creating a trip
         setIsCreatingTrip(true);
         
-        // Load cached values
-        loadCachedValues();
+        // Ensure the GooglePlacesAutocomplete input is empty
+        setTimeout(() => {
+            if (googlePlacesRef.current) {
+                googlePlacesRef.current.setAddressText('');
+            }
+        }, 100);
         
         // Cleanup when component unmounts
         return () => {
@@ -114,9 +96,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
             const categories = categoriesResult.data.getCityCategories.categories;
             setCityCategories(categories);
             
-            // Update cache with categories
-            const existingCity = await AsyncStorage.getItem(CACHE_KEYS.SELECTED_CITY);
-            await saveCityToCache(existingCity || cityName, categories);
+            // No longer saving to cache - fields should always start empty
             
         } catch (error) {
             console.error('Error fetching city categories:', error);
@@ -169,7 +149,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
                         placeholder='Ex: Boston, MA, USA'
                         onPress={async (data) => {
                             setSelectedCity(data.description);
-                            // Fetch city categories for trip planning
+                            // Fetch city categories for trip planning (but don't save to cache)
                             fetchCityCategories(data.description); // Don't await - let it run independently
                         }}
                         query={{

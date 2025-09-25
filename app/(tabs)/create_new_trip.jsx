@@ -6,13 +6,12 @@ export default function Create_New_Trip() {
   const { completeReset } = useCreateTrip();
 
   useEffect(() => {
-    const initializeNewTrip = async () => {
-      // Reset all trip data and cache before starting fresh
+    // Always clear cached data when this tab opens
+    const performReset = async () => {
       await completeReset();
     };
-
-    initializeNewTrip();
-  }, []);
+    performReset();
+  }, []); // Empty dependency array - only run on mount
 
   // Render the city selection component directly within this tab
   return <CreateTrip1City showBackButton={false} />;
