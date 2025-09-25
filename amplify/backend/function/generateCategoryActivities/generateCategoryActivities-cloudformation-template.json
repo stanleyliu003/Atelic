@@ -28,6 +28,10 @@
       "Type": "String",
       "Default": "storagePlacesAPIActivityStorageStreamArn"
     },
+    "functiongetLocationCoordinatesName": {
+      "Type": "String",
+      "Default": "functiongetLocationCoordinatesName"
+    },
     "googlePlacesApiKey": {
       "Type": "String"
     },
@@ -96,6 +100,9 @@
             },
             "STORAGE_PLACESAPIACTIVITYSTORAGE_STREAMARN": {
               "Ref": "storagePlacesAPIActivityStorageStreamArn"
+            },
+            "FUNCTION_GETLOCATIONCOORDINATES_NAME": {
+              "Ref": "functiongetLocationCoordinatesName"
             },
             "GOOGLE_PLACES_API_KEY": {
               "Ref": "googlePlacesApiKey"
@@ -213,6 +220,39 @@
         "PolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "lambda:Create*",
+                "lambda:Put*",
+                "lambda:Add*",
+                "lambda:Get*",
+                "lambda:List*",
+                "lambda:Invoke*",
+                "lambda:Update*"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:lambda:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":function:",
+                      {
+                        "Ref": "functiongetLocationCoordinatesName"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
             {
               "Effect": "Allow",
               "Action": [

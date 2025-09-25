@@ -176,6 +176,13 @@
       "dependsOn": [
         {
           "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "getLocationCoordinates"
+        },
+        {
+          "attributes": [
             "Name",
             "Arn",
             "StreamArn"

@@ -1,22 +1,25 @@
 /* Amplify Params - DO NOT EDIT
 	ENV
-	REGION
-	STORAGE_PLACESAPIACTIVITYSTORAGE_NAME
-	STORAGE_PLACESAPIACTIVITYSTORAGE_ARN
-	STORAGE_PLACESAPIACTIVITYSTORAGE_STREAMARN
-	GOOGLE_PLACES_API_KEY
-	GEMINI_API_KEY
 	FUNCTION_GETLOCATIONCOORDINATES_NAME
+	REGION
+	STORAGE_PLACESAPIACTIVITYSTORAGE_ARN
+	STORAGE_PLACESAPIACTIVITYSTORAGE_NAME
+	STORAGE_PLACESAPIACTIVITYSTORAGE_STREAMARN
 Amplify Params - DO NOT EDIT */
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
-const AWS = require('aws-sdk');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
 
 // Initialize clients
-const dynamodb = new AWS.DynamoDB.DocumentClient();
+const ddbClient = new DynamoDBClient({ region: process.env.REGION });
+const ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
 const lambdaClient = new LambdaClient({ region: process.env.REGION });
 const tableName = process.env.STORAGE_PLACESAPIACTIVITYSTORAGE_NAME;
+
+// Cache TTL constants (in seconds)
+const CATEGORY_ACTIVITIES_TTL = 24 * 60 * 60; // 24 hours
 
 /**
  * Lambda function to generate activities for a specific category using Gemini AI
@@ -32,9 +35,9 @@ exports.handler = async (event) => {
             throw new Error('selectedCity and category are required parameters');
         }
 
-        // Check cache first (similar to CityCategories pattern)
+        // Check cache first (following getLocationCoordinates pattern)
         const cacheKey = `category-activities-${selectedCity}-${category}-4`;
-        const cachedResult = await getCachedResult(cacheKey);
+        const cachedResult = await getCachedData('category-activities', cacheKey);
 
         if (cachedResult && cachedResult.activities) {
             console.log('Returning cached category activities');
@@ -173,12 +176,12 @@ exports.handler = async (event) => {
         // Apply deduplication against existing activities (by name)
         const deduplicatedActivities = deduplicateActivities(finalActivities, existingCategoryActivities);
 
-        // Cache the result
-        await cacheResult(cacheKey, {
+        // Cache the result (following getLocationCoordinates pattern)
+        await setCachedData('category-activities', cacheKey, {
             activities: finalActivities,
             category: category,
             timestamp: new Date().toISOString()
-        });
+        }, CATEGORY_ACTIVITIES_TTL);
 
         console.log(`Returning ${deduplicatedActivities.length} activities for category: ${category}`);
 
@@ -264,54 +267,58 @@ function deduplicateActivities(activities, existingActivityNames) {
     return activities.filter(activity => !existingNamesSet.has(activity.name));
 }
 
-/**
- * Cache management functions - based on CityCategories caching pattern
- */
-async function getCachedResult(cacheKey) {
+// Cache helper functions (following getLocationCoordinates pattern)
+const getCachedData = async (cacheType, cacheKey) => {
     try {
-        const params = {
+        const command = new GetCommand({
             TableName: tableName,
-            Key: { id: cacheKey }
-        };
+            Key: {
+                cache_type: cacheType,
+                cache_key: cacheKey
+            }
+        });
 
-        const result = await dynamodb.get(params).promise();
+        const result = await ddbDocClient.send(command);
 
         if (result.Item) {
-            // Check if cache is still valid (24 hours TTL)
-            const cacheTime = new Date(result.Item.timestamp);
-            const now = new Date();
-            const hoursDiff = (now - cacheTime) / (1000 * 60 * 60);
-
-            if (hoursDiff < 24) {
-                return result.Item;
-            } else {
-                // Cache expired, delete it
-                await dynamodb.delete(params).promise();
+            // Check if TTL has expired
+            const now = Math.floor(Date.now() / 1000);
+            if (result.Item.ttl && result.Item.ttl < now) {
+                console.log(`Cache expired for ${cacheType}:${cacheKey}`);
+                return null;
             }
+
+            console.log(`Cache HIT for ${cacheType}:${cacheKey}`);
+            return result.Item.data;
         }
 
+        console.log(`Cache MISS for ${cacheType}:${cacheKey}`);
         return null;
     } catch (error) {
-        console.error('Error getting cached result:', error);
-        return null;
+        console.error(`Error getting cached data for ${cacheType}:${cacheKey}:`, error);
+        return null; // Fall back to API call if cache fails
     }
-}
+};
 
-async function cacheResult(cacheKey, data) {
+const setCachedData = async (cacheType, cacheKey, data, ttlSeconds) => {
     try {
-        const params = {
+        const ttl = Math.floor(Date.now() / 1000) + ttlSeconds;
+
+        const command = new PutCommand({
             TableName: tableName,
             Item: {
-                id: cacheKey,
-                ...data,
-                ttl: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours TTL
+                cache_type: cacheType,
+                cache_key: cacheKey,
+                data: data,
+                ttl: ttl
             }
-        };
+        });
 
-        await dynamodb.put(params).promise();
-        console.log('Cached result for key:', cacheKey);
+        await ddbDocClient.send(command);
+        console.log(`Cached data for ${cacheType}:${cacheKey} with TTL ${ttl}`);
     } catch (error) {
-        console.error('Error caching result:', error);
+        console.error(`Error caching data for ${cacheType}:${cacheKey}:`, error);
+        // Don't throw error - caching failure shouldn't break the main functionality
     }
-}
+};
 

@@ -72,12 +72,17 @@ export default function create_trip_interactive() {
                     {/* City Categories Display */}
                     {cityCategories && cityCategories.length > 0 ? (
                         <View style={styles.categoriesSection}>
-                            <View style={styles.categoriesGrid}>
+                            <ScrollView
+                                horizontal={true}
+                                showsHorizontalScrollIndicator={true}
+                                contentContainerStyle={styles.categoriesHorizontalContainer}
+                                style={styles.categoriesScrollView}
+                            >
                                 {cityCategories.map((category, index) => {
                                     const isSelected = selectedCategories.includes(category.category);
                                     return (
-                                        <TouchableOpacity 
-                                            key={index} 
+                                        <TouchableOpacity
+                                            key={index}
                                             style={[
                                                 styles.categoryCard,
                                                 isSelected && styles.selectedCategoryCard
@@ -107,7 +112,7 @@ export default function create_trip_interactive() {
                                         </TouchableOpacity>
                                     );
                                 })}
-                            </View>
+                            </ScrollView>
                         </View>
                     ) : selectedCity && (
                         <View style={styles.categoriesSection}>
@@ -188,17 +193,19 @@ const styles = StyleSheet.create({
         paddingHorizontal: 5,
         marginTop: 15,
     },
-    categoriesGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
+    categoriesScrollView: {
+        paddingVertical: 10,
+    },
+    categoriesHorizontalContainer: {
+        paddingHorizontal: 20,
+        paddingRight: 40,
     },
     categoryCard: {
-        width: '48%',
+        width: 150,
         backgroundColor: '#f8f9fa',
         borderRadius: 12,
         padding: 15,
-        marginBottom: 12,
+        marginRight: 15,
         borderWidth: 1,
         borderColor: '#e9ecef',
         shadowColor: '#000',

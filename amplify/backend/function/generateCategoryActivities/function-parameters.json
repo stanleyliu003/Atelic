@@ -1,5 +1,12 @@
 {
   "permissions": {
+    "function": {
+      "getLocationCoordinates": [
+        "create",
+        "read",
+        "update"
+      ]
+    },
     "storage": {
       "PlacesAPIActivityStorage": [
         "create",
