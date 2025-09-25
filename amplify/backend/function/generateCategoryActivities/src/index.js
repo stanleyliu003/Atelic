@@ -36,17 +36,23 @@ exports.handler = async (event) => {
         }
 
         // Check cache first (following getLocationCoordinates pattern)
-        const cacheKey = `category-activities-${selectedCity}-${category}-4`;
-        const cachedResult = await getCachedData('category-activities', cacheKey);
+        // Only use cache if there are no existing activities (initial request)
+        let cachedResult = null;
+        let cacheKey = null;
+        
+        if (existingCategoryActivities.length === 0) {
+            cacheKey = `category-activities-${selectedCity}-${category}-4`;
+            cachedResult = await getCachedData('category-activities', cacheKey);
 
-        if (cachedResult && cachedResult.activities) {
-            console.log('Returning cached category activities');
-            // Apply deduplication to cached results
-            const deduplicatedActivities = deduplicateActivities(cachedResult.activities, existingCategoryActivities);
-            return {
-                activities: deduplicatedActivities.slice(0, 4),
-                category: category
-            };
+            if (cachedResult && cachedResult.activities) {
+                console.log('Returning cached category activities');
+                return {
+                    activities: cachedResult.activities.slice(0, 4),
+                    category: category
+                };
+            }
+        } else {
+            console.log('Skipping cache for generateMore request - generating fresh activities');
         }
 
         // Initialize Gemini with API key from environment
@@ -176,12 +182,14 @@ exports.handler = async (event) => {
         // Apply deduplication against existing activities (by name)
         const deduplicatedActivities = deduplicateActivities(finalActivities, existingCategoryActivities);
 
-        // Cache the result (following getLocationCoordinates pattern)
-        await setCachedData('category-activities', cacheKey, {
-            activities: finalActivities,
-            category: category,
-            timestamp: new Date().toISOString()
-        }, CATEGORY_ACTIVITIES_TTL);
+        // Cache the result only for initial requests (following getLocationCoordinates pattern)
+        if (cacheKey && existingCategoryActivities.length === 0) {
+            await setCachedData('category-activities', cacheKey, {
+                activities: finalActivities,
+                category: category,
+                timestamp: new Date().toISOString()
+            }, CATEGORY_ACTIVITIES_TTL);
+        }
 
         console.log(`Returning ${deduplicatedActivities.length} activities for category: ${category}`);
 

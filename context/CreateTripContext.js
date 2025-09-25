@@ -300,10 +300,10 @@ export const CreateTripProvider = ({ children }) => {
 
             console.log(`[CreateTripContext] Generated ${response.activities.length} activities for ${category}`);
 
-            // Update categoryActivities state
+            // Update categoryActivities state - append new activities to existing ones
             setCategoryActivities(prev => ({
                 ...prev,
-                [category]: response.activities
+                [category]: [...existingCategoryActivities, ...response.activities]
             }));
 
             return response.activities;

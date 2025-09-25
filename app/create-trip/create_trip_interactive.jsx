@@ -253,14 +253,19 @@ export default function create_trip_interactive() {
                                         )}
 
                                         {/* Generate More Button */}
-                                        {!isLoading && activities.length > 0 && (
+                                        {activities.length > 0 && (
                                             <TouchableOpacity
-                                                style={styles.generateMoreButton}
-                                                onPress={() => handleGenerateMoreActivities(categoryName)}
+                                                style={[styles.generateMoreButton, isLoading && styles.generateMoreButtonDisabled]}
+                                                onPress={() => !isLoading && handleGenerateMoreActivities(categoryName)}
+                                                disabled={isLoading}
                                             >
-                                                <Feather name="plus-circle" size={24} color="black" />
-                                                <Text style={styles.generateMoreButtonText}>
-                                                    More {categoryName.toLowerCase()}
+                                                {isLoading ? (
+                                                    <ActivityIndicator size="small" color="#666" />
+                                                ) : (
+                                                    <Feather name="plus-circle" size={24} color="black" />
+                                                )}
+                                                <Text style={[styles.generateMoreButtonText, isLoading && styles.generateMoreButtonTextDisabled]}>
+                                                    {isLoading ? 'Loading...' : `More ${categoryName.toLowerCase()}`}
                                                 </Text>
                                             </TouchableOpacity>
                                         )}
@@ -564,6 +569,12 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#1a1a1a',
         fontWeight: '500',
+    },
+    generateMoreButtonDisabled: {
+        opacity: 0.6,
+    },
+    generateMoreButtonTextDisabled: {
+        color: '#666',
     },
     // Activity Detail Modal Styles
     activityDetailOverlay: {
