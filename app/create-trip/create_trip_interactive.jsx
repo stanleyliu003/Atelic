@@ -1,4 +1,5 @@
 import { Colors } from '../../constants/Colors';
+import Feather from '@expo/vector-icons/Feather';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -28,6 +29,9 @@ export default function create_trip_interactive() {
     // State for activity detail view
     const [selectedActivityForDetail, setSelectedActivityForDetail] = useState(null);
     const [showActivityDetail, setShowActivityDetail] = useState(false);
+    
+    // State for scroll indicator
+    const [scrollPosition, setScrollPosition] = useState(0);
 
     useEffect(() => {
         navigation.setOptions({
@@ -84,6 +88,28 @@ export default function create_trip_interactive() {
         setSelectedActivityForDetail(null);
     };
 
+    // Handler for scroll events to update indicator
+    const handleScroll = (event) => {
+        const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+        const scrollX = contentOffset.x;
+        const totalWidth = contentSize.width - layoutMeasurement.width;
+        
+        // Calculate which dot should be active based on scroll position
+        let activeDot = 0;
+        if (totalWidth > 0) {
+            const scrollPercentage = scrollX / totalWidth;
+            if (scrollPercentage < 0.33) {
+                activeDot = 0;
+            } else if (scrollPercentage < 0.66) {
+                activeDot = 1;
+            } else {
+                activeDot = 2;
+            }
+        }
+        
+        setScrollPosition(activeDot);
+    };
+
     return (
         <KeyboardAvoidingView
             style={{ flex: 1, backgroundColor: Colors.WHITE }}
@@ -121,9 +147,11 @@ export default function create_trip_interactive() {
                         <View style={styles.categoriesSection}>
                             <ScrollView
                                 horizontal={true}
-                                showsHorizontalScrollIndicator={true}
+                                showsHorizontalScrollIndicator={false}
                                 contentContainerStyle={styles.categoriesHorizontalContainer}
                                 style={styles.categoriesScrollView}
+                                onScroll={handleScroll}
+                                scrollEventThrottle={16}
                             >
                                 {cityCategories.map((category, index) => {
                                     const isSelected = selectedCategories.includes(category.category);
@@ -160,6 +188,24 @@ export default function create_trip_interactive() {
                                     );
                                 })}
                             </ScrollView>
+                            
+                            {/* Custom Horizontal Scroll Indicator */}
+                            <View style={styles.scrollIndicatorContainer}>
+                                <View style={styles.scrollIndicator}>
+                                    <View style={[
+                                        styles.scrollIndicatorDot, 
+                                        scrollPosition === 0 && styles.activeDot
+                                    ]} />
+                                    <View style={[
+                                        styles.scrollIndicatorDot, 
+                                        scrollPosition === 1 && styles.activeDot
+                                    ]} />
+                                    <View style={[
+                                        styles.scrollIndicatorDot, 
+                                        scrollPosition === 2 && styles.activeDot
+                                    ]} />
+                                </View>
+                            </View>
                         </View>
                     ) : selectedCity && (
                         <View style={styles.categoriesSection}>
@@ -212,6 +258,7 @@ export default function create_trip_interactive() {
                                                 style={styles.generateMoreButton}
                                                 onPress={() => handleGenerateMoreActivities(categoryName)}
                                             >
+                                                <Feather name="plus-circle" size={24} color="black" />
                                                 <Text style={styles.generateMoreButtonText}>
                                                     More {categoryName.toLowerCase()}
                                                 </Text>
@@ -222,6 +269,9 @@ export default function create_trip_interactive() {
                             })}
                         </View>
                     )}
+                    
+                    {/* Extra padding to ensure content is visible above fixed button */}
+                    <View style={styles.bottomPadding} />
                 </View>
             </ScrollView>
             
@@ -313,6 +363,26 @@ const styles = StyleSheet.create({
     },
     categoriesScrollView: {
         paddingVertical: 10,
+    },
+    scrollIndicatorContainer: {
+        alignItems: 'center',
+        marginTop: 15,
+        marginBottom: 5,
+    },
+    scrollIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+        gap: 8,
+    },
+    scrollIndicatorDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#ccc',
+    },
+    activeDot: {
+        backgroundColor: '#007AFF',
     },
     categoriesHorizontalContainer: {
         paddingHorizontal: 20,
@@ -455,6 +525,7 @@ const styles = StyleSheet.create({
         color: '#1a1a1a',
         marginBottom: 15,
         paddingHorizontal: 5,
+        textAlign: 'center',
     },
     categoryLoadingContainer: {
         flexDirection: 'row',
@@ -472,20 +543,26 @@ const styles = StyleSheet.create({
         marginBottom: 15,
     },
     generateMoreButton: {
-        marginTop: -20,
-        backgroundColor: '#f8f9fa',
-        borderWidth: 1,
-        borderColor: Colors.PRIMARY,
-        borderRadius: 10,
+        marginTop: -30,
+        backgroundColor: 'white',
+        borderRadius: 15,
         paddingVertical: 12,
         paddingHorizontal: 20,
         alignItems: 'center',
         marginHorizontal: 5,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
     },
     generateMoreButtonText: {
         fontFamily: 'outfit',
         fontSize: 14,
-        color: Colors.PRIMARY,
+        color: '#1a1a1a',
         fontWeight: '500',
     },
     // Activity Detail Modal Styles
@@ -512,5 +589,8 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 25,
         borderTopRightRadius: 25,
         paddingTop: 25,
+    },
+    bottomPadding: {
+        height: 120, // Extra padding to ensure content is visible above fixed button
     },
 })
