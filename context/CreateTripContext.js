@@ -196,12 +196,10 @@ export const CreateTripProvider = ({ children }) => {
 
     // Complete reset for starting a brand new trip
     const completeReset = async () => {
-        console.log('[CreateTripContext] completeReset called - clearing all cached data');
         
         // Always clear essential cached data for create_trip steps 1-4
         try {
             await AsyncStorage.multiRemove([CACHE_KEYS.SELECTED_CITY, CACHE_KEYS.CITY_PHOTO_REF, CACHE_KEYS.CITY_CATEGORIES]);
-            console.log('[CreateTripContext] AsyncStorage cache cleared successfully');
         } catch (error) {
             console.error('Error clearing essential trip creation cache:', error);
         }
@@ -222,7 +220,6 @@ export const CreateTripProvider = ({ children }) => {
         setTripPhotoReference('');
         setCollaborators([]);
         setCurrentUserRole(null);
-        console.log('[CreateTripContext] All context state cleared successfully');
     };
 
     // Load trip from cloud storage
