@@ -175,10 +175,38 @@ export const CollaboratorListItem: React.FC<CollaboratorListItemProps> = ({
     return role.charAt(0).toUpperCase() + role.slice(1);
   };
 
+  // Array of avatar background colors
+  const avatarColors = [
+    '#007AFF', // Blue
+    '#FF6B35', // Orange
+    '#4CAF50', // Green
+    '#9C27B0', // Purple
+    '#FF5722', // Deep Orange
+    '#2196F3', // Light Blue
+    '#E91E63', // Pink
+    '#00BCD4', // Cyan
+    '#FFC107', // Amber
+    '#795548', // Brown
+    '#607D8B', // Blue Grey
+    '#8BC34A', // Light Green
+  ];
+
+  // Hash function to consistently assign colors based on user identifier
+  const getAvatarColor = (identifier: string): string => {
+    let hash = 0;
+    for (let i = 0; i < identifier.length; i++) {
+      const char = identifier.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    const index = Math.abs(hash) % avatarColors.length;
+    return avatarColors[index];
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.userInfo}>
-        <View style={styles.userAvatar}>
+        <View style={[styles.userAvatar, { backgroundColor: getAvatarColor(collaborator.email) }]}>
           <Text style={styles.avatarText}>
             {collaborator.fullName.charAt(0).toUpperCase()}
           </Text>
@@ -240,7 +268,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
