@@ -300,13 +300,19 @@ export const CreateTripProvider = ({ children }) => {
 
             console.log(`[CreateTripContext] Generated ${response.activities.length} activities for ${category}`);
 
+            // Ensure primary_type_display_name is set to category for all activities (handles cached activities)
+            const activitiesWithCategory = response.activities.map(activity => ({
+                ...activity,
+                primary_type_display_name: category
+            }));
+
             // Update categoryActivities state - append new activities to existing ones
             setCategoryActivities(prev => ({
                 ...prev,
-                [category]: [...existingCategoryActivities, ...response.activities]
+                [category]: [...existingCategoryActivities, ...activitiesWithCategory]
             }));
 
-            return response.activities;
+            return activitiesWithCategory;
         } catch (error) {
             console.error(`[CreateTripContext] Error generating activities for category ${category}:`, error);
             throw error;
