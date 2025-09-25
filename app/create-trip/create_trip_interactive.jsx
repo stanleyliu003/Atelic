@@ -4,11 +4,23 @@ import { useNavigation, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
+import { WishlistActivities } from '../../src/components/trip-view/wishlist_activities';
 
 export default function create_trip_interactive() {
     const router = useRouter();
     const navigation = useNavigation();
-    const { setIsCreatingTrip, cityCategories, selectedCategories, setSelectedCategories } = useCreateTrip();
+    const {
+        setIsCreatingTrip,
+        cityCategories,
+        selectedCategories,
+        setSelectedCategories,
+        categoryActivities,
+        selectedActivityIds,
+        loadingCategories,
+        generateActivitiesForCategory,
+        toggleActivitySelection,
+        getSelectedActivities
+    } = useCreateTrip();
 
     const { selectedCity, tripLength } = useCreateTrip();
 
@@ -27,13 +39,31 @@ export default function create_trip_interactive() {
     }, [])
 
     // Handle category selection
-    const handleCategorySelect = (categoryName) => {
+    const handleCategorySelect = async (categoryName) => {
         if (selectedCategories.includes(categoryName)) {
             // Deselect category
             setSelectedCategories(prev => prev.filter(cat => cat !== categoryName));
         } else {
             // Select category
             setSelectedCategories(prev => [...prev, categoryName]);
+
+            // Generate activities for newly selected category if not already generated
+            if (!categoryActivities[categoryName] || categoryActivities[categoryName].length === 0) {
+                try {
+                    await generateActivitiesForCategory(categoryName);
+                } catch (error) {
+                    console.error('Error generating activities for category:', categoryName, error);
+                }
+            }
+        }
+    };
+
+    // Handle generating more activities for a category
+    const handleGenerateMoreActivities = async (categoryName) => {
+        try {
+            await generateActivitiesForCategory(categoryName);
+        } catch (error) {
+            console.error('Error generating more activities for category:', categoryName, error);
         }
     };
 
@@ -120,6 +150,58 @@ export default function create_trip_interactive() {
                                 <ActivityIndicator size="large" color={Colors.PRIMARY} />
                                 <Text style={styles.loadingText}>Loading experiences in {selectedCity}...</Text>
                             </View>
+                        </View>
+                    )}
+
+                    {/* Selected Category Activities Display */}
+                    {selectedCategories.length > 0 && (
+                        <View style={styles.selectedCategoriesActivitiesSection}>
+                            {selectedCategories.map((categoryName) => {
+                                const activities = categoryActivities[categoryName] || [];
+                                const isLoading = loadingCategories[categoryName] || false;
+
+                                return (
+                                    <View key={categoryName} style={styles.categoryActivitiesContainer}>
+                                        {/* Category Name Subtitle */}
+                                        <Text style={styles.categorySubtitle}>{categoryName}</Text>
+
+                                        {/* Loading State */}
+                                        {isLoading && (
+                                            <View style={styles.categoryLoadingContainer}>
+                                                <ActivityIndicator size="small" color={Colors.PRIMARY} />
+                                                <Text style={styles.categoryLoadingText}>
+                                                    Generating {categoryName.toLowerCase()} activities...
+                                                </Text>
+                                            </View>
+                                        )}
+
+                                        {/* Activity Cards */}
+                                        {!isLoading && activities.length > 0 && (
+                                            <View style={styles.activityCardsContainer}>
+                                                <WishlistActivities
+                                                    activities={activities}
+                                                    selectedActivities={selectedActivityIds}
+                                                    onActivitySelect={toggleActivitySelection}
+                                                    onActivityDeselect={toggleActivitySelection}
+                                                    showSelectionIndicator={true}
+                                                />
+                                            </View>
+                                        )}
+
+                                        {/* Generate More Button */}
+                                        {!isLoading && activities.length > 0 && (
+                                            <TouchableOpacity
+                                                style={styles.generateMoreButton}
+                                                onPress={() => handleGenerateMoreActivities(categoryName)}
+                                            >
+                                                <Text style={styles.generateMoreButtonText}>
+                                                    Generate more {categoryName.toLowerCase()} activities
+                                                </Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                );
+                            })}
                         </View>
                     )}
                 </View>
@@ -322,5 +404,51 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontFamily: 'outfit-bold',
         fontSize: 16,
-    }
+    },
+    // Selected Category Activities Styles
+    selectedCategoriesActivitiesSection: {
+        marginTop: 20,
+        paddingHorizontal: 0,
+    },
+    categoryActivitiesContainer: {
+        marginBottom: 30,
+    },
+    categorySubtitle: {
+        fontFamily: 'outfit-bold',
+        fontSize: 18,
+        color: '#1a1a1a',
+        marginBottom: 15,
+        paddingHorizontal: 5,
+    },
+    categoryLoadingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 20,
+    },
+    categoryLoadingText: {
+        fontFamily: 'outfit',
+        fontSize: 14,
+        color: '#666',
+        marginLeft: 10,
+    },
+    activityCardsContainer: {
+        marginBottom: 15,
+    },
+    generateMoreButton: {
+        backgroundColor: '#f8f9fa',
+        borderWidth: 1,
+        borderColor: Colors.PRIMARY,
+        borderRadius: 10,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+        marginHorizontal: 5,
+    },
+    generateMoreButtonText: {
+        fontFamily: 'outfit',
+        fontSize: 14,
+        color: Colors.PRIMARY,
+        fontWeight: '500',
+    },
 })
