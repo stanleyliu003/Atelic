@@ -66,11 +66,18 @@ export default function Profile() {
       const tripSummaries = await listUserTripsFromCloud(userID);
       const allTrips = tripSummaries || [];
 
-      // Separate trips by user role
-      const owned = allTrips.filter(trip => trip.userRole === 'owner');
-      const shared = allTrips.filter(trip => trip.userRole === 'editor' || trip.userRole === 'viewer');
+      // Sort trips by creation date (newest first)
+      const sortedTrips = allTrips.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA; // Descending order (newest first)
+      });
 
-      setUserTrips(allTrips);
+      // Separate trips by user role
+      const owned = sortedTrips.filter(trip => trip.userRole === 'owner');
+      const shared = sortedTrips.filter(trip => trip.userRole === 'editor' || trip.userRole === 'viewer');
+
+      setUserTrips(sortedTrips);
       setOwnedTrips(owned);
       setSharedTrips(shared);
     } catch (error) {
