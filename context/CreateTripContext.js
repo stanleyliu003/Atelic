@@ -348,6 +348,17 @@ export const CreateTripProvider = ({ children }) => {
         );
     };
 
+    const unselectActivitiesFromCategory = (categoryName) => {
+        // Get all activities from the specified category
+        const categoryActivitiesList = categoryActivities[categoryName] || [];
+        const categoryActivityIds = categoryActivitiesList.map(activity => activity.place_id).filter(Boolean);
+        
+        // Remove these activity IDs from selectedActivityIds
+        setSelectedActivityIds(prev => 
+            prev.filter(activityId => !categoryActivityIds.includes(activityId))
+        );
+    };
+
     const value = {
         tripId,
         setTripId: setTripIdWithLog,
@@ -393,6 +404,7 @@ export const CreateTripProvider = ({ children }) => {
         generateActivitiesForCategory,
         toggleActivitySelection,
         getSelectedActivities,
+        unselectActivitiesFromCategory,
         tripPhotoReference,
         setTripPhotoReference,
         getFirstActivityPhotoRef,

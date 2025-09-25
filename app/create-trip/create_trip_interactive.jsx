@@ -22,7 +22,8 @@ export default function create_trip_interactive() {
         generateActivitiesForCategory,
         toggleActivitySelection,
         getSelectedActivities,
-        updateActivities
+        updateActivities,
+        unselectActivitiesFromCategory
     } = useCreateTrip();
 
     const { selectedCity, tripLength } = useCreateTrip();
@@ -53,6 +54,8 @@ export default function create_trip_interactive() {
         if (selectedCategories.includes(categoryName)) {
             // Deselect category
             setSelectedCategories(prev => prev.filter(cat => cat !== categoryName));
+            // Unselect all activities from this category
+            unselectActivitiesFromCategory(categoryName);
         } else {
             // Select category
             setSelectedCategories(prev => [...prev, categoryName]);
@@ -488,7 +491,7 @@ const styles = StyleSheet.create({
         color: Colors.PRIMARY,
     },
     loadWishlistButtonContainer: {
-        marginTop: 30,
+        marginTop: 0,
         marginBottom: 20,
         paddingHorizontal: 5,
     },
@@ -541,6 +544,7 @@ const styles = StyleSheet.create({
     },
     generateMoreButton: {
         marginTop: -30,
+        marginBottom: 15,
         backgroundColor: 'white',
         borderRadius: 15,
         paddingVertical: 12,
