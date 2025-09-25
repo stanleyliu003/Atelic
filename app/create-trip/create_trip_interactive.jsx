@@ -21,7 +21,8 @@ export default function create_trip_interactive() {
         loadingCategories,
         generateActivitiesForCategory,
         toggleActivitySelection,
-        getSelectedActivities
+        getSelectedActivities,
+        updateActivities
     } = useCreateTrip();
 
     const { selectedCity, tripLength } = useCreateTrip();
@@ -86,6 +87,16 @@ export default function create_trip_interactive() {
     const handleCloseActivityDetail = () => {
         setShowActivityDetail(false);
         setSelectedActivityForDetail(null);
+    };
+
+    // Handler for Load Wishlist button
+    const handleLoadWishlist = () => {
+        // Get all selected activities and pass them to the context
+        const selectedActivities = getSelectedActivities();
+        updateActivities(selectedActivities);
+        
+        // Navigate to trip-view_main
+        router.replace('/trip-view/trip-view_main');
     };
 
     // Handler for scroll events to update indicator
@@ -275,22 +286,21 @@ export default function create_trip_interactive() {
                         </View>
                     )}
                     
-                    {/* Extra padding to ensure content is visible above fixed button */}
-                    <View style={styles.bottomPadding} />
+                    {/* Load Wishlist Button - Only show when user has selected activities */}
+                    {selectedActivityIds.length > 0 && (
+                        <View style={styles.loadWishlistButtonContainer}>
+                            <TouchableOpacity
+                                onPress={handleLoadWishlist}
+                                style={styles.loadWishlistButton}
+                            >
+                                <Text style={styles.loadWishlistButtonText}>
+                                    Load Wishlist
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
             </ScrollView>
-            
-            {/* Fixed Next Button - Always visible at bottom */}
-            {cityCategories && cityCategories.length > 0 && (
-                <View style={styles.fixedButtonContainer}>
-                    <TouchableOpacity
-                        onPress={() => router.replace('/create-trip/create_trip_4_additional_info')}
-                        style={styles.fixedNextButton}
-                    >
-                        <Text style={styles.nextButtonText}>Load Wishlist</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
 
             {/* Activity Detail View Overlay */}
             {showActivityDetail && selectedActivityForDetail && (
@@ -477,30 +487,12 @@ const styles = StyleSheet.create({
     selectedCategoryItems: {
         color: Colors.PRIMARY,
     },
-    nextButton: {
-        padding: 20,
-        backgroundColor: Colors.PRIMARY,
-        borderRadius: 15,
+    loadWishlistButtonContainer: {
         marginTop: 30,
+        marginBottom: 20,
+        paddingHorizontal: 5,
     },
-    fixedButtonContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)', // Semi-transparent white background
-        paddingHorizontal: 25,
-        paddingTop: 15,
-        paddingBottom: 40, // Extra padding for safe area
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(0, 0, 0, 0.1)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 5,
-    },
-    fixedNextButton: {
+    loadWishlistButton: {
         padding: 20,
         backgroundColor: Colors.PRIMARY,
         borderRadius: 15,
@@ -510,7 +502,7 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
     },
-    nextButtonText: {
+    loadWishlistButtonText: {
         color: Colors.WHITE,
         textAlign: 'center',
         fontFamily: 'outfit-bold',
@@ -600,8 +592,5 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 25,
         borderTopRightRadius: 25,
         paddingTop: 25,
-    },
-    bottomPadding: {
-        height: 120, // Extra padding to ensure content is visible above fixed button
     },
 })
