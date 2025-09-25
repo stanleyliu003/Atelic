@@ -694,6 +694,12 @@ export default function TripViewMain() {
             });
             console.log('[trip-view_main] Trip saved successfully:', result);
 
+            // Update local collaborators state after successful save for new trips
+            if (!createdAt || !tripId) {
+                setCollaborators(collaboratorsToSave);
+                setTripId(currentTripId);
+            }
+
         } catch (error) {
             console.error('[trip-view_main] Error saving trip - Full error:', JSON.stringify(error, null, 2));
 
@@ -757,11 +763,32 @@ export default function TripViewMain() {
 
 
     // Handle collaboration modal
-    const handleShareTrip = () => {
-        if (!isOwner()) {
-            Alert.alert('Permission Denied', 'Only trip owners can manage sharing');
-            return;
+    const handleShareTrip = async () => {
+
+        // For new trips (no tripId yet), initialize collaborators with current user as owner
+        if (!tripId && collaborators.length === 0) {
+            try {
+                const currentUser = await Auth.currentAuthenticatedUser();
+                const currentUserID = currentUser.attributes?.sub || currentUser.username;
+                const currentUserEmail = currentUser.attributes?.email || '';
+                const currentUserName = currentUser.attributes?.name || '';
+
+                const ownerCollaborator = {
+                    email: currentUserEmail,
+                    fullName: currentUserName,
+                    userID: currentUserID,
+                    role: 'owner',
+                    addedBy: currentUserName
+                };
+
+                setCollaborators([ownerCollaborator]);
+            } catch (error) {
+                console.error('[trip-view_main] Error getting current user for collaborators:', error);
+                Alert.alert('Error', 'Unable to load user information for sharing');
+                return;
+            }
         }
+
         setIsShareModalVisible(true);
     };
 
@@ -798,7 +825,7 @@ export default function TripViewMain() {
                         // Save trip first if it doesn't exist
                         await saveTrip();
                     }
-                    setIsShareModalVisible(true);
+                    handleShareTrip();
                 }}
             />
             
