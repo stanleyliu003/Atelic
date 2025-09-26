@@ -70,6 +70,9 @@ export default function create_trip_1_city({ showBackButton = true }) {
                 googlePlacesRef.current.setAddressText('');
             }
         }, 100);
+
+        // Ensure dropdown is closed when component mounts (after reset)
+        setIsDropdownOpen(false);
         
         // Cleanup when component unmounts
         return () => {
@@ -83,6 +86,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
             setCityCategories(null);
         }
     }, [selectedCity, setCityCategories])
+
 
 
     // Fetch city categories independently - this can be slow due to Gemini
