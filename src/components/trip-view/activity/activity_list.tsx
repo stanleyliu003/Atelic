@@ -48,6 +48,9 @@ export function ActivityList({
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
 
+  // State to control route info visibility for ALL activities during any drag operation
+  const [hideAllRouteInfo, setHideAllRouteInfo] = useState(false);
+
   // Update local state when activities prop changes
   React.useEffect(() => {
     setCurrentActivities(activities);
@@ -63,6 +66,15 @@ export function ActivityList({
       onReorder(newActivities);
     }
   }, [currentActivities, onReorder]);
+
+  // Handlers for global route info visibility during drag operations
+  const handleDragStart = useCallback(() => {
+    setHideAllRouteInfo(true);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    setHideAllRouteInfo(false);
+  }, []);
 
   // Since we always have recommendations, we don't need empty state handling
   if (!activities || activities.length === 0) {
@@ -134,6 +146,9 @@ export function ActivityList({
             {...commonProps}
             onMove={moveItem}
             totalItems={currentActivities.length}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            hideRouteInfo={hideAllRouteInfo}
           />
         );
       }
@@ -142,6 +157,7 @@ export function ActivityList({
         <ActivityCard
           {...commonProps}
           style={styles.activityCard}
+          hideRouteInfo={hideAllRouteInfo}
         />
       );
     });
@@ -192,6 +208,9 @@ interface DraggableActivityCardProps {
   travelMode?: string;
   onMove: (fromIndex: number, toIndex: number) => void;
   totalItems: number;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  hideRouteInfo: boolean;
 }
 
 function DraggableActivityCard({
@@ -210,15 +229,15 @@ function DraggableActivityCard({
   travelMode,
   onMove,
   totalItems,
+  onDragStart,
+  onDragEnd,
+  hideRouteInfo,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const isDragging = useSharedValue(false);
   const scale = useSharedValue(1);
   const zIndex = useSharedValue(0);
-
-  // State to control route info visibility
-  const [hideRouteInfo, setHideRouteInfo] = useState(false);
 
   const ITEM_HEIGHT = 120; // Approximate height of activity card including margin
 
@@ -227,8 +246,8 @@ function DraggableActivityCard({
       isDragging.value = true;
       scale.value = withSpring(1.05);
       zIndex.value = 1000;
-      // Hide route info when dragging starts
-      runOnJS(setHideRouteInfo)(true);
+      // Hide ALL route info cards when dragging starts
+      runOnJS(onDragStart)();
     })
     .onUpdate((event) => {
       translateY.value = event.translationY;
@@ -249,8 +268,8 @@ function DraggableActivityCard({
       scale.value = withSpring(1);
       isDragging.value = false;
       zIndex.value = 0;
-      // Show route info again when dragging ends
-      runOnJS(setHideRouteInfo)(false);
+      // Show ALL route info cards again when dragging ends
+      runOnJS(onDragEnd)();
     });
 
   const animatedStyle = useAnimatedStyle(() => {
