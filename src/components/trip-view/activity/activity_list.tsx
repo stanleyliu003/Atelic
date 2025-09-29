@@ -160,6 +160,7 @@ export function ActivityList({
 }: EnhancedActivityListProps) {
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
 
   // Route info cards are now always visible - no hide/show logic needed
 
@@ -254,6 +255,9 @@ export function ActivityList({
             onMove={moveItem}
             totalItems={currentActivities.length}
             isLoadingRoute={routeLoading}
+            onDragStart={() => setDraggingIndex(index)}
+            onDragEnd={() => setDraggingIndex(null)}
+            isDraggingThisItem={draggingIndex === index}
           />
         );
       }
@@ -313,6 +317,9 @@ interface DraggableActivityCardProps {
   onMove: (fromIndex: number, toIndex: number) => void;
   totalItems: number;
   isLoadingRoute?: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  isDraggingThisItem: boolean;
 }
 
 function DraggableActivityCard({
@@ -332,6 +339,9 @@ function DraggableActivityCard({
   onMove,
   totalItems,
   isLoadingRoute = false,
+  onDragStart,
+  onDragEnd,
+  isDraggingThisItem,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -359,11 +369,13 @@ function DraggableActivityCard({
     .onStart(() => {
       console.log(`🫳 [${new Date().toISOString()}] PAN GESTURE START - Activity ${index + 1} drag started`);
       isDragging.value = true;
+      console.log("dragging value high");
       scale.value = withSpring(1.05);
       zIndex.value = 1000;
       originalIndex.value = index;
       currentTargetIndex.value = index;
       lastReorderTime.value = 0; // Reset the timer
+      runOnJS(onDragStart)();
     })
     .onUpdate((event) => {
       translateY.value = event.translationY;
@@ -396,22 +408,31 @@ function DraggableActivityCard({
       scale.value = withSpring(1);
       isDragging.value = false;
       zIndex.value = 0;
+      runOnJS(onDragEnd)();
     });
 
   const animatedStyle = useAnimatedStyle(() => {
+    const currentZIndex = isDragging.value ? 9999 : index;
+    const currentElevation = isDragging.value ? 9999 : index;
+
+    // Log z-index and elevation when dragging state changes
+    if (isDragging.value) {
+      console.log(`🎨 Activity ${index + 1} - isDragging: ${isDragging.value}, zIndex: ${currentZIndex}, elevation: ${currentElevation}`);
+    }
+
     return {
       transform: [
         { translateX: translateX.value },
         { translateY: translateY.value },
         { scale: scale.value },
       ],
-      zIndex: zIndex.value,
-      elevation: isDragging.value ? 5 : 0,
+      zIndex: isDragging.value ? 9999 : index,
+      elevation: isDragging.value ? 9999 : index,
     } as any;
   });
 
   return (
-    <View style={styles.draggableContainer}>
+    <View style={[styles.draggableContainer, isDraggingThisItem && styles.draggingContainer]}>
       <GestureDetector gesture={panGesture}>
         <Animated.View style={[animatedStyle, styles.draggableCard]}>
           <ActivityCard
@@ -460,6 +481,10 @@ const styles = StyleSheet.create({
   },
   draggableContainer: {
     marginBottom: 12,
+  },
+  draggingContainer: {
+    zIndex: 9999,
+    elevation: 9999,
   },
   draggableCard: {
     marginBottom: -10, // negative margin between activity card and route info
