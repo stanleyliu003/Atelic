@@ -415,12 +415,49 @@ export default function TripViewMain() {
 
         // Remove from CreateTripContext (master list)
         removeActivities(selectedActivities);
-        
+
         // Remove from all days
         removeActivitiesFromAllDays(selectedActivities);
-        
+
         // Clear selection
         clearSelection();
+    };
+
+    // Handle reordering activities within a day via drag and drop
+    const handleDayActivityReorder = async (dayNumber: number, newOrder: Activity[]) => {
+        try {
+            // Update the activities for this day using the existing reorderDayActivities function
+            reorderDayActivities(dayNumber, newOrder);
+
+            // Clear the route cache for this day to trigger route recalculation
+            const dayTab = `day${dayNumber}`;
+            delete routeCache.current[dayTab];
+
+            // If this is the currently active tab, trigger route recalculation
+            if (activeTab === dayTab) {
+                setRouteLoading(true);
+                const newRouteData = await fetchRoutePolyline(newOrder);
+                setRouteData(newRouteData);
+
+                // Update the route cache for this day
+                const activitiesHash = hashActivities(newOrder);
+                routeCache.current[dayTab] = {
+                    activitiesHash,
+                    routeData: newRouteData,
+                };
+
+                // Store encoded polyline in context
+                if (newRouteData.polyline && newRouteData.polyline.length > 1) {
+                    const encoded = encodePolyline(newRouteData.polyline);
+                    setDayPolyline(dayNumber, encoded);
+                }
+
+                setRouteLoading(false);
+            }
+        } catch (error) {
+            console.error('Error reordering activities:', error);
+            setRouteLoading(false);
+        }
     };
 
     // Get bias location from activities or selectedCity
@@ -917,7 +954,7 @@ export default function TripViewMain() {
                         {activeTab.startsWith('day') && (() => {
                             const currentDayNumber = parseInt(activeTab.replace('day', ''));
                             return (
-                                <DaySchedule 
+                                <DaySchedule
                                     dayNumber={currentDayNumber}
                                     activities={getActivitiesForTab(activeTab)}
                                     selectedActivities={selectedActivities}
@@ -934,6 +971,7 @@ export default function TripViewMain() {
                                     onScrollPositionChange={(position) => handleScrollPositionChange(currentDayNumber, position)}
                                     shouldRestorePosition={shouldRestoreScrollPositions[currentDayNumber] || false}
                                     travelMode={routeData.travelMode}
+                                    onReorder={currentUserRole !== 'viewer' ? handleDayActivityReorder : undefined}
                                 />
                             );
                         })()}

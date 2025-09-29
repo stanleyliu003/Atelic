@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm install:*)",
       "WebSearch",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": [],
