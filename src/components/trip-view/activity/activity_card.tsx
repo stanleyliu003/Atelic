@@ -200,22 +200,28 @@ export function ActivityCard({
         </View>
       </View>
 
-      {/* Distance and Travel Time Info - Now a button - Always visible (simplified) */}
-      {!hideRouteInfo && !isLastActivity && nextActivityDistance !== undefined && nextActivityDistance !== null && nextActivityDistance > 0 && nextActivityDuration && (
+      {/* Distance and Travel Time Info - Always visible to prevent disappearing during reorder */}
+      {!hideRouteInfo && !isLastActivity && (
         <TouchableOpacity
           style={styles.routeInfo}
           onPress={handleRoutePress}
           activeOpacity={0.7}
         >
-          <View style={styles.routeInfoItem}>
-            {getTravelModeIcon(travelMode)}
-            <Text style={styles.routeInfoValue}>  {formatDuration(nextActivityDuration)}</Text>
-          </View>
-          <View style={styles.routeInfoItem}>
-            <Text style={styles.routeMidDotLabel}>· </Text>
-            <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
-          </View>
-          <FontAwesome5 name="chevron-right" size={18} color={Colors.PRIMARY} style={styles.chevronIcon} />
+          {nextActivityDistance !== undefined && nextActivityDistance !== null && nextActivityDistance > 0 && nextActivityDuration ? (
+            <>
+              <View style={styles.routeInfoItem}>
+                {getTravelModeIcon(travelMode)}
+                <Text style={styles.routeInfoValue}>  {formatDuration(nextActivityDuration)}</Text>
+              </View>
+              <View style={styles.routeInfoItem}>
+                <Text style={styles.routeMidDotLabel}>· </Text>
+                <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
+              </View>
+              <FontAwesome5 name="chevron-right" size={18} color={Colors.PRIMARY} style={styles.chevronIcon} />
+            </>
+          ) : (
+            <Text style={styles.loadingText}>Loading...</Text>
+          )}
         </TouchableOpacity>
       )}
     </View>
@@ -380,5 +386,10 @@ const styles = StyleSheet.create({
   },
   chevronIcon: {
     marginLeft: 8,
+  },
+  loadingText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
+    color: Colors.GRAY,
   },
 });

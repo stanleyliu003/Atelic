@@ -972,6 +972,7 @@ export default function TripViewMain() {
                                     shouldRestorePosition={shouldRestoreScrollPositions[currentDayNumber] || false}
                                     travelMode={routeData.travelMode}
                                     onReorder={currentUserRole !== 'viewer' ? handleDayActivityReorder : undefined}
+                                    routeLoading={routeLoading}
                                 />
                             );
                         })()}

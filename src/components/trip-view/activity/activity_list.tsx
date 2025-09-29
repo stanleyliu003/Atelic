@@ -50,6 +50,7 @@ interface RouteInfoCardProps {
   nextActivityDuration: string;
   nextActivity?: Activity;
   travelMode?: string;
+  isLoading?: boolean;
 }
 
 function RouteInfoCard({
@@ -57,6 +58,7 @@ function RouteInfoCard({
   nextActivityDuration,
   nextActivity,
   travelMode,
+  isLoading = false,
 }: RouteInfoCardProps) {
   const handleRoutePress = () => {
     if (!nextActivity) return;
@@ -100,16 +102,23 @@ function RouteInfoCard({
       style={styles.routeInfo}
       onPress={handleRoutePress}
       activeOpacity={0.7}
+      disabled={isLoading}
     >
-      <View style={styles.routeInfoItem}>
-        {getTravelModeIcon(travelMode)}
-        <Text style={styles.routeInfoValue}>  {formatDuration(nextActivityDuration)}</Text>
-      </View>
-      <View style={styles.routeInfoItem}>
-        <Text style={styles.routeMidDotLabel}>· </Text>
-        <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
-      </View>
-      <FontAwesome5 name="chevron-right" size={18} color={Colors.PRIMARY} style={styles.chevronIcon} />
+      {isLoading ? (
+        <Text style={styles.loadingText}>Loading...</Text>
+      ) : (
+        <>
+          <View style={styles.routeInfoItem}>
+            {getTravelModeIcon(travelMode)}
+            <Text style={styles.routeInfoValue}>  {formatDuration(nextActivityDuration)}</Text>
+          </View>
+          <View style={styles.routeInfoItem}>
+            <Text style={styles.routeMidDotLabel}>· </Text>
+            <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
+          </View>
+          <FontAwesome5 name="chevron-right" size={18} color={Colors.PRIMARY} style={styles.chevronIcon} />
+        </>
+      )}
     </TouchableOpacity>
   );
 }
@@ -126,6 +135,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   travelMode?: string;
   enableDragDrop?: boolean; // New prop to enable drag and drop
   onReorder?: (newOrder: Activity[]) => void; // Callback for when activities are reordered
+  routeLoading?: boolean; // Loading state for route recalculation
 }
 
 export function ActivityList({
@@ -145,7 +155,8 @@ export function ActivityList({
   scrollable = true,
   travelMode,
   enableDragDrop = false,
-  onReorder
+  onReorder,
+  routeLoading = false
 }: EnhancedActivityListProps) {
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
@@ -242,6 +253,7 @@ export function ActivityList({
             {...commonProps}
             onMove={moveItem}
             totalItems={currentActivities.length}
+            isLoadingRoute={routeLoading}
           />
         );
       }
@@ -300,6 +312,7 @@ interface DraggableActivityCardProps {
   travelMode?: string;
   onMove: (fromIndex: number, toIndex: number) => void;
   totalItems: number;
+  isLoadingRoute?: boolean;
 }
 
 function DraggableActivityCard({
@@ -318,6 +331,7 @@ function DraggableActivityCard({
   travelMode,
   onMove,
   totalItems,
+  isLoadingRoute = false,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -420,13 +434,14 @@ function DraggableActivityCard({
         </Animated.View>
       </GestureDetector>
 
-      {/* Route info card - rendered separately, not draggable */}
-      {!isLastActivity && nextActivityDistance !== undefined && nextActivityDistance !== null && nextActivityDistance > 0 && nextActivityDuration && (
+      {/* Route info card - rendered separately, not draggable - Always render to prevent disappearing */}
+      {!isLastActivity && (
         <RouteInfoCard
-          nextActivityDistance={nextActivityDistance}
-          nextActivityDuration={nextActivityDuration}
+          nextActivityDistance={nextActivityDistance || 0}
+          nextActivityDuration={nextActivityDuration || ''}
           nextActivity={nextActivity}
           travelMode={travelMode}
+          isLoading={isLoadingRoute}
         />
       )}
     </View>
@@ -483,5 +498,10 @@ const styles = StyleSheet.create({
   },
   chevronIcon: {
     marginLeft: 8,
+  },
+  loadingText: {
+    fontFamily: 'outfit',
+    fontSize: 22,
+    color: Colors.GRAY,
   },
 });
