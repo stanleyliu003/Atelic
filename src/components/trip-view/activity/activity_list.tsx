@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ScrollView, View, StyleSheet } from 'react-native';
+import { ScrollView, View, StyleSheet, TouchableOpacity, Text, Linking } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -11,6 +11,108 @@ import { RouteLeg } from '../../../services/getRoute_graphQL_call';
 import { Activity, ActivityListProps } from '../../../types/activity.types';
 import { ActivityCard } from './activity_card';
 import { NoActivities } from './no_activities';
+import { Colors } from '../../../../constants/Colors';
+import { formatDistance, formatDuration } from '../../../utils/routeUtils';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+
+// Helper function to get the appropriate icon based on travel mode
+const getTravelModeIcon = (travelMode?: string) => {
+  switch (travelMode) {
+    case 'WALK':
+      return <MaterialIcons name="directions-walk" size={17} color={Colors.PRIMARY} />;
+    case 'TRANSIT':
+      return <MaterialIcons name="directions-transit" size={17} color={Colors.PRIMARY} />;
+    case 'DRIVE':
+    default:
+      return <MaterialCommunityIcons name="car-outline" size={17} color={Colors.PRIMARY} />;
+  }
+};
+
+// Helper function to convert our travel modes to Google Maps travel modes
+const getGoogleMapsTravelMode = (travelMode?: string): string => {
+  switch (travelMode) {
+    case 'DRIVE':
+      return 'driving';
+    case 'TRANSIT':
+      return 'transit';
+    case 'WALK':
+      return 'walking';
+    default:
+      return 'driving'; // Default fallback
+  }
+};
+
+// Route Info Card Component - Separate from draggable activity card
+interface RouteInfoCardProps {
+  nextActivityDistance: number;
+  nextActivityDuration: string;
+  nextActivity?: Activity;
+  travelMode?: string;
+}
+
+function RouteInfoCard({
+  nextActivityDistance,
+  nextActivityDuration,
+  nextActivity,
+  travelMode,
+}: RouteInfoCardProps) {
+  const handleRoutePress = () => {
+    if (!nextActivity) return;
+
+    const googleMapsTravelMode = getGoogleMapsTravelMode(travelMode);
+
+    const createCoordinateUrl = () => {
+      if (nextActivity.lat && nextActivity.lng) {
+        const destination = `${nextActivity.lat},${nextActivity.lng}`;
+        return `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=${googleMapsTravelMode}`;
+      }
+      return null;
+    };
+
+    if (nextActivity.name) {
+      // Use activity names for better user experience
+      const destination = encodeURIComponent(nextActivity.name);
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=${googleMapsTravelMode}`;
+
+      Linking.openURL(url).catch(err => {
+        console.error('Error opening Google Maps:', err);
+        // Fallback to coordinates if name-based URL fails
+        const fallbackUrl = createCoordinateUrl();
+        if (fallbackUrl) {
+          Linking.openURL(fallbackUrl);
+        }
+      });
+    } else {
+      // Use coordinates if names aren't available
+      const url = createCoordinateUrl();
+      if (url) {
+        Linking.openURL(url).catch(err => {
+          console.error('Error opening Google Maps:', err);
+        });
+      }
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      style={styles.routeInfo}
+      onPress={handleRoutePress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.routeInfoItem}>
+        {getTravelModeIcon(travelMode)}
+        <Text style={styles.routeInfoValue}>  {formatDuration(nextActivityDuration)}</Text>
+      </View>
+      <View style={styles.routeInfoItem}>
+        <Text style={styles.routeMidDotLabel}>· </Text>
+        <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
+      </View>
+      <FontAwesome5 name="chevron-right" size={18} color={Colors.PRIMARY} style={styles.chevronIcon} />
+    </TouchableOpacity>
+  );
+}
 
 interface EnhancedActivityListProps extends ActivityListProps {
   onActivityPress?: (activity: Activity) => void;
@@ -55,6 +157,17 @@ export function ActivityList({
   React.useEffect(() => {
     setCurrentActivities(activities);
   }, [activities]);
+
+  // Reset route info visibility when activities change (after reordering)
+  React.useEffect(() => {
+    // If hideAllRouteInfo is true and activities have changed, reset it after a short delay
+    if (hideAllRouteInfo) {
+      const timer = setTimeout(() => {
+        setHideAllRouteInfo(false);
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [currentActivities, hideAllRouteInfo]);
 
   // Drag and drop handlers - always define these
   const moveItem = useCallback((fromIndex: number, toIndex: number) => {
@@ -148,7 +261,7 @@ export function ActivityList({
             totalItems={currentActivities.length}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
-            hideRouteInfo={hideAllRouteInfo}
+            hideAllRouteInfo={hideAllRouteInfo}
           />
         );
       }
@@ -210,7 +323,7 @@ interface DraggableActivityCardProps {
   totalItems: number;
   onDragStart: () => void;
   onDragEnd: () => void;
-  hideRouteInfo: boolean;
+  hideAllRouteInfo: boolean;
 }
 
 function DraggableActivityCard({
@@ -231,7 +344,7 @@ function DraggableActivityCard({
   totalItems,
   onDragStart,
   onDragEnd,
-  hideRouteInfo,
+  hideAllRouteInfo,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -263,13 +376,14 @@ function DraggableActivityCard({
       }
     })
     .onEnd(() => {
+      // Show ALL route info cards again when dragging ends FIRST
+      runOnJS(onDragEnd)();
+
       translateY.value = withSpring(0);
       translateX.value = withSpring(0);
       scale.value = withSpring(1);
       isDragging.value = false;
       zIndex.value = 0;
-      // Show ALL route info cards again when dragging ends
-      runOnJS(onDragEnd)();
     });
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -303,10 +417,20 @@ function DraggableActivityCard({
             isLastActivity={isLastActivity}
             nextActivity={nextActivity}
             travelMode={travelMode}
-            hideRouteInfo={hideRouteInfo}
+            hideRouteInfo={true} // Always hide route info in the draggable card
           />
         </Animated.View>
       </GestureDetector>
+
+      {/* Route info card - rendered separately, not draggable */}
+      {!hideAllRouteInfo && !isLastActivity && nextActivityDistance !== undefined && nextActivityDistance !== null && nextActivityDistance > 0 && nextActivityDuration && (
+        <RouteInfoCard
+          nextActivityDistance={nextActivityDistance}
+          nextActivityDuration={nextActivityDuration}
+          nextActivity={nextActivity}
+          travelMode={travelMode}
+        />
+      )}
     </View>
   );
 }
@@ -325,6 +449,41 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   draggableCard: {
-    // No margin since parent container handles it
+    marginBottom: -10, // negative margin between activity card and route info
+  },
+  routeInfo: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 4,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  routeInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 9,
+  },
+  routeMidDotLabel: {
+    fontFamily: 'outfit',
+    fontSize: 24,
+    color: Colors.PRIMARY,
+    marginLeft: -2,
+  },
+  routeInfoValue: {
+    fontFamily: 'outfit-medium',
+    fontSize: 13,
+    color: Colors.PRIMARY,
+  },
+  chevronIcon: {
+    marginLeft: 8,
   },
 });
