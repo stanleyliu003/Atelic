@@ -160,11 +160,11 @@ export function ActivityList({
 
   // Reset route info visibility when activities change (after reordering)
   React.useEffect(() => {
-    // If hideAllRouteInfo is true and activities have changed, reset it after a short delay
+    // If hideAllRouteInfo is true and activities have changed, reset it after 1 second delay
     if (hideAllRouteInfo) {
       const timer = setTimeout(() => {
         setHideAllRouteInfo(false);
-      }, 200);
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [currentActivities, hideAllRouteInfo]);
@@ -186,7 +186,10 @@ export function ActivityList({
   }, []);
 
   const handleDragEnd = useCallback(() => {
-    setHideAllRouteInfo(false);
+    // Add a 1-second delay before showing route info to avoid jarring visual shifts
+    setTimeout(() => {
+      setHideAllRouteInfo(false);
+    }, 1000);
   }, []);
 
   // Since we always have recommendations, we don't need empty state handling
@@ -352,27 +355,54 @@ function DraggableActivityCard({
   const scale = useSharedValue(1);
   const zIndex = useSharedValue(0);
 
+  // Track the current position for less sensitive reordering
+  const originalIndex = useSharedValue(index);
+  const currentTargetIndex = useSharedValue(index);
+  const reorderTimer = useSharedValue(0);
+  const lastReorderTime = useSharedValue(0);
+
   const ITEM_HEIGHT = 120; // Approximate height of activity card including margin
+  const DRAG_THRESHOLD = ITEM_HEIGHT * 2; // Need to drag 120% of item height to trigger reorder
+  const REORDER_DELAY = 800; // Milliseconds to wait before triggering reorder
+
+  // Update original index when component re-renders with new index
+  React.useEffect(() => {
+    originalIndex.value = index;
+    currentTargetIndex.value = index;
+  }, [index]);
 
   const panGesture = Gesture.Pan()
     .onStart(() => {
       isDragging.value = true;
       scale.value = withSpring(1.05);
       zIndex.value = 1000;
+      originalIndex.value = index;
+      currentTargetIndex.value = index;
+      lastReorderTime.value = 0; // Reset the timer
       // Hide ALL route info cards when dragging starts
       runOnJS(onDragStart)();
     })
     .onUpdate((event) => {
       translateY.value = event.translationY;
 
-      // Calculate which position we're hovering over
-      const currentPosition = index * ITEM_HEIGHT + translateY.value;
-      const newIndex = Math.round(currentPosition / ITEM_HEIGHT);
-      const clampedIndex = Math.max(0, Math.min(totalItems - 1, newIndex));
+      // Calculate how many positions we've moved based on drag distance
+      const dragDistance = event.translationY;
+      const currentTime = Date.now();
 
-      // If we've moved to a new position, trigger reorder
-      if (clampedIndex !== index) {
-        runOnJS(onMove)(index, clampedIndex);
+      // Only calculate position change if we've crossed the threshold
+      let positionChange = 0;
+      if (Math.abs(dragDistance) > DRAG_THRESHOLD) {
+        positionChange = Math.floor(Math.abs(dragDistance) / DRAG_THRESHOLD) * Math.sign(dragDistance);
+      }
+
+      const newTargetIndex = Math.max(0, Math.min(totalItems - 1, originalIndex.value + positionChange));
+
+      // Only trigger reorder if we've moved to a different target position AND enough time has passed
+      if (newTargetIndex !== currentTargetIndex.value && currentTime - lastReorderTime.value > REORDER_DELAY) {
+        currentTargetIndex.value = newTargetIndex;
+        lastReorderTime.value = currentTime;
+        // Move from current index to new target index
+        runOnJS(onMove)(index, newTargetIndex);
       }
     })
     .onEnd(() => {
