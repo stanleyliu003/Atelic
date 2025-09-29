@@ -174,7 +174,7 @@ exports.handler = async (event) => {
                 regular_opening_hours: coordData ? coordData.regular_opening_hours : null,
                 reviews: coordData ? coordData.reviews : null,
                 editorial_summary: coordData ? coordData.editorial_summary : null,
-                primary_type_display_name: category, // Set to the category that generated this activity
+                primary_type_display_name: coordData ? coordData.primary_type_display_name : null,
                 international_phone_number: coordData ? coordData.international_phone_number : null,
             };
         });
