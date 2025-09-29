@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import { ScrollView, View, StyleSheet, TouchableOpacity, Text, Linking } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -150,24 +150,14 @@ export function ActivityList({
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
 
-  // State to control route info visibility for ALL activities during any drag operation
-  const [hideAllRouteInfo, setHideAllRouteInfo] = useState(false);
+  // Route info cards are now always visible - no hide/show logic needed
 
   // Update local state when activities prop changes
   React.useEffect(() => {
     setCurrentActivities(activities);
   }, [activities]);
 
-  // Reset route info visibility when activities change (after reordering)
-  React.useEffect(() => {
-    // If hideAllRouteInfo is true and activities have changed, reset it after 1 second delay
-    if (hideAllRouteInfo) {
-      const timer = setTimeout(() => {
-        setHideAllRouteInfo(false);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [currentActivities, hideAllRouteInfo]);
+  // No cleanup needed - simplified without timers and state management
 
   // Drag and drop handlers - always define these
   const moveItem = useCallback((fromIndex: number, toIndex: number) => {
@@ -180,17 +170,7 @@ export function ActivityList({
     }
   }, [currentActivities, onReorder]);
 
-  // Handlers for global route info visibility during drag operations
-  const handleDragStart = useCallback(() => {
-    setHideAllRouteInfo(true);
-  }, []);
-
-  const handleDragEnd = useCallback(() => {
-    // Add a 1-second delay before showing route info to avoid jarring visual shifts
-    setTimeout(() => {
-      setHideAllRouteInfo(false);
-    }, 1000);
-  }, []);
+  // Simplified - no longPress handlers needed for route info management
 
   // Since we always have recommendations, we don't need empty state handling
   if (!activities || activities.length === 0) {
@@ -262,9 +242,6 @@ export function ActivityList({
             {...commonProps}
             onMove={moveItem}
             totalItems={currentActivities.length}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            hideAllRouteInfo={hideAllRouteInfo}
           />
         );
       }
@@ -273,7 +250,6 @@ export function ActivityList({
         <ActivityCard
           {...commonProps}
           style={styles.activityCard}
-          hideRouteInfo={hideAllRouteInfo}
         />
       );
     });
@@ -324,9 +300,6 @@ interface DraggableActivityCardProps {
   travelMode?: string;
   onMove: (fromIndex: number, toIndex: number) => void;
   totalItems: number;
-  onDragStart: () => void;
-  onDragEnd: () => void;
-  hideAllRouteInfo: boolean;
 }
 
 function DraggableActivityCard({
@@ -345,9 +318,6 @@ function DraggableActivityCard({
   travelMode,
   onMove,
   totalItems,
-  onDragStart,
-  onDragEnd,
-  hideAllRouteInfo,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -358,7 +328,6 @@ function DraggableActivityCard({
   // Track the current position for less sensitive reordering
   const originalIndex = useSharedValue(index);
   const currentTargetIndex = useSharedValue(index);
-  const reorderTimer = useSharedValue(0);
   const lastReorderTime = useSharedValue(0);
 
   const ITEM_HEIGHT = 120; // Approximate height of activity card including margin
@@ -372,15 +341,15 @@ function DraggableActivityCard({
   }, [index]);
 
   const panGesture = Gesture.Pan()
+    .minDistance(10) // Require 10px movement before pan gesture activates
     .onStart(() => {
+      console.log(`🫳 [${new Date().toISOString()}] PAN GESTURE START - Activity ${index + 1} drag started`);
       isDragging.value = true;
       scale.value = withSpring(1.05);
       zIndex.value = 1000;
       originalIndex.value = index;
       currentTargetIndex.value = index;
       lastReorderTime.value = 0; // Reset the timer
-      // Hide ALL route info cards when dragging starts
-      runOnJS(onDragStart)();
     })
     .onUpdate((event) => {
       translateY.value = event.translationY;
@@ -406,8 +375,7 @@ function DraggableActivityCard({
       }
     })
     .onEnd(() => {
-      // Show ALL route info cards again when dragging ends FIRST
-      runOnJS(onDragEnd)();
+      console.log(`🫴 [${new Date().toISOString()}] PAN GESTURE END - Activity ${index + 1} drag ended`);
 
       translateY.value = withSpring(0);
       translateX.value = withSpring(0);
@@ -447,13 +415,13 @@ function DraggableActivityCard({
             isLastActivity={isLastActivity}
             nextActivity={nextActivity}
             travelMode={travelMode}
-            hideRouteInfo={true} // Always hide route info in the draggable card
+            hideRouteInfo={true} // Hide route info in draggable card - rendered separately below
           />
         </Animated.View>
       </GestureDetector>
 
       {/* Route info card - rendered separately, not draggable */}
-      {!hideAllRouteInfo && !isLastActivity && nextActivityDistance !== undefined && nextActivityDistance !== null && nextActivityDistance > 0 && nextActivityDuration && (
+      {!isLastActivity && nextActivityDistance !== undefined && nextActivityDistance !== null && nextActivityDistance > 0 && nextActivityDuration && (
         <RouteInfoCard
           nextActivityDistance={nextActivityDistance}
           nextActivityDuration={nextActivityDuration}
@@ -484,7 +452,7 @@ const styles = StyleSheet.create({
   routeInfo: {
     backgroundColor: '#f8f9fa',
     borderRadius: 8,
-    padding: 12,
+    padding: 6,
     marginTop: 4,
     flexDirection: 'row',
     justifyContent: 'center',

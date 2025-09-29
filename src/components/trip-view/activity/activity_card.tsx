@@ -72,7 +72,7 @@ export function ActivityCard({
   travelMode,
   hideRouteInfo = false
 }: ActivityCardProps) {
-  
+
   const handlePress = () => {
     if (!disabled && onPress) {
       onPress(activity);
@@ -110,7 +110,7 @@ export function ActivityCard({
       const origin = encodeURIComponent(activity.name);
       const destination = encodeURIComponent(nextActivity.name);
       const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=${googleMapsTravelMode}`;
-      
+
       Linking.openURL(url).catch(err => {
         console.error('Error opening Google Maps:', err);
         // Fallback to coordinates if name-based URL fails
@@ -140,9 +140,9 @@ export function ActivityCard({
 
   return (
     <View style={styles.cardContainer}>
-      <View 
+      <View
         style={[
-          styles.activityCard, 
+          styles.activityCard,
           style,
           isSelected && styles.selectedCard,
           disabled && styles.disabledCard
@@ -162,8 +162,8 @@ export function ActivityCard({
               />
             </View>
           )}
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.cardContentArea}
             onPress={onDescriptionCardPress ? handleDescriptionCardPress : (!showSelectionIndicator ? handlePress : undefined)}
             onLongPress={handleLongPress}
@@ -191,16 +191,16 @@ export function ActivityCard({
                 )}
               </View>
             </View>
-            
-            <ActivityImage 
-              photo_reference={activity.photo_reference || ''} 
+
+            <ActivityImage
+              photo_reference={activity.photo_reference || ''}
               style={[styles.activityImage, disabled && styles.disabledImage]}
             />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Distance and Travel Time Info - Now a button - Hidden during drag operations */}
+      {/* Distance and Travel Time Info - Now a button - Always visible (simplified) */}
       {!hideRouteInfo && !isLastActivity && nextActivityDistance !== undefined && nextActivityDistance !== null && nextActivityDistance > 0 && nextActivityDuration && (
         <TouchableOpacity
           style={styles.routeInfo}
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   routeInfo: {
     backgroundColor: '#f8f9fa',
     borderRadius: 8,
-    padding: 12,
+    padding: 6,
     marginTop: 4,
     flexDirection: 'row',
     justifyContent: 'center',
