@@ -45,13 +45,24 @@ export function ActivityList({
   enableDragDrop = false,
   onReorder
 }: EnhancedActivityListProps) {
-  // State for drag-and-drop
+  // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
 
   // Update local state when activities prop changes
   React.useEffect(() => {
     setCurrentActivities(activities);
   }, [activities]);
+
+  // Drag and drop handlers - always define these
+  const moveItem = useCallback((fromIndex: number, toIndex: number) => {
+    const newActivities = [...currentActivities];
+    const [movedItem] = newActivities.splice(fromIndex, 1);
+    newActivities.splice(toIndex, 0, movedItem);
+    setCurrentActivities(newActivities);
+    if (onReorder) {
+      onReorder(newActivities);
+    }
+  }, [currentActivities, onReorder]);
 
   // Since we always have recommendations, we don't need empty state handling
   if (!activities || activities.length === 0) {
@@ -87,20 +98,56 @@ export function ActivityList({
     }
   };
 
-  // Drag and drop handlers
-  const moveItem = useCallback((fromIndex: number, toIndex: number) => {
-    const newActivities = [...currentActivities];
-    const [movedItem] = newActivities.splice(fromIndex, 1);
-    newActivities.splice(toIndex, 0, movedItem);
-    setCurrentActivities(newActivities);
-    if (onReorder) {
-      onReorder(newActivities);
-    }
-  }, [currentActivities, onReorder]);
-
   const shouldShowSelectionIndicator = showSelectionIndicator || variant === 'selectable';
 
-  // If drag and drop is enabled and scrollable, use special draggable list
+  // Render activities with conditional wrapper based on drag & drop requirement
+  const renderActivities = () => {
+    return currentActivities.map((activity: Activity, index: number) => {
+      const isSelected = activity.place_id ? selectedActivities.includes(activity.place_id) : false;
+      const isLastActivity = index === currentActivities.length - 1;
+      const routeLeg = routeLegs[index];
+      const nextActivityDistance = routeLeg?.distance;
+      const nextActivityDuration = routeLeg?.duration;
+      const nextActivity = currentActivities[index + 1];
+
+      // Common props for both draggable and regular cards
+      const commonProps = {
+        key: `activity-${index}-${activity.place_id || 'no-place-id'}`,
+        activity,
+        isSelected,
+        onPress: handleActivityPress,
+        onLongPress: handleActivityLongPress,
+        onDescriptionCardPress,
+        showSelectionIndicator: shouldShowSelectionIndicator,
+        disabled,
+        nextActivityDistance,
+        nextActivityDuration,
+        isLastActivity,
+        nextActivity,
+        travelMode,
+        index,
+      };
+
+      if (enableDragDrop && scrollable) {
+        return (
+          <DraggableActivityCard
+            {...commonProps}
+            onMove={moveItem}
+            totalItems={currentActivities.length}
+          />
+        );
+      }
+
+      return (
+        <ActivityCard
+          {...commonProps}
+          style={styles.activityCard}
+        />
+      );
+    });
+  };
+
+  // Choose container based on requirements
   if (enableDragDrop && scrollable) {
     return (
       <GestureHandlerRootView style={styles.container}>
@@ -109,34 +156,7 @@ export function ActivityList({
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
         >
-          {currentActivities.map((activity: Activity, index: number) => {
-            const isSelected = activity.place_id ? selectedActivities.includes(activity.place_id) : false;
-            const isLastActivity = index === currentActivities.length - 1;
-            const routeLeg = routeLegs[index];
-            const nextActivityDistance = routeLeg?.distance;
-            const nextActivityDuration = routeLeg?.duration;
-            const nextActivity = currentActivities[index + 1];
-            return (
-              <DraggableActivityCard
-                key={`activity-${index}-${activity.place_id || 'no-place-id'}`}
-                activity={activity}
-                index={index}
-                isSelected={isSelected}
-                onPress={handleActivityPress}
-                onLongPress={handleActivityLongPress}
-                onDescriptionCardPress={onDescriptionCardPress}
-                showSelectionIndicator={shouldShowSelectionIndicator}
-                disabled={disabled}
-                nextActivityDistance={nextActivityDistance}
-                nextActivityDuration={nextActivityDuration}
-                isLastActivity={isLastActivity}
-                nextActivity={nextActivity}
-                travelMode={travelMode}
-                onMove={moveItem}
-                totalItems={currentActivities.length}
-              />
-            );
-          })}
+          {renderActivities()}
         </ScrollView>
       </GestureHandlerRootView>
     );
@@ -150,34 +170,7 @@ export function ActivityList({
 
   return (
     <Container {...containerProps}>
-      {currentActivities.map((activity: Activity, index: number) => {
-        const isSelected = activity.place_id ? selectedActivities.includes(activity.place_id) : false;
-        const isLastActivity = index === currentActivities.length - 1;
-        // Get route info for this activity (distance/duration to next activity)
-        const routeLeg = routeLegs[index];
-        const nextActivityDistance = routeLeg?.distance;
-        const nextActivityDuration = routeLeg?.duration;
-        const nextActivity = currentActivities[index + 1];
-        return (
-          <ActivityCard
-            key={`activity-${index}-${activity.place_id || 'no-place-id'}`}
-            activity={activity}
-            isSelected={isSelected}
-            onPress={handleActivityPress}
-            onLongPress={handleActivityLongPress}
-            onDescriptionCardPress={onDescriptionCardPress}
-            showSelectionIndicator={shouldShowSelectionIndicator}
-            disabled={disabled}
-            style={styles.activityCard}
-            index={index}
-            nextActivityDistance={nextActivityDistance}
-            nextActivityDuration={nextActivityDuration}
-            isLastActivity={isLastActivity}
-            nextActivity={nextActivity}
-            travelMode={travelMode}
-          />
-        );
-      })}
+      {renderActivities()}
     </Container>
   );
 }
@@ -224,6 +217,9 @@ function DraggableActivityCard({
   const scale = useSharedValue(1);
   const zIndex = useSharedValue(0);
 
+  // State to control route info visibility
+  const [hideRouteInfo, setHideRouteInfo] = useState(false);
+
   const ITEM_HEIGHT = 120; // Approximate height of activity card including margin
 
   const panGesture = Gesture.Pan()
@@ -231,6 +227,8 @@ function DraggableActivityCard({
       isDragging.value = true;
       scale.value = withSpring(1.05);
       zIndex.value = 1000;
+      // Hide route info when dragging starts
+      runOnJS(setHideRouteInfo)(true);
     })
     .onUpdate((event) => {
       translateY.value = event.translationY;
@@ -251,6 +249,8 @@ function DraggableActivityCard({
       scale.value = withSpring(1);
       isDragging.value = false;
       zIndex.value = 0;
+      // Show route info again when dragging ends
+      runOnJS(setHideRouteInfo)(false);
     });
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -266,26 +266,29 @@ function DraggableActivityCard({
   });
 
   return (
-    <GestureDetector gesture={panGesture}>
-      <Animated.View style={[animatedStyle, styles.draggableCard]}>
-        <ActivityCard
-          activity={activity}
-          isSelected={isSelected}
-          onPress={onPress}
-          onLongPress={onLongPress}
-          onDescriptionCardPress={onDescriptionCardPress}
-          showSelectionIndicator={showSelectionIndicator}
-          disabled={disabled}
-          style={styles.activityCard}
-          index={index}
-          nextActivityDistance={nextActivityDistance}
-          nextActivityDuration={nextActivityDuration}
-          isLastActivity={isLastActivity}
-          nextActivity={nextActivity}
-          travelMode={travelMode}
-        />
-      </Animated.View>
-    </GestureDetector>
+    <View style={styles.draggableContainer}>
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={[animatedStyle, styles.draggableCard]}>
+          <ActivityCard
+            activity={activity}
+            isSelected={isSelected}
+            onPress={onPress}
+            onLongPress={onLongPress}
+            onDescriptionCardPress={onDescriptionCardPress}
+            showSelectionIndicator={showSelectionIndicator}
+            disabled={disabled}
+            style={styles.activityCard}
+            index={index}
+            nextActivityDistance={nextActivityDistance}
+            nextActivityDuration={nextActivityDuration}
+            isLastActivity={isLastActivity}
+            nextActivity={nextActivity}
+            travelMode={travelMode}
+            hideRouteInfo={hideRouteInfo}
+          />
+        </Animated.View>
+      </GestureDetector>
+    </View>
   );
 }
 
@@ -299,7 +302,10 @@ const styles = StyleSheet.create({
   activityCard: {
     marginBottom: 12,
   },
-  draggableCard: {
+  draggableContainer: {
     marginBottom: 12,
+  },
+  draggableCard: {
+    // No margin since parent container handles it
   },
 });

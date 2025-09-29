@@ -25,6 +25,7 @@ interface ActivityCardProps {
   isLastActivity?: boolean; // Whether this is the last activity in the list
   nextActivity?: Activity; // Next activity for Google Maps routing
   travelMode?: string; // Travel mode from route calculation (DRIVE, TRANSIT, WALK)
+  hideRouteInfo?: boolean; // New prop to hide route info during drag operations
 }
 
 // Helper function to convert our travel modes to Google Maps travel modes
@@ -54,9 +55,9 @@ const getTravelModeIcon = (travelMode?: string) => {
   }
 };
 
-export function ActivityCard({ 
-  activity, 
-  style, 
+export function ActivityCard({
+  activity,
+  style,
   isSelected = false,
   onPress,
   onLongPress,
@@ -68,7 +69,8 @@ export function ActivityCard({
   nextActivityDuration,
   isLastActivity = false,
   nextActivity,
-  travelMode
+  travelMode,
+  hideRouteInfo = false
 }: ActivityCardProps) {
   
   const handlePress = () => {
@@ -198,9 +200,9 @@ export function ActivityCard({
         </View>
       </View>
 
-      {/* Distance and Travel Time Info - Now a button */}
-      {!isLastActivity && nextActivityDistance !== undefined && nextActivityDistance !== null && nextActivityDistance > 0 && nextActivityDuration && (
-        <TouchableOpacity 
+      {/* Distance and Travel Time Info - Now a button - Hidden during drag operations */}
+      {!hideRouteInfo && !isLastActivity && nextActivityDistance !== undefined && nextActivityDistance !== null && nextActivityDistance > 0 && nextActivityDuration && (
+        <TouchableOpacity
           style={styles.routeInfo}
           onPress={handleRoutePress}
           activeOpacity={0.7}
