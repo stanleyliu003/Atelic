@@ -367,9 +367,7 @@ function DraggableActivityCard({
   const panGesture = Gesture.Pan()
     .minDistance(10) // Require 10px movement before pan gesture activates
     .onStart(() => {
-      console.log(`🫳 [${new Date().toISOString()}] PAN GESTURE START - Activity ${index + 1} drag started`);
       isDragging.value = true;
-      console.log("dragging value high");
       scale.value = withSpring(1.05);
       zIndex.value = 1000;
       originalIndex.value = index;
@@ -417,7 +415,7 @@ function DraggableActivityCard({
 
     // Log z-index and elevation when dragging state changes
     if (isDragging.value) {
-      console.log(`🎨 Activity ${index + 1} - isDragging: ${isDragging.value}, zIndex: ${currentZIndex}, elevation: ${currentElevation}`);
+
     }
 
     return {
