@@ -136,6 +136,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   enableDragDrop?: boolean; // New prop to enable drag and drop
   onReorder?: (newOrder: Activity[]) => void; // Callback for when activities are reordered
   routeLoading?: boolean; // Loading state for route recalculation
+  hideRouteInfo?: boolean; // Hide route info cards
 }
 
 export function ActivityList({
@@ -156,7 +157,8 @@ export function ActivityList({
   travelMode,
   enableDragDrop = false,
   onReorder,
-  routeLoading = false
+  routeLoading = false,
+  hideRouteInfo = false
 }: EnhancedActivityListProps) {
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
@@ -246,6 +248,7 @@ export function ActivityList({
         nextActivity,
         travelMode,
         index,
+        hideRouteInfo,
       };
 
       if (enableDragDrop && scrollable) {
@@ -320,6 +323,7 @@ interface DraggableActivityCardProps {
   onDragStart: () => void;
   onDragEnd: () => void;
   isDraggingThisItem: boolean;
+  hideRouteInfo?: boolean;
 }
 
 function DraggableActivityCard({
@@ -342,6 +346,7 @@ function DraggableActivityCard({
   onDragStart,
   onDragEnd,
   isDraggingThisItem,
+  hideRouteInfo = false,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -454,7 +459,7 @@ function DraggableActivityCard({
       </GestureDetector>
 
       {/* Route info card - rendered separately, not draggable - Always render to prevent disappearing */}
-      {!isLastActivity && (
+      {!hideRouteInfo && !isLastActivity && (
         <RouteInfoCard
           nextActivityDistance={nextActivityDistance || 0}
           nextActivityDuration={nextActivityDuration || ''}

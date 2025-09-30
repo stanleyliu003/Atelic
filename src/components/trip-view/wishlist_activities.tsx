@@ -10,7 +10,7 @@ interface WishlistActivitiesProps {
   showSelectionIndicator?: boolean;
 }
 
-export function WishlistActivities({ 
+export function WishlistActivities({
   activities,
   selectedActivities,
   onActivitySelect,
@@ -27,6 +27,7 @@ export function WishlistActivities({
       onDescriptionCardPress={onDescriptionCardPress}
       showSelectionIndicator={showSelectionIndicator}
       variant="selectable"
+      hideRouteInfo={true}
     />
   );
 }
