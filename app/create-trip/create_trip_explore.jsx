@@ -17,7 +17,6 @@ import { useCreateTrip } from '../../context/CreateTripContext';
 import { SearchBar } from '../../src/components/explore/SearchBar';
 import { FilterChips } from '../../src/components/explore/FilterChips';
 import { AutocompleteModal } from '../../src/components/explore/AutocompleteModal';
-import { SearchResultsModal } from '../../src/components/explore/SearchResultsModal';
 import { CategoryModal } from '../../src/components/explore/CategoryModal';
 
 export default function create_trip_explore() {
@@ -38,12 +37,7 @@ export default function create_trip_explore() {
 
   // Modal visibility state
   const [showAutocomplete, setShowAutocomplete] = useState(false);
-  const [showSearchResults, setShowSearchResults] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-
-  // Data state
-  const [searchResultActivities, setSearchResultActivities] = useState([]);
-  const [selectedSearchQuery, setSelectedSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [categoryActivities, setCategoryActivities] = useState([]);
   const [loadingCategoryActivities, setLoadingCategoryActivities] = useState(false);
@@ -80,32 +74,28 @@ export default function create_trip_explore() {
     }
   };
 
-  const handleSuggestionSelect = async (suggestion) => {
-    setShowAutocomplete(false);
-    setSelectedSearchQuery(suggestion);
-
+  // This function is now handled directly in AutocompleteModal
+  const handleSearchActivities = async (searchQuery, filters, existingActivities) => {
     try {
-      // Fetch activities using the selected suggestion
-      const activities = await searchActivities(suggestion, selectedFilters, []);
-      setSearchResultActivities(activities);
-      setShowSearchResults(true);
+      const activities = await searchActivities(searchQuery, filters, existingActivities);
+      return activities;
     } catch (error) {
       console.error('[Explore] Error fetching search results:', error);
-      Alert.alert('Error', 'Failed to fetch search results. Please try again.');
+      throw error;
     }
   };
 
+  // Handle saving activities from AutocompleteModal
   const handleSaveSearchResults = (selectedActivities) => {
     if (selectedActivities.length === 0) {
-      setShowSearchResults(false);
       return;
     }
 
     const result = addToWishlist(selectedActivities);
 
-    setShowSearchResults(false);
+    // Close the autocomplete modal
+    setShowAutocomplete(false);
     setSearchQuery('');
-    setSearchResultActivities([]);
 
     // Show success message
     if (result.added > 0 && result.duplicates > 0) {
@@ -341,18 +331,11 @@ export default function create_trip_explore() {
         query={searchQuery}
         filters={selectedFilters}
         selectedCity={selectedCity}
-        onSuggestionSelect={handleSuggestionSelect}
         onClose={() => setShowAutocomplete(false)}
         onFilterToggle={handleFilterToggle}
         onQueryChange={setSearchQuery}
-      />
-
-      <SearchResultsModal
-        visible={showSearchResults}
-        query={selectedSearchQuery}
-        activities={searchResultActivities}
-        onSave={handleSaveSearchResults}
-        onClose={() => setShowSearchResults(false)}
+        onSearchActivities={handleSearchActivities}
+        onSaveActivities={handleSaveSearchResults}
       />
 
       <CategoryModal

@@ -13,6 +13,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../../constants/Colors';
 import { FilterChips } from './FilterChips';
 import { getSearchAutocomplete } from '../../services/searchService';
+import { WishlistActivities } from '../trip-view/wishlist_activities';
 
 /**
  * AutocompleteModal Component
@@ -27,6 +28,8 @@ import { getSearchAutocomplete } from '../../services/searchService';
  * @param {function} onClose - Callback to close modal
  * @param {function} onFilterToggle - Callback when a filter is toggled
  * @param {function} onQueryChange - Callback when search query changes in modal
+ * @param {function} onSearchActivities - Callback to search for activities
+ * @param {function} onSaveActivities - Callback to save selected activities
  */
 export const AutocompleteModal = ({
   visible,
@@ -37,6 +40,8 @@ export const AutocompleteModal = ({
   onClose,
   onFilterToggle,
   onQueryChange,
+  onSearchActivities,
+  onSaveActivities,
 }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -44,6 +49,13 @@ export const AutocompleteModal = ({
   const [localQuery, setLocalQuery] = useState(query);
   const searchInputRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
+  
+  // Search results state
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState(null);
+  const [selectedActivityIds, setSelectedActivityIds] = useState([]);
+  const [showingResults, setShowingResults] = useState(false);
 
   // Update local query when prop changes
   useEffect(() => {
@@ -111,6 +123,65 @@ export const AutocompleteModal = ({
     if (onQueryChange) {
       onQueryChange(text);
     }
+    
+    // If user is editing and we're showing results, go back to suggestions
+    if (showingResults && text !== localQuery) {
+      setShowingResults(false);
+      setSearchResults([]);
+      setSelectedActivityIds([]);
+    }
+  };
+  
+  // Handle suggestion selection - now triggers search
+  const handleSuggestionSelect = async (suggestion) => {
+    setLocalQuery(suggestion);
+    if (onQueryChange) {
+      onQueryChange(suggestion);
+    }
+    
+    // Start search
+    setSearchLoading(true);
+    setSearchError(null);
+    setShowingResults(true);
+    
+    try {
+      const activities = await onSearchActivities(suggestion, filters, []);
+      setSearchResults(activities);
+    } catch (error) {
+      console.error('[AutocompleteModal] Error searching activities:', error);
+      setSearchError('Failed to search activities. Please try again.');
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+  
+  // Handle activity selection
+  const handleActivityToggle = (activityId) => {
+    setSelectedActivityIds((prev) => {
+      if (prev.includes(activityId)) {
+        return prev.filter((id) => id !== activityId);
+      } else {
+        return [...prev, activityId];
+      }
+    });
+  };
+  
+  // Handle save selected activities
+  const handleSaveActivities = () => {
+    const selectedActivities = searchResults.filter((activity) =>
+      selectedActivityIds.includes(activity.place_id)
+    );
+    onSaveActivities(selectedActivities);
+    
+    // Reset state
+    setSelectedActivityIds([]);
+    setShowingResults(false);
+    setSearchResults([]);
+    setLocalQuery('');
+    if (onQueryChange) {
+      onQueryChange('');
+    }
   };
 
   return (
@@ -160,44 +231,107 @@ export const AutocompleteModal = ({
           <View style={styles.divider} />
 
           <ScrollView style={styles.suggestionsContainer} showsVerticalScrollIndicator={false}>
-            {loading && (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={Colors.PRIMARY} />
-                <Text style={styles.loadingText}>Loading suggestions...</Text>
-              </View>
-            )}
+            {/* Show search results when available */}
+            {showingResults ? (
+              <>
+                {/* Search Loading State */}
+                {searchLoading && (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={Colors.PRIMARY} />
+                    <Text style={styles.loadingText}>Searching for "{localQuery}"...</Text>
+                  </View>
+                )}
 
-            {!loading && error && (
-              <View style={styles.errorContainer}>
-                <Ionicons name="alert-circle-outline" size={48} color="#999" />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
+                {/* Search Error State */}
+                {!searchLoading && searchError && (
+                  <View style={styles.errorContainer}>
+                    <Ionicons name="alert-circle-outline" size={48} color="#999" />
+                    <Text style={styles.errorText}>{searchError}</Text>
+                  </View>
+                )}
 
-            {!loading && !error && suggestions.length === 0 && localQuery.length >= 2 && (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="search-outline" size={48} color="#ccc" />
-                <Text style={styles.emptyText}>No suggestions found</Text>
-              </View>
-            )}
+                {/* Search Results */}
+                {!searchLoading && !searchError && (
+                  <>
+                    {searchResults.length === 0 ? (
+                      <View style={styles.emptyContainer}>
+                        <Ionicons name="location-outline" size={64} color="#ccc" />
+                        <Text style={styles.emptyText}>No results found</Text>
+                        <Text style={styles.emptySubtext}>Try adjusting your search or filters</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.resultsContainer}>
+                        <Text style={styles.resultsHeader}>
+                          {searchResults.length} {searchResults.length === 1 ? 'place' : 'places'} found for "{localQuery}"
+                        </Text>
+                        <WishlistActivities
+                          activities={searchResults}
+                          selectedActivities={selectedActivityIds}
+                          onActivitySelect={handleActivityToggle}
+                          onActivityDeselect={handleActivityToggle}
+                          showSelectionIndicator={true}
+                        />
+                      </View>
+                    )}
+                  </>
+                )}
+              </>
+            ) : (
+              /* Show autocomplete suggestions */
+              <>
+                {loading && (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={Colors.PRIMARY} />
+                    <Text style={styles.loadingText}>Loading suggestions...</Text>
+                  </View>
+                )}
 
-            {!loading && !error && suggestions.length > 0 && (
-              <View style={styles.suggestionsList}>
-                {suggestions.map((suggestion, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.suggestionItem}
-                    onPress={() => onSuggestionSelect(suggestion)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="search" size={20} color="#999" />
-                    <Text style={styles.suggestionText}>{suggestion}</Text>
-                    <Ionicons name="arrow-forward" size={20} color="#ccc" />
-                  </TouchableOpacity>
-                ))}
-              </View>
+                {!loading && error && (
+                  <View style={styles.errorContainer}>
+                    <Ionicons name="alert-circle-outline" size={48} color="#999" />
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                )}
+
+                {!loading && !error && suggestions.length === 0 && localQuery.length >= 2 && (
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="search-outline" size={48} color="#ccc" />
+                    <Text style={styles.emptyText}>No suggestions found</Text>
+                  </View>
+                )}
+
+                {!loading && !error && suggestions.length > 0 && (
+                  <View style={styles.suggestionsList}>
+                    {suggestions.map((suggestion, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.suggestionItem}
+                        onPress={() => handleSuggestionSelect(suggestion)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="search" size={20} color="#999" />
+                        <Text style={styles.suggestionText}>{suggestion}</Text>
+                        <Ionicons name="arrow-forward" size={20} color="#ccc" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
             )}
           </ScrollView>
+
+          {/* Save Button - Only show when activities are selected */}
+          {showingResults && selectedActivityIds.length > 0 && (
+            <View style={styles.footer}>
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveActivities} activeOpacity={0.8}>
+                <Ionicons name="checkmark-circle" size={24} color={Colors.WHITE} />
+                <Text style={styles.saveButtonText}>
+                  Save {selectedActivityIds.length}{' '}
+                  {selectedActivityIds.length === 1 ? 'place' : 'places'} to Wishlist
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
     </Modal>
@@ -294,13 +428,57 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   emptyText: {
+    fontFamily: 'outfit-bold',
+    fontSize: 18,
+    color: '#999',
+    marginTop: 15,
+  },
+  emptySubtext: {
     fontFamily: 'outfit',
     fontSize: 14,
-    color: '#999',
-    marginTop: 10,
+    color: '#ccc',
+    marginTop: 5,
   },
   suggestionsList: {
     paddingBottom: 20,
+  },
+  resultsContainer: {
+    paddingHorizontal: 0,
+    paddingBottom: 20,
+  },
+  resultsHeader: {
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#e9ecef',
+    backgroundColor: Colors.WHITE,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.PRIMARY,
+    borderRadius: 15,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  saveButtonText: {
+    fontFamily: 'outfit-bold',
+    fontSize: 16,
+    color: Colors.WHITE,
   },
   suggestionItem: {
     flexDirection: 'row',

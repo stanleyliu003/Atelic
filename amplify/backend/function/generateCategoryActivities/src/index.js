@@ -38,6 +38,9 @@ exports.handler = async (event) => {
             filters = []         // For search mode
         } = event.arguments || event;
 
+        // Auto-detect search mode if searchQuery is provided but category is not
+        const isSearchMode = searchMode || (searchQuery && !category);
+
         // Alias for internal use
         const existingActivities = existingWishlistActivities;
 
@@ -45,15 +48,15 @@ exports.handler = async (event) => {
         if (!selectedCity) {
             throw new Error('selectedCity is required');
         }
-        if (searchMode && !searchQuery) {
-            throw new Error('searchQuery is required when searchMode is true');
+        if (isSearchMode && !searchQuery) {
+            throw new Error('searchQuery is required when in search mode');
         }
-        if (!searchMode && !category) {
-            throw new Error('category is required when searchMode is false');
+        if (!isSearchMode && !category) {
+            throw new Error('category is required when in category mode');
         }
 
         // Build cache key - same format for both category and search
-        const queryString = searchMode ? searchQuery : category;
+        const queryString = isSearchMode ? searchQuery : category;
         const filterString = filters.length > 0 ? `-${filters.sort().join(',')}` : '';
         const cacheKey = `${selectedCity}-${queryString}${filterString}-4`;
 
@@ -65,8 +68,8 @@ exports.handler = async (event) => {
                 console.log(`Returning cached activities for: ${queryString}`);
                 return {
                     activities: cachedResult.activities.slice(0, 4),
-                    category: searchMode ? searchQuery : category,
-                    query: searchMode ? searchQuery : undefined
+                    category: isSearchMode ? searchQuery : category,
+                    query: isSearchMode ? searchQuery : undefined
                 };
             }
         } else {
@@ -78,10 +81,10 @@ exports.handler = async (event) => {
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
         // Build prompt based on mode
-        const prompt = searchMode
+        const prompt = isSearchMode
             ? buildSearchPrompt(selectedCity, searchQuery, filters, existingActivities)
             : buildCategoryPrompt(selectedCity, category, existingActivities);
-        console.log(`Gemini prompt created for ${searchMode ? 'search' : 'category'}:`, searchMode ? searchQuery : category);
+        console.log(`Gemini prompt created for ${isSearchMode ? 'search' : 'category'}:`, isSearchMode ? searchQuery : category);
 
         // Call Gemini API
         const result = await model.generateContent(prompt);
@@ -206,7 +209,7 @@ exports.handler = async (event) => {
         if (existingActivities.length === 0) {
             await setCachedData('activities', cacheKey, {
                 activities: finalActivities,
-                category: searchMode ? searchQuery : category,
+                category: isSearchMode ? searchQuery : category,
                 timestamp: new Date().toISOString()
             }, CATEGORY_ACTIVITIES_TTL);
         }
@@ -215,19 +218,30 @@ exports.handler = async (event) => {
 
         return {
             activities: deduplicatedActivities.slice(0, 4),
-            category: searchMode ? searchQuery : category,
-            query: searchMode ? searchQuery : undefined
+            category: isSearchMode ? searchQuery : category,
+            query: isSearchMode ? searchQuery : undefined
         };
 
     } catch (error) {
         console.error('Error in generateCategoryActivities:', error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({
-                error: 'Failed to generate category activities',
-                details: error.message
-            })
-        };
+        
+        // For GraphQL, we need to return a proper response structure or throw an error
+        // Since SearchActivitiesResult requires non-null fields, we need to provide them
+        const isSearchMode = (event.arguments?.searchQuery && !event.arguments?.category);
+        
+        if (isSearchMode) {
+            // For search mode, return empty results with the query
+            return {
+                activities: [],
+                query: event.arguments?.searchQuery || 'Unknown query'
+            };
+        } else {
+            // For category mode, return empty results with the category
+            return {
+                activities: [],
+                category: event.arguments?.category || 'Unknown category'
+            };
+        }
     }
 };
 
