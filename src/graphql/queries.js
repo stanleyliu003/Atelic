@@ -160,6 +160,22 @@ export const generateCategoryActivities = /* GraphQL */ `
     }
   }
 `;
+export const searchAutocomplete = /* GraphQL */ `
+  query SearchAutocomplete(
+    $selectedCity: String!
+    $query: String!
+    $filters: [String!]
+  ) {
+    searchAutocomplete(
+      selectedCity: $selectedCity
+      query: $query
+      filters: $filters
+    ) {
+      suggestions
+      __typename
+    }
+  }
+`;
 export const getTripIDs = /* GraphQL */ `
   query GetTripIDs($userID: String!) {
     getTripIDs(userID: $userID) {

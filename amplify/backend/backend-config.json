@@ -258,6 +258,12 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "searchAutocomplete": {
+      "build": true,
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "searchUsers": {
       "build": true,
       "dependsOn": [
@@ -495,6 +501,30 @@
         {
           "category": "function",
           "resourceName": "manageCollaborators"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchAutocomplete_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchAutocomplete"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchAutocomplete_geminiApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchAutocomplete"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchAutocomplete_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchAutocomplete"
         }
       ]
     },
