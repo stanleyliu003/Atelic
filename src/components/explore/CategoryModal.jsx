@@ -9,8 +9,10 @@ import {
   View,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Feather from '@expo/vector-icons/Feather';
 import { Colors } from '../../../constants/Colors';
 import { WishlistActivities } from '../trip-view/wishlist_activities';
+import { ActivityDetailView } from '../trip-view/description_card';
 
 /**
  * CategoryModal Component
@@ -23,9 +25,11 @@ import { WishlistActivities } from '../trip-view/wishlist_activities';
  * @param {boolean} loading - Whether activities are being loaded
  * @param {function} onSave - Callback when "Save to Wishlist" is clicked (receives array of selected activities)
  * @param {function} onClose - Callback to close modal
+ * @param {function} onGenerateMore - Callback when "Generate More" button is clicked
  */
-export const CategoryModal = ({ visible, category, activities, loading = false, onSave, onClose }) => {
+export const CategoryModal = ({ visible, category, activities, loading = false, onSave, onClose, onGenerateMore }) => {
   const [selectedActivityIds, setSelectedActivityIds] = useState([]);
+  const [selectedActivity, setSelectedActivity] = useState(null);
 
   // Toggle activity selection
   const handleActivityToggle = (activityId) => {
@@ -52,6 +56,16 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
   const handleClose = () => {
     setSelectedActivityIds([]);
     onClose();
+  };
+
+  // Handle activity card press to show details
+  const handleActivityPress = (activity) => {
+    setSelectedActivity(activity);
+  };
+
+  // Handle closing activity detail view
+  const handleActivityDetailClose = () => {
+    setSelectedActivity(null);
   };
 
   return (
@@ -94,10 +108,31 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
                 selectedActivities={selectedActivityIds}
                 onActivitySelect={handleActivityToggle}
                 onActivityDeselect={handleActivityToggle}
+                onDescriptionCardPress={handleActivityPress}
                 showSelectionIndicator={true}
               />
             )}
           </ScrollView>
+
+          {/* Generate More Button - Show when activities exist and not in initial loading state */}
+          {activities.length > 0 && !loading && onGenerateMore && (
+            <View style={styles.generateMoreContainer}>
+              <TouchableOpacity
+                style={[styles.generateMoreButton, loading && styles.generateMoreButtonDisabled]}
+                onPress={() => !loading && onGenerateMore(category)}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#666" />
+                ) : (
+                  <Feather name="plus-circle" size={24} color="black" />
+                )}
+                <Text style={[styles.generateMoreButtonText, loading && styles.generateMoreButtonTextDisabled]}>
+                  {loading ? 'Loading...' : `More ${category.toLowerCase()}`}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Save Button - Only show when activities are selected */}
           {selectedActivityIds.length > 0 && (
@@ -113,6 +148,21 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
           )}
         </View>
       </View>
+
+      {/* Activity Detail Modal */}
+      {selectedActivity && (
+        <Modal visible={true} animationType="slide" transparent={true}>
+          <View style={styles.detailModalOverlay}>
+            <View style={styles.detailModalContainer}>
+              <ActivityDetailView
+                activity={selectedActivity}
+                onClose={handleActivityDetailClose}
+                variant="wishlist"
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
     </Modal>
   );
 };
@@ -143,13 +193,13 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: 'outfit-bold',
-    fontSize: 20,
+    fontSize: 24,
     color: '#333',
     marginBottom: 5,
   },
   headerSubtitle: {
     fontFamily: 'outfit',
-    fontSize: 14,
+    fontSize: 16,
     color: '#666',
   },
   activitiesContainer: {
@@ -213,5 +263,48 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit-bold',
     fontSize: 16,
     color: Colors.WHITE,
+  },
+  detailModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  detailModalContainer: {
+    backgroundColor: Colors.WHITE,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    height: '85%',
+    paddingTop: 20,
+  },
+  generateMoreContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  generateMoreButton: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  generateMoreButtonText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: '#1a1a1a',
+    fontWeight: '500',
+  },
+  generateMoreButtonDisabled: {
+    opacity: 0.6,
+  },
+  generateMoreButtonTextDisabled: {
+    color: '#666',
   },
 });
