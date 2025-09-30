@@ -47,7 +47,6 @@ export const SearchBar = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 20,
     paddingVertical: 10,
   },
   searchBar: {
@@ -59,6 +58,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderWidth: 1,
     borderColor: '#e9ecef',
+    marginBottom: 20,
   },
   icon: {
     marginRight: 10,

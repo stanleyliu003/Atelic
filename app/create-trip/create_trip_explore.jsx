@@ -264,7 +264,7 @@ export default function create_trip_explore() {
               style={styles.wishlistButton}
             >
               <Text style={styles.wishlistButtonText}>Wishlist</Text>
-              <Ionicons name="list" size={24} color={Colors.PRIMARY} />
+              <Ionicons name="list" size={24} color={Colors.WHITE} />
             </TouchableOpacity>
           </View>
 
@@ -279,12 +279,6 @@ export default function create_trip_explore() {
             onChangeText={handleSearchQueryChange}
             onPress={handleSearchPress}
             placeholder="Search activities..."
-          />
-
-          {/* Filter Chips */}
-          <FilterChips
-            selectedFilters={selectedFilters}
-            onFilterToggle={handleFilterToggle}
           />
 
           {/* Category Grid */}
@@ -371,18 +365,19 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   wishlistButton: {
+    marginTop: 20,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 10,
-    backgroundColor: '#e8f4fd',
+    backgroundColor: '#FF5F0E',
   },
   wishlistButtonText: {
     fontFamily: 'outfit-medium',
     fontSize: 16,
-    color: Colors.PRIMARY,
+    color: Colors.WHITE,
   },
   titleSection: {
     marginBottom: 20,
@@ -398,7 +393,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   categoriesTitle: {
-    fontFamily: 'outfit-medium',
+    fontFamily: 'outfit-bold',
     fontSize: 18,
     color: '#1a1a1a',
     marginBottom: 15,
