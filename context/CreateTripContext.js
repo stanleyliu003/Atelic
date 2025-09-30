@@ -434,6 +434,32 @@ export const CreateTripProvider = ({ children }) => {
                             editorial_summary
                             primary_type_display_name
                             international_phone_number
+                            regular_opening_hours {
+                                open_now
+                                periods {
+                                    open {
+                                        day
+                                        time
+                                        date
+                                        truncated
+                                    }
+                                    close {
+                                        day
+                                        time
+                                        date
+                                        truncated
+                                    }
+                                }
+                                weekday_text
+                            }
+                            reviews {
+                                author_name
+                                rating
+                                text
+                                time
+                                author_url
+                                profile_photo_url
+                            }
                         }
                     }
                 }

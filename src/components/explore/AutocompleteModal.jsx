@@ -14,6 +14,7 @@ import { Colors } from '../../../constants/Colors';
 import { FilterChips } from './FilterChips';
 import { getSearchAutocomplete } from '../../services/searchService';
 import { WishlistActivities } from '../trip-view/wishlist_activities';
+import { ActivityDetailView } from '../trip-view/description_card';
 
 /**
  * AutocompleteModal Component
@@ -56,6 +57,10 @@ export const AutocompleteModal = ({
   const [searchError, setSearchError] = useState(null);
   const [selectedActivityIds, setSelectedActivityIds] = useState([]);
   const [showingResults, setShowingResults] = useState(false);
+  
+  // Description card modal state
+  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [showDescriptionCard, setShowDescriptionCard] = useState(false);
 
   // Update local query when prop changes
   useEffect(() => {
@@ -183,6 +188,18 @@ export const AutocompleteModal = ({
       onQueryChange('');
     }
   };
+  
+  // Handle activity card tap to show description
+  const handleActivityPress = (activity) => {
+    setSelectedActivity(activity);
+    setShowDescriptionCard(true);
+  };
+  
+  // Handle closing description card
+  const handleCloseDescriptionCard = () => {
+    setShowDescriptionCard(false);
+    setSelectedActivity(null);
+  };
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
@@ -269,6 +286,7 @@ export const AutocompleteModal = ({
                           selectedActivities={selectedActivityIds}
                           onActivitySelect={handleActivityToggle}
                           onActivityDeselect={handleActivityToggle}
+                          onDescriptionCardPress={handleActivityPress}
                           showSelectionIndicator={true}
                         />
                       </View>
@@ -334,6 +352,19 @@ export const AutocompleteModal = ({
           )}
         </View>
       </View>
+      
+      {/* Activity Description Card Modal */}
+      {showDescriptionCard && selectedActivity && (
+        <Modal visible={showDescriptionCard} animationType="slide" transparent={false}>
+          <View style={styles.descriptionCardContainer}>
+            <ActivityDetailView 
+              activity={selectedActivity} 
+              onClose={handleCloseDescriptionCard}
+              variant="wishlist"
+            />
+          </View>
+        </Modal>
+      )}
     </Modal>
   );
 };
@@ -494,5 +525,9 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit',
     fontSize: 16,
     color: '#333',
+  },
+  descriptionCardContainer: {
+    flex: 1,
+    paddingTop: 70,
   },
 });
