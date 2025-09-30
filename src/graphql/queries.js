@@ -128,12 +128,12 @@ export const generateCategoryActivities = /* GraphQL */ `
   query GenerateCategoryActivities(
     $selectedCity: String!
     $category: String!
-    $existingCategoryActivities: [String!]
+    $existingWishlistActivities: [String!]
   ) {
     generateCategoryActivities(
       selectedCity: $selectedCity
       category: $category
-      existingCategoryActivities: $existingCategoryActivities
+      existingWishlistActivities: $existingWishlistActivities
     ) {
       activities {
         name
@@ -181,13 +181,13 @@ export const searchActivities = /* GraphQL */ `
     $selectedCity: String!
     $searchQuery: String!
     $filters: [String!]
-    $existingCategoryActivities: [String!]
+    $existingWishlistActivities: [String!]
   ) {
     searchActivities(
       selectedCity: $selectedCity
       searchQuery: $searchQuery
       filters: $filters
-      existingCategoryActivities: $existingCategoryActivities
+      existingWishlistActivities: $existingWishlistActivities
     ) {
       activities {
         name

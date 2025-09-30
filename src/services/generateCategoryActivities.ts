@@ -9,18 +9,18 @@ interface GenerateCategoryActivitiesResponse {
 export async function generateCategoryActivities(
   selectedCity: string,
   category: string,
-  existingCategoryActivities: string[] = []
+  existingWishlistActivities: string[] = []
 ): Promise<GenerateCategoryActivitiesResponse | null> {
   try {
     console.log('[generateCategoryActivities] Making GraphQL call with params:', {
       selectedCity,
       category,
-      existingCategoryActivities
+      existingWishlistActivities
     });
 
     const result = await API.graphql(graphqlOperation(`
-      query GenerateCategoryActivities($selectedCity: String!, $category: String!, $existingCategoryActivities: [String!]) {
-        generateCategoryActivities(selectedCity: $selectedCity, category: $category, existingCategoryActivities: $existingCategoryActivities) {
+      query GenerateCategoryActivities($selectedCity: String!, $category: String!, $existingWishlistActivities: [String!]) {
+        generateCategoryActivities(selectedCity: $selectedCity, category: $category, existingWishlistActivities: $existingWishlistActivities) {
           activities {
             name
             city
@@ -58,7 +58,7 @@ export async function generateCategoryActivities(
     `, {
       selectedCity,
       category,
-      existingCategoryActivities
+      existingWishlistActivities
     })) as any;
 
     console.log('[generateCategoryActivities] GraphQL response:', result?.data?.generateCategoryActivities);

@@ -296,12 +296,12 @@ export const CreateTripProvider = ({ children }) => {
         setLoadingCategories(prev => ({ ...prev, [category]: true }));
 
         try {
-            // Get existing activities for this category to avoid duplicates
-            const existingCategoryActivities = categoryActivities[category] || [];
-            const existingActivityNames = existingCategoryActivities.map(activity => activity.name);
+            // Get existing wishlist activities for this category to avoid duplicates
+            const existingWishlistActivities = categoryActivities[category] || [];
+            const existingActivityNames = existingWishlistActivities.map(activity => activity.name);
 
             console.log(`[CreateTripContext] Generating ${count} activities for category: ${category} in ${selectedCity}`);
-            console.log(`[CreateTripContext] Existing activities (${existingCategoryActivities.length}/${ACTIVITY_GENERATION_LIMIT}):`, existingActivityNames);
+            console.log(`[CreateTripContext] Existing wishlist activities (${existingWishlistActivities.length}/${ACTIVITY_GENERATION_LIMIT}):`, existingActivityNames);
 
             // Call GraphQL mutation to generateCategoryActivities Lambda function
             const response = await generateCategoryActivitiesGraphQL(
@@ -325,7 +325,7 @@ export const CreateTripProvider = ({ children }) => {
             // Update categoryActivities state - append new activities to existing ones
             setCategoryActivities(prev => ({
                 ...prev,
-                [category]: [...existingCategoryActivities, ...activitiesWithCategory]
+                [category]: [...existingWishlistActivities, ...activitiesWithCategory]
             }));
 
             return activitiesWithCategory;

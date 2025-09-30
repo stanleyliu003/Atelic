@@ -32,14 +32,14 @@ exports.handler = async (event) => {
         const {
             selectedCity,
             category,
-            existingCategoryActivities = [],  // Keep param name for backward compatibility with GraphQL
-            searchMode = false,  // NEW: Default to category mode
-            searchQuery = null,  // NEW: For search mode
-            filters = []         // NEW: For search mode
+            existingWishlistActivities = [],  // Activities already in user's wishlist
+            searchMode = false,  // Default to category mode
+            searchQuery = null,  // For search mode
+            filters = []         // For search mode
         } = event.arguments || event;
 
-        // Rename for clarity - these are existing wishlist activities to avoid duplicating
-        const existingActivities = existingCategoryActivities;
+        // Alias for internal use
+        const existingActivities = existingWishlistActivities;
 
         // Validation
         if (!selectedCity) {
