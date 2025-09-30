@@ -176,6 +176,44 @@ export const searchAutocomplete = /* GraphQL */ `
     }
   }
 `;
+export const searchActivities = /* GraphQL */ `
+  query SearchActivities(
+    $selectedCity: String!
+    $searchQuery: String!
+    $filters: [String!]
+    $existingCategoryActivities: [String!]
+  ) {
+    searchActivities(
+      selectedCity: $selectedCity
+      searchQuery: $searchQuery
+      filters: $filters
+      existingCategoryActivities: $existingCategoryActivities
+    ) {
+      activities {
+        name
+        city
+        lat
+        lng
+        rating
+        user_ratings_total
+        formatted_address
+        types
+        primaryType
+        place_id
+        photo_reference
+        is_recommended
+        display_name
+        website_uri
+        editorial_summary
+        primary_type_display_name
+        international_phone_number
+        __typename
+      }
+      query
+      __typename
+    }
+  }
+`;
 export const getTripIDs = /* GraphQL */ `
   query GetTripIDs($userID: String!) {
     getTripIDs(userID: $userID) {

@@ -29,26 +29,44 @@ exports.handler = async (event) => {
     console.log('generateCategoryActivities input:', JSON.stringify(event, null, 2));
 
     try {
-        const { selectedCity, category, existingCategoryActivities = [] } = event.arguments || event;
+        const {
+            selectedCity,
+            category,
+            existingCategoryActivities = [],  // Keep param name for backward compatibility with GraphQL
+            searchMode = false,  // NEW: Default to category mode
+            searchQuery = null,  // NEW: For search mode
+            filters = []         // NEW: For search mode
+        } = event.arguments || event;
 
-        if (!selectedCity || !category) {
-            throw new Error('selectedCity and category are required parameters');
+        // Rename for clarity - these are existing wishlist activities to avoid duplicating
+        const existingActivities = existingCategoryActivities;
+
+        // Validation
+        if (!selectedCity) {
+            throw new Error('selectedCity is required');
+        }
+        if (searchMode && !searchQuery) {
+            throw new Error('searchQuery is required when searchMode is true');
+        }
+        if (!searchMode && !category) {
+            throw new Error('category is required when searchMode is false');
         }
 
-        // Check cache first (following getLocationCoordinates pattern)
-        // Only use cache if there are no existing activities (initial request)
-        let cachedResult = null;
-        let cacheKey = null;
-        
-        if (existingCategoryActivities.length === 0) {
-            cacheKey = `category-activities-${selectedCity}-${category}-4`;
-            cachedResult = await getCachedData('category-activities', cacheKey);
+        // Build cache key - same format for both category and search
+        const queryString = searchMode ? searchQuery : category;
+        const filterString = filters.length > 0 ? `-${filters.sort().join(',')}` : '';
+        const cacheKey = `${selectedCity}-${queryString}${filterString}-4`;
 
+        // Check cache first (only for initial requests)
+        let cachedResult = null;
+        if (existingActivities.length === 0) {
+            cachedResult = await getCachedData('activities', cacheKey);
             if (cachedResult && cachedResult.activities) {
-                console.log('Returning cached category activities');
+                console.log(`Returning cached activities for: ${queryString}`);
                 return {
                     activities: cachedResult.activities.slice(0, 4),
-                    category: category
+                    category: searchMode ? searchQuery : category,
+                    query: searchMode ? searchQuery : undefined
                 };
             }
         } else {
@@ -59,9 +77,11 @@ exports.handler = async (event) => {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-        // Create category-specific prompt for Gemini with existing activities to avoid duplicates
-        const prompt = buildCategoryPrompt(selectedCity, category, existingCategoryActivities);
-        console.log('Gemini prompt created for category:', category);
+        // Build prompt based on mode
+        const prompt = searchMode
+            ? buildSearchPrompt(selectedCity, searchQuery, filters, existingActivities)
+            : buildCategoryPrompt(selectedCity, category, existingActivities);
+        console.log(`Gemini prompt created for ${searchMode ? 'search' : 'category'}:`, searchMode ? searchQuery : category);
 
         // Call Gemini API
         const result = await model.generateContent(prompt);
@@ -180,22 +200,23 @@ exports.handler = async (event) => {
         });
 
         // Apply deduplication against existing activities (by name)
-        const deduplicatedActivities = deduplicateActivities(finalActivities, existingCategoryActivities);
+        const deduplicatedActivities = deduplicateActivities(finalActivities, existingActivities);
 
-        // Cache the result only for initial requests (following getLocationCoordinates pattern)
-        if (cacheKey && existingCategoryActivities.length === 0) {
-            await setCachedData('category-activities', cacheKey, {
+        // Cache the result only for initial requests
+        if (existingActivities.length === 0) {
+            await setCachedData('activities', cacheKey, {
                 activities: finalActivities,
-                category: category,
+                category: searchMode ? searchQuery : category,
                 timestamp: new Date().toISOString()
             }, CATEGORY_ACTIVITIES_TTL);
         }
 
-        console.log(`Returning ${deduplicatedActivities.length} activities for category: ${category}`);
+        console.log(`Returning ${deduplicatedActivities.length} activities`);
 
         return {
             activities: deduplicatedActivities.slice(0, 4),
-            category: category
+            category: searchMode ? searchQuery : category,
+            query: searchMode ? searchQuery : undefined
         };
 
     } catch (error) {
@@ -211,16 +232,62 @@ exports.handler = async (event) => {
 };
 
 /**
+ * Build search-specific prompt for Gemini AI
+ * Includes user query and active filters
+ */
+function buildSearchPrompt(selectedCity, searchQuery, filters, existingActivities) {
+    // Build existing activities context
+    let existingActivitiesContext = "";
+    if (existingActivities && existingActivities.length > 0) {
+        const existingNames = existingActivities.join(', ');
+        existingActivitiesContext = `
+AVOID DUPLICATES:
+The user already searched for: ${existingNames}
+DO NOT recommend any of these existing locations. Generate 4 DIFFERENT recommendations.
+        `;
+    }
+
+    // Build filters context - just pass filter IDs directly
+    const filtersContext = filters.length > 0
+        ? `\nACTIVE FILTERS: ${filters.join(', ')}\nAll recommendations MUST satisfy these filters. Only recommend places that satisfy ALL active filters.\n`
+        : '';
+
+    return `
+You are an expert travel assistant. Generate exactly 4 high-quality recommendations for "${searchQuery}" in ${selectedCity}.
+
+CRITICAL CONSTRAINTS:
+1. ONLY focus on ${selectedCity}
+2. Generate exactly 4 specific locations matching "${searchQuery}" that are WITHIN ${selectedCity} only
+3. Use precise, official names suitable for Google Places API
+4. Don't recommend neighborhoods or areas, only specific locations
+5. Focus on well-regarded, authentic experiences
+${filtersContext}${existingActivitiesContext}
+
+SEARCH QUERY: "${searchQuery}"
+Generate 4 recommendations that:
+- Directly match or closely relate to "${searchQuery}"
+- Are highly rated and well-regarded locations
+- Are accessible to visitors
+- Are specific venues, not districts or neighborhoods
+
+STRICT OUTPUT FORMAT:
+Return ONLY this JSON structure with no additional text:
+{"recommendations":[{"name":"Specific Place Name 1","region":"${selectedCity}"},{"name":"Specific Place Name 2","region":"${selectedCity}"}]}
+
+Generate 4 specific recommendations for "${searchQuery}" in ${selectedCity} now:
+    `;
+}
+
+/**
  * Build category-specific prompt for Gemini AI
  * Based on wishlistAnalyzer prompt structure with category focus
  * Includes existing activities to avoid duplicates
  */
-function buildCategoryPrompt(selectedCity, category, existingCategoryActivities) {
+function buildCategoryPrompt(selectedCity, category, existingActivities) {
     // Build the existing activities context
     let existingActivitiesContext = "";
-    if (existingCategoryActivities && existingCategoryActivities.length > 0) {
-        // existingCategoryActivities is now just an array of activity names
-        const existingNames = existingCategoryActivities.join(', ');
+    if (existingActivities && existingActivities.length > 0) {
+        const existingNames = existingActivities.join(', ');
         existingActivitiesContext = `
 AVOID DUPLICATES:
 The user already has the following ${category} activities: ${existingNames}
