@@ -368,11 +368,89 @@ export const CreateTripProvider = ({ children }) => {
         // Get all activities from the specified category
         const categoryActivitiesList = categoryActivities[categoryName] || [];
         const categoryActivityIds = categoryActivitiesList.map(activity => activity.place_id).filter(Boolean);
-        
+
         // Remove these activity IDs from selectedActivityIds
-        setSelectedActivityIds(prev => 
+        setSelectedActivityIds(prev =>
             prev.filter(activityId => !categoryActivityIds.includes(activityId))
         );
+    };
+
+    // Add activities to wishlist with deduplication based on place_id
+    const addToWishlist = (newActivities) => {
+        const existingPlaceIds = new Set(activities.map(a => a.place_id).filter(Boolean));
+        const uniqueActivities = newActivities.filter(a => a.place_id && !existingPlaceIds.has(a.place_id));
+
+        if (uniqueActivities.length > 0) {
+            updateActivities([...activities, ...uniqueActivities]);
+        }
+
+        return {
+            added: uniqueActivities.length,
+            duplicates: newActivities.length - uniqueActivities.length
+        };
+    };
+
+    // Search for activities using search query and filters
+    // Uses the same Lambda as generateCategoryActivities but in search mode
+    const searchActivities = async (searchQuery, filters = [], existingActivities = []) => {
+        try {
+            console.log(`[CreateTripContext] Searching for activities: "${searchQuery}" in ${selectedCity}`);
+            console.log(`[CreateTripContext] Filters:`, filters);
+            console.log(`[CreateTripContext] Existing activities to avoid:`, existingActivities);
+
+            // Import the GraphQL query
+            const { API } = await import('aws-amplify');
+            const { graphqlOperation } = await import('aws-amplify');
+
+            const result = await API.graphql(graphqlOperation(`
+                query SearchActivities(
+                    $selectedCity: String!
+                    $searchQuery: String!
+                    $filters: [String!]
+                    $existingWishlistActivities: [String!]
+                ) {
+                    searchActivities(
+                        selectedCity: $selectedCity
+                        searchQuery: $searchQuery
+                        filters: $filters
+                        existingWishlistActivities: $existingWishlistActivities
+                    ) {
+                        query
+                        activities {
+                            name
+                            city
+                            lat
+                            lng
+                            rating
+                            user_ratings_total
+                            formatted_address
+                            types
+                            primaryType
+                            place_id
+                            photo_reference
+                            is_recommended
+                            display_name
+                            website_uri
+                            editorial_summary
+                            primary_type_display_name
+                            international_phone_number
+                        }
+                    }
+                }
+            `, {
+                selectedCity,
+                searchQuery,
+                filters,
+                existingWishlistActivities: existingActivities
+            }));
+
+            console.log(`[CreateTripContext] Search results:`, result?.data?.searchActivities);
+
+            return result?.data?.searchActivities?.activities ?? [];
+        } catch (error) {
+            console.error(`[CreateTripContext] Error searching for activities:`, error);
+            throw error;
+        }
     };
 
     const value = {
@@ -421,6 +499,8 @@ export const CreateTripProvider = ({ children }) => {
         toggleActivitySelection,
         getSelectedActivities,
         unselectActivitiesFromCategory,
+        addToWishlist,
+        searchActivities,
         isActivityLimitReached,
         ACTIVITY_GENERATION_LIMIT,
         tripPhotoReference,
