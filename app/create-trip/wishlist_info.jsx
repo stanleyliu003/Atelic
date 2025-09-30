@@ -154,7 +154,7 @@ export default function WishlistInfo() {
 
     return (
       <View style={styles.container}>
-        <TouchableOpacity onPress={()=>router.replace('/create-trip/create_trip_4_additional_info')}>
+        <TouchableOpacity onPress={()=>router.replace('/create-trip/create_trip_explore')}>
           <Ionicons name="arrow-back" size={32} color="black" />
         </TouchableOpacity>
 
@@ -238,15 +238,6 @@ export default function WishlistInfo() {
             </>
           )}
           
-          {/* Add Places Button - at the very bottom of scroll content */}
-          <View style={styles.addPlacesButtonContainer}>
-            <AddPlacesButton
-                onPress={() => setIsAddPlacesModalVisible(true)}
-                isAddingPlace={isAddingPlace}
-                style={defaultAddPlacesButtonStyle}
-                showLoadingIndicator={false}
-            />
-          </View>
         </ScrollView>
 
         {/* Create Trip Button */}
@@ -280,56 +271,6 @@ export default function WishlistInfo() {
             </View>
           </View>
         )}
-
-        {/* Add Places Modal */}
-        <Modal
-          visible={isAddPlacesModalVisible}
-          animationType="slide"
-          presentationStyle="formSheet"
-          onRequestClose={() => setIsAddPlacesModalVisible(false)}
-        >
-          <KeyboardAvoidingView 
-            style={styles.addPlacesModalContainer}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          >
-            <View style={styles.addPlacesModalHeader}>
-              <TouchableOpacity 
-                onPress={() => setIsAddPlacesModalVisible(false)}
-                style={styles.addPlacesModalCloseButton}
-              >
-                <Ionicons name="close" size={32} color={Colors.GRAY} />
-              </TouchableOpacity>
-              <Text style={styles.addPlacesModalTitle}>Add Additional Places</Text>
-              <View style={styles.addPlacesModalSpacer} />
-            </View>
-            
-            <View style={styles.addPlacesModalContent}>
-              <GooglePlacesAutocomplete
-                placeholder={`Search places in ${selectedCity}`}
-                onPress={handlePlaceSelect}
-                query={{
-                  key: API_KEYS.GOOGLE_MAPS,
-                  language: 'en',
-                  ...(getBiasLocation() && {
-                    location: getBiasLocation(),
-                    radius: 10000, // 10km radius around the bias location
-                  }),
-                }}
-                styles={{
-                  container: styles.googlePlacesContainer,
-                  textInputContainer: styles.googlePlacesTextInputContainer,
-                  textInput: styles.googlePlacesInput,
-                  listView: styles.googlePlacesList,
-                  row: styles.googlePlacesRow,
-                  description: styles.googlePlacesDescription,
-                }}
-                fetchDetails={false}
-                enablePoweredByContainer={false}
-                debounce={200}
-              />
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
       </View>
     )
 }
@@ -358,13 +299,6 @@ const styles = StyleSheet.create({
     scrollContent: {
       paddingBottom: 20,
     },
-    addPlacesButtonContainer: {
-      alignItems: 'center',
-      padding: 20,
-      marginTop: -40,
-      marginBottom: 0, // Extra space to ensure it's at the very bottom
-    },
-
     citySection: {
       marginBottom: 10,
     },
@@ -431,76 +365,4 @@ const styles = StyleSheet.create({
       borderTopRightRadius: 25,
       paddingTop: 25,
     },
-    addPlacesModalContainer: {
-      height: '50%', // Reduced to 50% of screen height
-      backgroundColor: Colors.WHITE,
-    },
-    addPlacesModalHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 20,
-      paddingTop: 60,
-      paddingBottom: 20,
-      borderBottomWidth: 1,
-      borderBottomColor: '#E5E5E5',
-    },
-    addPlacesModalCloseButton: {
-      width: 40,
-      height: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    addPlacesModalTitle: {
-      fontFamily: 'outfit-bold',
-      fontSize: 24,
-      color: '#1a1a1a',
-    },
-    addPlacesModalSpacer: {
-      width: 40,
-    },
-    addPlacesModalContent: {
-      flex: 1,
-      padding: 20,
-    },
-    googlePlacesContainer: {
-      flex: 0,
-      zIndex: 1,
-    },
-    googlePlacesTextInputContainer: {
-      flexDirection: 'row',
-      width: '100%',
-    },
-    googlePlacesInput: {
-      height: 50,
-      color: '#1a1a1a',
-      fontSize: 16,
-      fontFamily: 'outfit',
-      borderWidth: 1,
-      borderRadius: 15,
-      borderColor: '#1a1a1a',
-      paddingHorizontal: 15,
-      flex: 1,
-    },
-    googlePlacesList: {
-      backgroundColor: 'white',
-      borderRadius: 15,
-      marginTop: 5,
-      elevation: 3,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-    },
-    googlePlacesRow: {
-      backgroundColor: 'white',
-      padding: 13,
-      height: 44,
-      flexDirection: 'row',
-    },
-    googlePlacesDescription: {
-      fontFamily: 'outfit',
-      fontSize: 16,
-      color: '#1a1a1a',
-    }
 });

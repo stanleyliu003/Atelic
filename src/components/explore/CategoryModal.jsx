@@ -24,11 +24,12 @@ import { ActivityDetailView } from '../trip-view/description_card';
  * @param {string} category - Category name that was selected
  * @param {Activity[]} activities - Array of activity objects to display
  * @param {boolean} loading - Whether activities are being loaded
+ * @param {boolean} loadingMore - Whether more activities are being generated (for button loading state)
  * @param {function} onSave - Callback when "Save to Wishlist" is clicked (receives array of selected activities)
  * @param {function} onClose - Callback to close modal
  * @param {function} onGenerateMore - Callback when "Generate More" button is clicked
  */
-export const CategoryModal = ({ visible, category, activities, loading = false, onSave, onClose, onGenerateMore }) => {
+export const CategoryModal = ({ visible, category, activities, loading = false, loadingMore = false, onSave, onClose, onGenerateMore }) => {
   const [selectedActivityIds, setSelectedActivityIds] = useState([]);
   const [selectedActivity, setSelectedActivity] = useState(null);
 
@@ -141,17 +142,17 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
                 {onGenerateMore && (
                   <View style={styles.generateMoreContainer}>
                     <TouchableOpacity
-                      style={[styles.generateMoreButton, loading && styles.generateMoreButtonDisabled]}
-                      onPress={() => !loading && handleGenerateMoreActivities(category)}
-                      disabled={loading}
+                      style={[styles.generateMoreButton, loadingMore && styles.generateMoreButtonDisabled]}
+                      onPress={() => !loadingMore && handleGenerateMoreActivities(category)}
+                      disabled={loadingMore}
                     >
-                      {loading ? (
+                      {loadingMore ? (
                         <ActivityIndicator size="small" color="#666" />
                       ) : (
                         <Feather name="plus-circle" size={24} color="black" />
                       )}
-                      <Text style={[styles.generateMoreButtonText, loading && styles.generateMoreButtonTextDisabled]}>
-                        {loading ? 'Loading...' : `More ${category.toLowerCase()}`}
+                      <Text style={[styles.generateMoreButtonText, loadingMore && styles.generateMoreButtonTextDisabled]}>
+                        {loadingMore ? 'Loading...' : `More ${category.toLowerCase()}`}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -307,14 +308,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   generateMoreButton: {
-    marginTop: -5,
+    marginTop: -20,
     marginBottom: 15,
     backgroundColor: 'white',
     borderRadius: 15,
     paddingVertical: 12,
     paddingHorizontal: 20,
     alignItems: 'center',
-    marginHorizontal: 5,
+    marginHorizontal: -20,
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,

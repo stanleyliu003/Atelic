@@ -47,6 +47,7 @@ export default function create_trip_explore() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [categoryActivities, setCategoryActivities] = useState([]);
   const [loadingCategoryActivities, setLoadingCategoryActivities] = useState(false);
+  const [loadingMoreCategoryActivities, setLoadingMoreCategoryActivities] = useState(false);
 
   // Cache for category activities to persist across modal opens/closes
   const [categoryCache, setCategoryCache] = useState({});
@@ -207,7 +208,7 @@ export default function create_trip_explore() {
   };
 
   const handleGenerateMoreCategoryActivities = async (categoryName) => {
-    setLoadingCategoryActivities(true);
+    setLoadingMoreCategoryActivities(true);
     
     try {
       // Generate more activities for this category
@@ -222,7 +223,6 @@ export default function create_trip_explore() {
         }));
       }
     } catch (error) {
-      console.error('[Explore] Error generating more category activities:', error);
       // Check if this is a limit reached error
       if (error.message && error.message.includes('Activity generation limit reached')) {
         Alert.alert(
@@ -239,7 +239,7 @@ export default function create_trip_explore() {
         );
       }
     } finally {
-      setLoadingCategoryActivities(false);
+      setLoadingMoreCategoryActivities(false);
     }
   };
 
@@ -360,6 +360,7 @@ export default function create_trip_explore() {
         category={selectedCategory}
         activities={categoryActivities}
         loading={loadingCategoryActivities}
+        loadingMore={loadingMoreCategoryActivities}
         onSave={handleSaveCategoryActivities}
         onClose={() => setShowCategoryModal(false)}
         onGenerateMore={handleGenerateMoreCategoryActivities}
