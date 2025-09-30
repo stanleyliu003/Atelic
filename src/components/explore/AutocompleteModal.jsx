@@ -208,7 +208,22 @@ export const AutocompleteModal = ({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Search in {selectedCity}</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity onPress={() => {
+              console.log('[AutocompleteModal] Close button pressed');
+              console.log('[AutocompleteModal] Current localQuery:', localQuery);
+              // Clear the search query when closing
+              setLocalQuery('');
+              if (onQueryChange) {
+                console.log('[AutocompleteModal] Calling onQueryChange with empty string');
+                onQueryChange('');
+              }
+              // Reset search results state
+              setShowingResults(false);
+              setSearchResults([]);
+              setSelectedActivityIds([]);
+              console.log('[AutocompleteModal] Calling onClose');
+              onClose();
+            }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close" size={28} color="#333" />
             </TouchableOpacity>
           </View>

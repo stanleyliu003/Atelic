@@ -5,34 +5,31 @@ import { Colors } from '../../../constants/Colors';
 
 /**
  * SearchBar Component
- * A controlled text input for searching activities
- * Triggers autocomplete modal when focused
+ * A touchable search bar that opens autocomplete modal when pressed
+ * Displays current search query but is not directly editable
  *
- * @param {string} value - Current search query value
- * @param {function} onChangeText - Callback when text changes
- * @param {function} onFocus - Callback when search bar is focused (triggers autocomplete)
+ * @param {string} value - Current search query value to display
+ * @param {function} onChangeText - Callback when text changes (for clear button)
+ * @param {function} onPress - Callback when search bar is pressed (opens modal)
  * @param {string} placeholder - Optional placeholder text
  */
 export const SearchBar = ({
   value,
   onChangeText,
-  onFocus,
+  onPress,
   placeholder = 'Search activities...',
 }) => {
   return (
     <View style={styles.container}>
-      <View style={styles.searchBar}>
+      <TouchableOpacity style={styles.searchBar} onPress={onPress} activeOpacity={0.7}>
         <Ionicons name="search" size={20} color="#666" style={styles.icon} />
         <TextInput
           style={styles.input}
           value={value}
-          onChangeText={onChangeText}
-          onFocus={onFocus}
           placeholder={placeholder}
           placeholderTextColor="#999"
-          returnKeyType="search"
-          autoCapitalize="none"
-          autoCorrect={false}
+          editable={false}
+          pointerEvents="none"
         />
         {value.length > 0 && (
           <TouchableOpacity
@@ -43,7 +40,7 @@ export const SearchBar = ({
             <Ionicons name="close-circle" size={20} color="#999" />
           </TouchableOpacity>
         )}
-      </View>
+      </TouchableOpacity>
     </View>
   );
 };

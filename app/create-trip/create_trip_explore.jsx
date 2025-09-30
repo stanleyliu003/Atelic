@@ -37,6 +37,10 @@ export default function create_trip_explore() {
 
   // Modal visibility state
   const [showAutocomplete, setShowAutocomplete] = useState(false);
+  
+  // Debug: Log when showAutocomplete changes
+  useEffect(() => {
+  }, [showAutocomplete]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [categoryActivities, setCategoryActivities] = useState([]);
@@ -60,18 +64,14 @@ export default function create_trip_explore() {
 
   // ===== SEARCH FLOW HANDLERS =====
 
-  const handleSearchFocus = () => {
-    // Always open autocomplete modal when search bar is focused
+  const handleSearchPress = () => {
+    // Open autocomplete modal when search bar is pressed
     setShowAutocomplete(true);
   };
 
   const handleSearchQueryChange = (text) => {
     setSearchQuery(text);
-    if (text.trim().length >= 2) {
-      setShowAutocomplete(true);
-    } else {
-      setShowAutocomplete(false);
-    }
+    // Modal stays open regardless of text length - only closes via close button
   };
 
   // This function is now handled directly in AutocompleteModal
@@ -277,7 +277,7 @@ export default function create_trip_explore() {
           <SearchBar
             value={searchQuery}
             onChangeText={handleSearchQueryChange}
-            onFocus={handleSearchFocus}
+            onPress={handleSearchPress}
             placeholder="Search activities..."
           />
 
@@ -331,9 +331,11 @@ export default function create_trip_explore() {
         query={searchQuery}
         filters={selectedFilters}
         selectedCity={selectedCity}
-        onClose={() => setShowAutocomplete(false)}
+        onClose={() => {
+          setShowAutocomplete(false);
+        }}
         onFilterToggle={handleFilterToggle}
-        onQueryChange={setSearchQuery}
+        onQueryChange={handleSearchQueryChange}
         onSearchActivities={handleSearchActivities}
         onSaveActivities={handleSaveSearchResults}
       />
