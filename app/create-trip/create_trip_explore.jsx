@@ -67,9 +67,8 @@ export default function create_trip_explore() {
   // ===== SEARCH FLOW HANDLERS =====
 
   const handleSearchFocus = () => {
-    if (searchQuery.trim().length >= 2) {
-      setShowAutocomplete(true);
-    }
+    // Always open autocomplete modal when search bar is focused
+    setShowAutocomplete(true);
   };
 
   const handleSearchQueryChange = (text) => {
@@ -345,6 +344,7 @@ export default function create_trip_explore() {
         onSuggestionSelect={handleSuggestionSelect}
         onClose={() => setShowAutocomplete(false)}
         onFilterToggle={handleFilterToggle}
+        onQueryChange={setSearchQuery}
       />
 
       <SearchResultsModal

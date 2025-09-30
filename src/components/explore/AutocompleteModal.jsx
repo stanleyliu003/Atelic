@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
   Modal,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -19,12 +20,13 @@ import { getSearchAutocomplete } from '../../services/searchService';
  * Includes filter chips and real-time suggestion updates
  *
  * @param {boolean} visible - Whether modal is visible
- * @param {string} query - Current search query
+ * @param {string} query - Initial search query
  * @param {string[]} filters - Selected filter IDs
  * @param {string} selectedCity - City being searched
  * @param {function} onSuggestionSelect - Callback when a suggestion is selected
  * @param {function} onClose - Callback to close modal
  * @param {function} onFilterToggle - Callback when a filter is toggled
+ * @param {function} onQueryChange - Callback when search query changes in modal
  */
 export const AutocompleteModal = ({
   visible,
@@ -34,16 +36,36 @@ export const AutocompleteModal = ({
   onSuggestionSelect,
   onClose,
   onFilterToggle,
+  onQueryChange,
 }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [localQuery, setLocalQuery] = useState(query);
+  const searchInputRef = useRef(null);
+  const debounceTimeoutRef = useRef(null);
 
-  // Fetch autocomplete suggestions when query or filters change
+  // Update local query when prop changes
   useEffect(() => {
-    const fetchSuggestions = async () => {
-      if (!query || query.trim().length < 2) {
+    setLocalQuery(query);
+  }, [query]);
+
+  // Focus search input when modal opens
+  useEffect(() => {
+    if (visible && searchInputRef.current) {
+      // Small delay to ensure modal is fully rendered
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [visible]);
+
+  // Debounced fetch autocomplete suggestions
+  useEffect(() => {
+    const fetchSuggestions = async (searchQuery) => {
+      if (!searchQuery || searchQuery.trim().length < 2) {
         setSuggestions([]);
+        setLoading(false);
         return;
       }
 
@@ -51,7 +73,7 @@ export const AutocompleteModal = ({
       setError(null);
 
       try {
-        const results = await getSearchAutocomplete(selectedCity, query, filters);
+        const results = await getSearchAutocomplete(selectedCity, searchQuery, filters);
         setSuggestions(results);
       } catch (err) {
         console.error('[AutocompleteModal] Error fetching suggestions:', err);
@@ -63,9 +85,33 @@ export const AutocompleteModal = ({
     };
 
     if (visible) {
-      fetchSuggestions();
+      // Clear existing timeout
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+
+      // Set new timeout for debouncing (300ms)
+      debounceTimeoutRef.current = setTimeout(() => {
+        fetchSuggestions(localQuery);
+      }, 300);
     }
-  }, [query, filters, selectedCity, visible]);
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, [localQuery, filters, selectedCity, visible]);
+
+  // Handle local query change
+  const handleQueryChange = (text) => {
+    setLocalQuery(text);
+    // Also update parent component's query if callback is provided
+    if (onQueryChange) {
+      onQueryChange(text);
+    }
+  };
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
@@ -79,11 +125,31 @@ export const AutocompleteModal = ({
             </TouchableOpacity>
           </View>
 
-          {/* Read-only Search Bar showing current query */}
+          {/* Editable Search Bar */}
           <View style={styles.searchBarContainer}>
             <View style={styles.searchBar}>
               <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
-              <Text style={styles.searchText}>{query}</Text>
+              <TextInput
+                ref={searchInputRef}
+                style={styles.searchInput}
+                value={localQuery}
+                onChangeText={handleQueryChange}
+                placeholder="Search activities..."
+                placeholderTextColor="#999"
+                returnKeyType="search"
+                autoCapitalize="none"
+                autoCorrect={false}
+                selectTextOnFocus={true}
+              />
+              {localQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => handleQueryChange('')}
+                  style={styles.clearButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close-circle" size={20} color="#999" />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
@@ -108,7 +174,7 @@ export const AutocompleteModal = ({
               </View>
             )}
 
-            {!loading && !error && suggestions.length === 0 && query.length >= 2 && (
+            {!loading && !error && suggestions.length === 0 && localQuery.length >= 2 && (
               <View style={styles.emptyContainer}>
                 <Ionicons name="search-outline" size={48} color="#ccc" />
                 <Text style={styles.emptyText}>No suggestions found</Text>
@@ -180,11 +246,15 @@ const styles = StyleSheet.create({
   searchIcon: {
     marginRight: 10,
   },
-  searchText: {
+  searchInput: {
     flex: 1,
     fontFamily: 'outfit-medium',
     fontSize: 16,
     color: '#333',
+    padding: 0,
+  },
+  clearButton: {
+    marginLeft: 8,
   },
   divider: {
     height: 1,
