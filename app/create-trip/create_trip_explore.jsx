@@ -46,6 +46,10 @@ export default function create_trip_explore() {
   const [selectedSearchQuery, setSelectedSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [categoryActivities, setCategoryActivities] = useState([]);
+  const [loadingCategoryActivities, setLoadingCategoryActivities] = useState(false);
+
+  // Cache for category activities to persist across modal opens/closes
+  const [categoryCache, setCategoryCache] = useState({});
 
   useEffect(() => {
     navigation.setOptions({
@@ -140,16 +144,35 @@ export default function create_trip_explore() {
     setSelectedCategory(category.category);
     setShowCategoryModal(true);
 
+    // Check if we already have cached activities for this category
+    if (categoryCache[category.category]) {
+      setCategoryActivities(categoryCache[category.category]);
+      return;
+    }
+
+    // If not cached, fetch new activities
+    setCategoryActivities([]); // Clear previous activities immediately
+    setLoadingCategoryActivities(true);
+
     try {
       // Generate activities for this category
-      const result = await generateActivitiesForCategory(category.category);
-      if (result && result.activities) {
-        setCategoryActivities(result.activities);
+      const activities = await generateActivitiesForCategory(category.category);
+      if (activities && activities.length > 0) {
+        setCategoryActivities(activities);
+        // Cache the activities for this category
+        setCategoryCache(prev => ({
+          ...prev,
+          [category.category]: activities
+        }));
+      } else {
+        setCategoryActivities([]);
       }
     } catch (error) {
       console.error('[Explore] Error generating category activities:', error);
       Alert.alert('Error', 'Failed to load activities. Please try again.');
       setShowCategoryModal(false);
+    } finally {
+      setLoadingCategoryActivities(false);
     }
   };
 
@@ -222,9 +245,6 @@ export default function create_trip_explore() {
           {/* Title Section */}
           <View style={styles.titleSection}>
             <Text style={styles.title}>Explore {selectedCity}</Text>
-            <Text style={styles.subtitle}>
-              Search for activities or browse categories
-            </Text>
           </View>
 
           {/* Search Bar */}
@@ -253,15 +273,17 @@ export default function create_trip_explore() {
                     onPress={() => handleCategoryPress(category)}
                     activeOpacity={0.7}
                   >
-                    {category.emoji && (
-                      <View style={styles.emojiContainer}>
-                        <Text style={styles.categoryEmoji}>{category.emoji}</Text>
-                      </View>
-                    )}
-                    <Text style={styles.categoryName}>{category.category}</Text>
-                    <Text style={styles.categoryItems} numberOfLines={1}>
-                      {category.category_items[0]}
-                    </Text>
+                    <View style={styles.categoryContent}>
+                      {category.emoji && (
+                        <View style={styles.emojiContainer}>
+                          <Text style={styles.categoryEmoji}>{category.emoji}</Text>
+                        </View>
+                      )}
+                      <Text style={styles.categoryName}>{category.category}</Text>
+                      <Text style={styles.categoryItems} numberOfLines={1}>
+                        {category.category_items[0]}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -300,6 +322,7 @@ export default function create_trip_explore() {
         visible={showCategoryModal}
         category={selectedCategory}
         activities={categoryActivities}
+        loading={loadingCategoryActivities}
         onSave={handleSaveCategoryActivities}
         onClose={() => setShowCategoryModal(false)}
       />
@@ -346,57 +369,69 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 5,
   },
-  subtitle: {
-    fontFamily: 'outfit',
-    fontSize: 16,
-    color: '#666',
-  },
   categoriesSection: {
-    marginTop: 20,
+    marginTop: 10,
+    marginBottom: 20,
   },
   categoriesTitle: {
-    fontFamily: 'outfit-bold',
-    fontSize: 20,
-    color: '#333',
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
+    color: '#1a1a1a',
     marginBottom: 15,
     paddingHorizontal: 5,
   },
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    justifyContent: 'space-between',
   },
   categoryCard: {
     width: '48%',
     backgroundColor: '#f8f9fa',
-    borderRadius: 15,
+    borderRadius: 12,
     padding: 15,
-    borderWidth: 2,
+    marginBottom: 12,
+    borderWidth: 1,
     borderColor: '#e9ecef',
-    minHeight: 140,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  categoryContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emojiContainer: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: Colors.WHITE,
+    backgroundColor: '#e9ecef',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   categoryEmoji: {
-    fontSize: 28,
+    fontSize: 24,
+    textAlign: 'center',
   },
   categoryName: {
     fontFamily: 'outfit-bold',
-    fontSize: 16,
+    fontSize: 14,
     color: '#333',
+    textAlign: 'center',
     marginBottom: 5,
   },
   categoryItems: {
     fontFamily: 'outfit',
-    fontSize: 13,
+    fontSize: 10,
     color: '#666',
+    lineHeight: 16,
+    textAlign: 'center',
   },
   loadingContainer: {
     alignItems: 'center',
@@ -405,8 +440,10 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontFamily: 'outfit',
-    fontSize: 14,
+    fontSize: 16,
     color: '#666',
-    marginTop: 10,
+    textAlign: 'center',
+    paddingHorizontal: 5,
+    marginTop: 15,
   },
 });

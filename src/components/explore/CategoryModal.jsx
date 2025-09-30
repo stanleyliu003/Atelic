@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   ScrollView,
   StyleSheet,
@@ -19,10 +20,11 @@ import { WishlistActivities } from '../trip-view/wishlist_activities';
  * @param {boolean} visible - Whether modal is visible
  * @param {string} category - Category name that was selected
  * @param {Activity[]} activities - Array of activity objects to display
+ * @param {boolean} loading - Whether activities are being loaded
  * @param {function} onSave - Callback when "Save to Wishlist" is clicked (receives array of selected activities)
  * @param {function} onClose - Callback to close modal
  */
-export const CategoryModal = ({ visible, category, activities, onSave, onClose }) => {
+export const CategoryModal = ({ visible, category, activities, loading = false, onSave, onClose }) => {
   const [selectedActivityIds, setSelectedActivityIds] = useState([]);
 
   // Toggle activity selection
@@ -75,7 +77,12 @@ export const CategoryModal = ({ visible, category, activities, onSave, onClose }
             contentContainerStyle={styles.activitiesContent}
             showsVerticalScrollIndicator={false}
           >
-            {activities.length === 0 ? (
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.PRIMARY} />
+                <Text style={styles.loadingText}>Loading activities...</Text>
+              </View>
+            ) : activities.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="location-outline" size={64} color="#ccc" />
                 <Text style={styles.emptyText}>No results found</Text>
@@ -151,6 +158,17 @@ const styles = StyleSheet.create({
   activitiesContent: {
     paddingHorizontal: 20,
     paddingBottom: 20,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: '#666',
+    marginTop: 10,
   },
   emptyContainer: {
     alignItems: 'center',
