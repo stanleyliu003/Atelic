@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -58,6 +59,29 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
     onClose();
   };
 
+  // Handle generating more activities for a category (copied from create_trip_interactive.jsx)
+  const handleGenerateMoreActivities = async (categoryName) => {
+    try {
+      await onGenerateMore(categoryName);
+    } catch (error) {
+      // Check if this is a limit reached error
+      if (error.message && error.message.includes('Activity generation limit reached')) {
+        Alert.alert(
+          'Activity Limit Reached',
+          `Generation limit reached for ${categoryName} category.`,
+          [{ text: 'OK', style: 'default' }]
+        );
+      } else {
+        // Show generic error for other types of errors
+        Alert.alert(
+          'Error',
+          `Failed to generate more activities for ${categoryName}. Please try again.`,
+          [{ text: 'OK', style: 'default' }]
+        );
+      }
+    }
+  };
+
   // Handle activity card press to show details
   const handleActivityPress = (activity) => {
     setSelectedActivity(activity);
@@ -103,36 +127,38 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
                 <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
               </View>
             ) : (
-              <WishlistActivities
-                activities={activities}
-                selectedActivities={selectedActivityIds}
-                onActivitySelect={handleActivityToggle}
-                onActivityDeselect={handleActivityToggle}
-                onDescriptionCardPress={handleActivityPress}
-                showSelectionIndicator={true}
-              />
+              <>
+                <WishlistActivities
+                  activities={activities}
+                  selectedActivities={selectedActivityIds}
+                  onActivitySelect={handleActivityToggle}
+                  onActivityDeselect={handleActivityToggle}
+                  onDescriptionCardPress={handleActivityPress}
+                  showSelectionIndicator={true}
+                />
+                
+                {/* Generate More Category Activities Button - Show at bottom of activities list */}
+                {onGenerateMore && (
+                  <View style={styles.generateMoreContainer}>
+                    <TouchableOpacity
+                      style={[styles.generateMoreButton, loading && styles.generateMoreButtonDisabled]}
+                      onPress={() => !loading && handleGenerateMoreActivities(category)}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <ActivityIndicator size="small" color="#666" />
+                      ) : (
+                        <Feather name="plus-circle" size={24} color="black" />
+                      )}
+                      <Text style={[styles.generateMoreButtonText, loading && styles.generateMoreButtonTextDisabled]}>
+                        {loading ? 'Loading...' : `More ${category.toLowerCase()}`}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </>
             )}
           </ScrollView>
-
-          {/* Generate More Button - Show when activities exist and not in initial loading state */}
-          {activities.length > 0 && !loading && onGenerateMore && (
-            <View style={styles.generateMoreContainer}>
-              <TouchableOpacity
-                style={[styles.generateMoreButton, loading && styles.generateMoreButtonDisabled]}
-                onPress={() => !loading && onGenerateMore(category)}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#666" />
-                ) : (
-                  <Feather name="plus-circle" size={24} color="black" />
-                )}
-                <Text style={[styles.generateMoreButtonText, loading && styles.generateMoreButtonTextDisabled]}>
-                  {loading ? 'Loading...' : `More ${category.toLowerCase()}`}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
 
           {/* Save Button - Only show when activities are selected */}
           {selectedActivityIds.length > 0 && (
@@ -281,11 +307,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   generateMoreButton: {
+    marginTop: -5,
+    marginBottom: 15,
     backgroundColor: 'white',
     borderRadius: 15,
     paddingVertical: 12,
     paddingHorizontal: 20,
     alignItems: 'center',
+    marginHorizontal: 5,
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,

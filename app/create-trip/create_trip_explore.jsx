@@ -206,6 +206,43 @@ export default function create_trip_explore() {
     }
   };
 
+  const handleGenerateMoreCategoryActivities = async (categoryName) => {
+    setLoadingCategoryActivities(true);
+    
+    try {
+      // Generate more activities for this category
+      const newActivities = await generateActivitiesForCategory(categoryName);
+      if (newActivities && newActivities.length > 0) {
+        // Append new activities to existing ones
+        setCategoryActivities(prev => [...prev, ...newActivities]);
+        // Update cache with combined activities
+        setCategoryCache(prev => ({
+          ...prev,
+          [categoryName]: [...(prev[categoryName] || []), ...newActivities]
+        }));
+      }
+    } catch (error) {
+      console.error('[Explore] Error generating more category activities:', error);
+      // Check if this is a limit reached error
+      if (error.message && error.message.includes('Activity generation limit reached')) {
+        Alert.alert(
+          'Activity Limit Reached',
+          `Generation limit reached for ${categoryName} category.`,
+          [{ text: 'OK', style: 'default' }]
+        );
+      } else {
+        // Show generic error for other types of errors
+        Alert.alert(
+          'Error',
+          `Failed to generate more activities for ${categoryName}. Please try again.`,
+          [{ text: 'OK', style: 'default' }]
+        );
+      }
+    } finally {
+      setLoadingCategoryActivities(false);
+    }
+  };
+
   // ===== NAVIGATION HANDLERS =====
 
   const handleWishlistPress = () => {
@@ -325,6 +362,7 @@ export default function create_trip_explore() {
         loading={loadingCategoryActivities}
         onSave={handleSaveCategoryActivities}
         onClose={() => setShowCategoryModal(false)}
+        onGenerateMore={handleGenerateMoreCategoryActivities}
       />
     </KeyboardAvoidingView>
   );
