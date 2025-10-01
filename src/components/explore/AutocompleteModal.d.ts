@@ -13,6 +13,7 @@ interface AutocompleteModalProps {
   onSearchActivities: (query: string, filters: string[], existingActivities: any[]) => Promise<Activity[]>;
   onSaveActivities: (selectedActivities: Activity[]) => void;
   wishlistActivities?: Activity[];
+  activeTab?: string;
 }
 
 export const AutocompleteModal: FC<AutocompleteModalProps>;

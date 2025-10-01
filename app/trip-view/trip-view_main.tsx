@@ -1006,6 +1006,7 @@ export default function TripViewMain() {
                 onSearchActivities={handleSearchActivities}
                 onSaveActivities={handleSaveSearchResults}
                 wishlistActivities={activities}
+                activeTab={activeTab}
             />
 
             {/* Share Trip Modal */}

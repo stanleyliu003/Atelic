@@ -32,6 +32,7 @@ import { ActivityDetailView } from '../trip-view/description_card';
  * @param {function} onSearchActivities - Callback to search for activities
  * @param {function} onSaveActivities - Callback to save selected activities
  * @param {Activity[]} wishlistActivities - Activities already in the wishlist for "On list" tag
+ * @param {string} activeTab - Current active tab (e.g., 'wishlist', 'day1', 'day2')
  */
 export const AutocompleteModal = ({
   visible,
@@ -45,6 +46,7 @@ export const AutocompleteModal = ({
   onSearchActivities,
   onSaveActivities,
   wishlistActivities = [],
+  activeTab = 'wishlist',
 }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -201,6 +203,18 @@ export const AutocompleteModal = ({
   const handleCloseDescriptionCard = () => {
     setShowDescriptionCard(false);
     setSelectedActivity(null);
+  };
+
+  // Format tab name for display
+  const getTabDisplayName = (tab) => {
+    if (tab === 'wishlist') {
+      return 'Wishlist';
+    }
+    if (tab.startsWith('day')) {
+      const dayNumber = tab.replace('day', '');
+      return `Day ${dayNumber}`;
+    }
+    return 'Wishlist';
   };
 
   return (
@@ -360,10 +374,8 @@ export const AutocompleteModal = ({
           {showingResults && selectedActivityIds.length > 0 && (
             <View style={styles.footer}>
               <TouchableOpacity style={styles.saveButton} onPress={handleSaveActivities} activeOpacity={0.8}>
-                <Ionicons name="checkmark-circle" size={24} color={Colors.WHITE} />
                 <Text style={styles.saveButtonText}>
-                  Save {selectedActivityIds.length}{' '}
-                  {selectedActivityIds.length === 1 ? 'place' : 'places'} to Wishlist
+                Save to {getTabDisplayName(activeTab)}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -513,7 +525,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: '#F36406',
     borderRadius: 15,
     paddingVertical: 16,
     paddingHorizontal: 20,
