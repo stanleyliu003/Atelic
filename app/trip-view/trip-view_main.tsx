@@ -352,61 +352,78 @@ export default function TripViewMain() {
         
         const dayToDelete = parseInt(activeTab.replace('day', ''));
         
-        // Delete the day and get its activities to move back to wishlist
-        const deletedDayActivities = deleteDayAndRenumber(dayToDelete);
-        
-        // Add deleted day activities back to wishlist (with deduplication)
-        if (deletedDayActivities.length > 0) {
-            const combinedActivities = [...(activities || []), ...deletedDayActivities];
+        // Show confirmation dialog
+        Alert.alert(
+            'Delete Day',
+            `Are you sure you want to delete Day ${dayToDelete}?`,
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel'
+                },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => {
+                        // Delete the day and get its activities to move back to wishlist
+                        const deletedDayActivities = deleteDayAndRenumber(dayToDelete);
+                        
+                        // Add deleted day activities back to wishlist (with deduplication)
+                        if (deletedDayActivities.length > 0) {
+                            const combinedActivities = [...(activities || []), ...deletedDayActivities];
 
-            // Remove duplicates based on place_id
-            const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
-                if (!activity.place_id) return true; // Keep activities without place_id
-                // Keep only the first occurrence of each place_id
-                return arr.findIndex(a => a.place_id === activity.place_id) === index;
-            });
+                            // Remove duplicates based on place_id
+                            const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
+                                if (!activity.place_id) return true; // Keep activities without place_id
+                                // Keep only the first occurrence of each place_id
+                                return arr.findIndex(a => a.place_id === activity.place_id) === index;
+                            });
 
-            updateActivities(deduplicatedActivities);
-        }
-        
-        // Clear route cache for days that got renumbered
-        Object.keys(routeCache.current).forEach(cacheKey => {
-            if (cacheKey.startsWith('day')) {
-                const cachedDayNum = parseInt(cacheKey.replace('day', ''));
-                if (cachedDayNum >= dayToDelete) {
-                    delete routeCache.current[cacheKey];
+                            updateActivities(deduplicatedActivities);
+                        }
+                        
+                        // Clear route cache for days that got renumbered
+                        Object.keys(routeCache.current).forEach(cacheKey => {
+                            if (cacheKey.startsWith('day')) {
+                                const cachedDayNum = parseInt(cacheKey.replace('day', ''));
+                                if (cachedDayNum >= dayToDelete) {
+                                    delete routeCache.current[cacheKey];
+                                }
+                            }
+                        });
+                        
+                        // Update dayPolylines to renumber the keys
+                        setDayPolylinesDeleteDay(prev => {
+                            const newPolylines: { [key: number]: string } = {};
+                            Object.entries(prev).forEach(([dayStr, polyline]) => {
+                                const dayNum = Number(dayStr);
+                                if (dayNum < dayToDelete) {
+                                    // Keep days before the deleted day as-is
+                                    newPolylines[dayNum] = polyline as string;
+                                } else if (dayNum > dayToDelete) {
+                                    // Renumber days after the deleted day
+                                    newPolylines[dayNum - 1] = polyline as string;
+                                }
+                                // Skip the deleted day (dayNum === dayToDelete)
+                            });
+                            return newPolylines;
+                        });
+                        
+                        // Switch to appropriate tab after deletion
+                        const remainingDayCount = getDayCount() - 1; // Count after deletion
+                        // Update tripLength to reflect the new day count
+                        setTripLength(remainingDayCount);
+                        if (remainingDayCount === 0 || dayToDelete === 1) {
+                            // If no days left or deleting day 1, go to wishlist
+                            setActiveTab('wishlist');
+                        } else {
+                            // If deleting any other day, go to the previous day
+                            setActiveTab(`day${dayToDelete - 1}`);
+                        }
+                    }
                 }
-            }
-        });
-        
-        // Update dayPolylines to renumber the keys
-        setDayPolylinesDeleteDay(prev => {
-            const newPolylines: { [key: number]: string } = {};
-            Object.entries(prev).forEach(([dayStr, polyline]) => {
-                const dayNum = Number(dayStr);
-                if (dayNum < dayToDelete) {
-                    // Keep days before the deleted day as-is
-                    newPolylines[dayNum] = polyline as string;
-                } else if (dayNum > dayToDelete) {
-                    // Renumber days after the deleted day
-                    newPolylines[dayNum - 1] = polyline as string;
-                }
-                // Skip the deleted day (dayNum === dayToDelete)
-            });
-            return newPolylines;
-        });
-        
-        // Switch to appropriate tab after deletion
-        const remainingDayCount = getDayCount() - 1; // Count after deletion
-        // Update tripLength to reflect the new day count
-        setTripLength(remainingDayCount);
-        if (remainingDayCount === 0 || dayToDelete === 1) {
-            // If no days left or deleting day 1, go to wishlist
-            setActiveTab('wishlist');
-        } else {
-            // If deleting any other day, go to the previous day
-            setActiveTab(`day${dayToDelete - 1}`);
-        }
+            ]
+        );
     };
 
     const handleDeleteActivities = () => {
