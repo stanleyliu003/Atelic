@@ -29,6 +29,8 @@ export default function create_trip_explore() {
     addToWishlist,
     searchActivities,
     generateActivitiesForCategory,
+    categoryActivities: contextCategoryActivities,
+    setCategoryActivities: setContextCategoryActivities,
   } = useCreateTrip();
 
   // Search state
@@ -43,12 +45,8 @@ export default function create_trip_explore() {
   }, [showAutocomplete]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [categoryActivities, setCategoryActivities] = useState([]);
   const [loadingCategoryActivities, setLoadingCategoryActivities] = useState(false);
   const [loadingMoreCategoryActivities, setLoadingMoreCategoryActivities] = useState(false);
-
-  // Cache for category activities to persist across modal opens/closes
-  const [categoryCache, setCategoryCache] = useState({});
 
   useEffect(() => {
     navigation.setOptions({
@@ -134,29 +132,19 @@ export default function create_trip_explore() {
     setSelectedCategory(category.category);
     setShowCategoryModal(true);
 
-    // Check if we already have cached activities for this category
-    if (categoryCache[category.category]) {
-      setCategoryActivities(categoryCache[category.category]);
+    // Check if we already have cached activities for this category in context
+    if (contextCategoryActivities[category.category] && contextCategoryActivities[category.category].length > 0) {
+      // Activities already exist in context, no need to fetch
       return;
     }
 
     // If not cached, fetch new activities
-    setCategoryActivities([]); // Clear previous activities immediately
     setLoadingCategoryActivities(true);
 
     try {
-      // Generate activities for this category
+      // Generate activities for this category (this updates context's categoryActivities)
       const activities = await generateActivitiesForCategory(category.category);
-      if (activities && activities.length > 0) {
-        setCategoryActivities(activities);
-        // Cache the activities for this category
-        setCategoryCache(prev => ({
-          ...prev,
-          [category.category]: activities
-        }));
-      } else {
-        setCategoryActivities([]);
-      }
+      // No need to set local state - activities are stored in context
     } catch (error) {
       console.error('[Explore] Error generating category activities:', error);
       Alert.alert('Error', 'Failed to load activities. Please try again.');
@@ -175,7 +163,6 @@ export default function create_trip_explore() {
     const result = addToWishlist(selectedActivities);
 
     setShowCategoryModal(false);
-    setCategoryActivities([]);
 
     // Show success message
     if (result.added > 0 && result.duplicates > 0) {
@@ -198,19 +185,11 @@ export default function create_trip_explore() {
 
   const handleGenerateMoreCategoryActivities = async (categoryName) => {
     setLoadingMoreCategoryActivities(true);
-    
+
     try {
-      // Generate more activities for this category
+      // Generate more activities for this category (updates context automatically)
       const newActivities = await generateActivitiesForCategory(categoryName);
-      if (newActivities && newActivities.length > 0) {
-        // Append new activities to existing ones
-        setCategoryActivities(prev => [...prev, ...newActivities]);
-        // Update cache with combined activities
-        setCategoryCache(prev => ({
-          ...prev,
-          [categoryName]: [...(prev[categoryName] || []), ...newActivities]
-        }));
-      }
+      // Context already handles appending new activities to existing ones
     } catch (error) {
       // Check if this is a limit reached error
       if (error.message && error.message.includes('Activity generation limit reached')) {
@@ -337,7 +316,7 @@ export default function create_trip_explore() {
       <CategoryModal
         visible={showCategoryModal}
         category={selectedCategory}
-        activities={categoryActivities}
+        activities={contextCategoryActivities[selectedCategory] || []}
         loading={loadingCategoryActivities}
         loadingMore={loadingMoreCategoryActivities}
         onSave={handleSaveCategoryActivities}
