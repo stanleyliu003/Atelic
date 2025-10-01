@@ -1,5 +1,5 @@
-import React, { useCallback, useState, useRef } from 'react';
-import { ScrollView, View, StyleSheet, TouchableOpacity, Text, Linking, Dimensions } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { ScrollView, View, StyleSheet, TouchableOpacity, Text, Linking } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -165,7 +165,7 @@ export function ActivityList({
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
+  
 
   // Route info cards are now always visible - no hide/show logic needed
 
@@ -270,8 +270,7 @@ export function ActivityList({
             onDragStart={() => setDraggingIndex(index)}
             onDragEnd={() => setDraggingIndex(null)}
             isDraggingThisItem={draggingIndex === index}
-            scrollViewRef={scrollViewRef}
-            currentScrollY={scrollY}
+            
           />
         );
       }
@@ -285,26 +284,16 @@ export function ActivityList({
     });
   };
 
-  // Track scroll position for auto-scroll functionality
-  const [scrollY, setScrollY] = useState(0);
-
-  const handleScroll = useCallback((event: any) => {
-    const newScrollY = event.nativeEvent.contentOffset.y;
-    console.log(`📊 [SCROLL-TRACKING] Scroll position updated: ${newScrollY}`);
-    setScrollY(newScrollY);
-  }, []);
+  
 
   // Choose container based on requirements
   if (enableDragDrop && scrollable) {
     return (
       <GestureHandlerRootView style={styles.container}>
         <ScrollView
-          ref={scrollViewRef}
           style={styles.container}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
         >
           {renderActivities()}
         </ScrollView>
@@ -348,8 +337,6 @@ interface DraggableActivityCardProps {
   isDraggingThisItem: boolean;
   hideRouteInfo?: boolean;
   duplicateActivityIndicator?: boolean;
-  scrollViewRef?: React.RefObject<ScrollView>;
-  currentScrollY?: number;
 }
 
 function DraggableActivityCard({
@@ -374,8 +361,6 @@ function DraggableActivityCard({
   isDraggingThisItem,
   hideRouteInfo = false,
   duplicateActivityIndicator = false,
-  scrollViewRef,
-  currentScrollY = 0,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -388,12 +373,6 @@ function DraggableActivityCard({
   const targetIndex = useSharedValue(index);
 
   const ITEM_HEIGHT = 120; // Approximate height of activity card including margin
-  const AUTO_SCROLL_THRESHOLD = 100; // Distance from edge to trigger auto-scroll
-  const AUTO_SCROLL_SPEED = 10; // Pixels per scroll step
-  const SCREEN_HEIGHT = Dimensions.get('window').height;
-
-  // Auto-scroll state
-  const autoScrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Update original index when component re-renders with new index
   React.useEffect(() => {
@@ -403,74 +382,12 @@ function DraggableActivityCard({
     }
   }, [index]);
 
-  // Cleanup auto-scroll interval on unmount
-  React.useEffect(() => {
-    return () => {
-      if (autoScrollIntervalRef.current) {
-        clearInterval(autoScrollIntervalRef.current);
-      }
-    };
-  }, []);
-
-  // Auto-scroll function
-  const handleAutoScroll = useCallback((direction: 'up' | 'down', absoluteY: number) => {
-    console.log(`🎯 [AUTO-SCROLL] handleAutoScroll called - direction: ${direction}, absoluteY: ${absoluteY}, currentScrollY: ${currentScrollY}`);
-    console.log(`📱 [AUTO-SCROLL] scrollViewRef exists: ${!!scrollViewRef?.current}`);
-    
-    if (scrollViewRef?.current) {
-      // Clear existing interval
-      if (autoScrollIntervalRef.current) {
-        console.log(`🔄 [AUTO-SCROLL] Clearing existing interval`);
-        clearInterval(autoScrollIntervalRef.current);
-      }
-
-      console.log(`▶️ [AUTO-SCROLL] Starting new auto-scroll interval - direction: ${direction}`);
-      
-      // Keep track of scroll position in the interval
-      let currentPosition = currentScrollY;
-      
-      // Start new auto-scroll interval
-      autoScrollIntervalRef.current = setInterval(() => {
-        if (scrollViewRef.current) {
-          const scrollOffset = direction === 'up' ? -AUTO_SCROLL_SPEED : AUTO_SCROLL_SPEED;
-          const newScrollY = Math.max(0, currentPosition + scrollOffset);
-          
-          console.log(`📜 [AUTO-SCROLL] Scrolling - direction: ${direction}, currentPosition: ${currentPosition}, scrollOffset: ${scrollOffset}, newScrollY: ${newScrollY}`);
-          
-          // Update our tracked position
-          currentPosition = newScrollY;
-          
-          // Scroll to the new position
-          scrollViewRef.current.scrollTo({
-            y: newScrollY,
-            animated: false,
-          });
-        } else {
-          console.log(`❌ [AUTO-SCROLL] ScrollView ref lost during interval`);
-        }
-      }, 100); // Slower interval for testing - 100ms
-    } else {
-      console.log(`❌ [AUTO-SCROLL] No scrollViewRef available`);
-    }
-  }, [scrollViewRef, currentScrollY]);
-
-  // Clear auto-scroll interval
-  const clearAutoScroll = useCallback(() => {
-    console.log(`🛑 [AUTO-SCROLL] clearAutoScroll called`);
-    if (autoScrollIntervalRef.current) {
-      console.log(`🗑️ [AUTO-SCROLL] Clearing interval`);
-      clearInterval(autoScrollIntervalRef.current);
-      autoScrollIntervalRef.current = null;
-    } else {
-      console.log(`ℹ️ [AUTO-SCROLL] No interval to clear`);
-    }
-  }, []);
+  
 
   const panGesture = Gesture.Pan()
     .minDistance(10) // Require 10px movement before pan gesture activates
     .onStart(() => {
       console.log(`🚀 [DRAG-START] Activity ${index + 1} drag started`);
-      console.log(`📋 [DRAG-START] Initial values - scrollViewRef: ${!!scrollViewRef?.current}, currentScrollY: ${currentScrollY}`);
       isDragging.value = true;
       scale.value = withSpring(1.05);
       zIndex.value = 1000;
@@ -488,34 +405,9 @@ function DraggableActivityCard({
       
       // Update target index for visual feedback (but don't reorder yet)
       targetIndex.value = newTargetIndex;
-
-      // Auto-scroll logic based on translation distance from original position
-      // Use translationY to determine if we're dragging near the edges of the visible scroll area
-      const currentDragY = event.translationY; // How far we've dragged from start
-      
-      console.log(`🔄 [AUTO-SCROLL] Drag update - translationY: ${currentDragY}, absoluteY: ${event.absoluteY}`);
-      
-      // Check if we need to auto-scroll up (dragging upward significantly)
-      if (currentDragY < -AUTO_SCROLL_THRESHOLD) {
-        console.log(`⬆️ [AUTO-SCROLL] Triggering UP scroll - translationY: ${currentDragY} < -${AUTO_SCROLL_THRESHOLD}`);
-        runOnJS(handleAutoScroll)('up', event.absoluteY);
-      }
-      // Check if we need to auto-scroll down (dragging downward significantly)
-      else if (currentDragY > AUTO_SCROLL_THRESHOLD) {
-        console.log(`⬇️ [AUTO-SCROLL] Triggering DOWN scroll - translationY: ${currentDragY} > ${AUTO_SCROLL_THRESHOLD}`);
-        runOnJS(handleAutoScroll)('down', event.absoluteY);
-      }
-      // Clear auto-scroll if not dragging far enough
-      else {
-        console.log(`🛑 [AUTO-SCROLL] Clearing auto-scroll - translationY: ${currentDragY} in safe zone (-${AUTO_SCROLL_THRESHOLD} to ${AUTO_SCROLL_THRESHOLD})`);
-        runOnJS(clearAutoScroll)();
-      }
     })
     .onEnd(() => {
       console.log(`🫴 [${new Date().toISOString()}] PAN GESTURE END - Activity ${index + 1} drag ended`);
-
-      // Clear auto-scroll when drag ends
-      runOnJS(clearAutoScroll)();
 
       // Only trigger reorder if target position is different from original
       if (targetIndex.value !== originalIndex.value) {
