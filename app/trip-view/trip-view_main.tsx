@@ -1,7 +1,7 @@
 import { Colors } from '../../constants/Colors';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert, AppState } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert, AppState, Animated, PanResponder, Dimensions } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { encodePolyline } from '../../src/utils/polyline';
 import { DaySchedule, TabBar, WishlistActivities } from '../../src/components/trip-view';
@@ -59,6 +59,13 @@ export default function TripViewMain() {
     const [dayScrollPositions, setDayScrollPositions] = useState<{ [key: number]: number }>({});
     const [shouldRestoreScrollPositions, setShouldRestoreScrollPositions] = useState<{ [key: number]: boolean }>({});
 
+    // State for draggable bottom section
+    const screenHeight = Dimensions.get('window').height;
+    const MIN_HEIGHT = 0.65; //
+    const MAX_HEIGHT = 0.90; // 90% of screen height (maximum)
+    const DEFAULT_HEIGHT = 0.65; // 60% of screen height (default starting position)
+    const [bottomHeight] = useState(new Animated.Value(DEFAULT_HEIGHT));
+
     // Handler for scroll position changes
     const handleScrollPositionChange = (dayNumber: number, position: number) => {
         setDayScrollPositions(prev => ({
@@ -66,6 +73,59 @@ export default function TripViewMain() {
             [dayNumber]: position
         }));
     };
+
+    // Pan responder for draggable indicator
+    const currentHeight = useRef(DEFAULT_HEIGHT);
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: () => true,
+            onPanResponderGrant: () => {
+                // Store the current height when gesture starts
+                bottomHeight.stopAnimation((value) => {
+                    currentHeight.current = value;
+                });
+            },
+            onPanResponderMove: (_, gestureState) => {
+                // Calculate new height based on drag (negative dy means dragging up)
+                const draggedAmount = -gestureState.dy / screenHeight;
+                const newHeight = currentHeight.current + draggedAmount;
+
+                // Clamp between min and max heights
+                const clampedHeight = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, newHeight));
+                bottomHeight.setValue(clampedHeight);
+            },
+            onPanResponderRelease: (_, gestureState) => {
+                // Update current height reference
+                bottomHeight.stopAnimation((value) => {
+                    currentHeight.current = value;
+                });
+
+                // Only apply subtle bounce-back if user dragged beyond limits
+                const finalHeight = currentHeight.current;
+
+                if (finalHeight < MIN_HEIGHT) {
+                    Animated.spring(bottomHeight, {
+                        toValue: MIN_HEIGHT,
+                        useNativeDriver: false,
+                        tension: 65,
+                        friction: 8,
+                    }).start(() => {
+                        currentHeight.current = MIN_HEIGHT;
+                    });
+                } else if (finalHeight > MAX_HEIGHT) {
+                    Animated.spring(bottomHeight, {
+                        toValue: MAX_HEIGHT,
+                        useNativeDriver: false,
+                        tension: 65,
+                        friction: 8,
+                    }).start(() => {
+                        currentHeight.current = MAX_HEIGHT;
+                    });
+                }
+            },
+        })
+    ).current;
 
     // Hooks for activity and day management
     const {
@@ -868,8 +928,21 @@ export default function TripViewMain() {
                     handleShareTrip();
                 }}
             />
-            
-            <View style={styles.container}>
+
+            <Animated.View style={[
+                styles.container,
+                {
+                    height: bottomHeight.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0%', '100%'],
+                    }),
+                }
+            ]}>
+                {/* Draggable indicator bar */}
+                <View {...panResponder.panHandlers} style={styles.dragIndicatorContainer}>
+                    <View style={styles.dragIndicator} />
+                </View>
+
                 {!showActivityDetail && (
                     <TabBar 
                         activeTab={activeTab}
@@ -1006,7 +1079,7 @@ export default function TripViewMain() {
                 onConfirm={handleConfirmTransfer}
                 onClose={() => setIsModalVisible(false)}
                 />
-            </View>
+            </Animated.View>
 
             {/* AutocompleteModal for searching activities */}
             <AutocompleteModal
@@ -1088,12 +1161,26 @@ export default function TripViewMain() {
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
         backgroundColor: Colors.WHITE,
         borderTopLeftRadius: 30,
         borderTopRightRadius: 30,
-        paddingTop: 10,
-        marginTop: -30,
+        paddingTop: 0,
+    },
+    dragIndicatorContainer: {
+        width: '100%',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingTop: 8,
+    },
+    dragIndicator: {
+        width: 40,
+        height: 5,
+        backgroundColor: '#D1D5DB',
+        borderRadius: 3,
     },
     homeButton: {
         position: 'absolute',
