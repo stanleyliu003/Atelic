@@ -1005,7 +1005,12 @@ export default function TripViewMain() {
                 onQueryChange={handleSearchQueryChange}
                 onSearchActivities={handleSearchActivities}
                 onSaveActivities={handleSaveSearchResults}
-                wishlistActivities={activities}
+                wishlistActivities={[
+                    ...(activities || []),
+                    ...Object.values(dayActivities || {}).flatMap(dayObj =>
+                        Array.isArray((dayObj as any).activities) ? (dayObj as any).activities : []
+                    )
+                ]}
                 activeTab={activeTab}
             />
 
