@@ -282,22 +282,16 @@ export default function create_trip_1_city({ showBackButton = true }) {
                 )}
 
                 {/* Next Button */}
-                <View style={{ position: 'absolute', bottom: 50, left: 25, right: 25 }}>
+                <View style={styles.nextButtonContainer}>
                     <TouchableOpacity
                         onPress={handleNext}
-                        style={{
-                            padding: 20,
-                            backgroundColor: (selectedCity && tripLength) ? Colors.PRIMARY : Colors.GRAY,
-                            opacity: (selectedCity && tripLength) ? 1 : 0.6,
-                            borderRadius: 15,
-                        }}
+                        style={[
+                            styles.nextButton,
+                            { opacity: (selectedCity && tripLength) ? 1 : 0 }
+                        ]}
                         disabled={!selectedCity || !tripLength}
                     >
-                        <Text style={{
-                            color: Colors.WHITE,
-                            textAlign: 'center',
-                            fontFamily: 'outfit-bold',
-                        }}>Next</Text>
+                        <Text style={styles.nextButtonText}>Next</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -438,5 +432,21 @@ const styles = StyleSheet.create({
     placeholderText: {
         color: '#999999',
     },
-
+    nextButtonContainer: {
+        position: 'absolute',
+        bottom: 50,
+        left: 25,
+        right: 25,
+    },
+    nextButton: {
+        padding: 15,
+        backgroundColor: '#F36406',
+        borderRadius: 15,
+    },
+    nextButtonText: {
+        color: Colors.WHITE,
+        textAlign: 'center',
+        fontFamily: 'outfit-bold',
+        fontSize: 18,
+    },
 })

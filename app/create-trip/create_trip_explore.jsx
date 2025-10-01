@@ -238,13 +238,6 @@ export default function create_trip_explore() {
             >
               <Ionicons name="arrow-back" size={32} color="black" />
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleWishlistPress}
-              style={styles.wishlistButton}
-            >
-              <Text style={styles.wishlistButtonText}>Wishlist</Text>
-              <Ionicons name="list" size={24} color={Colors.WHITE} />
-            </TouchableOpacity>
           </View>
 
           {/* Title Section */}
@@ -295,6 +288,14 @@ export default function create_trip_explore() {
               </View>
             )}
           </View>
+
+          {/* Load Wishlist Button */}
+          <TouchableOpacity
+            onPress={handleWishlistPress}
+            style={styles.loadWishlistButton}
+          >
+            <Text style={styles.loadWishlistButtonText}>Load Wishlist</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -336,27 +337,25 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     marginBottom: 20,
   },
   backButton: {
     padding: 5,
   },
-  wishlistButton: {
-    marginTop: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: '#FF5F0E',
+  loadWishlistButton: {
+    padding: 15,
+    backgroundColor: '#F36406',
+    borderRadius: 15,
+    marginTop: 15,
+    marginBottom: 30,
   },
-  wishlistButtonText: {
-    fontFamily: 'outfit-medium',
-    fontSize: 16,
+  loadWishlistButtonText: {
     color: Colors.WHITE,
+    textAlign: 'center',
+    fontFamily: 'outfit-bold',
+    fontSize: 18,
   },
   titleSection: {
     marginBottom: 20,
