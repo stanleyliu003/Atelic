@@ -166,7 +166,7 @@ export default function WishlistInfo() {
 
                 return (
                   <>
-                    <Text style={styles.recommendedTitle}>Recommended Activities</Text>
+                    <Text style={styles.recommendedTitle}>Activities</Text>
                     {Object.entries(recommendedByCity).map(([city, cityActivities]) => (
                       <View key={`recommended-${city}`} style={styles.citySection}>
                         <Text style={styles.cityTitle}>{city}</Text>

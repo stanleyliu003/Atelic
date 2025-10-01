@@ -254,7 +254,7 @@ export default function create_trip_explore() {
           {/* Header */}
           <View style={styles.headerRow}>
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => router.push('/create-trip/create_trip_1_city')}
               style={styles.backButton}
             >
               <Ionicons name="arrow-back" size={32} color="black" />
