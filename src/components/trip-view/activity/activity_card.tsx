@@ -26,7 +26,7 @@ interface ActivityCardProps {
   nextActivity?: Activity; // Next activity for Google Maps routing
   travelMode?: string; // Travel mode from route calculation (DRIVE, TRANSIT, WALK)
   hideRouteInfo?: boolean; // New prop to hide route info during drag operations
-  showOnListTag?: boolean; // New prop to show "On list" tag for activities already in wishlist
+  duplicateActivityIndicator?: boolean; // New prop to indicate activities already in wishlist
 }
 
 // Helper function to convert our travel modes to Google Maps travel modes
@@ -72,7 +72,7 @@ export function ActivityCard({
   nextActivity,
   travelMode,
   hideRouteInfo = false,
-  showOnListTag = false
+  duplicateActivityIndicator = false
 }: ActivityCardProps) {
 
   const handlePress = () => {
@@ -146,7 +146,7 @@ export function ActivityCard({
         style={[
           styles.activityCard,
           style,
-          isSelected && styles.selectedCard,
+          (isSelected || duplicateActivityIndicator) && styles.selectedCard,
           disabled && styles.disabledCard
         ]}
       >
@@ -155,15 +155,14 @@ export function ActivityCard({
             <View style={styles.selectionContainer}>
               <View style={[
                 styles.selectionIndicator,
-                isSelected && styles.selectedIndicator,
-                showOnListTag && styles.disabledIndicator
+                (isSelected || duplicateActivityIndicator) && styles.selectedIndicator
               ]}>
-                {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                {(isSelected || duplicateActivityIndicator) && <Text style={styles.checkmark}>✓</Text>}
               </View>
               <TouchableOpacity
                 style={styles.selectionTouchArea}
                 onPress={handlePress}
-                disabled={disabled || showOnListTag}
+                disabled={disabled || duplicateActivityIndicator}
                 activeOpacity={1}
               />
             </View>
@@ -196,7 +195,7 @@ export function ActivityCard({
                   </View>
                 )}
                 {/*
-                {showOnListTag && (
+                {duplicateActivityIndicator && (
                   <View style={styles.onListContainer}>
                     <Text style={styles.onListText}>On list</Text>
                   </View>
@@ -305,10 +304,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.PRIMARY,
     borderWidth: 1,
     borderColor: Colors.PRIMARY,
-  },
-  disabledIndicator: {
-    backgroundColor: '#F36406',
-    borderColor: '#F36406',
   },
   checkmark: {
     color: 'white',

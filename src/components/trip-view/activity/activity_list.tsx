@@ -256,7 +256,7 @@ export function ActivityList({
         travelMode,
         index,
         hideRouteInfo,
-        showOnListTag: isInWishlist,
+        duplicateActivityIndicator: isInWishlist,
       };
 
       if (enableDragDrop && scrollable) {
@@ -332,7 +332,7 @@ interface DraggableActivityCardProps {
   onDragEnd: () => void;
   isDraggingThisItem: boolean;
   hideRouteInfo?: boolean;
-  showOnListTag?: boolean;
+  duplicateActivityIndicator?: boolean;
 }
 
 function DraggableActivityCard({
@@ -356,7 +356,7 @@ function DraggableActivityCard({
   onDragEnd,
   isDraggingThisItem,
   hideRouteInfo = false,
-  showOnListTag = false,
+  duplicateActivityIndicator = false,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -464,7 +464,7 @@ function DraggableActivityCard({
             nextActivity={nextActivity}
             travelMode={travelMode}
             hideRouteInfo={true} // Hide route info in draggable card - rendered separately below
-            showOnListTag={showOnListTag}
+            duplicateActivityIndicator={duplicateActivityIndicator}
           />
         </Animated.View>
       </GestureDetector>
