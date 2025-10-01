@@ -108,10 +108,19 @@ export default function create_trip_1_city({ showBackButton = true }) {
         }
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (!selectedCity || !tripLength) {
             return;
         }
+
+        // Clear categories cache when user moves forward
+        // This ensures categories won't show if user goes back to this page
+        try {
+            await AsyncStorage.removeItem(CACHE_KEYS.CITY_CATEGORIES);
+        } catch (error) {
+            console.error('Error clearing categories cache:', error);
+        }
+
         router.push('/create-trip/create_trip_explore');
     };
 
