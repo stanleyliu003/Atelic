@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
@@ -15,9 +15,19 @@ import { addAdditionalPlaceWithDedup, buildExistingPlaceIdSet, defaultAddPlacesB
 export default function WishlistInfo() {
     const router = useRouter();
     const { activities, updateActivities, selectedCity } = useCreateTrip();
-    
+
     // State for selected activities - initialize with all activities selected
     const [selectedActivities, setSelectedActivities] = useState([]);
+
+    // Select all activities by default on mount or when activities change
+    useEffect(() => {
+        if (activities && activities.length > 0) {
+            const allActivityIds = activities
+                .filter(activity => activity.place_id)
+                .map(activity => activity.place_id);
+            setSelectedActivities(allActivityIds);
+        }
+    }, [activities]);
     // Loading state for create trip
     const [loading, setLoading] = useState(false);
     
@@ -144,11 +154,22 @@ export default function WishlistInfo() {
             <Text style={styles.title}>Trip Wishlist</Text>
         </View>
 
-        <ScrollView 
+        <ScrollView
           style={styles.scrollContainer}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {/* Empty State */}
+          {(!activities || activities.length === 0) && (
+            <View style={styles.emptyStateContainer}>
+              <Ionicons name="map-outline" size={80} color={Colors.GRAY} />
+              <Text style={styles.emptyStateTitle}>No Activities Yet</Text>
+              <Text style={styles.emptyStateText}>
+                Go back to the explore page to add activities
+              </Text>
+            </View>
+          )}
+
           {/* All activities grouped by city */}
           {activities && activities.length > 0 && (
             <>
@@ -156,7 +177,7 @@ export default function WishlistInfo() {
               {(() => {
                 const recommendedActivities = activities.filter(a => a.is_recommended);
                 if (recommendedActivities.length === 0) return null;
-                
+
                 const recommendedByCity = recommendedActivities.reduce((acc, activity) => {
                   const city = activity.city || 'Unknown City';
                   if (!acc[city]) acc[city] = [];
@@ -170,8 +191,8 @@ export default function WishlistInfo() {
                     {Object.entries(recommendedByCity).map(([city, cityActivities]) => (
                       <View key={`recommended-${city}`} style={styles.citySection}>
                         <Text style={styles.cityTitle}>{city}</Text>
-                        <WishlistActivities 
-                            activities={cityActivities} 
+                        <WishlistActivities
+                            activities={cityActivities}
                             selectedActivities={selectedActivities}
                             onActivitySelect={handleActivitySelect}
                             onActivityDeselect={handleActivityDeselect}
@@ -189,7 +210,7 @@ export default function WishlistInfo() {
               {(() => {
                 const userAddedActivities = activities.filter(a => !a.is_recommended);
                 if (userAddedActivities.length === 0) return null;
-                
+
                 const userAddedByCity = userAddedActivities.reduce((acc, activity) => {
                   const city = activity.city || 'Unknown City';
                   if (!acc[city]) acc[city] = [];
@@ -203,8 +224,8 @@ export default function WishlistInfo() {
                     {Object.entries(userAddedByCity).map(([city, cityActivities]) => (
                       <View key={`user-added-${city}`} style={styles.citySection}>
                         <Text style={styles.cityTitle}>{city}</Text>
-                        <WishlistActivities 
-                            activities={cityActivities} 
+                        <WishlistActivities
+                            activities={cityActivities}
                             selectedActivities={selectedActivities}
                             onActivitySelect={handleActivitySelect}
                             onActivityDeselect={handleActivityDeselect}
@@ -219,7 +240,7 @@ export default function WishlistInfo() {
               })()}
             </>
           )}
-          
+
         </ScrollView>
 
         {/* Create Trip Button */}
@@ -346,5 +367,28 @@ const styles = StyleSheet.create({
       borderTopLeftRadius: 25,
       borderTopRightRadius: 25,
       paddingTop: 25,
+    },
+    emptyStateContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 40,
+      paddingVertical: 60,
+      minHeight: 400,
+    },
+    emptyStateTitle: {
+      fontFamily: 'outfit-bold',
+      fontSize: 24,
+      color: '#1a1a1a',
+      marginTop: 20,
+      marginBottom: 10,
+      textAlign: 'center',
+    },
+    emptyStateText: {
+      fontFamily: 'outfit',
+      fontSize: 16,
+      color: Colors.GRAY,
+      textAlign: 'center',
+      lineHeight: 24,
     },
 });
