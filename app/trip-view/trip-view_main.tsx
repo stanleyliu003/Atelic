@@ -1,26 +1,24 @@
 import { Colors } from '../../constants/Colors';
-import { API_KEYS } from '../../constants/ApiKeys';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, AppState } from 'react-native';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert, AppState } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { encodePolyline } from '../../src/utils/polyline';
-import { AddPlacesButton, DaySchedule, TabBar, WishlistActivities } from '../../src/components/trip-view';
+import { DaySchedule, TabBar, WishlistActivities } from '../../src/components/trip-view';
 import { TripMapView } from '../../src/components/trip-view/map_view';
 import { TransferActivitiesModal } from '../../src/components/trip-view/transfer_activities_modal';
 import { TransferButtonContainer } from '../../src/components/trip-view/transfer_delete_button_containor';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import { ActivityDetailView } from '../../src/components/trip-view/description_card';
+import { SearchBar } from '../../src/components/explore/SearchBar';
+import { AutocompleteModal } from '../../src/components/explore/AutocompleteModal';
 import { useActivitySelection } from '../../src/hooks/use_activity_selection';
 import { useDayActivities } from '../../src/hooks/use_day_activities';
 import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
 import { fetchRoutePolyline, RouteData } from '../../src/services/getRoute_graphQL_call';
 import { optimizeRouteWithHaversine } from '../../src/components/trip-view/logic/optimize_route';
 import { Activity, TabType } from '../../src/types/activity.types';
-import { API, graphqlOperation, Auth } from 'aws-amplify';
-import { addAdditionalPlaceWithDedup, buildExistingPlaceIdSet, defaultAddPlacesButtonStyle } from '../../src/services/add_additional_place';
+import { API, Auth } from 'aws-amplify';
 import { createTrip } from '../../src/graphql/mutations';
 import Entypo from '@expo/vector-icons/Entypo';
 
@@ -30,7 +28,7 @@ export default function TripViewMain() {
     const navigation = useNavigation();
     const params = useLocalSearchParams();
     const { restoreTrip } = params;
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference, collaborators, currentUserRole, setCollaborators, isOwner } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference, collaborators, currentUserRole, setCollaborators, isOwner, searchActivities } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -42,11 +40,12 @@ export default function TripViewMain() {
     });
     const [routeLoading, setRouteLoading] = useState(false);
     const routeCache = useRef<{ [tab: string]: { activitiesHash: string, routeData: RouteData } }>({});
-    
-    // State for add places modal
-    const [isAddPlacesModalVisible, setIsAddPlacesModalVisible] = useState(false);
+
+    // State for SearchBar and AutocompleteModal
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
+    const [showAutocomplete, setShowAutocomplete] = useState(false);
     const [isShareModalVisible, setIsShareModalVisible] = useState(false);
-    const [isAddingPlace, setIsAddingPlace] = useState(false);
     const [currentUserID, setCurrentUserID] = useState<string>('');
 
     // State for activity detail view
@@ -460,26 +459,6 @@ export default function TripViewMain() {
         }
     };
 
-    // Get bias location from activities or selectedCity
-    const getBiasLocation = () => {
-        // First try to get coordinates from activities
-        if (activities && Array.isArray(activities) && activities.length > 0) {
-            const validActivities = activities.filter(activity => activity.lat && activity.lng);
-            if (validActivities.length > 0) {
-                // Use the first activity with valid coordinates
-                const firstActivity = validActivities[0];
-                return `${firstActivity.lat},${firstActivity.lng}`;
-            }
-        }
-        
-        // Fallback to selectedCity if no activities have coordinates
-        if (selectedCity) {
-            return selectedCity;
-        }
-        
-        return null;
-    };
-
     // Handler for activity description card selection
     const handleActivityDescriptionCardSelect = (activity: Activity) => {
         setSelectedActivityForDetail(activity);
@@ -513,57 +492,64 @@ export default function TripViewMain() {
         }
     };
 
-    // Handler for place selection from GooglePlacesAutocomplete
-    const handlePlaceSelect = async (data: any, details: any | null) => {
-        try {
-            setIsAddPlacesModalVisible(false);
-            setIsAddingPlace(true);
-            
-            // Build dedup set and call shared service with dedup
-            const existingPlaceIds = buildExistingPlaceIdSet(activities, dayActivities as any);
-            const { activity: newActivity, duplicate } = await addAdditionalPlaceWithDedup(
-                data.description,
-                selectedCity || 'Unknown City',
-                existingPlaceIds
-            );
-            if (newActivity) {
-                if (duplicate) {
-                    Alert.alert(
-                        'Duplicate Place', 
-                        `"${newActivity.name}" is already in your trip.`,
-                        [{ text: 'OK' }]
-                    );
-                } else {
-                    // Add the new activity to the active tab
-                    if (activeTab === 'wishlist') {
-                        // Add to wishlist (activities list)
-                        updateActivities([...(activities || []), newActivity]);
-                        // Auto-select the newly added activity in wishlist selection mode
-                        if (newActivity.place_id) {
-                            toggleActivitySelection(newActivity.place_id);
-                        }
-                    } else if (activeTab.startsWith('day')) {
-                        // Add to the specific day
-                        const dayNumber = parseInt(activeTab.replace('day', ''));
-                        addActivityToDay(newActivity, dayNumber);
-                    } else {
-                        // Fallback to wishlist
-                        updateActivities([...(activities || []), newActivity]);
-                        if (newActivity.place_id) {
-                            toggleActivitySelection(newActivity.place_id);
-                        }
-                    }
-                }
+    // Handler for SearchBar press
+    const handleSearchPress = () => {
+        setShowAutocomplete(true);
+    };
+
+    // Handler for search query change
+    const handleSearchQueryChange = (text: string) => {
+        setSearchQuery(text);
+    };
+
+    // Handler for filter toggle
+    const handleFilterToggle = (filterId: string) => {
+        setSelectedFilters((prev) => {
+            if (prev.includes(filterId)) {
+                return prev.filter((id) => id !== filterId);
             } else {
-                console.warn('Could not get place details');
+                return [...prev, filterId];
             }
+        });
+    };
+
+    // Handler for searching activities
+    const handleSearchActivities = async (query: string, filters: string[], existingActivities: any[]) => {
+        try {
+            const results = await searchActivities(query, filters, existingActivities);
+            return results;
         } catch (error) {
-            console.error('Error adding place:', error);
-            // Optionally show a user-facing error message
-        } finally {
-            setIsAddingPlace(false);
+            console.error('[trip-view_main] Error fetching search results:', error);
+            throw error;
         }
     };
+
+    // Handler for saving search results
+    const handleSaveSearchResults = (selectedActivities: Activity[]) => {
+        if (selectedActivities.length === 0) {
+            return;
+        }
+
+        // Add the selected activities to the active tab
+        if (activeTab === 'wishlist') {
+            // Add to wishlist
+            updateActivities([...(activities || []), ...selectedActivities]);
+        } else if (activeTab.startsWith('day')) {
+            // Add to the specific day
+            const dayNumber = parseInt(activeTab.replace('day', ''));
+            selectedActivities.forEach(activity => {
+                addActivityToDay(activity, dayNumber);
+            });
+        } else {
+            // Fallback to wishlist
+            updateActivities([...(activities || []), ...selectedActivities]);
+        }
+
+        // Close the autocomplete modal and reset search
+        setShowAutocomplete(false);
+        setSearchQuery('');
+    };
+
 
     // Reset shouldScrollToActive after it's been used
     React.useEffect(() => {
@@ -909,14 +895,14 @@ export default function TripViewMain() {
                                             {selectedCity && (
                                                 <Text style={styles.cityTitle}>{selectedCity}</Text>
                                             )}
-                                            {/* Add places button when no wishlist activities - hide for viewers */}
+                                            {/* SearchBar when no wishlist activities - hide for viewers */}
                                             {currentUserRole !== 'viewer' && (
-                                                <View style={{ marginTop: 10, alignItems: 'center', padding: 20 }}>
-                                                    <AddPlacesButton
-                                                        onPress={() => setIsAddPlacesModalVisible(true)}
-                                                        isAddingPlace={isAddingPlace}
-                                                        style={{ marginTop: 10, borderColor: Colors.GRAY }}
-                                                        showLoadingIndicator={false}
+                                                <View style={{ marginTop: 10, paddingHorizontal: 20 }}>
+                                                    <SearchBar
+                                                        value={searchQuery}
+                                                        onChangeText={handleSearchQueryChange}
+                                                        onPress={handleSearchPress}
+                                                        placeholder="Search activities..."
                                                     />
                                                 </View>
                                             )}
@@ -936,14 +922,17 @@ export default function TripViewMain() {
                                                     />
                                                 </View>
                                             ))}
-                                            
-                                            {/* Add additional places button - hide for viewers */}
+
+                                            {/* SearchBar for additional places - hide for viewers */}
                                             {currentUserRole !== 'viewer' && (
-                                                <AddPlacesButton
-                                                    onPress={() => setIsAddPlacesModalVisible(true)}
-                                                    isAddingPlace={isAddingPlace}
-                                                    style={defaultAddPlacesButtonStyle}
-                                                />
+                                                <View style={{ marginTop: 20 }}>
+                                                    <SearchBar
+                                                        value={searchQuery}
+                                                        onChangeText={handleSearchQueryChange}
+                                                        onPress={handleSearchPress}
+                                                        placeholder="Search more activities..."
+                                                    />
+                                                </View>
                                             )}
                                         </>
                                     )}
@@ -965,8 +954,9 @@ export default function TripViewMain() {
                                     onOptimizeRoute={currentUserRole !== 'viewer' ? handleOptimizeRoute : undefined}
                                     showSelectionIndicator={isSelectionMode && currentUserRole !== 'viewer'}
                                     routeLegs={routeData.legs}
-                                    onAddPlace={currentUserRole !== 'viewer' ? () => setIsAddPlacesModalVisible(true) : undefined}
-                                    isAddingPlace={isAddingPlace}
+                                    onAddPlace={currentUserRole !== 'viewer' ? handleSearchPress : undefined}
+                                    searchQuery={searchQuery}
+                                    onSearchQueryChange={handleSearchQueryChange}
                                     scrollPosition={dayScrollPositions[currentDayNumber] || 0}
                                     onScrollPositionChange={(position) => handleScrollPositionChange(currentDayNumber, position)}
                                     shouldRestorePosition={shouldRestoreScrollPositions[currentDayNumber] || false}
@@ -999,57 +989,24 @@ export default function TripViewMain() {
                 onConfirm={handleConfirmTransfer}
                 onClose={() => setIsModalVisible(false)}
                 />
-
-                {/* Add Places Modal */}
-                <Modal
-                visible={isAddPlacesModalVisible}
-                animationType="slide"
-                presentationStyle="formSheet"
-                onRequestClose={() => setIsAddPlacesModalVisible(false)}
-            >
-                <KeyboardAvoidingView 
-                    style={styles.addPlacesModalContainer}
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                >
-                    <View style={styles.addPlacesModalHeader}>
-                        <TouchableOpacity 
-                            onPress={() => setIsAddPlacesModalVisible(false)}
-                            style={styles.addPlacesModalCloseButton}
-                        >
-                            <Ionicons name="close" size={32} color={Colors.GRAY} />
-                        </TouchableOpacity>
-                        <Text style={styles.addPlacesModalTitle}>Add Additional Places</Text>
-                        <View style={styles.addPlacesModalSpacer} />
-                    </View>
-                    
-                    <View style={styles.addPlacesModalContent}>
-                        <GooglePlacesAutocomplete
-                            placeholder={`Search places in ${selectedCity}`}
-                            onPress={handlePlaceSelect}
-                            query={{
-                                key: API_KEYS.GOOGLE_MAPS,
-                                language: 'en',
-                                ...(getBiasLocation() && {
-                                    location: getBiasLocation(),
-                                    radius: 10000, // 25km radius around the bias location
-                                }),
-                            }}
-                            styles={{
-                                container: styles.googlePlacesContainer,
-                                textInputContainer: styles.googlePlacesTextInputContainer,
-                                textInput: styles.googlePlacesInput,
-                                listView: styles.googlePlacesList,
-                                row: styles.googlePlacesRow,
-                                description: styles.googlePlacesDescription,
-                            }}
-                            fetchDetails={false}
-                            enablePoweredByContainer={false}
-                            debounce={200}
-                        />
-                    </View>
-                </KeyboardAvoidingView>
-                </Modal>
             </View>
+
+            {/* AutocompleteModal for searching activities */}
+            <AutocompleteModal
+                visible={showAutocomplete}
+                query={searchQuery}
+                filters={selectedFilters}
+                selectedCity={selectedCity || ''}
+                onClose={() => {
+                    setShowAutocomplete(false);
+                    setSearchQuery('');
+                }}
+                onFilterToggle={handleFilterToggle}
+                onQueryChange={handleSearchQueryChange}
+                onSearchActivities={handleSearchActivities}
+                onSaveActivities={handleSaveSearchResults}
+                wishlistActivities={activities}
+            />
 
             {/* Share Trip Modal */}
             {currentUserID && (
@@ -1174,77 +1131,5 @@ const styles = StyleSheet.create({
     },
     wishlistContent: {
         paddingBottom: 20,
-    },
-    addPlacesModalContainer: {
-        height: '50%', // Reduced to 50% of screen height
-        backgroundColor: Colors.WHITE,
-    },
-    addPlacesModalHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 60,
-        paddingBottom: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E5E5',
-    },
-    addPlacesModalCloseButton: {
-        width: 40,
-        height: 40,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    addPlacesModalTitle: {
-        fontFamily: 'outfit-bold',
-        fontSize: 24,
-        color: '#1a1a1a',
-    },
-    addPlacesModalSpacer: {
-        width: 40,
-    },
-    addPlacesModalContent: {
-        flex: 1,
-        padding: 20,
-    },
-    googlePlacesContainer: {
-        flex: 0,
-        zIndex: 1,
-    },
-    googlePlacesTextInputContainer: {
-        flexDirection: 'row',
-        width: '100%',
-    },
-    googlePlacesInput: {
-        height: 50,
-        color: '#1a1a1a',
-        fontSize: 16,
-        fontFamily: 'outfit',
-        borderWidth: 1,
-        borderRadius: 15,
-        borderColor: '#1a1a1a',
-        paddingHorizontal: 15,
-        flex: 1,
-    },
-    googlePlacesList: {
-        backgroundColor: 'white',
-        borderRadius: 15,
-        marginTop: 5,
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-    },
-    googlePlacesRow: {
-        backgroundColor: 'white',
-        padding: 13,
-        height: 44,
-        flexDirection: 'row',
-    },
-    googlePlacesDescription: {
-        fontFamily: 'outfit',
-        fontSize: 16,
-        color: '#1a1a1a',
     },
 });

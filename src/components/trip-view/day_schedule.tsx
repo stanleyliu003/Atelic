@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { RouteLeg } from '../../services/getRoute_graphQL_call';
 import { Activity } from '../../types/activity.types';
 import { ActivityList } from './activity/activity_list';
-import { AddPlacesButton } from './add_places_button';
+import { SearchBar } from '../explore/SearchBar';
 
 interface DayScheduleProps {
   dayNumber: number;
@@ -18,8 +18,9 @@ interface DayScheduleProps {
   showSelectionIndicator?: boolean;
   disabled?: boolean;
   routeLegs?: RouteLeg[]; // Add route legs prop
-  onAddPlace?: () => void; // Add places modal trigger
-  isAddingPlace?: boolean; // Loading state for adding places
+  onAddPlace?: () => void; // Search bar trigger
+  searchQuery?: string; // Search query value
+  onSearchQueryChange?: (text: string) => void; // Search query change handler
   scrollPosition?: number; // Current scroll position
   onScrollPositionChange?: (position: number) => void; // Callback for scroll position changes
   shouldRestorePosition?: boolean; // Flag to trigger position restore
@@ -41,7 +42,8 @@ export function DaySchedule({
   disabled = false,
   routeLegs = [], // Add route legs with default empty array
   onAddPlace,
-  isAddingPlace = false,
+  searchQuery = '',
+  onSearchQueryChange,
   scrollPosition = 0,
   onScrollPositionChange,
   shouldRestorePosition = false,
@@ -140,12 +142,16 @@ export function DaySchedule({
           routeLoading={routeLoading}
         />
 
-        {/* Add additional places button - only visible when scrolling down and there are activities */}
+        {/* SearchBar - only visible when there are activities */}
         {onAddPlace && activities.length > 0 && (
-          <AddPlacesButton
-            onPress={onAddPlace}
-            isAddingPlace={isAddingPlace}
-          />
+          <View style={{ marginTop: 20 }}>
+            <SearchBar
+              value={searchQuery}
+              onChangeText={onSearchQueryChange || (() => {})}
+              onPress={onAddPlace}
+              placeholder="Search more activities..."
+            />
+          </View>
         )}
       </ScrollView>
     </View>

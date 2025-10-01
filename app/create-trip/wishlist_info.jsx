@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
       marginBottom: 20,
     },
     disabledButton: {
-      backgroundColor: Colors.GRAY,
+      backgroundColor: '#F36406',
       opacity: 0.6,
     },
     createTripButtonText: {
