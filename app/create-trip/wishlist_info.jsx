@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Feather from '@expo/vector-icons/Feather';
 import { useRouter } from 'expo-router';
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert } from 'react-native';
@@ -238,6 +239,19 @@ export default function WishlistInfo() {
                   </>
                 );
               })()}
+
+              {/* Add Additional Activities Button */}
+              <View style={styles.addActivitiesContainer}>
+                <TouchableOpacity
+                  style={styles.addActivitiesButton}
+                  onPress={() => router.replace('/create-trip/create_trip_explore')}
+                >
+                  <Feather name="plus-circle" size={24} color="black" />
+                  <Text style={styles.addActivitiesButtonText}>
+                    Add additional activities
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </>
           )}
 
@@ -314,8 +328,8 @@ const styles = StyleSheet.create({
       color: '#1a1a1a',
     },
     createTripButton: {
-      padding: 20,
-      backgroundColor: Colors.PRIMARY,
+      padding: 15,
+      backgroundColor: '#F36406',
       borderRadius: 15,
       marginTop: 30,
       marginBottom: 20,
@@ -326,6 +340,7 @@ const styles = StyleSheet.create({
     },
     createTripButtonText: {
       color: Colors.WHITE,
+      fontSize: 17,
       textAlign: 'center',
       fontFamily: 'outfit-bold',
     },
@@ -390,5 +405,33 @@ const styles = StyleSheet.create({
       color: Colors.GRAY,
       textAlign: 'center',
       lineHeight: 24,
+    },
+    addActivitiesContainer: {
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+    },
+    addActivitiesButton: {
+      marginTop: -20,
+      marginBottom: 70,
+      backgroundColor: 'white',
+      borderRadius: 15,
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      alignItems: 'center',
+      marginHorizontal: -20,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    addActivitiesButtonText: {
+      fontFamily: 'outfit',
+      fontSize: 14,
+      color: '#1a1a1a',
+      fontWeight: '500',
     },
 });
