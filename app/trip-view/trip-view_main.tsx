@@ -885,7 +885,7 @@ export default function TripViewMain() {
                             }, {} as { [key: string]: Activity[] });
 
                             return (
-                                <ScrollView 
+                                <ScrollView
                                     style={styles.wishlistContainer}
                                     contentContainerStyle={styles.wishlistContent}
                                     showsVerticalScrollIndicator={false}
@@ -897,12 +897,12 @@ export default function TripViewMain() {
                                             )}
                                             {/* SearchBar when no wishlist activities - hide for viewers */}
                                             {currentUserRole !== 'viewer' && (
-                                                <View style={{ marginTop: 10, paddingHorizontal: 20 }}>
+                                                <View style={{ marginTop: -30, marginBottom: 0 }}>
                                                     <SearchBar
                                                         value={searchQuery}
                                                         onChangeText={handleSearchQueryChange}
                                                         onPress={handleSearchPress}
-                                                        placeholder="Search activities..."
+                                                        placeholder="Search more activities..."
                                                     />
                                                 </View>
                                             )}
@@ -912,7 +912,7 @@ export default function TripViewMain() {
                                             {Object.entries(activitiesByCity).map(([city, cityActivities]: [string, Activity[]]) => (
                                                 <View key={`wishlist-${city}`} style={styles.citySection}>
                                                     <Text style={styles.cityTitle}>{city}</Text>
-                                                    <WishlistActivities 
+                                                    <WishlistActivities
                                                         activities={cityActivities}
                                                         selectedActivities={selectedActivities}
                                                         onActivitySelect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
@@ -923,9 +923,9 @@ export default function TripViewMain() {
                                                 </View>
                                             ))}
 
-                                            {/* SearchBar for additional places - hide for viewers */}
+                                            {/* SearchBar after all activities - hide for viewers */}
                                             {currentUserRole !== 'viewer' && (
-                                                <View style={{ marginTop: 20 }}>
+                                                <View style={{ marginTop: -30 }}>
                                                     <SearchBar
                                                         value={searchQuery}
                                                         onChangeText={handleSearchQueryChange}

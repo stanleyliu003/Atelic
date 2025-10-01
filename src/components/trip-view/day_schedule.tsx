@@ -105,7 +105,7 @@ export function DaySchedule({
       </View>
 
       {/* Scrollable Content */}
-      <ScrollView 
+      <ScrollView
         ref={scrollViewRef}
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
@@ -142,9 +142,9 @@ export function DaySchedule({
           routeLoading={routeLoading}
         />
 
-        {/* SearchBar - only visible when there are activities */}
+        {/* SearchBar - visible after activities */}
         {onAddPlace && activities.length > 0 && (
-          <View style={{ marginTop: 20 }}>
+          <View style={{ marginTop: -30 }}>
             <SearchBar
               value={searchQuery}
               onChangeText={onSearchQueryChange || (() => {})}
