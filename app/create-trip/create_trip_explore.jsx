@@ -31,6 +31,7 @@ export default function create_trip_explore() {
     generateActivitiesForCategory,
     categoryActivities: contextCategoryActivities,
     setCategoryActivities: setContextCategoryActivities,
+    activities,
   } = useCreateTrip();
 
   // Search state
@@ -89,29 +90,11 @@ export default function create_trip_explore() {
       return;
     }
 
-    const result = addToWishlist(selectedActivities);
+    addToWishlist(selectedActivities);
 
     // Close the autocomplete modal
     setShowAutocomplete(false);
     setSearchQuery('');
-
-    // Show success message
-    if (result.added > 0 && result.duplicates > 0) {
-      Alert.alert(
-        'Added to Wishlist',
-        `${result.added} ${result.added === 1 ? 'place' : 'places'} added. ${result.duplicates} ${result.duplicates === 1 ? 'was' : 'were'} already in your wishlist.`
-      );
-    } else if (result.added > 0) {
-      Alert.alert(
-        'Added to Wishlist',
-        `${result.added} ${result.added === 1 ? 'place' : 'places'} added to your wishlist.`
-      );
-    } else if (result.duplicates > 0) {
-      Alert.alert(
-        'Already in Wishlist',
-        `All selected ${result.duplicates === 1 ? 'place is' : 'places are'} already in your wishlist.`
-      );
-    }
   };
 
   // ===== FILTER FLOW HANDLERS =====
@@ -160,27 +143,9 @@ export default function create_trip_explore() {
       return;
     }
 
-    const result = addToWishlist(selectedActivities);
+    addToWishlist(selectedActivities);
 
     setShowCategoryModal(false);
-
-    // Show success message
-    if (result.added > 0 && result.duplicates > 0) {
-      Alert.alert(
-        'Added to Wishlist',
-        `${result.added} ${result.added === 1 ? 'place' : 'places'} added. ${result.duplicates} ${result.duplicates === 1 ? 'was' : 'were'} already in your wishlist.`
-      );
-    } else if (result.added > 0) {
-      Alert.alert(
-        'Added to Wishlist',
-        `${result.added} ${result.added === 1 ? 'place' : 'places'} added to your wishlist.`
-      );
-    } else if (result.duplicates > 0) {
-      Alert.alert(
-        'Already in Wishlist',
-        `All selected ${result.duplicates === 1 ? 'place is' : 'places are'} already in your wishlist.`
-      );
-    }
   };
 
   const handleGenerateMoreCategoryActivities = async (categoryName) => {
@@ -188,7 +153,7 @@ export default function create_trip_explore() {
 
     try {
       // Generate more activities for this category (updates context automatically)
-      const newActivities = await generateActivitiesForCategory(categoryName);
+      await generateActivitiesForCategory(categoryName);
       // Context already handles appending new activities to existing ones
     } catch (error) {
       // Check if this is a limit reached error
@@ -294,7 +259,9 @@ export default function create_trip_explore() {
             onPress={handleWishlistPress}
             style={styles.loadWishlistButton}
           >
-            <Text style={styles.loadWishlistButtonText}>Load Wishlist</Text>
+            <Text style={styles.loadWishlistButtonText}>
+              Load Wishlist ({activities?.length || 0})
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -355,7 +322,7 @@ const styles = StyleSheet.create({
     color: Colors.WHITE,
     textAlign: 'center',
     fontFamily: 'outfit-bold',
-    fontSize: 18,
+    fontSize: 17,
   },
   titleSection: {
     marginBottom: 20,

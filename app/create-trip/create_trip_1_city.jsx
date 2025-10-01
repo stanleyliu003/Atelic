@@ -447,6 +447,6 @@ const styles = StyleSheet.create({
         color: Colors.WHITE,
         textAlign: 'center',
         fontFamily: 'outfit-bold',
-        fontSize: 18,
+        fontSize: 17,
     },
 })
