@@ -28,8 +28,9 @@ import { ActivityDetailView } from '../trip-view/description_card';
  * @param {function} onSave - Callback when "Save to Wishlist" is clicked (receives array of selected activities)
  * @param {function} onClose - Callback to close modal
  * @param {function} onGenerateMore - Callback when "Generate More" button is clicked
+ * @param {Activity[]} wishlistActivities - Activities already in the wishlist for "On list" tag
  */
-export const CategoryModal = ({ visible, category, activities, loading = false, loadingMore = false, onSave, onClose, onGenerateMore }) => {
+export const CategoryModal = ({ visible, category, activities, loading = false, loadingMore = false, onSave, onClose, onGenerateMore, wishlistActivities = [] }) => {
   const [selectedActivityIds, setSelectedActivityIds] = useState([]);
   const [selectedActivity, setSelectedActivity] = useState(null);
 
@@ -136,6 +137,7 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
                   onActivityDeselect={handleActivityToggle}
                   onDescriptionCardPress={handleActivityPress}
                   showSelectionIndicator={true}
+                  wishlistActivities={wishlistActivities}
                 />
                 
                 {/* Generate More Category Activities Button - Show at bottom of activities list */}

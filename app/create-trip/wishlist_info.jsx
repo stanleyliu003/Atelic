@@ -267,7 +267,7 @@ export default function WishlistInfo() {
           disabled={selectedActivities.length === 0 || loading}
         >
           <Text style={styles.createTripButtonText}>
-            {loading ? 'Creating Trip...' : 'Create Trip'}
+            {loading ? 'Loading Trip...' : 'Load Trip'}
           </Text>
         </TouchableOpacity>
 

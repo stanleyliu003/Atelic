@@ -31,6 +31,7 @@ import { ActivityDetailView } from '../trip-view/description_card';
  * @param {function} onQueryChange - Callback when search query changes in modal
  * @param {function} onSearchActivities - Callback to search for activities
  * @param {function} onSaveActivities - Callback to save selected activities
+ * @param {Activity[]} wishlistActivities - Activities already in the wishlist for "On list" tag
  */
 export const AutocompleteModal = ({
   visible,
@@ -43,6 +44,7 @@ export const AutocompleteModal = ({
   onQueryChange,
   onSearchActivities,
   onSaveActivities,
+  wishlistActivities = [],
 }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -303,6 +305,7 @@ export const AutocompleteModal = ({
                           onActivityDeselect={handleActivityToggle}
                           onDescriptionCardPress={handleActivityPress}
                           showSelectionIndicator={true}
+                          wishlistActivities={wishlistActivities}
                         />
                       </View>
                     )}

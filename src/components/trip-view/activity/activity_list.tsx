@@ -137,6 +137,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   onReorder?: (newOrder: Activity[]) => void; // Callback for when activities are reordered
   routeLoading?: boolean; // Loading state for route recalculation
   hideRouteInfo?: boolean; // Hide route info cards
+  wishlistActivities?: Activity[]; // Activities already in the wishlist for "On list" tag
 }
 
 export function ActivityList({
@@ -158,7 +159,8 @@ export function ActivityList({
   enableDragDrop = false,
   onReorder,
   routeLoading = false,
-  hideRouteInfo = false
+  hideRouteInfo = false,
+  wishlistActivities = []
 }: EnhancedActivityListProps) {
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
@@ -232,6 +234,11 @@ export function ActivityList({
       const nextActivityDuration = routeLeg?.duration;
       const nextActivity = currentActivities[index + 1];
 
+      // Check if this activity is already in the wishlist
+      const isInWishlist = wishlistActivities.some(
+        (wishlistActivity) => wishlistActivity.place_id === activity.place_id
+      );
+
       // Common props for both draggable and regular cards
       const commonProps = {
         key: `activity-${index}-${activity.place_id || 'no-place-id'}`,
@@ -249,6 +256,7 @@ export function ActivityList({
         travelMode,
         index,
         hideRouteInfo,
+        showOnListTag: isInWishlist,
       };
 
       if (enableDragDrop && scrollable) {
@@ -324,6 +332,7 @@ interface DraggableActivityCardProps {
   onDragEnd: () => void;
   isDraggingThisItem: boolean;
   hideRouteInfo?: boolean;
+  showOnListTag?: boolean;
 }
 
 function DraggableActivityCard({
@@ -347,6 +356,7 @@ function DraggableActivityCard({
   onDragEnd,
   isDraggingThisItem,
   hideRouteInfo = false,
+  showOnListTag = false,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -454,6 +464,7 @@ function DraggableActivityCard({
             nextActivity={nextActivity}
             travelMode={travelMode}
             hideRouteInfo={true} // Hide route info in draggable card - rendered separately below
+            showOnListTag={showOnListTag}
           />
         </Animated.View>
       </GestureDetector>

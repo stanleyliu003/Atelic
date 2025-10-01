@@ -8,6 +8,7 @@ interface WishlistActivitiesProps {
   onActivityDeselect?: (activityId: string) => void;
   onDescriptionCardPress?: (activity: Activity) => void;
   showSelectionIndicator?: boolean;
+  wishlistActivities?: Activity[]; // Activities already in the wishlist for "On list" tag
 }
 
 export function WishlistActivities({
@@ -16,7 +17,8 @@ export function WishlistActivities({
   onActivitySelect,
   onActivityDeselect,
   onDescriptionCardPress,
-  showSelectionIndicator = false
+  showSelectionIndicator = false,
+  wishlistActivities
 }: WishlistActivitiesProps) {
   return (
     <ActivityList
@@ -28,6 +30,7 @@ export function WishlistActivities({
       showSelectionIndicator={showSelectionIndicator}
       variant="selectable"
       hideRouteInfo={true}
+      wishlistActivities={wishlistActivities}
     />
   );
 }

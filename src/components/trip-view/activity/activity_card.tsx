@@ -26,6 +26,7 @@ interface ActivityCardProps {
   nextActivity?: Activity; // Next activity for Google Maps routing
   travelMode?: string; // Travel mode from route calculation (DRIVE, TRANSIT, WALK)
   hideRouteInfo?: boolean; // New prop to hide route info during drag operations
+  showOnListTag?: boolean; // New prop to show "On list" tag for activities already in wishlist
 }
 
 // Helper function to convert our travel modes to Google Maps travel modes
@@ -70,7 +71,8 @@ export function ActivityCard({
   isLastActivity = false,
   nextActivity,
   travelMode,
-  hideRouteInfo = false
+  hideRouteInfo = false,
+  showOnListTag = false
 }: ActivityCardProps) {
 
   const handlePress = () => {
@@ -151,13 +153,17 @@ export function ActivityCard({
         <View style={styles.activityContent}>
           {showSelectionIndicator && (
             <View style={styles.selectionContainer}>
-              <View style={[styles.selectionIndicator, isSelected && styles.selectedIndicator]}>
+              <View style={[
+                styles.selectionIndicator,
+                isSelected && styles.selectedIndicator,
+                showOnListTag && styles.disabledIndicator
+              ]}>
                 {isSelected && <Text style={styles.checkmark}>✓</Text>}
               </View>
               <TouchableOpacity
                 style={styles.selectionTouchArea}
                 onPress={handlePress}
-                disabled={disabled}
+                disabled={disabled || showOnListTag}
                 activeOpacity={1}
               />
             </View>
@@ -189,6 +195,13 @@ export function ActivityCard({
                     </Text>
                   </View>
                 )}
+                {/*
+                {showOnListTag && (
+                  <View style={styles.onListContainer}>
+                    <Text style={styles.onListText}>On list</Text>
+                  </View>
+                )}
+                  */}
               </View>
             </View>
 
@@ -293,6 +306,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.PRIMARY,
   },
+  disabledIndicator: {
+    backgroundColor: '#F36406',
+    borderColor: '#F36406',
+  },
   checkmark: {
     color: 'white',
     fontSize: 13.5,
@@ -336,6 +353,18 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit',
     fontSize: 12,
     color: Colors.GRAY,
+    textTransform: 'capitalize',
+  },
+  onListContainer: {
+    backgroundColor: '#06b6d4',
+    borderRadius: 10,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+  },
+  onListText: {
+    fontFamily: 'outfit',
+    fontSize: 11,
+    color: Colors.WHITE,
     textTransform: 'capitalize',
   },
   activityImage: {

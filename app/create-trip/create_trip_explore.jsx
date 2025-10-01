@@ -279,6 +279,7 @@ export default function create_trip_explore() {
         onQueryChange={handleSearchQueryChange}
         onSearchActivities={handleSearchActivities}
         onSaveActivities={handleSaveSearchResults}
+        wishlistActivities={activities}
       />
 
       <CategoryModal
@@ -290,6 +291,7 @@ export default function create_trip_explore() {
         onSave={handleSaveCategoryActivities}
         onClose={() => setShowCategoryModal(false)}
         onGenerateMore={handleGenerateMoreCategoryActivities}
+        wishlistActivities={activities}
       />
     </KeyboardAvoidingView>
   );
