@@ -13,6 +13,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../../constants/Colors';
 import { FilterChips } from './FilterChips';
 import { getSearchAutocomplete } from '../../services/searchService';
+import { generateCategoryActivities } from '../../services/generateCategoryActivities';
 import { WishlistActivities } from '../trip-view/wishlist_activities';
 import { ActivityDetailView } from '../trip-view/description_card';
 
@@ -164,6 +165,35 @@ export const AutocompleteModal = ({
       setSearchLoading(false);
     }
   };
+
+  // Handle enter key press - triggers generateCategoryActivities
+  const handleEnterKeyPress = async () => {
+    if (localQuery.trim().length < 2) {
+      return;
+    }
+
+    setSearchLoading(true);
+    setSearchError(null);
+    setShowingResults(true);
+    
+    try {
+      // Get existing wishlist activities to avoid duplicates
+      const existingActivityIds = wishlistActivities.map(activity => activity.place_id).filter(Boolean);
+      
+      const result = await generateCategoryActivities(selectedCity, localQuery, existingActivityIds);
+      
+      if (result && result.activities) {
+        setSearchResults(result.activities);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      setSearchError('Failed to generate activities. Please try again.');
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
   
   // Handle activity selection
   const handleActivityToggle = (activityId) => {
@@ -259,6 +289,11 @@ export const AutocompleteModal = ({
                 autoCapitalize="none"
                 autoCorrect={false}
                 selectTextOnFocus={true}
+                onSubmitEditing={() => {
+                  if (localQuery.trim().length >= 2) {
+                    handleEnterKeyPress();
+                  }
+                }}
               />
               {localQuery.length > 0 && (
                 <TouchableOpacity
