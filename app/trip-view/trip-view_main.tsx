@@ -66,6 +66,20 @@ export default function TripViewMain() {
     const DEFAULT_HEIGHT = 0.65; // 60% of screen height (default starting position)
     const [bottomHeight] = useState(new Animated.Value(DEFAULT_HEIGHT));
 
+    // Save-in-progress lock to prevent concurrent saves and duplicate tripID generation
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Ref for immediate tripID access (avoids async state update issues)
+    const tripIdRef = useRef(tripId);
+
+    // Timeout ref for debouncing autosave
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Keep tripIdRef in sync with tripId state
+    useEffect(() => {
+        tripIdRef.current = tripId;
+    }, [tripId]);
+
     // Handler for scroll position changes
     const handleScrollPositionChange = (dayNumber: number, position: number) => {
         setDayScrollPositions(prev => ({
@@ -736,59 +750,64 @@ export default function TripViewMain() {
 
     // Serialize trip data for saving
     const saveTrip = async () => {
-        // Gather days and their activities (sanitize activities for GraphQL input)
-        const days = Object.keys(dayActivities).map(dayNumber => ({
-            dayNumber: Number(dayNumber),
-            activities: dayActivities[dayNumber].activities.map(sanitizeActivity),
-            encodedPolyline: dayPolylines[dayNumber] || null,
-        }));
-        // Gather wishlist activities (not assigned to any day) and sanitize them
-        const dayActivityIds = days.flatMap(day => day.activities.map(a => a.place_id)).filter(Boolean);
-        const wishlist = (activities || [])
-            .filter((activity) => !activity.place_id || !dayActivityIds.includes(activity.place_id))
-            .map(sanitizeActivity);
-        // Compose trip data object
-        // Generate tripId if it doesn't exist (first time save)
-        let currentTripId = tripId;
-        if (!currentTripId) {
-            currentTripId = generateTripId();
-            console.log('[trip-view_main] Generated new tripId:', currentTripId);
+        // Check if save is already in progress
+        if (isSaving) {
+            console.log('[trip-view_main] Save already in progress, skipping duplicate save');
+            return;
         }
 
-        let tripCreatedAt = createdAt;
-        if (!tripCreatedAt) {
-            tripCreatedAt = new Date().toISOString();
-            setCreatedAt(tripCreatedAt);
-        }
-
-        const tripData = {
-            tripId: currentTripId,
-            days,
-            wishlist,
-            tripLength: days.length, // Use tripLength state variable, fallback to days.length
-            selectedCity,
-            tripPhotoReference: tripPhotoReference || '',
-            createdAt: tripCreatedAt,
-        };
-
-        console.log('[trip-view_main] Saving trip with data:', tripData);
+        setIsSaving(true);
 
         try {
+            // Gather days and their activities (sanitize activities for GraphQL input)
+            const days = Object.keys(dayActivities).map(dayNumber => ({
+                dayNumber: Number(dayNumber),
+                activities: dayActivities[dayNumber].activities.map(sanitizeActivity),
+                encodedPolyline: dayPolylines[dayNumber] || null,
+            }));
+            // Gather wishlist activities (not assigned to any day) and sanitize them
+            const dayActivityIds = days.flatMap(day => day.activities.map(a => a.place_id)).filter(Boolean);
+            const wishlist = (activities || [])
+                .filter((activity) => !activity.place_id || !dayActivityIds.includes(activity.place_id))
+                .map(sanitizeActivity);
+            // Compose trip data object
+            // Generate tripId if it doesn't exist (first time save)
+            // Use tripIdRef for immediate access to avoid race conditions
+            let currentTripId = tripIdRef.current;
+            if (!currentTripId) {
+                currentTripId = generateTripId();
+                console.log('[trip-view_main] Generated new tripId:', currentTripId);
+                // Immediately update ref to prevent duplicate generation
+                tripIdRef.current = currentTripId;
+            }
+
+            let tripCreatedAt = createdAt;
+            if (!tripCreatedAt) {
+                tripCreatedAt = new Date().toISOString();
+                setCreatedAt(tripCreatedAt);
+            }
+
+            const tripData = {
+                tripId: currentTripId,
+                days,
+                wishlist,
+                tripLength: days.length, // Use tripLength state variable, fallback to days.length
+                selectedCity,
+                tripPhotoReference: tripPhotoReference || '',
+                createdAt: tripCreatedAt,
+            };
+
+            console.log('[trip-view_main] Saving trip with data:', tripData);
+
             // Get current user information
             let currentUserID;
             let currentUserEmail;
             let currentUserName;
-            try {
-                const currentUser = await Auth.currentAuthenticatedUser();
-                currentUserID = currentUser.attributes?.sub || currentUser.username;
-                currentUserEmail = currentUser.attributes?.email || '';
-                currentUserName = currentUser.attributes?.name || '';
-                console.log('[trip-view_main] Current user ID:', currentUserID);
-            } catch (authError) {
-                console.error('[trip-view_main] Auth check failed:', authError);
-                Alert.alert('Authentication Error', 'Please sign in to save your trip');
-                return;
-            }
+            const currentUser = await Auth.currentAuthenticatedUser();
+            currentUserID = currentUser.attributes?.sub || currentUser.username;
+            currentUserEmail = currentUser.attributes?.email || '';
+            currentUserName = currentUser.attributes?.name || '';
+            console.log('[trip-view_main] Current user ID:', currentUserID);
 
             // Handle collaborators and determine the owner's userID
             let collaboratorsToSave;
@@ -841,18 +860,22 @@ export default function TripViewMain() {
             });
             console.log('[trip-view_main] Trip saved successfully:', result);
 
-            // Update local collaborators state after successful save for new trips
-            if (!createdAt || !tripId) {
-                setCollaborators(collaboratorsToSave);
+            // ALWAYS update tripId if it wasn't set (prevents duplicate generation on next save)
+            if (!tripId) {
                 setTripId(currentTripId);
             }
 
-        } catch (error) {
+            // Update local collaborators state after successful save for new trips
+            if (!createdAt || collaborators.length === 0) {
+                setCollaborators(collaboratorsToSave);
+            }
+
+        } catch (error: any) {
             console.error('[trip-view_main] Error saving trip - Full error:', JSON.stringify(error, null, 2));
 
             // More detailed error logging
             if (error.errors) {
-                error.errors.forEach((err, index) => {
+                error.errors.forEach((err: any, index: number) => {
                     console.error(`[trip-view_main] Error ${index + 1}:`, {
                         message: err.message,
                         errorType: err.errorType,
@@ -863,6 +886,9 @@ export default function TripViewMain() {
             }
 
             throw error;
+        } finally {
+            // Release save lock
+            setIsSaving(false);
         }
     };
 
@@ -876,19 +902,33 @@ export default function TripViewMain() {
     useEffect(() => {
         const handleAppStateChange = (nextAppState: string) => {
             if (nextAppState === 'background') {
-                console.log('[trip-view_main] App going to background - autosaving trip');
-                // Only autosave if we have a trip with activities or days
-                if (tripId || activities.length > 0 || Object.keys(dayActivities).length > 0) {
-                    saveTrip().catch(error => {
-                        console.error('[trip-view_main] Autosave failed on app background:', error);
-                    });
+                console.log('[trip-view_main] App going to background - scheduling autosave');
+
+                // Clear any pending autosave
+                if (saveTimeoutRef.current) {
+                    clearTimeout(saveTimeoutRef.current);
                 }
+
+                // Debounce autosave by 500ms to prevent rapid duplicate saves
+                saveTimeoutRef.current = setTimeout(() => {
+                    // Only autosave if we have a trip with activities or days
+                    if (tripIdRef.current || activities.length > 0 || Object.keys(dayActivities).length > 0) {
+                        console.log('[trip-view_main] Executing debounced autosave');
+                        saveTrip().catch(error => {
+                            console.error('[trip-view_main] Autosave failed on app background:', error);
+                        });
+                    }
+                }, 500);
             }
         };
 
         const subscription = AppState.addEventListener('change', handleAppStateChange);
 
         return () => {
+            // Clean up timeout on unmount
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+            }
             subscription?.remove();
         };
     }, [tripId, activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt]);
