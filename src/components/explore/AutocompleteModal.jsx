@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingVertical: 12,
-    paddingTop: 8,
+    paddingTop: 30,
   },
   dragIndicator: {
     width: 40,
