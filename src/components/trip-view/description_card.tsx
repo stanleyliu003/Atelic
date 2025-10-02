@@ -5,6 +5,8 @@ import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Image } from 'react-native';
+import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { Activity } from '../../types/activity.types';
 import { ActivityImage } from './activity/activity_image';
 
@@ -82,6 +84,15 @@ const renderStars = (rating: number) => {
 export function ActivityDetailView({ activity, onClose, variant = 'trip' }: ActivityDetailViewProps) {
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
+
+  // Swipe down gesture to close
+  const swipeGesture = Gesture.Pan()
+    .onEnd((event) => {
+      // If swiped down more than 100px with sufficient velocity, close the modal
+      if (event.translationY > 100 && event.velocityY > 0) {
+        runOnJS(onClose)();
+      }
+    });
 
   const toggleReviewExpansion = (index: number) => {
     const newExpanded = new Set(expandedReviews);
@@ -235,19 +246,26 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip' }: Acti
   const hoursStatus = getHoursStatus();
 
   return (
-    <View style={styles.container}>
+    <GestureHandlerRootView style={styles.container}>
+      {/* Swipeable Drag Indicator */}
+      <GestureDetector gesture={swipeGesture}>
+        <View style={styles.dragIndicatorContainer}>
+          <View style={styles.dragIndicator} />
+        </View>
+      </GestureDetector>
+
       {/* Close Button - positioned relative to entire container */}
       <TouchableOpacity onPress={onClose} style={[styles.closeButton, variant === 'wishlist' && styles.closeButtonWishlist]}>
         <Ionicons name="close" size={24} color="#000" />
       </TouchableOpacity>
-      
+
       {/* Fixed Header with Activity Name */}
       <View style={styles.fixedHeader}>
         <View style={styles.nameContainer}>
           <Text style={styles.activityName}>{activity.name}</Text>
         </View>
       </View>
-      
+
       {/* Scrollable Content */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 
@@ -426,7 +444,7 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip' }: Acti
         )}
         <View style={styles.bottomSpacing} />
       </ScrollView>
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -434,6 +452,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.WHITE,
+  },
+  dragIndicatorContainer: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingTop: 8,
+  },
+  dragIndicator: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 3,
   },
   fixedHeader: {
     paddingHorizontal: 20,

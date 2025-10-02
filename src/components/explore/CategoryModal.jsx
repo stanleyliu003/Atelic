@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
+import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { Colors } from '../../../constants/Colors';
 import { WishlistActivities } from '../trip-view/wishlist_activities';
 import { ActivityDetailView } from '../trip-view/description_card';
@@ -94,10 +96,26 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
     setSelectedActivity(null);
   };
 
+  // Swipe down gesture to close
+  const swipeGesture = Gesture.Pan()
+    .onEnd((event) => {
+      // If swiped down more than 100px with sufficient velocity, close the modal
+      if (event.translationY > 100 && event.velocityY > 0) {
+        runOnJS(handleClose)();
+      }
+    });
+
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
+        <GestureHandlerRootView style={styles.modalContainer}>
+          {/* Swipeable Drag Indicator */}
+          <GestureDetector gesture={swipeGesture}>
+            <View style={styles.dragIndicatorContainer}>
+              <View style={styles.dragIndicator} />
+            </View>
+          </GestureDetector>
+
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
@@ -173,7 +191,7 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
               </TouchableOpacity>
             </View>
           )}
-        </View>
+        </GestureHandlerRootView>
       </View>
 
       {/* Activity Detail Modal */}
@@ -205,7 +223,18 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
     height: '85%',
-    paddingTop: 20,
+  },
+  dragIndicatorContainer: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingTop: 8,
+  },
+  dragIndicator: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 3,
   },
   header: {
     flexDirection: 'row',
@@ -317,8 +346,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   generateMoreButtonText: {
-    fontFamily: 'outfit',
-    fontSize: 14,
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
     color: '#1a1a1a',
     fontWeight: '500',
   },

@@ -8,6 +8,8 @@ import {
   View,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { Colors } from '../../../constants/Colors';
 import { WishlistActivities } from '../trip-view/wishlist_activities';
 
@@ -52,10 +54,26 @@ export const SearchResultsModal = ({ visible, query, activities, onSave, onClose
     onClose();
   };
 
+  // Swipe down gesture to close
+  const swipeGesture = Gesture.Pan()
+    .onEnd((event) => {
+      // If swiped down more than 100px with sufficient velocity, close the modal
+      if (event.translationY > 100 && event.velocityY > 0) {
+        runOnJS(handleClose)();
+      }
+    });
+
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
+        <GestureHandlerRootView style={styles.modalContainer}>
+          {/* Swipeable Drag Indicator */}
+          <GestureDetector gesture={swipeGesture}>
+            <View style={styles.dragIndicatorContainer}>
+              <View style={styles.dragIndicator} />
+            </View>
+          </GestureDetector>
+
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
@@ -104,7 +122,7 @@ export const SearchResultsModal = ({ visible, query, activities, onSave, onClose
               </TouchableOpacity>
             </View>
           )}
-        </View>
+        </GestureHandlerRootView>
       </View>
     </Modal>
   );
@@ -121,7 +139,18 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
     height: '85%',
-    paddingTop: 20,
+  },
+  dragIndicatorContainer: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingTop: 8,
+  },
+  dragIndicator: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 3,
   },
   header: {
     flexDirection: 'row',

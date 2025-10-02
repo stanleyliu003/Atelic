@@ -10,6 +10,8 @@ import {
   View,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { Colors } from '../../../constants/Colors';
 import { FilterChips } from './FilterChips';
 import { getSearchAutocomplete } from '../../services/searchService';
@@ -66,6 +68,24 @@ export const AutocompleteModal = ({
   // Description card modal state
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [showDescriptionCard, setShowDescriptionCard] = useState(false);
+
+  // Handle close modal
+  const handleCloseModal = () => {
+    console.log('[AutocompleteModal] Close button pressed');
+    console.log('[AutocompleteModal] Current localQuery:', localQuery);
+    // Clear the search query when closing
+    setLocalQuery('');
+    if (onQueryChange) {
+      console.log('[AutocompleteModal] Calling onQueryChange with empty string');
+      onQueryChange('');
+    }
+    // Reset search results state
+    setShowingResults(false);
+    setSearchResults([]);
+    setSelectedActivityIds([]);
+    console.log('[AutocompleteModal] Calling onClose');
+    onClose();
+  };
 
   // Update local query when prop changes
   useEffect(() => {
@@ -235,6 +255,15 @@ export const AutocompleteModal = ({
     setSelectedActivity(null);
   };
 
+  // Swipe down gesture to close
+  const swipeGesture = Gesture.Pan()
+    .onEnd((event) => {
+      // If swiped down more than 100px with sufficient velocity, close the modal
+      if (event.translationY > 100 && event.velocityY > 0) {
+        runOnJS(handleCloseModal)();
+      }
+    });
+
   // Format tab name for display
   const getTabDisplayName = (tab) => {
     if (tab === 'wishlist') {
@@ -250,26 +279,18 @@ export const AutocompleteModal = ({
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
+        <GestureHandlerRootView style={styles.modalContainer}>
+          {/* Swipeable Drag Indicator */}
+          <GestureDetector gesture={swipeGesture}>
+            <View style={styles.dragIndicatorContainer}>
+              <View style={styles.dragIndicator} />
+            </View>
+          </GestureDetector>
+
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Search in {selectedCity}</Text>
-            <TouchableOpacity onPress={() => {
-              console.log('[AutocompleteModal] Close button pressed');
-              console.log('[AutocompleteModal] Current localQuery:', localQuery);
-              // Clear the search query when closing
-              setLocalQuery('');
-              if (onQueryChange) {
-                console.log('[AutocompleteModal] Calling onQueryChange with empty string');
-                onQueryChange('');
-              }
-              // Reset search results state
-              setShowingResults(false);
-              setSearchResults([]);
-              setSelectedActivityIds([]);
-              console.log('[AutocompleteModal] Calling onClose');
-              onClose();
-            }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity onPress={handleCloseModal} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close" size={28} color="#333" />
             </TouchableOpacity>
           </View>
@@ -415,9 +436,9 @@ export const AutocompleteModal = ({
               </TouchableOpacity>
             </View>
           )}
-        </View>
+        </GestureHandlerRootView>
       </View>
-      
+
       {/* Activity Description Card Modal */}
       {showDescriptionCard && selectedActivity && (
         <Modal visible={showDescriptionCard} animationType="slide" transparent={false}>
@@ -445,7 +466,18 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
     height: '75%',
-    paddingTop: 20,
+  },
+  dragIndicatorContainer: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingTop: 8,
+  },
+  dragIndicator: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 3,
   },
   header: {
     flexDirection: 'row',
