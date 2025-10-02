@@ -189,7 +189,7 @@ export default function create_trip_explore() {
       keyboardVerticalOffset={60}
     >
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
         keyboardShouldPersistTaps="handled"
         style={{ backgroundColor: Colors.WHITE }}
         showsVerticalScrollIndicator={false}
@@ -253,18 +253,20 @@ export default function create_trip_explore() {
               </View>
             )}
           </View>
-
-          {/* Load Wishlist Button */}
-          <TouchableOpacity
-            onPress={handleWishlistPress}
-            style={styles.loadWishlistButton}
-          >
-            <Text style={styles.loadWishlistButtonText}>
-              Load Wishlist ({activities?.length || 0})
-            </Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Load Wishlist Button - Fixed at bottom */}
+      <View style={styles.loadWishlistButtonContainer}>
+        <TouchableOpacity
+          onPress={handleWishlistPress}
+          style={styles.loadWishlistButton}
+        >
+          <Text style={styles.loadWishlistButtonText}>
+            Load Wishlist ({activities?.length || 0})
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Modals */}
       <AutocompleteModal
@@ -313,12 +315,27 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 5,
   },
+  loadWishlistButtonContainer: {
+    position: 'absolute',
+    bottom: 25,
+    left: 0,
+    right: 0,
+    backgroundColor: Colors.WHITE,
+    paddingHorizontal: 25,
+    paddingTop: 15,
+    paddingBottom: 30,
+    borderTopWidth: 1,
+    borderTopColor: '#e9ecef',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
   loadWishlistButton: {
     padding: 15,
     backgroundColor: '#F36406',
     borderRadius: 15,
-    marginTop: 15,
-    marginBottom: 30,
   },
   loadWishlistButtonText: {
     color: Colors.WHITE,
