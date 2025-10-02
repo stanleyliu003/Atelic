@@ -14,6 +14,7 @@ interface ActivityDetailViewProps {
   activity: Activity;
   onClose: () => void;
   variant?: 'trip' | 'wishlist';
+  showDragIndicator?: boolean;
 }
 
 const formatNumber = (num: number) => {
@@ -81,7 +82,7 @@ const renderStars = (rating: number) => {
   return stars;
 };
 
-export function ActivityDetailView({ activity, onClose, variant = 'trip' }: ActivityDetailViewProps) {
+export function ActivityDetailView({ activity, onClose, variant = 'trip', showDragIndicator = true }: ActivityDetailViewProps) {
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
 
@@ -248,11 +249,13 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip' }: Acti
   return (
     <GestureHandlerRootView style={styles.container}>
       {/* Swipeable Drag Indicator */}
-      <GestureDetector gesture={swipeGesture}>
-        <View style={styles.dragIndicatorContainer}>
-          <View style={styles.dragIndicator} />
-        </View>
-      </GestureDetector>
+      {showDragIndicator && (
+        <GestureDetector gesture={swipeGesture}>
+          <View style={styles.dragIndicatorContainer}>
+            <View style={styles.dragIndicator} />
+          </View>
+        </GestureDetector>
+      )}
 
       {/* Close Button - positioned relative to entire container */}
       <TouchableOpacity onPress={onClose} style={[styles.closeButton, variant === 'wishlist' && styles.closeButtonWishlist]}>

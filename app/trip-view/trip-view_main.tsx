@@ -959,9 +959,10 @@ export default function TripViewMain() {
                 {/* Tab Content */}
                 <View style={styles.tabContent}>
                 {showActivityDetail && selectedActivityForDetail ? (
-                    <ActivityDetailView 
+                    <ActivityDetailView
                         activity={selectedActivityForDetail}
                         onClose={handleCloseActivityDetail}
+                        showDragIndicator={false}
                     />
                 ) : (
                     <>
