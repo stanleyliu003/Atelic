@@ -5,6 +5,7 @@ import Animated, {
   useSharedValue,
   withSpring,
   runOnJS,
+  withTiming,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RouteLeg } from '../../../services/getRoute_graphQL_call';
@@ -388,7 +389,6 @@ function DraggableActivityCard({
   const panGesture = Gesture.Pan()
     .minDistance(10) // Require 10px movement before pan gesture activates
     .onStart(() => {
-      console.log(`🚀 [DRAG-START] Activity ${index + 1} drag started`);
       isDragging.value = true;
       scale.value = withSpring(1.05);
       zIndex.value = 1000;
@@ -403,12 +403,11 @@ function DraggableActivityCard({
       const dragDistance = event.translationY;
       const positionChange = Math.round(dragDistance / ITEM_HEIGHT);
       const newTargetIndex = Math.max(0, Math.min(totalItems - 1, originalIndex.value + positionChange));
-      
+
       // Update target index for visual feedback (but don't reorder yet)
       targetIndex.value = newTargetIndex;
     })
     .onEnd((event) => {
-      console.log(`🫴 [${new Date().toISOString()}] PAN GESTURE END - Activity ${index + 1} drag ended`);
 
       // Calculate the drag distance and check if it exceeds the threshold
       const dragDistance = Math.abs(event.translationY);
@@ -418,21 +417,32 @@ function DraggableActivityCard({
       // 1. The target position is different from original position
       // 2. The drag distance exceeds the movement threshold
       if (targetIndex.value !== originalIndex.value && hasExceededThreshold) {
-        console.log(`✅ Reordering: threshold exceeded (${dragDistance.toFixed(0)}px >= ${(ITEM_HEIGHT * MOVEMENT_THRESHOLD).toFixed(0)}px)`);
         runOnJS(onMove)(originalIndex.value, targetIndex.value);
+
+        // Animate back to default position after reordering
+        translateY.value = withSpring(0, {
+          damping: 15,
+          stiffness: 150,
+        });
+        translateX.value = withSpring(0);
+        scale.value = withSpring(1);
+        isDragging.value = false;
+        zIndex.value = 0;
+        runOnJS(onDragEnd)();
       } else {
-        console.log(`❌ Snap back: threshold not met (${dragDistance.toFixed(0)}px < ${(ITEM_HEIGHT * MOVEMENT_THRESHOLD).toFixed(0)}px)`);
+
         // Reset target index since we're not reordering
         targetIndex.value = originalIndex.value;
-      }
 
-      // Animate back to default position
-      translateY.value = withSpring(0);
-      translateX.value = withSpring(0);
-      scale.value = withSpring(1);
-      isDragging.value = false;
-      zIndex.value = 0;
-      runOnJS(onDragEnd)();
+        // IMPORTANT: Cancel any ongoing animations and reset immediately
+        // This prevents the card from staying in a moved position
+        translateY.value = 0;
+        translateX.value = 0;
+        scale.value = 1;
+        isDragging.value = false;
+        zIndex.value = 0;
+        runOnJS(onDragEnd)();
+      }
     });
 
   const animatedStyle = useAnimatedStyle(() => {
