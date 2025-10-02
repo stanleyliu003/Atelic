@@ -444,81 +444,93 @@ export default function TripViewMain() {
     const handleDeleteDay = () => {
         // Only allow deletion if activeTab is a day (not wishlist)
         if (!activeTab.startsWith('day')) return;
-        
+
         const dayToDelete = parseInt(activeTab.replace('day', ''));
-        
-        // Show confirmation dialog
-        Alert.alert(
-            'Delete Day',
-            `Are you sure you want to delete Day ${dayToDelete}?`,
-            [
-                {
-                    text: 'Cancel',
-                    style: 'cancel'
-                },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                        // Delete the day and get its activities to move back to wishlist
-                        const deletedDayActivities = deleteDayAndRenumber(dayToDelete);
-                        
-                        // Add deleted day activities back to wishlist (with deduplication)
-                        if (deletedDayActivities.length > 0) {
-                            const combinedActivities = [...(activities || []), ...deletedDayActivities];
 
-                            // Remove duplicates based on place_id
-                            const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
-                                if (!activity.place_id) return true; // Keep activities without place_id
-                                // Keep only the first occurrence of each place_id
-                                return arr.findIndex(a => a.place_id === activity.place_id) === index;
-                            });
+        // Check if the day has any activities
+        const dayActivitiesForDelete = getDayActivities(dayToDelete);
+        const hasActivities = dayActivitiesForDelete && dayActivitiesForDelete.length > 0;
 
-                            updateActivities(deduplicatedActivities);
-                        }
-                        
-                        // Clear route cache for days that got renumbered
-                        Object.keys(routeCache.current).forEach(cacheKey => {
-                            if (cacheKey.startsWith('day')) {
-                                const cachedDayNum = parseInt(cacheKey.replace('day', ''));
-                                if (cachedDayNum >= dayToDelete) {
-                                    delete routeCache.current[cacheKey];
-                                }
-                            }
-                        });
-                        
-                        // Update dayPolylines to renumber the keys
-                        setDayPolylinesDeleteDay(prev => {
-                            const newPolylines: { [key: number]: string } = {};
-                            Object.entries(prev).forEach(([dayStr, polyline]) => {
-                                const dayNum = Number(dayStr);
-                                if (dayNum < dayToDelete) {
-                                    // Keep days before the deleted day as-is
-                                    newPolylines[dayNum] = polyline as string;
-                                } else if (dayNum > dayToDelete) {
-                                    // Renumber days after the deleted day
-                                    newPolylines[dayNum - 1] = polyline as string;
-                                }
-                                // Skip the deleted day (dayNum === dayToDelete)
-                            });
-                            return newPolylines;
-                        });
-                        
-                        // Switch to appropriate tab after deletion
-                        const remainingDayCount = getDayCount() - 1; // Count after deletion
-                        // Update tripLength to reflect the new day count
-                        setTripLength(remainingDayCount);
-                        if (remainingDayCount === 0 || dayToDelete === 1) {
-                            // If no days left or deleting day 1, go to wishlist
-                            setActiveTab('wishlist');
-                        } else {
-                            // If deleting any other day, go to the previous day
-                            setActiveTab(`day${dayToDelete - 1}`);
-                        }
+        // Function to perform the deletion
+        const performDeletion = () => {
+            // Delete the day and get its activities to move back to wishlist
+            const deletedDayActivities = deleteDayAndRenumber(dayToDelete);
+
+            // Add deleted day activities back to wishlist (with deduplication)
+            if (deletedDayActivities.length > 0) {
+                const combinedActivities = [...(activities || []), ...deletedDayActivities];
+
+                // Remove duplicates based on place_id
+                const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
+                    if (!activity.place_id) return true; // Keep activities without place_id
+                    // Keep only the first occurrence of each place_id
+                    return arr.findIndex(a => a.place_id === activity.place_id) === index;
+                });
+
+                updateActivities(deduplicatedActivities);
+            }
+
+            // Clear route cache for days that got renumbered
+            Object.keys(routeCache.current).forEach(cacheKey => {
+                if (cacheKey.startsWith('day')) {
+                    const cachedDayNum = parseInt(cacheKey.replace('day', ''));
+                    if (cachedDayNum >= dayToDelete) {
+                        delete routeCache.current[cacheKey];
                     }
                 }
-            ]
-        );
+            });
+
+            // Update dayPolylines to renumber the keys
+            setDayPolylinesDeleteDay(prev => {
+                const newPolylines: { [key: number]: string } = {};
+                Object.entries(prev).forEach(([dayStr, polyline]) => {
+                    const dayNum = Number(dayStr);
+                    if (dayNum < dayToDelete) {
+                        // Keep days before the deleted day as-is
+                        newPolylines[dayNum] = polyline as string;
+                    } else if (dayNum > dayToDelete) {
+                        // Renumber days after the deleted day
+                        newPolylines[dayNum - 1] = polyline as string;
+                    }
+                    // Skip the deleted day (dayNum === dayToDelete)
+                });
+                return newPolylines;
+            });
+
+            // Switch to appropriate tab after deletion
+            const remainingDayCount = getDayCount() - 1; // Count after deletion
+            // Update tripLength to reflect the new day count
+            setTripLength(remainingDayCount);
+            if (remainingDayCount === 0 || dayToDelete === 1) {
+                // If no days left or deleting day 1, go to wishlist
+                setActiveTab('wishlist');
+            } else {
+                // If deleting any other day, go to the previous day
+                setActiveTab(`day${dayToDelete - 1}`);
+            }
+        };
+
+        // Only show confirmation dialog if the day has activities
+        if (hasActivities) {
+            Alert.alert(
+                'Delete Day',
+                `Are you sure you want to delete Day ${dayToDelete}?`,
+                [
+                    {
+                        text: 'Cancel',
+                        style: 'cancel'
+                    },
+                    {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: performDeletion
+                    }
+                ]
+            );
+        } else {
+            // No activities, delete immediately without confirmation
+            performDeletion();
+        }
     };
 
     const handleDeleteActivities = () => {
@@ -1023,7 +1035,7 @@ export default function TripViewMain() {
                                             )}
                                             {/* SearchBar when no wishlist activities - hide for viewers */}
                                             {currentUserRole !== 'viewer' && (
-                                                <View style={{ marginTop: -30, marginBottom: 0 }}>
+                                                <View style={{ marginTop: 0, marginBottom: 0 }}>
                                                 <SearchBar
                                                         value={searchQuery}
                                                         onChangeText={handleSearchQueryChange}

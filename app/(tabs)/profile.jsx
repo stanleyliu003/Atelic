@@ -277,10 +277,6 @@ export default function Profile() {
 
       {/* My Trips Section */}
       <View style={styles.myTripsSection}>
-        {ownedTrips.length > 0 && (
-          <Text style={styles.sectionTitle}>My Trips</Text>
-        )}
-
         {tripsError && (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{tripsError}</Text>
@@ -304,6 +300,11 @@ export default function Profile() {
           </View>
         ) : (ownedTrips.length > 0 || sharedTrips.length > 0) ? (
           <ScrollView style={styles.tripsScrollView} showsVerticalScrollIndicator={true}>
+            {/* My Trips Title - scrolls with content */}
+            {ownedTrips.length > 0 && (
+              <Text style={styles.sectionTitle}>My Trips</Text>
+            )}
+
             {/* Owned Trips */}
             {ownedTrips.map((trip) => (
               <View
