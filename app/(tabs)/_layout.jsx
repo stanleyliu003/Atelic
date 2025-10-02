@@ -39,7 +39,7 @@ export default function TabLayout() {
       options={{
             tabBarLabel:" ",
             tabBarIcon:({color})=><Ionicons name="add-circle" 
-            size={30} color={color} />
+            size={30} color={'#F36406'} />
       }}
       />
       <Tabs.Screen name = "profile"
