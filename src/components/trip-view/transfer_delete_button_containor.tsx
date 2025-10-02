@@ -38,7 +38,7 @@ export const TransferButtonContainer: React.FC<TransferButtonContainerProps> = (
         style={styles.deleteButton}
         onPress={onDeletePress}
       >
-        <Feather name="trash" size={21} color="red" />
+        <Feather name="trash" size={24} color="red" />
       </TouchableOpacity>
 
       {/* Transfer Button */}
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     backgroundColor: 'white',
-    padding: 12,
+    padding: 14,
     borderRadius: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   },
   transferButton: {
     backgroundColor: Colors.PRIMARY,
-    padding: 14, // Match the trash button padding
+    padding: 14,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center', // Center the text vertically
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   },
   transferButtonText: {
     color: Colors.WHITE,
-    fontFamily: 'outfit-bold',
-    fontSize: 13,
+    fontFamily: 'outfit-medium',
+    fontSize: 17,
   },
 }); 

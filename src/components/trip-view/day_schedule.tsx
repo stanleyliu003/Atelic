@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   optimizeButton: {
-    backgroundColor: '#FF9800', // Orange
+    backgroundColor: '#F36406',
   },
   optimizeButtonText: {
     fontFamily: 'outfit-bold',
