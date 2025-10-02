@@ -1,21 +1,17 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import Feather from '@expo/vector-icons/Feather';
 import { useRouter } from 'expo-router';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { WishlistActivities } from '../../src/components/trip-view';
 import { ActivityDetailView } from '../../src/components/trip-view/description_card';
-import { AddPlacesButton } from '../../src/components/trip-view/add_places_button';
+import { SearchBar } from '../../src/components/explore/SearchBar';
+import { AutocompleteModal } from '../../src/components/explore/AutocompleteModal';
 import { Colors } from './../../constants/Colors';
-import { API_KEYS } from '../../constants/ApiKeys';
-import { API, graphqlOperation } from 'aws-amplify';
-import { addAdditionalPlaceWithDedup, buildExistingPlaceIdSet, defaultAddPlacesButtonStyle } from '../../src/services/add_additional_place';
 
 export default function WishlistInfo() {
     const router = useRouter();
-    const { activities, updateActivities, selectedCity } = useCreateTrip();
+    const { activities, updateActivities, selectedCity, searchActivities } = useCreateTrip();
 
     // State for selected activities - initialize with all activities selected
     const [selectedActivities, setSelectedActivities] = useState([]);
@@ -31,14 +27,15 @@ export default function WishlistInfo() {
     }, [activities]);
     // Loading state for create trip
     const [loading, setLoading] = useState(false);
-    
+
     // State for activity detail view
     const [selectedActivityForDetail, setSelectedActivityForDetail] = useState(null);
     const [showActivityDetail, setShowActivityDetail] = useState(false);
-    
-    // State for add places modal
-    const [isAddPlacesModalVisible, setIsAddPlacesModalVisible] = useState(false);
-    const [isAddingPlace, setIsAddingPlace] = useState(false);
+
+    // State for SearchBar and AutocompleteModal
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedFilters, setSelectedFilters] = useState([]);
+    const [showAutocomplete, setShowAutocomplete] = useState(false);
 
     // Note: Do not reset selectedActivities when activities change to preserve user selections
 
@@ -64,67 +61,56 @@ export default function WishlistInfo() {
         setSelectedActivityForDetail(null);
     };
 
-    // Get bias location from activities or selectedCity
-    const getBiasLocation = () => {
-        // First try to get coordinates from activities
-        if (activities && activities.length > 0) {
-            const validActivities = activities.filter(activity => activity.lat && activity.lng);
-            if (validActivities.length > 0) {
-                // Use the first activity with valid coordinates
-                const firstActivity = validActivities[0];
-                return `${firstActivity.lat},${firstActivity.lng}`;
-            }
-        }
-        
-        // Fallback to selectedCity if no activities have coordinates
-        if (selectedCity) {
-            return selectedCity;
-        }
-        
-        return null;
+    // Handler for SearchBar press
+    const handleSearchPress = () => {
+        setShowAutocomplete(true);
     };
 
-    // Handler for place selection from GooglePlacesAutocomplete
-    const handlePlaceSelect = async (data, details) => {
-        try {
-            setIsAddPlacesModalVisible(false);
-            setIsAddingPlace(true);
-            
-            // Build dedup set and call shared service with dedup
-            const existingPlaceIds = buildExistingPlaceIdSet(activities);
-            const { activity: newActivity, duplicate } = await addAdditionalPlaceWithDedup(
-                data.description,
-                selectedCity || 'Unknown City',
-                existingPlaceIds
-            );
-            if (newActivity) {
-                if (duplicate) {
-                    Alert.alert(
-                        'Duplicate Place', 
-                        `"${newActivity.name}" is already in your trip.`,
-                        [{ text: 'OK' }]
-                    );
-                } else {
-                    // Add the new activity to the wishlist
-                    updateActivities([...activities, newActivity]);
-                    // Auto-select the newly added activity while preserving existing selections
-                    if (newActivity.place_id) {
-                        setSelectedActivities(prev => (
-                            prev.includes(newActivity.place_id)
-                                ? prev
-                                : [...prev, newActivity.place_id]
-                        ));
-                    }
-                }
+    // Handler for search query change
+    const handleSearchQueryChange = (text) => {
+        setSearchQuery(text);
+    };
+
+    // Handler for filter toggle
+    const handleFilterToggle = (filterId) => {
+        setSelectedFilters((prev) => {
+            if (prev.includes(filterId)) {
+                return prev.filter((id) => id !== filterId);
             } else {
-                console.warn('Could not get place details');
+                return [...prev, filterId];
             }
+        });
+    };
+
+    // Handler for searching activities
+    const handleSearchActivities = async (query, filters, existingActivities) => {
+        try {
+            const results = await searchActivities(query, filters, existingActivities);
+            return results;
         } catch (error) {
-            console.error('Error adding place:', error);
-            // Optionally show a user-facing error message
-        } finally {
-            setIsAddingPlace(false);
+            console.error('[wishlist_info] Error fetching search results:', error);
+            throw error;
         }
+    };
+
+    // Handler for saving search results
+    const handleSaveSearchResults = (selectedActivitiesFromSearch) => {
+        if (selectedActivitiesFromSearch.length === 0) {
+            return;
+        }
+
+        // Add the selected activities to the wishlist
+        updateActivities([...(activities || []), ...selectedActivitiesFromSearch]);
+
+        // Auto-select the newly added activities
+        const newActivityIds = selectedActivitiesFromSearch
+            .map(activity => activity.place_id)
+            .filter(Boolean);
+        setSelectedActivities(prev => [...prev, ...newActivityIds]);
+
+        // Close the autocomplete modal and reset search
+        setShowAutocomplete(false);
+        setSearchQuery('');
     };
 
     // Handle create trip button press
@@ -240,17 +226,14 @@ export default function WishlistInfo() {
                 );
               })()}
 
-              {/* Add Additional Activities Button */}
-              <View style={styles.addActivitiesContainer}>
-                <TouchableOpacity
-                  style={styles.addActivitiesButton}
-                  onPress={() => router.replace('/create-trip/create_trip_explore')}
-                >
-                  <Feather name="plus-circle" size={24} color="black" />
-                  <Text style={styles.addActivitiesButtonText}>
-                    Add additional activities
-                  </Text>
-                </TouchableOpacity>
+              {/* Search Bar for Adding Activities */}
+              <View style={styles.searchBarContainer}>
+                <SearchBar
+                  value={searchQuery}
+                  onChangeText={handleSearchQueryChange}
+                  onPress={handleSearchPress}
+                  placeholder="Search more activities..."
+                />
               </View>
             </>
           )}
@@ -274,13 +257,13 @@ export default function WishlistInfo() {
         {/* Activity Detail View Overlay */}
         {showActivityDetail && selectedActivityForDetail && (
           <View style={styles.activityDetailOverlay}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.overlayBackground}
               onPress={handleCloseActivityDetail}
               activeOpacity={1}
             />
             <View style={styles.bottomPopup}>
-              <ActivityDetailView 
+              <ActivityDetailView
                 activity={selectedActivityForDetail}
                 onClose={handleCloseActivityDetail}
                 variant="wishlist"
@@ -288,6 +271,24 @@ export default function WishlistInfo() {
             </View>
           </View>
         )}
+
+        {/* AutocompleteModal for searching activities */}
+        <AutocompleteModal
+          visible={showAutocomplete}
+          query={searchQuery}
+          filters={selectedFilters}
+          selectedCity={selectedCity || ''}
+          onClose={() => {
+            setShowAutocomplete(false);
+            setSearchQuery('');
+          }}
+          onFilterToggle={handleFilterToggle}
+          onQueryChange={handleSearchQueryChange}
+          onSearchActivities={handleSearchActivities}
+          onSaveActivities={handleSaveSearchResults}
+          wishlistActivities={activities || []}
+          activeTab="wishlist"
+        />
       </View>
     )
 }
@@ -406,32 +407,8 @@ const styles = StyleSheet.create({
       textAlign: 'center',
       lineHeight: 24,
     },
-    addActivitiesContainer: {
-      paddingHorizontal: 20,
-      paddingVertical: 10,
-    },
-    addActivitiesButton: {
-      marginTop: -20,
-      marginBottom: 70,
-      backgroundColor: 'white',
-      borderRadius: 15,
-      paddingVertical: 12,
-      paddingHorizontal: 20,
-      alignItems: 'center',
-      marginHorizontal: -20,
-      flexDirection: 'row',
-      justifyContent: 'center',
-      gap: 8,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
-    },
-    addActivitiesButtonText: {
-      fontFamily: 'outfit',
-      fontSize: 14,
-      color: '#1a1a1a',
-      fontWeight: '500',
+    searchBarContainer: {
+      marginTop: -10,
+      marginBottom: 50,
     },
 });
