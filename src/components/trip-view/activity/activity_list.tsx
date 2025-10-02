@@ -372,7 +372,8 @@ function DraggableActivityCard({
   const originalIndex = useSharedValue(index);
   const targetIndex = useSharedValue(index);
 
-  const ITEM_HEIGHT = 120; // Approximate height of activity card including margin
+  const ITEM_HEIGHT = 169; // Total height: activity card (110px) + route info card (~54px) + margins (5px)
+  const MOVEMENT_THRESHOLD = 1; // Card must be dragged at least 100% of ITEM_HEIGHT to trigger reorder
 
   // Update original index when component re-renders with new index
   React.useEffect(() => {
@@ -406,14 +407,26 @@ function DraggableActivityCard({
       // Update target index for visual feedback (but don't reorder yet)
       targetIndex.value = newTargetIndex;
     })
-    .onEnd(() => {
+    .onEnd((event) => {
       console.log(`🫴 [${new Date().toISOString()}] PAN GESTURE END - Activity ${index + 1} drag ended`);
 
-      // Only trigger reorder if target position is different from original
-      if (targetIndex.value !== originalIndex.value) {
+      // Calculate the drag distance and check if it exceeds the threshold
+      const dragDistance = Math.abs(event.translationY);
+      const hasExceededThreshold = dragDistance >= (ITEM_HEIGHT * MOVEMENT_THRESHOLD);
+
+      // Only trigger reorder if:
+      // 1. The target position is different from original position
+      // 2. The drag distance exceeds the movement threshold
+      if (targetIndex.value !== originalIndex.value && hasExceededThreshold) {
+        console.log(`✅ Reordering: threshold exceeded (${dragDistance.toFixed(0)}px >= ${(ITEM_HEIGHT * MOVEMENT_THRESHOLD).toFixed(0)}px)`);
         runOnJS(onMove)(originalIndex.value, targetIndex.value);
+      } else {
+        console.log(`❌ Snap back: threshold not met (${dragDistance.toFixed(0)}px < ${(ITEM_HEIGHT * MOVEMENT_THRESHOLD).toFixed(0)}px)`);
+        // Reset target index since we're not reordering
+        targetIndex.value = originalIndex.value;
       }
 
+      // Animate back to default position
       translateY.value = withSpring(0);
       translateX.value = withSpring(0);
       scale.value = withSpring(1);

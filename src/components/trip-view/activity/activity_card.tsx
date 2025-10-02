@@ -242,7 +242,7 @@ export function ActivityCard({
 
 const styles = StyleSheet.create({
   cardContainer: {
-    marginBottom: 18,
+    marginBottom: 5,
   },
   activityCard: {
     backgroundColor: '#fff',
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
   },
   activityContent: {
     flexDirection: 'row',
-    padding: 15,
+    padding: 10,
     justifyContent: 'space-between',
     alignItems: 'center',
   },
@@ -363,8 +363,8 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   activityImage: {
-    width: 80,
-    height: 80,
+    width: 70,
+    height: 70,
     borderRadius: 10,
   },
   disabledImage: {
@@ -373,8 +373,9 @@ const styles = StyleSheet.create({
   routeInfo: {
     backgroundColor: '#f8f9fa',
     borderRadius: 8,
-    padding: 6,
-    marginTop: 4,
+    padding: 3.5,
+    marginTop: 0,
+    marginBottom: 27,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
