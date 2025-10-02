@@ -50,6 +50,7 @@ interface RouteInfoCardProps {
   nextActivityDistance: number;
   nextActivityDuration: string;
   nextActivity?: Activity;
+  currentActivity?: Activity;
   travelMode?: string;
   isLoading?: boolean;
 }
@@ -58,26 +59,29 @@ function RouteInfoCard({
   nextActivityDistance,
   nextActivityDuration,
   nextActivity,
+  currentActivity,
   travelMode,
   isLoading = false,
 }: RouteInfoCardProps) {
   const handleRoutePress = () => {
-    if (!nextActivity) return;
+    if (!nextActivity || !currentActivity) return;
 
     const googleMapsTravelMode = getGoogleMapsTravelMode(travelMode);
 
     const createCoordinateUrl = () => {
-      if (nextActivity.lat && nextActivity.lng) {
+      if (currentActivity.lat && currentActivity.lng && nextActivity.lat && nextActivity.lng) {
+        const origin = `${currentActivity.lat},${currentActivity.lng}`;
         const destination = `${nextActivity.lat},${nextActivity.lng}`;
-        return `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=${googleMapsTravelMode}`;
+        return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=${googleMapsTravelMode}`;
       }
       return null;
     };
 
-    if (nextActivity.name) {
+    if (currentActivity.name && nextActivity.name) {
       // Use activity names for better user experience
+      const origin = encodeURIComponent(currentActivity.name);
       const destination = encodeURIComponent(nextActivity.name);
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=${googleMapsTravelMode}`;
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=${googleMapsTravelMode}`;
 
       Linking.openURL(url).catch(err => {
         console.error('Error opening Google Maps:', err);
@@ -265,13 +269,14 @@ export function ActivityList({
         return (
           <DraggableActivityCard
             {...commonProps}
+            currentActivity={activity}
             onMove={moveItem}
             totalItems={currentActivities.length}
             isLoadingRoute={routeLoading}
             onDragStart={() => setDraggingIndex(index)}
             onDragEnd={() => setDraggingIndex(null)}
             isDraggingThisItem={draggingIndex === index}
-            
+
           />
         );
       }
@@ -329,6 +334,7 @@ interface DraggableActivityCardProps {
   nextActivityDuration?: string;
   isLastActivity: boolean;
   nextActivity?: Activity;
+  currentActivity: Activity;
   travelMode?: string;
   onMove: (fromIndex: number, toIndex: number) => void;
   totalItems: number;
@@ -353,6 +359,7 @@ function DraggableActivityCard({
   nextActivityDuration,
   isLastActivity,
   nextActivity,
+  currentActivity,
   travelMode,
   onMove,
   totalItems,
@@ -496,6 +503,7 @@ function DraggableActivityCard({
           nextActivityDistance={nextActivityDistance || 0}
           nextActivityDuration={nextActivityDuration || ''}
           nextActivity={nextActivity}
+          currentActivity={currentActivity}
           travelMode={travelMode}
           isLoading={isLoadingRoute}
         />
