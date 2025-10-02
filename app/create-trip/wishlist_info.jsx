@@ -232,7 +232,7 @@ export default function WishlistInfo() {
                   value={searchQuery}
                   onChangeText={handleSearchQueryChange}
                   onPress={handleSearchPress}
-                  placeholder="Search more activities..."
+                  placeholder="Add more activities"
                 />
               </View>
             </>

@@ -989,11 +989,11 @@ export default function TripViewMain() {
                                             {/* SearchBar when no wishlist activities - hide for viewers */}
                                             {currentUserRole !== 'viewer' && (
                                                 <View style={{ marginTop: -30, marginBottom: 0 }}>
-                                                    <SearchBar
+                                                <SearchBar
                                                         value={searchQuery}
                                                         onChangeText={handleSearchQueryChange}
                                                         onPress={handleSearchPress}
-                                                        placeholder="Search more activities..."
+                                                        placeholder="Add more activities"
                                                     />
                                                 </View>
                                             )}
@@ -1021,7 +1021,7 @@ export default function TripViewMain() {
                                                         value={searchQuery}
                                                         onChangeText={handleSearchQueryChange}
                                                         onPress={handleSearchPress}
-                                                        placeholder="Search more activities..."
+                                                        placeholder="Add more activities"
                                                     />
                                                 </View>
                                             )}

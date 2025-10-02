@@ -149,7 +149,7 @@ export function DaySchedule({
               value={searchQuery}
               onChangeText={onSearchQueryChange || (() => {})}
               onPress={onAddPlace}
-              placeholder="Search more activities..."
+              placeholder="Add more activities"
             />
           </View>
         )}

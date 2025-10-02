@@ -328,8 +328,10 @@ export const AutocompleteModal = ({
             </View>
           </View>
 
-          {/* Filter Chips */}
-          <FilterChips selectedFilters={filters} onFilterToggle={onFilterToggle} />
+          {/* Filter Chips - Only show when user has typed something */}
+          {localQuery.length > 0 && (
+            <FilterChips selectedFilters={filters} onFilterToggle={onFilterToggle} />
+          )}
 
           {/* Suggestions List */}
           <View style={styles.divider} />
@@ -465,7 +467,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.WHITE,
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
-    height: '75%',
+    height: '90%',
   },
   dragIndicatorContainer: {
     width: '100%',
