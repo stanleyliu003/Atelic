@@ -10,7 +10,7 @@ interface TransferActivitiesModalProps {
   daysArray: DayOption[];
   selectedDay: DayOption;
   onSelectDay: (day: DayOption) => void;
-  onConfirm: () => void;
+  onConfirm?: () => void; // Made optional since we auto-transfer now
   onClose: () => void;
 }
 
@@ -60,9 +60,6 @@ export const TransferActivitiesModal: React.FC<TransferActivitiesModalProps> = (
               </Pressable>
             )}
           />
-          <Pressable style={styles.checkmarkButton} onPress={onConfirm}>
-            <Ionicons name="checkmark" size={32} color={Colors.WHITE} />
-          </Pressable>
         </View>
       </View>
     </Modal>
@@ -79,36 +76,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    paddingTop: 32,
+    paddingTop: 80,
     paddingBottom: 40,
     paddingHorizontal: 24,
     alignItems: 'center',
   },
   closeButton: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 20,
+    right: 20,
     zIndex: 10,
     backgroundColor: '#f0f0f0',
     borderRadius: 15, // 1.5x of 10
-    width: 30, // 1.5x of 20
-    height: 30, // 1.5x of 20
+    width: 40, // 1.5x of 20
+    height: 40, // 1.5x of 20
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalTitle: {
-    fontSize: 17,
+    fontSize: 24,
     fontFamily: 'outfit',
     marginBottom: 22,
     textAlign: 'center',
   },
   dayPickerList: {
     flexDirection: 'row',
-    marginBottom: 32,
+    marginTop: 20,
+    marginBottom: 80,
   },
   dayPickerItem: {
     paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     marginHorizontal: 8,
     borderRadius: 16,
     backgroundColor: '#f0f0f0',
@@ -117,20 +115,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.PRIMARY,
   },
   dayPickerText: {
-    fontFamily: 'outfit',
-    fontSize: 16,
+    fontFamily: 'outfit-medium',
+    fontSize: 17,
     color: '#888',
   },
   dayPickerTextSelected: {
     color: Colors.WHITE,
-  },
-  checkmarkButton: {
-    marginTop: 12,
-    backgroundColor: '#222',
-    borderRadius: 32,
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 }); 

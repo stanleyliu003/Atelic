@@ -102,6 +102,48 @@ export function useTransferActivities({
     setIsModalVisible(false);
   };
 
+  // Handle day selection - automatically transfer when a day is selected
+  const handleDaySelection = (day: DayOption) => {
+    setSelectedDay(day);
+
+    // Automatically transfer activities
+    const selectedActivitiesList = getSelectedActivities(activities || []);
+
+    if (selectedActivitiesList.length > 0) {
+      if (day === 'wishlist') {
+        // Transfer to wishlist from the current day
+        let currentDayNumber = 1;
+        if (activeTab.startsWith('day')) {
+          currentDayNumber = parseInt(activeTab.replace('day', ''));
+        }
+        const activityIds = selectedActivitiesList
+          .map(a => a.place_id)
+          .filter((id): id is string => typeof id === 'string');
+
+        const transferredActivities = transferActivitiesToWishlist(activityIds, currentDayNumber);
+
+        // Add the transferred activities back to the wishlist if updateWishlistActivities is available
+        if (updateWishlistActivities && transferredActivities.length > 0) {
+          updateWishlistActivities(transferredActivities);
+        }
+
+        // Navigate to wishlist tab
+        if (onTabChange) {
+          onTabChange('wishlist');
+        }
+      } else {
+        transferActivitiesToDay(selectedActivitiesList, day);
+
+        // Navigate to the selected day tab
+        if (onTabChange) {
+          onTabChange(`day${day}`);
+        }
+      }
+      clearSelection();
+      setIsModalVisible(false);
+    }
+  };
+
   return {
     isModalVisible,
     setIsModalVisible,
@@ -111,5 +153,6 @@ export function useTransferActivities({
     handleOpenTransferModal,
     handleConfirmTransfer,
     handleTransferToWishlist,
+    handleDaySelection,
   };
 } 

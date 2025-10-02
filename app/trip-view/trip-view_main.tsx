@@ -168,13 +168,49 @@ export default function TripViewMain() {
 
     // Define handleTabChange before using it in the hook
     const handleTabChange = (tab: TabType) => {
+        // Check if we have selected activities and are switching to a different tab
+        if (isSelectionMode && selectedActivities.length > 0 && tab !== activeTab) {
+            // Get the selected activities
+            const selectedActivitiesList = getSelectedActivities(getActivitiesForTab(activeTab));
+
+            if (selectedActivitiesList.length > 0) {
+                // Transfer to the selected tab
+                if (tab === 'wishlist') {
+                    // Transfer to wishlist from the current day
+                    let currentDayNumber = 1;
+                    if (activeTab.startsWith('day')) {
+                        currentDayNumber = parseInt(activeTab.replace('day', ''));
+                    }
+                    const activityIds = selectedActivitiesList
+                        .map(a => a.place_id)
+                        .filter((id): id is string => typeof id === 'string');
+
+                    const transferredActivities = transferActivitiesToWishlist(activityIds, currentDayNumber);
+
+                    // Add the transferred activities back to the wishlist
+                    if (transferredActivities.length > 0) {
+                        addActivitiesToWishlist(transferredActivities);
+                    }
+                } else if (tab.startsWith('day')) {
+                    // Transfer to the selected day
+                    const dayNumber = parseInt(tab.replace('day', ''));
+                    transferActivitiesToDay(selectedActivitiesList, dayNumber);
+                }
+
+                // Clear selection after transfer
+                clearSelection();
+            }
+        } else {
+            // No selected activities, just clear selection
+            clearSelection();
+        }
+
         setActiveTab(tab);
         // Don't auto-scroll for manual tab selection
         setShouldScrollToActive(false);
-        clearSelection(); // Clear selection when switching tabs
         // Clear selected marker when switching tabs
         setSelectedMarker(null);
-        
+
         // Trigger scroll restoration for the new active tab if it's a day tab
         if (tab.startsWith('day')) {
             const dayNumber = parseInt(tab.replace('day', ''));
@@ -230,11 +266,10 @@ export default function TripViewMain() {
         isModalVisible,
         setIsModalVisible,
         selectedDay,
-        setSelectedDay,
         daysArray,
         handleOpenTransferModal,
-        handleConfirmTransfer,
         handleTransferToWishlist,
+        handleDaySelection,
     } = useTransferActivities({
         activities: getActivitiesForTab(activeTab), // Pass current tab's activities instead of just wishlist
         activeTab,
@@ -1076,8 +1111,7 @@ export default function TripViewMain() {
                 visible={isModalVisible}
                 daysArray={daysArray}
                 selectedDay={selectedDay}
-                onSelectDay={setSelectedDay}
-                onConfirm={handleConfirmTransfer}
+                onSelectDay={handleDaySelection}
                 onClose={() => setIsModalVisible(false)}
                 />
             </Animated.View>

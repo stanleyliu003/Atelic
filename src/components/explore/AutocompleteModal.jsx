@@ -328,8 +328,8 @@ export const AutocompleteModal = ({
             </View>
           </View>
 
-          {/* Filter Chips - Only show when user has typed something */}
-          {localQuery.length > 0 && (
+          {/* Filter Chips - Only show when user has typed something and not showing results */}
+          {localQuery.length > 0 && !showingResults && (
             <FilterChips selectedFilters={filters} onFilterToggle={onFilterToggle} />
           )}
 
