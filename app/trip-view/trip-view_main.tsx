@@ -1450,7 +1450,14 @@ export default function TripViewMain() {
                 style={styles.homeButton}
                 onPress={async () => {
                     const dayCountVal = getDayCount();
-                    await saveTrip();
+
+                    // Only save if user has edit permissions (owner or editor)
+                    if (currentUserRole !== 'viewer') {
+                        await saveTrip();
+                    } else {
+                        console.log('[trip-view_main] Viewer navigating home - skipping save');
+                    }
+
                     // Check if this is an existing trip (loaded from cloud) or a new trip
                     const isExistingTrip = tripId;
 
