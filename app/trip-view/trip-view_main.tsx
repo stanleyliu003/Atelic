@@ -1,6 +1,6 @@
 import { Colors } from '../../constants/Colors';
-import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import { useNavigation, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert, AppState, Animated, PanResponder, Dimensions } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { encodePolyline } from '../../src/utils/polyline';
@@ -102,10 +102,26 @@ export default function TripViewMain() {
     const [showUpdateNotification, setShowUpdateNotification] = useState(false);
     const [remoteUpdatedBy, setRemoteUpdatedBy] = useState<string | null>(null);
 
+    // Track screen focus state for subscription management
+    const [isScreenFocused, setIsScreenFocused] = useState(true);
+
     // Keep tripIdRef in sync with tripId state
     useEffect(() => {
         tripIdRef.current = tripId;
     }, [tripId]);
+
+    // Track screen focus to control subscription
+    useFocusEffect(
+        useCallback(() => {
+            console.log('[trip-view_main] Screen focused - enabling subscription');
+            setIsScreenFocused(true);
+
+            return () => {
+                console.log('[trip-view_main] Screen unfocused - disabling subscription');
+                setIsScreenFocused(false);
+            };
+        }, [])
+    );
 
     // Keep versionRef in sync with context version
     useEffect(() => {
@@ -1072,9 +1088,14 @@ export default function TripViewMain() {
 
     // Real-time subscription for trip updates
     useEffect(() => {
-        // Only subscribe if we have a tripId (viewers can subscribe for read-only updates)
+        // Only subscribe if we have a tripId AND screen is focused
         if (!tripId) {
             console.log('[trip-view_main] Skipping subscription - no tripId');
+            return;
+        }
+
+        if (!isScreenFocused) {
+            console.log('[trip-view_main] Skipping subscription - screen not focused');
             return;
         }
 
@@ -1127,7 +1148,7 @@ export default function TripViewMain() {
             console.log('[trip-view_main] Unsubscribing from trip updates');
             subscription.unsubscribe();
         };
-    }, [tripId, currentUserID, currentUserRole]);
+    }, [tripId, currentUserID, currentUserRole, isScreenFocused]);
 
     // Get current user ID for collaboration features
     useEffect(() => {
