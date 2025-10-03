@@ -781,10 +781,14 @@ export default function TripViewMain() {
                 tripIdRef.current = currentTripId;
             }
 
+            // Preserve original createdAt for existing trips, generate only for new trips
             let tripCreatedAt = createdAt;
             if (!tripCreatedAt) {
                 tripCreatedAt = new Date().toISOString();
                 setCreatedAt(tripCreatedAt);
+                console.log('[trip-view_main] Generated new createdAt:', tripCreatedAt);
+            } else {
+                console.log('[trip-view_main] Using existing createdAt:', tripCreatedAt);
             }
 
             const tripData = {
@@ -813,8 +817,12 @@ export default function TripViewMain() {
             let collaboratorsToSave;
             let ownerUserID; // This will be used as the partition key in DynamoDB
 
-            if (!createdAt || !tripId) {
+            // Check if this is a truly NEW trip (no tripId AND no collaborators in context)
+            const isBrandNewTrip = !tripId && collaborators.length === 0;
+
+            if (isBrandNewTrip) {
                 // NEW TRIP: Current user becomes owner
+                console.log('[trip-view_main] Brand new trip - initializing owner as sole collaborator');
                 ownerUserID = currentUserID;
                 collaboratorsToSave = [{
                     email: currentUserEmail,
@@ -824,7 +832,10 @@ export default function TripViewMain() {
                     addedBy: currentUserName
                 }];
             } else {
-                // EXISTING TRIP WITH COLLABORATORS: Find the owner's userID
+                // EXISTING TRIP: Preserve ALL collaborators
+                console.log('[trip-view_main] Existing trip - preserving all collaborators:', collaborators.length);
+
+                // Find the owner's userID
                 const owner = collaborators.find(c => c.role === 'owner');
                 if (!owner) {
                     console.error('[trip-view_main] No owner found in collaborators');
@@ -832,8 +843,8 @@ export default function TripViewMain() {
                     return;
                 }
                 ownerUserID = owner.userID; // Always use owner's userID as partition key
-                
-                // Use existing collaborators (sanitized)
+
+                // Use existing collaborators (sanitized) - PRESERVE ALL
                 collaboratorsToSave = collaborators.map(collaborator => ({
                     email: collaborator.email,
                     fullName: collaborator.fullName,
@@ -865,9 +876,18 @@ export default function TripViewMain() {
                 setTripId(currentTripId);
             }
 
-            // Update local collaborators state after successful save for new trips
-            if (!createdAt || collaborators.length === 0) {
+            // ALWAYS update createdAt if it wasn't set (prevents re-generating on next save)
+            if (!createdAt) {
+                setCreatedAt(tripCreatedAt);
+            }
+
+            // Update local collaborators state after successful save
+            // For new trips OR if collaborators were somehow lost
+            if (isBrandNewTrip || collaborators.length === 0) {
+                console.log('[trip-view_main] Updating local collaborators state');
                 setCollaborators(collaboratorsToSave);
+            } else {
+                console.log('[trip-view_main] Collaborators already set, skipping update');
             }
 
         } catch (error: any) {
