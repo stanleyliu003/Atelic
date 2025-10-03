@@ -32,16 +32,27 @@ exports.handler = async (event) => {
     wishlist: input.wishlist,
     tripPhotoReference: input.tripPhotoReference,
     createdAt: input.createdAt,
-    collaborators: input.collaborators || []
+    collaborators: input.collaborators || [],
+    version: input.version || 1,
+    updatedAt: input.updatedAt || new Date().toISOString(),
+    lastUpdatedBy: input.lastUpdatedBy || 'unknown'
   };
 
   console.log('item to put:', item);
 
-  // Store in DynamoDB
+  // Store in DynamoDB with optimistic locking (if version provided)
   const params = {
     TableName: process.env.STORAGE_TRIPSTORAGE_NAME,
     Item: item,
   };
+
+  // Add conditional expression for version checking if version > 1
+  if (input.version && input.version > 1) {
+    params.ConditionExpression = 'attribute_not_exists(version) OR version = :expectedVersion';
+    params.ExpressionAttributeValues = {
+      ':expectedVersion': input.version - 1
+    };
+  }
 
   try {
     await docClient.send(new PutCommand(params));
@@ -54,10 +65,19 @@ exports.handler = async (event) => {
       selectedCity: input.selectedCity,
       tripPhotoReference: input.tripPhotoReference,
       createdAt: item.createdAt,
-      collaborators: item.collaborators
+      collaborators: item.collaborators,
+      version: item.version,
+      updatedAt: item.updatedAt,
+      lastUpdatedBy: item.lastUpdatedBy
     };
   } catch (error) {
     console.error('DynamoDB put error:', error);
+
+    // Check if it's a conditional check failure (version conflict)
+    if (error.name === 'ConditionalCheckFailedException') {
+      throw new Error('Version conflict: Trip was updated by another user. Please reload and try again.');
+    }
+
     throw new Error('Failed to save trip');
   }
 };

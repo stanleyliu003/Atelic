@@ -1,15 +1,19 @@
 {
   "lambdaLayers": [],
   "permissions": {
-    "auth": {
-      "amplifybackend59ccdbf8": [
-        "read"
-      ]
-    },
     "api": {
       "WishListAPI": [
         "Query",
-        "Mutation"
+        "Mutation",
+        "Subscription"
+      ]
+    },
+    "auth": {
+      "amplifybackend59ccdbf8": [
+        "create",
+        "read",
+        "update",
+        "delete"
       ]
     },
     "storage": {

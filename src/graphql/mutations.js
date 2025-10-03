@@ -80,6 +80,9 @@ export const createTrip = /* GraphQL */ `
         addedBy
         __typename
       }
+      version
+      updatedAt
+      lastUpdatedBy
       __typename
     }
   }
@@ -149,6 +152,9 @@ export const addCollaborator = /* GraphQL */ `
         addedBy
         __typename
       }
+      version
+      updatedAt
+      lastUpdatedBy
       __typename
     }
   }
@@ -194,6 +200,9 @@ export const removeCollaborator = /* GraphQL */ `
         addedBy
         __typename
       }
+      version
+      updatedAt
+      lastUpdatedBy
       __typename
     }
   }
@@ -247,6 +256,9 @@ export const updateCollaboratorRole = /* GraphQL */ `
         addedBy
         __typename
       }
+      version
+      updatedAt
+      lastUpdatedBy
       __typename
     }
   }

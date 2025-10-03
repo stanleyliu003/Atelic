@@ -18,9 +18,29 @@ import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
 import { fetchRoutePolyline, RouteData } from '../../src/services/getRoute_graphQL_call';
 import { optimizeRouteWithHaversine } from '../../src/components/trip-view/logic/optimize_route';
 import { Activity, TabType } from '../../src/types/activity.types';
-import { API, Auth } from 'aws-amplify';
+import { API, Auth, graphqlOperation } from 'aws-amplify';
 import { createTrip } from '../../src/graphql/mutations';
+import { retrieveTripFromCloud } from '../../src/services/lambdaService';
 import Entypo from '@expo/vector-icons/Entypo';
+
+// GraphQL subscription for real-time trip updates
+const onTripUpdated = /* GraphQL */ `
+    subscription OnTripUpdated($tripId: String!) {
+        onTripUpdated(tripId: $tripId) {
+            tripId
+            version
+            updatedAt
+            lastUpdatedBy
+            collaborators {
+                email
+                fullName
+                userID
+                role
+                addedBy
+            }
+        }
+    }
+`;
 
 
 export default function TripViewMain() {
@@ -74,6 +94,11 @@ export default function TripViewMain() {
 
     // Timeout ref for debouncing autosave
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Version tracking for optimistic locking and real-time updates
+    const [currentVersion, setCurrentVersion] = useState<number>(1);
+    const [showUpdateNotification, setShowUpdateNotification] = useState(false);
+    const [remoteUpdatedBy, setRemoteUpdatedBy] = useState<string | null>(null);
 
     // Keep tripIdRef in sync with tripId state
     useEffect(() => {
@@ -688,6 +713,35 @@ export default function TripViewMain() {
         setSearchQuery('');
     };
 
+    // Handler to reload trip with latest changes from remote
+    const handleReloadTrip = async () => {
+        try {
+            console.log('[trip-view_main] Reloading trip with latest changes');
+
+            // Get owner's userID from collaborators
+            const owner = collaborators.find(c => c.role === 'owner');
+            if (!owner) {
+                Alert.alert('Error', 'Unable to reload trip: Owner information missing');
+                return;
+            }
+
+            // Fetch latest trip data
+            const updatedTrip = await retrieveTripFromCloud(owner.userID, tripId);
+
+            if (updatedTrip) {
+                // Restore trip data into context
+                restoreTripFromObject(updatedTrip, currentUserID);
+                setCurrentVersion(updatedTrip.version || currentVersion + 1);
+                setShowUpdateNotification(false);
+                Alert.alert('Success', 'Trip updated with latest changes');
+                console.log('[trip-view_main] Trip reloaded successfully');
+            }
+        } catch (error) {
+            console.error('[trip-view_main] Error reloading trip:', error);
+            Alert.alert('Error', 'Failed to reload trip. Please try again.');
+        }
+    };
+
 
     // Reset shouldScrollToActive after it's been used
     React.useEffect(() => {
@@ -854,22 +908,32 @@ export default function TripViewMain() {
                 }));
             }
 
-            // Add OWNER's userID and collaborators to trip data
+            // Add OWNER's userID, collaborators, and version tracking to trip data
             // This ensures we always use the owner's userID as the partition key in DynamoDB
             const tripDataWithUser = {
                 ...tripData,
                 userID: ownerUserID, // Always use owner's userID, not current user's userID
-                collaborators: collaboratorsToSave
+                collaborators: collaboratorsToSave,
+                version: currentVersion + 1, // Increment version for optimistic locking
+                updatedAt: new Date().toISOString(),
+                lastUpdatedBy: currentUserEmail // Track who made the update
             };
 
-            console.log('[trip-view_main] Saving trip with user data:');
+            console.log('[trip-view_main] Saving trip with version:', tripDataWithUser.version);
+            console.log('[trip-view_main] Updated by:', tripDataWithUser.lastUpdatedBy);
 
             // Make the API call (now using public auth)
-            const result = await API.graphql({
+            const result: any = await API.graphql({
                 query: createTrip,
                 variables: { input: tripDataWithUser }
             });
             console.log('[trip-view_main] Trip saved successfully:', result);
+
+            // Update local version after successful save
+            if (result.data?.createTrip?.version) {
+                setCurrentVersion(result.data.createTrip.version);
+                console.log('[trip-view_main] Version updated to:', result.data.createTrip.version);
+            }
 
             // ALWAYS update tripId if it wasn't set (prevents duplicate generation on next save)
             if (!tripId) {
@@ -892,6 +956,28 @@ export default function TripViewMain() {
 
         } catch (error: any) {
             console.error('[trip-view_main] Error saving trip - Full error:', JSON.stringify(error, null, 2));
+
+            // Check for version conflict error
+            if (error.errors && error.errors.some((err: any) =>
+                err.message && err.message.includes('Version conflict'))) {
+                // Version conflict detected - another user updated the trip
+                console.error('[trip-view_main] Version conflict detected');
+                Alert.alert(
+                    'Trip Updated',
+                    'This trip was updated by another user. Please reload to see the latest changes.',
+                    [
+                        {
+                            text: 'Reload Now',
+                            onPress: handleReloadTrip
+                        },
+                        {
+                            text: 'Cancel',
+                            style: 'cancel'
+                        }
+                    ]
+                );
+                return; // Don't throw, handled gracefully
+            }
 
             // More detailed error logging
             if (error.errors) {
@@ -960,6 +1046,57 @@ export default function TripViewMain() {
             subscription?.remove();
         };
     }, [tripId, activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt, currentUserRole]);
+
+    // Real-time subscription for trip updates
+    useEffect(() => {
+        // Only subscribe if we have a tripId (viewers can subscribe for read-only updates)
+        if (!tripId) {
+            console.log('[trip-view_main] Skipping subscription - no tripId');
+            return;
+        }
+
+        console.log('[trip-view_main] Subscribing to real-time updates for trip:', tripId);
+
+        const subscription = (API.graphql(
+            graphqlOperation(onTripUpdated, { tripId })
+        ) as any).subscribe({
+            next: ({ value }: any) => {
+                console.log('[trip-view_main] Real-time update received', JSON.stringify(value, null, 2));
+
+                const updatedTrip = value?.data?.onTripUpdated;
+
+                // Null check - subscription may fire without data
+                if (!updatedTrip) {
+                    console.log('[trip-view_main] Received subscription event with no data, ignoring');
+                    return;
+                }
+
+                console.log('[trip-view_main] Updated by:', updatedTrip.lastUpdatedBy);
+                console.log('[trip-view_main] New version:', updatedTrip.version);
+
+                // Don't process our own updates (avoid infinite loop)
+                if (updatedTrip.lastUpdatedBy === currentUserID) {
+                    console.log('[trip-view_main] Ignoring own update');
+                    return;
+                }
+
+                // Update detected from another collaborator
+                setCurrentVersion(updatedTrip.version);
+                setRemoteUpdatedBy(updatedTrip.lastUpdatedBy);
+                setShowUpdateNotification(true);
+
+                console.log('[trip-view_main] Showing update notification from:', updatedTrip.lastUpdatedBy);
+            },
+            error: (error: any) => {
+                console.error('[trip-view_main] Subscription error:', error);
+            }
+        });
+
+        return () => {
+            console.log('[trip-view_main] Unsubscribing from trip updates');
+            subscription.unsubscribe();
+        };
+    }, [tripId, currentUserID, currentUserRole]);
 
     // Get current user ID for collaboration features
     useEffect(() => {
@@ -1043,6 +1180,31 @@ export default function TripViewMain() {
                     handleShareTrip();
                 }}
             />
+
+            {/* Real-time update notification banner */}
+            {showUpdateNotification && remoteUpdatedBy && (
+                <View style={styles.updateBanner}>
+                    <View style={styles.updateContent}>
+                        <Text style={styles.updateText}>
+                            {remoteUpdatedBy} updated this trip
+                        </Text>
+                        <View style={styles.updateActions}>
+                            <TouchableOpacity
+                                style={styles.reloadButton}
+                                onPress={handleReloadTrip}
+                            >
+                                <Text style={styles.reloadButtonText}>Reload</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.dismissButton}
+                                onPress={() => setShowUpdateNotification(false)}
+                            >
+                                <Text style={styles.dismissText}>✕</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            )}
 
             <Animated.View style={[
                 styles.container,
@@ -1356,5 +1518,56 @@ const styles = StyleSheet.create({
     },
     wishlistContent: {
         paddingBottom: 20,
+    },
+    updateBanner: {
+        position: 'absolute',
+        top: 120,
+        left: 20,
+        right: 20,
+        backgroundColor: Colors.PRIMARY,
+        borderRadius: 12,
+        padding: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 8,
+        zIndex: 999,
+    },
+    updateContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    updateText: {
+        color: 'white',
+        fontFamily: 'outfit',
+        fontSize: 15,
+        flex: 1,
+        marginRight: 12,
+    },
+    updateActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    reloadButton: {
+        backgroundColor: 'white',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 6,
+    },
+    reloadButtonText: {
+        color: Colors.PRIMARY,
+        fontFamily: 'outfit-bold',
+        fontSize: 14,
+    },
+    dismissButton: {
+        padding: 4,
+    },
+    dismissText: {
+        color: 'white',
+        fontSize: 20,
+        fontFamily: 'outfit-bold',
     },
 });

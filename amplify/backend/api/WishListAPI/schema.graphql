@@ -168,6 +168,9 @@
      tripPhotoReference: String
      createdAt: String
      collaborators: [Collaborator!]!
+     version: Int
+     updatedAt: String
+     lastUpdatedBy: String
    }
 
    type TripSummary {
@@ -192,6 +195,12 @@
      addCollaborator(tripId: String!, userID: String!, userEmail: String!, fullName: String!, role: CollaboratorRole!, addedBy: String): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
      removeCollaborator(tripId: String!, userEmail: String!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
      updateCollaboratorRole(tripId: String!, userEmail: String!, role: CollaboratorRole!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
+   }
+
+   type Subscription {
+     onTripUpdated(tripId: String!): Trip
+       @aws_subscribe(mutations: ["createTrip", "addCollaborator", "removeCollaborator", "updateCollaboratorRole"])
+       @auth(rules: [{ allow: public }])
    }
 
    input ActivityInput {
@@ -241,6 +250,9 @@
      tripPhotoReference: String
      createdAt: String
      collaborators: [CollaboratorInput!]!
+     version: Int
+     updatedAt: String
+     lastUpdatedBy: String
    }
 
 

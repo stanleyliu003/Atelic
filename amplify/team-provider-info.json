@@ -112,7 +112,7 @@
         },
         "CreateTripStorage": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/CreateTripStorage-6a3946774a595474447a-build.zip"
+          "s3Key": "amplify-builds/CreateTripStorage-674751754e7371697675-build.zip"
         },
         "GetRoute": {
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
