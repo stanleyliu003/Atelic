@@ -764,7 +764,6 @@ export default function TripViewMain() {
                 versionRef.current = cloudVersion;
 
                 setShowUpdateNotification(false);
-                Alert.alert('Success', `Trip updated to version ${cloudVersion}`);
                 console.log(`[trip-view_main] ✅ Trip reloaded - Version: ${cloudVersion}, Ref synced: ${versionRef.current}`);
             }
         } catch (error) {
