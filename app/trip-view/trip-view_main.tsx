@@ -902,7 +902,15 @@ export default function TripViewMain() {
     useEffect(() => {
         const handleAppStateChange = (nextAppState: string) => {
             if (nextAppState === 'background') {
-                console.log('[trip-view_main] App going to background - scheduling autosave');
+                console.log('[trip-view_main] App going to background - checking autosave eligibility');
+
+                // Only autosave for owners and editors, NOT viewers
+                if (currentUserRole === 'viewer') {
+                    console.log('[trip-view_main] User is viewer, skipping autosave');
+                    return;
+                }
+
+                console.log('[trip-view_main] User has edit permissions, scheduling autosave');
 
                 // Clear any pending autosave
                 if (saveTimeoutRef.current) {
@@ -931,7 +939,7 @@ export default function TripViewMain() {
             }
             subscription?.remove();
         };
-    }, [tripId, activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt]);
+    }, [tripId, activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt, currentUserRole]);
 
     // Get current user ID for collaboration features
     useEffect(() => {
