@@ -124,6 +124,9 @@ export const getUserTripsDetailed = /* GraphQL */ `
         addedBy
         __typename
       }
+      version
+      updatedAt
+      lastUpdatedBy
       __typename
     }
   }

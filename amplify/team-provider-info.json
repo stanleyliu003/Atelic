@@ -134,7 +134,7 @@
         },
         "getUserTrips": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/getUserTrips-764c4e66335057694530-build.zip"
+          "s3Key": "amplify-builds/getUserTrips-795971546a474e4b5944-build.zip"
         },
         "manageCollaborators": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",

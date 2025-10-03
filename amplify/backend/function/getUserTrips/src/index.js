@@ -36,7 +36,7 @@ exports.handler = async (event) => {
     if (result.Item) {
       console.log('Retrieved trip as owner:', JSON.stringify(result.Item));
 
-      // Return the complete trip data including tripPhotoReference and collaborators
+      // Return the complete trip data including tripPhotoReference, collaborators, and version
       return {
         tripId: result.Item.tripID,
         days: result.Item.days || [],
@@ -46,6 +46,9 @@ exports.handler = async (event) => {
         tripPhotoReference: result.Item.tripPhotoReference,
         createdAt: result.Item.createdAt,
         collaborators: result.Item.collaborators || [],
+        version: result.Item.version || 1,
+        updatedAt: result.Item.updatedAt,
+        lastUpdatedBy: result.Item.lastUpdatedBy,
       };
     }
 
@@ -80,6 +83,9 @@ exports.handler = async (event) => {
               tripPhotoReference: item.tripPhotoReference,
               createdAt: item.createdAt,
               collaborators: item.collaborators || [],
+              version: item.version || 1,
+              updatedAt: item.updatedAt,
+              lastUpdatedBy: item.lastUpdatedBy,
             };
           }
         }

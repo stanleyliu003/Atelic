@@ -49,6 +49,11 @@ export const CreateTripProvider = ({ children }) => {
     const [currentUserRole, setCurrentUserRole] = useState(null);
     const [collaborators, setCollaborators] = useState([]);
 
+    // Version tracking for optimistic locking
+    const [version, setVersion] = useState(1);
+    const [updatedAt, setUpdatedAt] = useState(null);
+    const [lastUpdatedBy, setLastUpdatedBy] = useState(null);
+
     // Permission helpers
     const canEdit = () => ['owner','editor'].includes(currentUserRole);
     const canInviteEditors = () => currentUserRole === 'owner';
@@ -142,12 +147,21 @@ export const CreateTripProvider = ({ children }) => {
         if (trip.tripPhotoReference) {
             setTripPhotoReference(trip.tripPhotoReference);
         }
+        // Restore createdAt timestamp
+        if (trip.createdAt) {
+            setCreatedAt(trip.createdAt);
+        }
         // Restore collaboration state
         setCollaborators(trip.collaborators || []);
         if (currentUserID) {
             const userRole = getUserRoleInTrip(trip, currentUserID);
             setCurrentUserRole(userRole);
         }
+        // Restore version tracking fields
+        setVersion(trip.version || 1);
+        setUpdatedAt(trip.updatedAt || null);
+        setLastUpdatedBy(trip.lastUpdatedBy || null);
+        console.log('[CreateTripContext] Restored trip - createdAt:', trip.createdAt, 'version:', trip.version || 1);
     };
 
     const updateActivities = (newActivities) => {
@@ -220,6 +234,9 @@ export const CreateTripProvider = ({ children }) => {
         setTripPhotoReference('');
         setCollaborators([]);
         setCurrentUserRole(null);
+        setVersion(1);
+        setUpdatedAt(null);
+        setLastUpdatedBy(null);
     };
 
     // Load trip from cloud storage
@@ -545,6 +562,13 @@ export const CreateTripProvider = ({ children }) => {
         getOwner,
         getCurrentUser,
         getUserRoleInTrip,
+        // Version tracking for optimistic locking
+        version,
+        setVersion,
+        updatedAt,
+        setUpdatedAt,
+        lastUpdatedBy,
+        setLastUpdatedBy,
     };
 
     return (

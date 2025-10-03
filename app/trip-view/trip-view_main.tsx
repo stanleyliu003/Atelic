@@ -48,7 +48,7 @@ export default function TripViewMain() {
     const navigation = useNavigation();
     const params = useLocalSearchParams();
     const { restoreTrip } = params;
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference, collaborators, currentUserRole, setCollaborators, isOwner, searchActivities } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference, collaborators, currentUserRole, setCollaborators, isOwner, searchActivities, version, setVersion, updatedAt, setUpdatedAt, lastUpdatedBy, setLastUpdatedBy } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -95,8 +95,10 @@ export default function TripViewMain() {
     // Timeout ref for debouncing autosave
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Version tracking for optimistic locking and real-time updates
-    const [currentVersion, setCurrentVersion] = useState<number>(1);
+    // Version ref for immediate access (avoids async state issues)
+    const versionRef = useRef<number>(version);
+
+    // Real-time update notification state
     const [showUpdateNotification, setShowUpdateNotification] = useState(false);
     const [remoteUpdatedBy, setRemoteUpdatedBy] = useState<string | null>(null);
 
@@ -104,6 +106,12 @@ export default function TripViewMain() {
     useEffect(() => {
         tripIdRef.current = tripId;
     }, [tripId]);
+
+    // Keep versionRef in sync with context version
+    useEffect(() => {
+        versionRef.current = version;
+        console.log('[trip-view_main] Version ref synced:', version);
+    }, [version]);
 
     // Handler for scroll position changes
     const handleScrollPositionChange = (dayNumber: number, position: number) => {
@@ -716,7 +724,7 @@ export default function TripViewMain() {
     // Handler to reload trip with latest changes from remote
     const handleReloadTrip = async () => {
         try {
-            console.log('[trip-view_main] Reloading trip with latest changes');
+            console.log(`[trip-view_main] 🔄 Reloading trip - Current local version: ${version}`);
 
             // Get owner's userID from collaborators
             const owner = collaborators.find(c => c.role === 'owner');
@@ -729,15 +737,22 @@ export default function TripViewMain() {
             const updatedTrip = await retrieveTripFromCloud(owner.userID, tripId);
 
             if (updatedTrip) {
-                // Restore trip data into context
+                const cloudVersion = updatedTrip.version || 1;
+                console.log(`[trip-view_main] 📥 Retrieved from cloud - Version: ${cloudVersion}, Last updated by: ${updatedTrip.lastUpdatedBy}`);
+                console.log(`[trip-view_main] Version sync: ${versionRef.current} → ${cloudVersion}`);
+
+                // Restore trip data into context (includes version via restoreTripFromObject)
                 restoreTripFromObject(updatedTrip, currentUserID);
-                setCurrentVersion(updatedTrip.version || currentVersion + 1);
+
+                // Immediately sync versionRef to avoid race condition
+                versionRef.current = cloudVersion;
+
                 setShowUpdateNotification(false);
-                Alert.alert('Success', 'Trip updated with latest changes');
-                console.log('[trip-view_main] Trip reloaded successfully');
+                Alert.alert('Success', `Trip updated to version ${cloudVersion}`);
+                console.log(`[trip-view_main] ✅ Trip reloaded - Version: ${cloudVersion}, Ref synced: ${versionRef.current}`);
             }
         } catch (error) {
-            console.error('[trip-view_main] Error reloading trip:', error);
+            console.error('[trip-view_main] ❌ Error reloading trip:', error);
             Alert.alert('Error', 'Failed to reload trip. Please try again.');
         }
     };
@@ -910,16 +925,18 @@ export default function TripViewMain() {
 
             // Add OWNER's userID, collaborators, and version tracking to trip data
             // This ensures we always use the owner's userID as the partition key in DynamoDB
+            // Use versionRef.current for immediate access (not stale currentVersion state)
+            const nextVersion = versionRef.current + 1;
             const tripDataWithUser = {
                 ...tripData,
                 userID: ownerUserID, // Always use owner's userID, not current user's userID
                 collaborators: collaboratorsToSave,
-                version: currentVersion + 1, // Increment version for optimistic locking
+                version: nextVersion, // Increment version for optimistic locking
                 updatedAt: new Date().toISOString(),
                 lastUpdatedBy: currentUserEmail // Track who made the update
             };
 
-            console.log('[trip-view_main] Saving trip with version:', tripDataWithUser.version);
+            console.log(`[trip-view_main] 💾 Saving trip - Version: ${versionRef.current} → ${nextVersion}`);
             console.log('[trip-view_main] Updated by:', tripDataWithUser.lastUpdatedBy);
 
             // Make the API call (now using public auth)
@@ -929,10 +946,14 @@ export default function TripViewMain() {
             });
             console.log('[trip-view_main] Trip saved successfully:', result);
 
-            // Update local version after successful save
+            // Update context version after successful save and immediately sync ref
             if (result.data?.createTrip?.version) {
-                setCurrentVersion(result.data.createTrip.version);
-                console.log('[trip-view_main] Version updated to:', result.data.createTrip.version);
+                const savedVersion = result.data.createTrip.version;
+                setVersion(savedVersion);
+                setUpdatedAt(result.data.createTrip.updatedAt);
+                setLastUpdatedBy(result.data.createTrip.lastUpdatedBy);
+                versionRef.current = savedVersion; // Immediate sync to prevent race condition
+                console.log(`[trip-view_main] ✅ Save confirmed - Version: ${savedVersion}, Ref: ${versionRef.current}, Updated by: ${result.data.createTrip.lastUpdatedBy}`);
             }
 
             // ALWAYS update tripId if it wasn't set (prevents duplicate generation on next save)
@@ -961,10 +982,12 @@ export default function TripViewMain() {
             if (error.errors && error.errors.some((err: any) =>
                 err.message && err.message.includes('Version conflict'))) {
                 // Version conflict detected - another user updated the trip
-                console.error('[trip-view_main] Version conflict detected');
+                console.error(`[trip-view_main] ⚠️ VERSION CONFLICT - Attempted to save version ${versionRef.current + 1}, but trip was already updated by another user`);
+                console.error(`[trip-view_main] Local version ref: ${versionRef.current}, Local version context: ${version}, Attempted save version: ${versionRef.current + 1}`);
+
                 Alert.alert(
                     'Trip Updated',
-                    'This trip was updated by another user. Please reload to see the latest changes.',
+                    `This trip was updated by another user while you were editing. Your local version (${version}) is outdated. Please reload to see the latest changes.`,
                     [
                         {
                             text: 'Reload Now',
@@ -982,7 +1005,7 @@ export default function TripViewMain() {
             // More detailed error logging
             if (error.errors) {
                 error.errors.forEach((err: any, index: number) => {
-                    console.error(`[trip-view_main] Error ${index + 1}:`, {
+                    console.error(`[trip-view_main] ❌ Error ${index + 1}/${error.errors.length}:`, {
                         message: err.message,
                         errorType: err.errorType,
                         path: err.path,
@@ -1071,21 +1094,29 @@ export default function TripViewMain() {
                     return;
                 }
 
-                console.log('[trip-view_main] Updated by:', updatedTrip.lastUpdatedBy);
-                console.log('[trip-view_main] New version:', updatedTrip.version);
+                console.log(`[trip-view_main] 🔔 Remote update received - Version: ${updatedTrip.version}, Updated by: ${updatedTrip.lastUpdatedBy}`);
+                console.log(`[trip-view_main] Local version before update - Context: ${version}, Ref: ${versionRef.current}`);
 
                 // Don't process our own updates (avoid infinite loop)
-                if (updatedTrip.lastUpdatedBy === currentUserID) {
-                    console.log('[trip-view_main] Ignoring own update');
+                // Check if update is from current user OR if version hasn't actually changed
+                if (updatedTrip.lastUpdatedBy === currentUserID || updatedTrip.version === versionRef.current) {
+                    console.log(`[trip-view_main] Ignoring update - Same user: ${updatedTrip.lastUpdatedBy === currentUserID}, Same version: ${updatedTrip.version === versionRef.current}`);
                     return;
                 }
 
                 // Update detected from another collaborator
-                setCurrentVersion(updatedTrip.version);
+                console.log(`[trip-view_main] ✅ Version updated: ${versionRef.current} → ${updatedTrip.version}`);
+
+                // Update context version and immediately sync ref to avoid race condition
+                setVersion(updatedTrip.version);
+                setUpdatedAt(updatedTrip.updatedAt);
+                setLastUpdatedBy(updatedTrip.lastUpdatedBy);
+                versionRef.current = updatedTrip.version; // Immediate sync
+
                 setRemoteUpdatedBy(updatedTrip.lastUpdatedBy);
                 setShowUpdateNotification(true);
 
-                console.log('[trip-view_main] Showing update notification from:', updatedTrip.lastUpdatedBy);
+                console.log(`[trip-view_main] Showing update notification from: ${updatedTrip.lastUpdatedBy}`);
             },
             error: (error: any) => {
                 console.error('[trip-view_main] Subscription error:', error);
