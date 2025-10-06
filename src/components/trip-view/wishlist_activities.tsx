@@ -31,6 +31,7 @@ export function WishlistActivities({
       variant="selectable"
       hideRouteInfo={true}
       wishlistActivities={wishlistActivities}
+      useInlineSelectionLayout={true}
     />
   );
 }

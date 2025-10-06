@@ -29,6 +29,7 @@ interface ActivityCardProps {
   duplicateActivityIndicator?: boolean; // New prop to indicate activities already in wishlist
   enableDragDrop?: boolean; // New prop to show grip icon for drag & drop
   onGripPress?: () => void; // Callback when grip icon is pressed
+  useInlineSelectionLayout?: boolean; // Use inline layout for wishlist (not absolute positioned)
 }
 
 // Helper function to convert our travel modes to Google Maps travel modes
@@ -76,7 +77,8 @@ export function ActivityCard({
   hideRouteInfo = false,
   duplicateActivityIndicator = false,
   enableDragDrop = false,
-  onGripPress
+  onGripPress,
+  useInlineSelectionLayout = false
 }: ActivityCardProps) {
 
   const handlePress = () => {
@@ -156,8 +158,8 @@ export function ActivityCard({
       >
         <View style={styles.activityContent}>
           {showSelectionIndicator && (
-            <View style={styles.selectionAndGripContainer}>
-              <View style={styles.selectionContainer}>
+            <View style={useInlineSelectionLayout ? styles.selectionContainerInline : styles.selectionAndGripContainer}>
+              <View style={useInlineSelectionLayout ? styles.selectionIndicatorWrapper : styles.selectionContainer}>
                 <View style={[
                   styles.selectionIndicator,
                   (isSelected || duplicateActivityIndicator) && styles.selectedIndicator
@@ -171,7 +173,7 @@ export function ActivityCard({
                   activeOpacity={1}
                 />
               </View>
-              {enableDragDrop && (
+              {enableDragDrop && !useInlineSelectionLayout && (
                 <TouchableOpacity
                   style={styles.gripContainer}
                   onPressIn={onGripPress}
@@ -185,7 +187,7 @@ export function ActivityCard({
           )}
 
           <TouchableOpacity
-            style={styles.cardContentArea}
+            style={[styles.cardContentArea, useInlineSelectionLayout && styles.cardContentAreaInline]}
             onPress={onDescriptionCardPress ? handleDescriptionCardPress : (!showSelectionIndicator ? handlePress : undefined)}
             onLongPress={handleLongPress}
             disabled={disabled}
@@ -291,6 +293,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingLeft: 40,
   },
+  cardContentAreaInline: {
+    paddingLeft: 0, // Remove padding for inline layout
+  },
   selectionAndGripContainer: {
     position: 'absolute',
     left: -10,
@@ -301,9 +306,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 10,
   },
+  selectionContainerInline: {
+    // Inline layout for wishlist (original behavior)
+    marginRight: 12,
+  },
   selectionContainer: {
     width: 24,
     height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  selectionIndicatorWrapper: {
+    width: 24,
+    height: 24,
+    marginRight: 2,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',

@@ -143,6 +143,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   routeLoading?: boolean; // Loading state for route recalculation
   hideRouteInfo?: boolean; // Hide route info cards
   wishlistActivities?: Activity[]; // Activities already in the wishlist for "On list" tag
+  useInlineSelectionLayout?: boolean; // Use inline layout for wishlist (not absolute positioned)
 }
 
 export function ActivityList({
@@ -165,7 +166,8 @@ export function ActivityList({
   onReorder,
   routeLoading = false,
   hideRouteInfo = false,
-  wishlistActivities = []
+  wishlistActivities = [],
+  useInlineSelectionLayout = false
 }: EnhancedActivityListProps) {
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
@@ -263,6 +265,7 @@ export function ActivityList({
         index,
         hideRouteInfo,
         duplicateActivityIndicator: isInWishlist,
+        useInlineSelectionLayout,
       };
 
       if (enableDragDrop && scrollable) {
