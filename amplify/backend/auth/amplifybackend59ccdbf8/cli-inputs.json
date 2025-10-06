@@ -11,18 +11,18 @@
       "SMS Text Message"
     ],
     "smsAuthenticationMessage": "Your authentication code is {####}",
-    "smsVerificationMessage": "Your SMS verification message must include '{####}'",
-    "emailVerificationSubject": "Your Atelic Verification Code",
-    "emailVerificationMessage": "Welcome to Atelic! To get started, enter your verification code in the app: {####}",
+    "smsVerificationMessage": "Your verification code is {####}",
+    "emailVerificationSubject": "Your verification code",
+    "emailVerificationMessage": "Your verification code is {####}",
     "defaultPasswordPolicy": true,
-    "passwordPolicyMinLength": "8",
+    "passwordPolicyMinLength": 8,
     "passwordPolicyCharacters": [],
     "requiredAttributes": [
       "email"
     ],
     "aliasAttributes": [],
     "userpoolClientGenerateSecret": false,
-    "userpoolClientRefreshTokenValidity": "30",
+    "userpoolClientRefreshTokenValidity": 30,
     "userpoolClientWriteAttributes": [
       "birthdate",
       "gender",
@@ -47,7 +47,7 @@
     "sharedId": "59ccdbf8",
     "resourceName": "amplifybackend59ccdbf8",
     "authSelections": "userPoolOnly",
-    "useDefault": "manual",
+    "useDefault": "defaultSocial",
     "usernameAttributes": [
       "email"
     ],
@@ -72,11 +72,17 @@
     "userPoolGroups": false,
     "adminQueries": false,
     "triggers": {},
-    "hostedUI": false,
+    "hostedUI": true,
     "parentStack": {
       "Ref": "AWS::StackId"
     },
     "permissions": [],
+    "hostedUIDomainName": "atelictravel",
+    "authProvidersUserPool": [
+      "Google"
+    ],
+    "hostedUIProviderMeta": "[{\"ProviderName\":\"Google\",\"authorize_scopes\":\"openid email profile\",\"AttributeMapping\":{\"email\":\"email\",\"username\":\"sub\"}}]",
+    "oAuthMetadata": "{\"AllowedOAuthFlows\":[\"code\"],\"AllowedOAuthScopes\":[\"phone\",\"email\",\"openid\",\"profile\",\"aws.cognito.signin.user.admin\"],\"CallbackURLs\":[\"https://atelictravel.auth.us-east-1.amazoncognito.com/\"],\"LogoutURLs\":[\"https://atelictravel.auth.us-east-1.amazoncognito.com/\"]}",
     "authProviders": []
   }
 }
