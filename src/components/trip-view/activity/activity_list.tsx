@@ -396,8 +396,14 @@ function DraggableActivityCard({
     setIsGripPressed(true);
   };
 
+  const longPressGesture = Gesture.LongPress()
+    .minDuration(200) // 1.5 seconds
+    .onStart(() => {
+      runOnJS(setIsGripPressed)(true);
+    });
+
   const panGesture = Gesture.Pan()
-    .enabled(isGripPressed) // Only enable pan gesture when grip is pressed
+    .enabled(isGripPressed) // Only enable pan gesture when grip is pressed or long press activated
     .minDistance(5) // Reduced threshold since grip is intentional
     .onStart(() => {
       isDragging.value = true;
@@ -478,9 +484,11 @@ function DraggableActivityCard({
     } as any;
   });
 
+  const composedGesture = Gesture.Simultaneous(longPressGesture, panGesture);
+
   return (
     <View style={[styles.draggableContainer, isDraggingThisItem && styles.draggingContainer]}>
-      <GestureDetector gesture={panGesture}>
+      <GestureDetector gesture={composedGesture}>
         <Animated.View style={[animatedStyle, styles.draggableCard]}>
           <ActivityCard
             activity={activity}
