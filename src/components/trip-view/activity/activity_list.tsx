@@ -375,6 +375,7 @@ function DraggableActivityCard({
   const isDragging = useSharedValue(false);
   const scale = useSharedValue(1);
   const zIndex = useSharedValue(0);
+  const [isGripPressed, setIsGripPressed] = React.useState(false);
 
   // Track the original position and target position
   const originalIndex = useSharedValue(index);
@@ -391,10 +392,13 @@ function DraggableActivityCard({
     }
   }, [index]);
 
-  
+  const handleGripPress = () => {
+    setIsGripPressed(true);
+  };
 
   const panGesture = Gesture.Pan()
-    .minDistance(10) // Require 10px movement before pan gesture activates
+    .enabled(isGripPressed) // Only enable pan gesture when grip is pressed
+    .minDistance(5) // Reduced threshold since grip is intentional
     .onStart(() => {
       isDragging.value = true;
       scale.value = withSpring(1.05);
@@ -436,6 +440,7 @@ function DraggableActivityCard({
         isDragging.value = false;
         zIndex.value = 0;
         runOnJS(onDragEnd)();
+        runOnJS(setIsGripPressed)(false); // Reset grip state
       } else {
 
         // Reset target index since we're not reordering
@@ -449,6 +454,7 @@ function DraggableActivityCard({
         isDragging.value = false;
         zIndex.value = 0;
         runOnJS(onDragEnd)();
+        runOnJS(setIsGripPressed)(false); // Reset grip state
       }
     });
 
@@ -493,6 +499,8 @@ function DraggableActivityCard({
             travelMode={travelMode}
             hideRouteInfo={true} // Hide route info in draggable card - rendered separately below
             duplicateActivityIndicator={duplicateActivityIndicator}
+            enableDragDrop={true}
+            onGripPress={handleGripPress}
           />
         </Animated.View>
       </GestureDetector>

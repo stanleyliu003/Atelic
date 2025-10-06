@@ -27,6 +27,8 @@ interface ActivityCardProps {
   travelMode?: string; // Travel mode from route calculation (DRIVE, TRANSIT, WALK)
   hideRouteInfo?: boolean; // New prop to hide route info during drag operations
   duplicateActivityIndicator?: boolean; // New prop to indicate activities already in wishlist
+  enableDragDrop?: boolean; // New prop to show grip icon for drag & drop
+  onGripPress?: () => void; // Callback when grip icon is pressed
 }
 
 // Helper function to convert our travel modes to Google Maps travel modes
@@ -72,7 +74,9 @@ export function ActivityCard({
   nextActivity,
   travelMode,
   hideRouteInfo = false,
-  duplicateActivityIndicator = false
+  duplicateActivityIndicator = false,
+  enableDragDrop = false,
+  onGripPress
 }: ActivityCardProps) {
 
   const handlePress = () => {
@@ -152,19 +156,31 @@ export function ActivityCard({
       >
         <View style={styles.activityContent}>
           {showSelectionIndicator && (
-            <View style={styles.selectionContainer}>
-              <View style={[
-                styles.selectionIndicator,
-                (isSelected || duplicateActivityIndicator) && styles.selectedIndicator
-              ]}>
-                {(isSelected || duplicateActivityIndicator) && <Text style={styles.checkmark}>✓</Text>}
+            <View style={styles.selectionAndGripContainer}>
+              <View style={styles.selectionContainer}>
+                <View style={[
+                  styles.selectionIndicator,
+                  (isSelected || duplicateActivityIndicator) && styles.selectedIndicator
+                ]}>
+                  {(isSelected || duplicateActivityIndicator) && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <TouchableOpacity
+                  style={styles.selectionTouchArea}
+                  onPress={handlePress}
+                  disabled={disabled || duplicateActivityIndicator}
+                  activeOpacity={1}
+                />
               </View>
-              <TouchableOpacity
-                style={styles.selectionTouchArea}
-                onPress={handlePress}
-                disabled={disabled || duplicateActivityIndicator}
-                activeOpacity={1}
-              />
+              {enableDragDrop && (
+                <TouchableOpacity
+                  style={styles.gripContainer}
+                  onPressIn={onGripPress}
+                  disabled={disabled}
+                  activeOpacity={0.7}
+                >
+                  <FontAwesome5 name="grip-horizontal" size={20} color="gray" />
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
@@ -274,13 +290,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  selectionAndGripContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginRight: 12,
+  },
   selectionContainer: {
     width: 24,
     height: 24,
-    marginRight: 12,
+    marginBottom: -5,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+  },
+  gripContainer: {
+    width: 24,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
   },
   selectionTouchArea: {
     position: 'absolute',
