@@ -29,7 +29,7 @@ export default function SignUp() {
    const OnCreateAccount = async () => {
      setError('');
      setIsLoading(true);
-     
+
      if (!email || !password || !fullName || !birthdate || !gender) {
        setError('Please fill out all fields.');
        setIsLoading(false);
@@ -75,6 +75,18 @@ export default function SignUp() {
          setError(err.message || 'Sign up failed. Please try again.');
        }
      } finally {
+       setIsLoading(false);
+     }
+   };
+
+   const onGoogleSignUp = async () => {
+     setError('');
+     setIsLoading(true);
+     try {
+       await Auth.federatedSignIn({ provider: 'Google' });
+     } catch (err) {
+       console.error('Google sign-up error:', err);
+       setError('Google sign-up failed. Please try again.');
        setIsLoading(false);
      }
    };
@@ -257,7 +269,7 @@ export default function SignUp() {
         ) : null}
 
         {/* Create Account Button */}
-          <View> 
+          <View>
             <TouchableOpacity
             onPress={OnCreateAccount}
             disabled={isLoading}
@@ -273,6 +285,38 @@ export default function SignUp() {
                textAlign:'center',
                fontFamily: 'outfit'
            }}> {isLoading ? 'Creating Account...' : 'Create Account'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Divider */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 30 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: Colors.GRAY }} />
+            <Text style={{ marginHorizontal: 10, fontFamily: 'outfit', color: Colors.GRAY }}>OR</Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: Colors.GRAY }} />
+          </View>
+
+          {/* Google Sign Up Button */}
+          <View>
+            <TouchableOpacity
+              onPress={onGoogleSignUp}
+              disabled={isLoading}
+              style={{
+                padding: 20,
+                backgroundColor: Colors.WHITE,
+                borderRadius: 15,
+                marginTop: 20,
+                borderWidth: 1,
+                borderColor: Colors.GRAY,
+                flexDirection: 'row',
+                justifyContent: 'center',
+                alignItems: 'center',
+                opacity: isLoading ? 0.7 : 1
+              }}>
+              <Text style={{
+                color: Colors.GRAY,
+                textAlign: 'center',
+                fontFamily: 'outfit'
+              }}>Continue with Google</Text>
             </TouchableOpacity>
           </View>
 
