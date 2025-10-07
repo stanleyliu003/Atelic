@@ -3,7 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Auth } from 'aws-amplify';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, ScrollView, Platform, Image } from 'react-native';
 
 export default function SignIn() {
   const navigation=useNavigation();
@@ -168,7 +168,7 @@ export default function SignIn() {
           {/* Divider */}
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 30 }}>
             <View style={{ flex: 1, height: 1, backgroundColor: Colors.GRAY }} />
-            <Text style={{ marginHorizontal: 10, fontFamily: 'outfit', color: Colors.GRAY }}>OR</Text>
+            <Text style={{ marginHorizontal: 10, fontFamily: 'outfit', color: Colors.GRAY }}>Or Login with</Text>
             <View style={{ flex: 1, height: 1, backgroundColor: Colors.GRAY }} />
           </View>
 
@@ -177,43 +177,14 @@ export default function SignIn() {
             <TouchableOpacity
               onPress={onGoogleSignIn}
               disabled={isLoading}
-              style={{
-                padding: 20,
-                backgroundColor: Colors.WHITE,
-                borderRadius: 15,
-                marginTop: 20,
-                borderWidth: 1,
-                borderColor: Colors.GRAY,
-                flexDirection: 'row',
-                justifyContent: 'center',
-                alignItems: 'center',
-                opacity: isLoading ? 0.7 : 1
-              }}>
-              <Text style={{
-                color: Colors.GRAY,
-                textAlign: 'center',
-                fontFamily: 'outfit'
-              }}>Continue with Google</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Create Account Button */}
-          <View>
-            <TouchableOpacity
-            onPress={()=>router.replace('/authorization/sign-up_index')}
-            style ={{
-              padding:20,
-              backgroundColor:Colors.WHITE,
-              borderRadius:15, //rounded corners
-              marginTop:20,
-              borderWidth:1,
-              borderColor: Colors.PRIMARY
-            }}>
-           <Text style = {{
-               color:Colors.PRIMARY,
-               textAlign:'center',
-               fontFamily: 'outfit'
-           }}> Don't have an account? Create Account </Text>
+              style={styles.googleButton}>
+              <Image
+                source={require('../../assets/Google_logo.webp')}
+                style={{
+                  width: 64,
+                  height: 64
+                }}
+              />
             </TouchableOpacity>
           </View>
 
@@ -231,5 +202,22 @@ const styles = StyleSheet.create({
       borderColor:Colors.GRAY,
       fontFamily:'outfit',
       marginTop: 5
+  },
+  googleButton:{
+    padding:20,
+    backgroundColor:Colors.WHITE,
+    borderRadius:15,
+    marginTop:40,
+    borderWidth:0.3,
+    borderColor:Colors.GRAY,
+    flexDirection:'row',
+    justifyContent:'center',
+    alignItems:'center',
+    position:'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   }
 })
