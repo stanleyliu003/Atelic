@@ -140,6 +140,7 @@ export function DaySchedule({
             }
           }}
           routeLoading={routeLoading}
+          useInlineSelectionLayout={true}
         />
 
         {/* SearchBar - visible after activities */}

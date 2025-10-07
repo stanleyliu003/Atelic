@@ -173,16 +173,6 @@ export function ActivityCard({
                   activeOpacity={1}
                 />
               </View>
-              {enableDragDrop && !useInlineSelectionLayout && (
-                <TouchableOpacity
-                  style={styles.gripContainer}
-                  onPressIn={onGripPress}
-                  disabled={disabled}
-                  activeOpacity={0.7}
-                >
-                  <FontAwesome5 name="grip-horizontal" size={20} color="gray" />
-                </TouchableOpacity>
-              )}
             </View>
           )}
 
@@ -324,12 +314,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-  },
-  gripContainer: {
-    width: 60,
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   selectionTouchArea: {
     position: 'absolute',

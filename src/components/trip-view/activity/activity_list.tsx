@@ -347,6 +347,7 @@ interface DraggableActivityCardProps {
   isDraggingThisItem: boolean;
   hideRouteInfo?: boolean;
   duplicateActivityIndicator?: boolean;
+  useInlineSelectionLayout?: boolean;
 }
 
 function DraggableActivityCard({
@@ -372,6 +373,7 @@ function DraggableActivityCard({
   isDraggingThisItem,
   hideRouteInfo = false,
   duplicateActivityIndicator = false,
+  useInlineSelectionLayout = false,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -512,6 +514,7 @@ function DraggableActivityCard({
             duplicateActivityIndicator={duplicateActivityIndicator}
             enableDragDrop={true}
             onGripPress={handleGripPress}
+            useInlineSelectionLayout={useInlineSelectionLayout}
           />
         </Animated.View>
       </GestureDetector>
