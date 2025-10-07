@@ -208,8 +208,9 @@ export default function Login() {
 
             {/* Sign In Link */}
             <TouchableOpacity
-                style={{ marginTop: 20 }}
+                style={{ marginTop: 20, padding: 15 }}
                 onPress={() => router.push('/authorization/sign-in_index')}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             >
                 <Text style={{
                     fontFamily: 'outfit',
