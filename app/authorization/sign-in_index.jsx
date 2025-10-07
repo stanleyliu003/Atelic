@@ -23,7 +23,7 @@ export default function SignIn() {
   const OnSignIn = async () => {
     setError('');
     setIsLoading(true);
-    
+
     if (!username || !password) {
       setError('Please enter both username and password.');
       setIsLoading(false);
@@ -32,7 +32,7 @@ export default function SignIn() {
 
     try {
       const user = await Auth.signIn(username, password);
-      
+
       if (user.challengeName === 'USER_UNCONFIRMED') {
         // User is not confirmed, redirect to confirm-signup
         router.replace('/authorization/confirm_sign-up_index?email=' + encodeURIComponent(username));
@@ -54,6 +54,18 @@ export default function SignIn() {
         setError(err.message || 'Sign in failed. Please try again.');
       }
     } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onGoogleSignIn = async () => {
+    setError('');
+    setIsLoading(true);
+    try {
+      await Auth.federatedSignIn({ provider: 'Google' });
+    } catch (err) {
+      console.error('Google sign-in error:', err);
+      setError('Google sign-in failed. Please try again.');
       setIsLoading(false);
     }
   };
@@ -153,9 +165,41 @@ export default function SignIn() {
             </TouchableOpacity>
           </View>
 
+          {/* Divider */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 30 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: Colors.GRAY }} />
+            <Text style={{ marginHorizontal: 10, fontFamily: 'outfit', color: Colors.GRAY }}>OR</Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: Colors.GRAY }} />
+          </View>
+
+          {/* Google Sign In Button */}
+          <View>
+            <TouchableOpacity
+              onPress={onGoogleSignIn}
+              disabled={isLoading}
+              style={{
+                padding: 20,
+                backgroundColor: Colors.WHITE,
+                borderRadius: 15,
+                marginTop: 20,
+                borderWidth: 1,
+                borderColor: Colors.GRAY,
+                flexDirection: 'row',
+                justifyContent: 'center',
+                alignItems: 'center',
+                opacity: isLoading ? 0.7 : 1
+              }}>
+              <Text style={{
+                color: Colors.GRAY,
+                textAlign: 'center',
+                fontFamily: 'outfit'
+              }}>Continue with Google</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Create Account Button */}
-          <View> 
-            <TouchableOpacity 
+          <View>
+            <TouchableOpacity
             onPress={()=>router.replace('/authorization/sign-up_index')}
             style ={{
               padding:20,
