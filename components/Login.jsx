@@ -4,6 +4,7 @@ import { Colors } from '../constants/Colors';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, AppState } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
 // Configure Amplify with enhanced settings
 Amplify.configure({
@@ -150,20 +151,16 @@ export default function Login() {
             }}
         />
         <View style = {styles.container}>
-           <Text style={{
-               fontSize:40,
-               fontFamily:'outfit-bold',
-               textAlign:'center',
-               marginTop:30
-           }}>Atelic</Text>
-
-           <Text style = {{
-                fontFamily:'outfit',
-                fontSize:17,
-                textAlign:'center',
-                color:Colors.GRAY,
-                marginTop:20,
-           }}>Where Travel Ideas Become Itineraries</Text>
+           <Image
+                source={require('../assets/logo_horizontal_transparent.png')}
+                style={{
+                    width: 750,
+                    height: 240,
+                    alignSelf: 'center',
+                    marginTop: -50,
+                    resizeMode: 'contain'
+                }}
+           />
 
            {/* Google Sign Up Button */}
            <TouchableOpacity
@@ -192,6 +189,15 @@ export default function Login() {
                 style={styles.emailButton}
                 onPress={() => router.push('/authorization/sign-up_index')}
             >
+                <Feather
+                    name="mail"
+                    size={24}
+                    color={Colors.PRIMARY}
+                    style={{
+                        position: 'absolute',
+                        left: 20
+                    }}
+                />
                 <Text style={{
                     color: Colors.PRIMARY,
                     textAlign: 'center',
@@ -232,7 +238,7 @@ const styles = StyleSheet.create({
     padding:10,
     backgroundColor:Colors.WHITE,
     borderRadius:15,
-    marginTop:60,
+    marginTop:-30,
     borderWidth:0.3,
     borderColor:Colors.GRAY,
     flexDirection:'row',
@@ -252,6 +258,10 @@ const styles = StyleSheet.create({
     marginTop:15,
     borderWidth:0.3,
     borderColor:Colors.GRAY,
+    flexDirection:'row',
+    justifyContent:'center',
+    alignItems:'center',
+    position:'relative',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
