@@ -1,5 +1,5 @@
 import { Colors } from '../../constants/Colors';
-import Feather from '@expo/vector-icons/Feather';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import { Text, View } from 'react-native';
@@ -38,14 +38,14 @@ export default function TabLayout() {
       <Tabs.Screen name = "create_new_trip"
       options={{
             tabBarLabel:" ",
-            tabBarIcon:({color})=><Ionicons name="add-circle" 
-            size={30} color={'#F36406'} />
+            tabBarIcon:({color, focused})=><Ionicons name="add-circle"
+            size={30} color={focused ? '#F36406' : '#FDAA48'} />
       }}
       />
       <Tabs.Screen name = "profile"
       options={{
             tabBarLabel:"Profile",
-            tabBarIcon:({color})=><Feather name="user" 
+            tabBarIcon:({color, focused})=><FontAwesome5 name={focused ? "user-alt" : "user"}
             size={24} color={color} />
       }}
       />
