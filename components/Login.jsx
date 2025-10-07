@@ -132,6 +132,14 @@ export default function Login() {
     );
   }
 
+  const handleGoogleSignUp = async () => {
+    try {
+      await Auth.federatedSignIn({ provider: 'Google' });
+    } catch (err) {
+      console.error('Google sign-up error:', err);
+    }
+  };
+
   // Show login screen only if user is not authenticated
   return (
     <View>
@@ -148,25 +156,65 @@ export default function Login() {
                textAlign:'center',
                marginTop:10
            }}>Atelic</Text>
-            
+
            <Text style = {{
                 fontFamily:'outfit',
                 fontSize:17,
                 textAlign:'center',
                 color:Colors.GRAY,
                 marginTop:20,
-           }}>Atelic is an AI platform that helps users easily organize their trip itineraries and optimize their activity routes</Text>
-           
-           <TouchableOpacity style = {styles.button}
-                onPress={()=>router.push('/authorization/sign-in_index')}
-           > 
-                <Text style = {{color:Colors.WHITE, 
-                    textAlign:'center',
-                    fontFamily:'outfit',
-                    fontSize:17
-                }}>Login</Text> 
+           }}>Where Travel Ideas Become Itineraries</Text>
+
+           {/* Google Sign Up Button */}
+           <TouchableOpacity
+                style={styles.googleButton}
+                onPress={handleGoogleSignUp}
+           >
+                <Image
+                    source={require('../assets/Google_logo.webp')}
+                    style={{
+                        width: 24,
+                        height: 24,
+                        position: 'absolute',
+                        left: 20
+                    }}
+                />
+                <Text style={{
+                    color: Colors.BLACK,
+                    textAlign: 'center',
+                    fontFamily: 'outfit',
+                    fontSize: 17
+                }}>Sign up with Google</Text>
             </TouchableOpacity>
-        </View>     
+
+            {/* Email Sign Up Button */}
+            <TouchableOpacity
+                style={styles.emailButton}
+                onPress={() => router.push('/authorization/sign-up_index')}
+            >
+                <Text style={{
+                    color: Colors.PRIMARY,
+                    textAlign: 'center',
+                    fontFamily: 'outfit',
+                    fontSize: 17
+                }}>Sign up with email</Text>
+            </TouchableOpacity>
+
+            {/* Sign In Link */}
+            <TouchableOpacity
+                style={{ marginTop: 20 }}
+                onPress={() => router.push('/authorization/sign-in_index')}
+            >
+                <Text style={{
+                    fontFamily: 'outfit',
+                    fontSize: 15,
+                    textAlign: 'center',
+                    color: Colors.GRAY
+                }}>
+                    Already have an account? <Text style={{ color: Colors.PRIMARY, fontFamily: 'outfit-bold' }}>Sign in</Text>
+                </Text>
+            </TouchableOpacity>
+        </View>
    </View>
   )
 }
@@ -180,11 +228,25 @@ const styles = StyleSheet.create({
        padding:15,
        height:'100%',
    },
-   button:{
+   googleButton:{
     padding:15,
-    backgroundColor:Colors.PRIMARY,
-    borderRadius:99,
-    marginTop:'25%'
+    backgroundColor:Colors.WHITE,
+    borderRadius:15,
+    marginTop:30,
+    borderWidth:0.5,
+    borderColor:Colors.GRAY,
+    flexDirection:'row',
+    justifyContent:'center',
+    alignItems:'center',
+    position:'relative'
+   },
+   emailButton:{
+    padding:15,
+    backgroundColor:Colors.WHITE,
+    borderRadius:15,
+    marginTop:15,
+    borderWidth:0.5,
+    borderColor:Colors.GRAY,
    }
 })
 //one misspelling can deter the colors. caps vs no caps primary.
