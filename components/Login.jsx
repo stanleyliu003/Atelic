@@ -151,10 +151,10 @@ export default function Login() {
         />
         <View style = {styles.container}>
            <Text style={{
-               fontSize:30,
+               fontSize:40,
                fontFamily:'outfit-bold',
                textAlign:'center',
-               marginTop:10
+               marginTop:30
            }}>Atelic</Text>
 
            <Text style = {{
@@ -229,24 +229,34 @@ const styles = StyleSheet.create({
        height:'100%',
    },
    googleButton:{
-    padding:15,
+    padding:10,
     backgroundColor:Colors.WHITE,
     borderRadius:15,
-    marginTop:30,
-    borderWidth:0.5,
+    marginTop:60,
+    borderWidth:0.3,
     borderColor:Colors.GRAY,
     flexDirection:'row',
     justifyContent:'center',
     alignItems:'center',
-    position:'relative'
+    position:'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
    },
    emailButton:{
-    padding:15,
+    padding:10,
     backgroundColor:Colors.WHITE,
     borderRadius:15,
     marginTop:15,
-    borderWidth:0.5,
+    borderWidth:0.3,
     borderColor:Colors.GRAY,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
    }
 })
 //one misspelling can deter the colors. caps vs no caps primary.
