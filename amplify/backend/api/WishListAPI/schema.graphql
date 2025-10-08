@@ -133,7 +133,7 @@
    addAdditionalPlace(placeName: String!, selectedCity: String!): Activity @function(name: "getLocationCoordinates-${env}")
    generateCategoryActivities(selectedCity: String!, category: String!, existingWishlistActivities: [String!]): CategoryActivitiesResult @function(name: "generateCategoryActivities-${env}") @auth(rules: [{ allow: public }])
    searchAutocomplete(selectedCity: String!, query: String!, filters: [String!]): SearchSuggestionsResult @function(name: "searchAutocomplete-${env}") @auth(rules: [{ allow: public }])
-   searchActivities(selectedCity: String!, searchQuery: String!, filters: [String!], existingWishlistActivities: [String!]): SearchActivitiesResult @function(name: "generateCategoryActivities-${env}") @auth(rules: [{ allow: public }])
+   searchActivities(selectedCity: String!, searchQuery: String!, filters: [String!], existingWishlistActivities: [String!]): SearchActivitiesResult @function(name: "searchBarActivities-${env}") @auth(rules: [{ allow: public }])
    getTripIDs(userID: String!): [TripSummary] @function(name: "getTripIDs-${env}") @auth(rules: [{ allow: public }])
    getUserTrips(userID: String!, tripID: String!): Trip @function(name: "getUserTrips-${env}") @auth(rules: [{ allow: public }])
    searchUsers(searchTerm: String!): [UserProfile] @function(name: "searchUsers-${env}") @auth(rules: [{ allow: public }])
