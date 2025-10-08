@@ -133,8 +133,8 @@ interface EnhancedActivityListProps extends ActivityListProps {
   onActivityLongPress?: (activity: Activity) => void;
   onDescriptionCardPress?: (activity: Activity) => void;
   showSelectionIndicator?: boolean;
-  emptyStateTitle?: string;
-  emptyStateSubtitle?: string;
+  emptyStateActionPress?: () => void; // Action button callback for empty state
+  emptyStateActionText?: string; // Action button text for empty state
   routeLegs?: RouteLeg[];
   scrollable?: boolean;
   travelMode?: string;
@@ -157,8 +157,8 @@ export function ActivityList({
   variant = 'default',
   disabled = false,
   showSelectionIndicator = false,
-  emptyStateTitle,
-  emptyStateSubtitle,
+  emptyStateActionPress,
+  emptyStateActionText,
   routeLegs = [],
   scrollable = true,
   travelMode,
@@ -198,12 +198,12 @@ export function ActivityList({
 
   // Since we always have recommendations, we don't need empty state handling
   if (!activities || activities.length === 0) {
-    // Only show empty state if title or subtitle is provided
-    if (emptyStateTitle || emptyStateSubtitle) {
+    // Only show empty state if action button is provided
+    if (emptyStateActionPress) {
       return (
         <NoActivities
-          title={emptyStateTitle}
-          subtitle={emptyStateSubtitle}
+          onActionPress={emptyStateActionPress}
+          actionButtonText={emptyStateActionText}
         />
       );
     }

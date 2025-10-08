@@ -1382,6 +1382,7 @@ export default function TripViewMain() {
                                     travelMode={routeData.travelMode}
                                     onReorder={currentUserRole !== 'viewer' ? handleDayActivityReorder : undefined}
                                     routeLoading={routeLoading}
+                                    onGoToWishlist={() => handleTabChange('wishlist')}
                                 />
                             );
                         })()}

@@ -1,40 +1,53 @@
 import { Colors } from '../../../../constants/Colors';
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 
 interface NoActivitiesProps {
-  title?: string;
-  subtitle?: string;
+  onActionPress?: () => void;
+  actionButtonText?: string;
 }
 
-export function NoActivities({ 
-  title = "No activities found", 
-  subtitle = "Please go back and add some destinations" 
+export function NoActivities({
+  onActionPress,
+  actionButtonText = "Add Activities to Wishlist"
 }: NoActivitiesProps) {
   return (
     <View style={styles.noActivitiesContainer}>
-      <Text style={styles.noActivitiesText}>{title}</Text>
-      <Text style={styles.noActivitiesSubtext}>{subtitle}</Text>
+      {onActionPress && (
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={onActionPress}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.actionButtonText}>{actionButtonText}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   noActivitiesContainer: {
-    marginTop: 50,
+    flex: 1,
     alignItems: 'center',
-    padding: 20,
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 60,
   },
-  noActivitiesText: {
-    fontFamily: 'outfit-bold',
-    fontSize: 18,
-    color: Colors.GRAY,
-    marginBottom: 10,
+  actionButton: {
+    backgroundColor: Colors.PRIMARY,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    shadowColor: Colors.PRIMARY,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  noActivitiesSubtext: {
-    fontFamily: 'outfit',
-    fontSize: 14,
-    color: Colors.GRAY,
-    textAlign: 'center',
+  actionButtonText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 24,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 }); 

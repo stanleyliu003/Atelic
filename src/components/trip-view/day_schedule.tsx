@@ -27,6 +27,7 @@ interface DayScheduleProps {
   travelMode?: string; // Travel mode from route calculation
   onReorder?: (dayNumber: number, newOrder: Activity[]) => void; // New prop for reordering activities
   routeLoading?: boolean; // Loading state for route recalculation
+  onGoToWishlist?: () => void; // Navigate to wishlist callback
 }
 
 export function DaySchedule({
@@ -49,7 +50,8 @@ export function DaySchedule({
   shouldRestorePosition = false,
   travelMode,
   onReorder,
-  routeLoading = false
+  routeLoading = false,
+  onGoToWishlist
 }: DayScheduleProps) {
   const selectedCount = selectedActivities.length;
   const scrollViewRef = useRef<ScrollView>(null);
@@ -129,8 +131,8 @@ export function DaySchedule({
           showSelectionIndicator={showSelectionIndicator}
           variant="selectable"
           disabled={disabled}
-          emptyStateTitle={`No activities for Day ${dayNumber}`}
-          emptyStateSubtitle={"Go to your wishlist to select and add activities"}
+          emptyStateActionPress={onGoToWishlist}
+          emptyStateActionText="Move Activities from Wishlist"
           routeLegs={routeLegs}
           travelMode={travelMode}
           enableDragDrop={!disabled}
