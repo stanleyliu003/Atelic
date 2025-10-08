@@ -97,6 +97,10 @@ exports.handler = async (event) => {
 /**
  * Handle address queries using Google Places Text Search API
  * Returns the specific place/establishment at the given address
+ * 
+ * OPTIMIZATION: Uses Text Search data directly + single Place Details call
+ * Previous: 3 API calls (Text Search + FindPlace + Place Details)
+ * Current: 2 API calls (Text Search + Place Details)
  */
 async function handleAddressQuery(searchQuery, selectedCity, existingActivities, cacheKey) {
     try {
@@ -115,7 +119,6 @@ async function handleAddressQuery(searchQuery, selectedCity, existingActivities,
         const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
         // Use Text Search API to find establishments at this address
-        // Include city in query for better results
         const textSearchUrl = 'https://maps.googleapis.com/maps/api/place/textsearch/json';
         const fullQuery = `${searchQuery}, ${selectedCity}`;
         const textSearchParams = {
@@ -134,92 +137,95 @@ async function handleAddressQuery(searchQuery, selectedCity, existingActivities,
             };
         }
 
-        // Log all results for debugging
+        // Find the most relevant place from results
         const results = textSearchResponse.data.results;
-        console.log(`Text Search returned ${results.length} results:`);
-        results.forEach((place, idx) => {
-            console.log(`  [${idx}] ${place.name} - types: ${place.types?.join(', ')}`);
-        });
-
-        // Filter results to find interesting places (not just generic addresses)
-        // Prioritize establishments, attractions, landmarks, etc. over generic "premise"
-        let selectedPlace = results[0]; // Default to first result
+        console.log(`Text Search returned ${results.length} results`);
 
         // Generic types to exclude (too generic or not useful for travel planning)
         const genericTypes = [
-            'premise',
-            'street_address',
-            'geocode',
-            'route',
-            'neighborhood',
-            'locality',
-            'political',
-            'sublocality',
-            'administrative_area_level_1',
-            'administrative_area_level_2',
-            'postal_code'
+            'premise', 'street_address', 'geocode', 'route', 'neighborhood',
+            'locality', 'political', 'sublocality', 'administrative_area_level_1',
+            'administrative_area_level_2', 'postal_code'
         ];
 
-        // Try to find a result that's an interesting place (not just a generic address)
-        const interestingPlace = results.find(place => {
+        // Find the first interesting place (has non-generic type)
+        const selectedPlace = results.find(place => {
             const types = place.types || [];
-            // Check if this place has at least one non-generic type
             return types.some(type => !genericTypes.includes(type));
-        });
+        }) || results[0]; // Fallback to first result if none found
 
-        if (interestingPlace) {
-            selectedPlace = interestingPlace;
-            console.log(`Found interesting place: "${selectedPlace.name}" (types: ${selectedPlace.types?.join(', ')})`);
-        } else {
-            console.log(`Only found generic address using : "${selectedPlace.name}"`);
-        }
+        console.log(`Selected place: "${selectedPlace.name}" (types: ${selectedPlace.types?.join(', ')})`);
 
-        const placeName = selectedPlace.name;
+        // Extract data from Text Search response
+        const location = selectedPlace.geometry?.location || {};
+        const photoReference = selectedPlace.photos?.[0]?.photo_reference || null;
 
-        // Get detailed place information using getLocationCoordinates
-        const locationInvokeCommand = new InvokeCommand({
-            FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
-            Payload: JSON.stringify({
-                locations: [placeName],
-                city: selectedCity
-            }),
-        });
+        // Get additional details only if we have a place_id
+        let placeDetails = {
+            display_name: selectedPlace.name,
+            website_uri: null,
+            regular_opening_hours: null,
+            reviews: [],
+            editorial_summary: null,
+            primary_type_display_name: null,
+            international_phone_number: null
+        };
 
-        const locationResponse = await lambdaClient.send(locationInvokeCommand);
-        const locationPayload = JSON.parse(new TextDecoder().decode(locationResponse.Payload));
-        const locationResult = JSON.parse(locationPayload.body);
-
-        if (!locationResult || locationResult.length === 0) {
-            console.warn(`Could not geocode place: "${placeName}"`);
-            return {
-                activities: [],
-                query: searchQuery
+        if (selectedPlace.place_id) {
+            console.log(`Fetching details for place_id: ${selectedPlace.place_id}`);
+            const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json`;
+            const detailsParams = {
+                place_id: selectedPlace.place_id,
+                fields: 'name,opening_hours,website,reviews,editorial_summary,international_phone_number',
+                key: GOOGLE_PLACES_API_KEY
             };
+
+            try {
+                const detailsResponse = await axios.get(detailsUrl, { params: detailsParams });
+                if (detailsResponse.data.status === 'OK' && detailsResponse.data.result) {
+                    const details = detailsResponse.data.result;
+                    
+                    placeDetails = {
+                        display_name: details.name || selectedPlace.name,
+                        website_uri: details.website || null,
+                        regular_opening_hours: details.opening_hours ? {
+                            open_now: details.opening_hours.open_now || false,
+                            periods: details.opening_hours.periods || [],
+                            weekday_text: details.opening_hours.weekday_text || []
+                        } : null,
+                        reviews: (details.reviews || []).slice(0, 5).map(review => ({
+                            author_name: review.author_name || null,
+                            rating: review.rating || null,
+                            text: review.text || null,
+                            time: review.time || null,
+                            author_url: review.author_url || null,
+                            profile_photo_url: review.profile_photo_url || null
+                        })),
+                        editorial_summary: details.editorial_summary?.overview || null,
+                        primary_type_display_name: selectedPlace.types?.[0]?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || null,
+                        international_phone_number: details.international_phone_number || null
+                    };
+                }
+            } catch (detailsError) {
+                console.warn(`Could not fetch place details: ${detailsError.message}`);
+            }
         }
 
-        const coordData = locationResult[0];
-
-        // Create activity object
+        // Create activity object using Text Search + Place Details data
         const activity = {
-            name: coordData.name,
+            name: selectedPlace.name,
             city: selectedCity,
-            lat: coordData.lat,
-            lng: coordData.lng,
-            rating: coordData.rating,
-            user_ratings_total: coordData.user_ratings_total,
-            formatted_address: coordData.formatted_address,
-            types: coordData.types || [],
-            primaryType: coordData.primaryType,
-            place_id: coordData.place_id,
-            photo_reference: coordData.photo_reference,
+            lat: location.lat || null,
+            lng: location.lng || null,
+            rating: selectedPlace.rating || null,
+            user_ratings_total: selectedPlace.user_ratings_total || null,
+            formatted_address: selectedPlace.formatted_address || null,
+            types: selectedPlace.types || [],
+            primaryType: selectedPlace.types?.[0] || null,
+            place_id: selectedPlace.place_id || null,
+            photo_reference: photoReference,
             is_recommended: true,
-            display_name: coordData.display_name,
-            website_uri: coordData.website_uri,
-            regular_opening_hours: coordData.regular_opening_hours,
-            reviews: coordData.reviews,
-            editorial_summary: coordData.editorial_summary,
-            primary_type_display_name: coordData.primary_type_display_name,
-            international_phone_number: coordData.international_phone_number,
+            ...placeDetails
         };
 
         // Apply deduplication
@@ -228,7 +234,7 @@ async function handleAddressQuery(searchQuery, selectedCity, existingActivities,
         // Cache the result only for initial requests
         if (existingActivities.length === 0) {
             await setCachedData('activities', cacheKey, {
-                activities: [activity], // Cache the full activity, not deduplicated
+                activities: [activity],
                 query: searchQuery,
                 timestamp: new Date().toISOString()
             }, SEARCH_ACTIVITIES_TTL);
