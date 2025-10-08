@@ -162,7 +162,7 @@
         "regionImageStorage": {},
         "generateCategoryActivities": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/generateCategoryActivities-6b4d7933366b4a75676b-build.zip",
+          "s3Key": "amplify-builds/generateCategoryActivities-43663379546e7070544c-build.zip",
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
           "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw"
         },
@@ -173,7 +173,9 @@
         },
         "searchBarActivities": {
           "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw",
-          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/searchBarActivities-3370746d655666743053-build.zip"
         }
       },
       "api": {

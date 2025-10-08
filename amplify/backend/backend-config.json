@@ -546,6 +546,14 @@
         }
       ]
     },
+    "AMPLIFY_function_searchBarActivities_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchBarActivities"
+        }
+      ]
+    },
     "AMPLIFY_function_searchBarActivities_geminiApiKey": {
       "usedBy": [
         {
@@ -555,6 +563,14 @@
       ]
     },
     "AMPLIFY_function_searchBarActivities_googlePlacesApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchBarActivities"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchBarActivities_s3Key": {
       "usedBy": [
         {
           "category": "function",
