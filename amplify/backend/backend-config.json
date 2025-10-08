@@ -266,6 +266,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "searchBarActivities": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "PlacesAPIActivityStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "searchUsers": {
       "build": true,
       "dependsOn": [
@@ -527,6 +543,22 @@
         {
           "category": "function",
           "resourceName": "searchAutocomplete"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchBarActivities_geminiApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchBarActivities"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchBarActivities_googlePlacesApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchBarActivities"
         }
       ]
     },
