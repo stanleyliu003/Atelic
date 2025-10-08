@@ -36,14 +36,6 @@ export default function PublishSuccess() {
 
     return (
         <View style={styles.container}>
-            {/* Back Button */}
-            <TouchableOpacity 
-                style={styles.backButton} 
-                onPress={() => router.push('/trip-view/trip-view_main')}
-            >
-                <Ionicons name="arrow-back" size={24} color={Colors.PRIMARY} />
-            </TouchableOpacity>
-
             {/* Main Content */}
             <View style={styles.content}>
                 {/* Activity Image */}
@@ -106,20 +98,6 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.WHITE,
         padding: 20,
     },
-    backButton: {
-        position: 'absolute',
-        top: 60,
-        left: 20,
-        zIndex: 10,
-        backgroundColor: 'white',
-        borderRadius: 20,
-        padding: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-    },
     content: {
         flex: 1,
         justifyContent: 'center',
@@ -181,11 +159,12 @@ const styles = StyleSheet.create({
         elevation: 8,
     },
     buttonContainer: {
-        paddingBottom: 40,
+        paddingBottom: 80,
         gap: 16,
     },
     shareTripButton: {
         backgroundColor: Colors.PRIMARY,
+        marginTop: -40,
         paddingVertical: 16,
         paddingHorizontal: 24,
         borderRadius: 12,
@@ -203,16 +182,16 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     viewProfileButton: {
-        backgroundColor: 'transparent',
+        backgroundColor: '#F36406',
         paddingVertical: 16,
         paddingHorizontal: 24,
         borderRadius: 12,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: Colors.PRIMARY,
+        borderColor: '#F36406',
     },
     viewProfileButtonText: {
-        color: Colors.PRIMARY,
+        color: Colors.WHITE,
         fontSize: 18,
         fontFamily: 'outfit-bold',
         fontWeight: '600',
