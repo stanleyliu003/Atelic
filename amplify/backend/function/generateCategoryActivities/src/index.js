@@ -11,6 +11,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
+const axios = require('axios');
 
 // Initialize clients
 const ddbClient = new DynamoDBClient({ region: process.env.REGION });
@@ -20,6 +21,9 @@ const tableName = process.env.STORAGE_PLACESAPIACTIVITYSTORAGE_NAME;
 
 // Cache TTL constants (in seconds)
 const CATEGORY_ACTIVITIES_TTL = 24 * 60 * 60; // 24 hours
+
+// Address detection regex - detects if query looks like a street address
+const ADDRESS_REGEX = /\d+[A-Z]?[-#]?\s+[\w\s]+(?:street|st|avenue|ave|road|rd|drive|dr|boulevard|blvd|lane|ln|way|place|pl|court|ct|circle|cir|parkway|pkwy|terrace|ter|alley|plaza|square|sq|highway|hwy|route|rt|row|crescent|cres)/i;
 
 /**
  * Lambda function to generate activities for a specific category using Gemini AI
@@ -74,6 +78,12 @@ exports.handler = async (event) => {
             }
         } else {
             console.log('Skipping cache for generateMore request - generating fresh activities');
+        }
+
+        // HYBRID APPROACH: Detect if search query is an address
+        if (isSearchMode && ADDRESS_REGEX.test(searchQuery)) {
+            console.log(`Detected address query: "${searchQuery}". Routing to Google Places Autocomplete.`);
+            return await handleAddressQuery(searchQuery, selectedCity, existingActivities);
         }
 
         // Initialize Gemini with API key from environment
@@ -246,8 +256,170 @@ exports.handler = async (event) => {
 };
 
 /**
+ * Handle address queries using Google Places Text Search API
+ * Returns the specific place/establishment at the given address
+ */
+async function handleAddressQuery(searchQuery, selectedCity, existingActivities) {
+    try {
+        // Build cache key for address query
+        const cacheKey = `${selectedCity}-${searchQuery}-address`;
+
+        // Check cache first (only for initial requests)
+        if (existingActivities.length === 0) {
+            const cachedResult = await getCachedData('activities', cacheKey);
+            if (cachedResult && cachedResult.activities) {
+                console.log(`Returning cached address result for: ${searchQuery}`);
+                return {
+                    activities: cachedResult.activities,
+                    query: searchQuery
+                };
+            }
+        } else {
+            console.log('Skipping cache for generateMore address request');
+        }
+
+        const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+
+        // First, try Text Search API to find establishments at this address
+        // Include city in query for better results
+        const textSearchUrl = 'https://maps.googleapis.com/maps/api/place/textsearch/json';
+        const fullQuery = `${searchQuery}, ${selectedCity}`;
+        const textSearchParams = {
+            query: fullQuery,
+            key: GOOGLE_PLACES_API_KEY
+        };
+
+        console.log(`Calling Google Places Text Search for: "${fullQuery}"`);
+        const textSearchResponse = await axios.get(textSearchUrl, { params: textSearchParams });
+
+        if (!textSearchResponse.data.results || textSearchResponse.data.results.length === 0) {
+            console.log(`No text search results found for: "${fullQuery}"`);
+            return {
+                activities: [],
+                query: searchQuery
+            };
+        }
+
+        // Log all results for debugging
+        const results = textSearchResponse.data.results;
+        console.log(`Text Search returned ${results.length} results:`);
+        results.forEach((place, idx) => {
+            console.log(`  [${idx}] ${place.name} - types: ${place.types?.join(', ')}`);
+        });
+
+        // Filter results to find interesting places (not just generic addresses)
+        // Prioritize establishments, attractions, landmarks, etc. over generic "premise"
+        let selectedPlace = results[0]; // Default to first result
+
+        // Generic types to exclude (too generic or not useful for travel planning)
+        const genericTypes = [
+            'premise',
+            'street_address',
+            'geocode',
+            'route',
+            'neighborhood',
+            'locality',
+            'political',
+            'sublocality',
+            'administrative_area_level_1',
+            'administrative_area_level_2',
+            'postal_code'
+        ];
+
+        // Try to find a result that's an interesting place (not just a generic address)
+        const interestingPlace = results.find(place => {
+            const types = place.types || [];
+            // Check if this place has at least one non-generic type
+            return types.some(type => !genericTypes.includes(type));
+        });
+
+        if (interestingPlace) {
+            selectedPlace = interestingPlace;
+            console.log(`Found interesting place: "${selectedPlace.name}" (types: ${selectedPlace.types?.join(', ')})`);
+        } else {
+            console.log(`Only found generic address using : "${selectedPlace.name}"`);
+        }
+
+        const placeName = selectedPlace.name;
+
+        // Get detailed place information using getLocationCoordinates
+        const locationInvokeCommand = new InvokeCommand({
+            FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
+            Payload: JSON.stringify({
+                locations: [placeName],
+                city: selectedCity
+            }),
+        });
+
+        const locationResponse = await lambdaClient.send(locationInvokeCommand);
+        const locationPayload = JSON.parse(new TextDecoder().decode(locationResponse.Payload));
+        const locationResult = JSON.parse(locationPayload.body);
+
+        if (!locationResult || locationResult.length === 0) {
+            console.warn(`Could not geocode place: "${placeName}"`);
+            return {
+                activities: [],
+                query: searchQuery
+            };
+        }
+
+        const coordData = locationResult[0];
+
+        // Create activity object
+        const activity = {
+            name: coordData.name,
+            city: selectedCity,
+            lat: coordData.lat,
+            lng: coordData.lng,
+            rating: coordData.rating,
+            user_ratings_total: coordData.user_ratings_total,
+            formatted_address: coordData.formatted_address,
+            types: coordData.types || [],
+            primaryType: coordData.primaryType,
+            place_id: coordData.place_id,
+            photo_reference: coordData.photo_reference,
+            is_recommended: true,
+            display_name: coordData.display_name,
+            website_uri: coordData.website_uri,
+            regular_opening_hours: coordData.regular_opening_hours,
+            reviews: coordData.reviews,
+            editorial_summary: coordData.editorial_summary,
+            primary_type_display_name: coordData.primary_type_display_name,
+            international_phone_number: coordData.international_phone_number,
+        };
+
+        // Apply deduplication
+        const deduplicatedActivities = deduplicateActivities([activity], existingActivities);
+
+        // Cache the result only for initial requests
+        if (existingActivities.length === 0) {
+            await setCachedData('activities', cacheKey, {
+                activities: [activity], // Cache the full activity, not deduplicated
+                query: searchQuery,
+                timestamp: new Date().toISOString()
+            }, CATEGORY_ACTIVITIES_TTL);
+        }
+
+        console.log(`Returning ${deduplicatedActivities.length} activity for address query`);
+
+        return {
+            activities: deduplicatedActivities,
+            query: searchQuery
+        };
+
+    } catch (error) {
+        console.error('Error in handleAddressQuery:', error);
+        return {
+            activities: [],
+            query: searchQuery
+        };
+    }
+}
+
+/**
  * Build search-specific prompt for Gemini AI
  * Includes user query and active filters
+ * Now only handles general searches (addresses are routed to Google Places)
  */
 function buildSearchPrompt(selectedCity, searchQuery, filters, existingActivities) {
     // Build existing activities context
@@ -257,7 +429,7 @@ function buildSearchPrompt(selectedCity, searchQuery, filters, existingActivitie
         existingActivitiesContext = `
 AVOID DUPLICATES:
 The user already searched for: ${existingNames}
-DO NOT recommend any of these existing locations. Generate 4 DIFFERENT recommendations.
+DO NOT recommend any of these existing locations. Generate DIFFERENT recommendations.
         `;
     }
 
