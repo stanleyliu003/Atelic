@@ -1,7 +1,13 @@
 import { API, graphqlOperation } from 'aws-amplify';
+import { Activity } from '../types/activity.types';
 
 interface SearchAutocompleteResponse {
   suggestions: string[];
+}
+
+interface SearchActivitiesResponse {
+  activities: Activity[];
+  query: string;
 }
 
 /**
@@ -40,6 +46,92 @@ export async function getSearchAutocomplete(
     return result?.data?.searchAutocomplete?.suggestions ?? [];
   } catch (error) {
     console.error('[getSearchAutocomplete] GraphQL error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Search for activities using the searchBarActivities Lambda
+ * Handles both address queries (returns 1 result) and general searches (returns 4 results)
+ * @param selectedCity - The city to search in
+ * @param searchQuery - The user's search query (can be address or general search)
+ * @param filters - Optional array of filter IDs
+ * @param existingWishlistActivities - Activities to exclude from results (for deduplication)
+ * @returns Search activities response with activities array
+ */
+export async function searchActivities(
+  selectedCity: string,
+  searchQuery: string,
+  filters: string[] = [],
+  existingWishlistActivities: string[] = []
+): Promise<SearchActivitiesResponse> {
+  try {
+    console.log('[searchActivities] Making GraphQL call with params:', {
+      selectedCity,
+      searchQuery,
+      filters,
+      existingWishlistActivities
+    });
+
+    const result = await API.graphql(graphqlOperation(`
+      query SearchActivities(
+        $selectedCity: String!
+        $searchQuery: String!
+        $filters: [String!]
+        $existingWishlistActivities: [String!]
+      ) {
+        searchActivities(
+          selectedCity: $selectedCity
+          searchQuery: $searchQuery
+          filters: $filters
+          existingWishlistActivities: $existingWishlistActivities
+        ) {
+          query
+          activities {
+            name
+            city
+            lat
+            lng
+            rating
+            user_ratings_total
+            formatted_address
+            types
+            primaryType
+            place_id
+            photo_reference
+            is_recommended
+            display_name
+            website_uri
+            editorial_summary
+            primary_type_display_name
+            international_phone_number
+            regular_opening_hours {
+              open_now
+              weekday_text
+            }
+            reviews {
+              author_name
+              rating
+              text
+              time
+              author_url
+              profile_photo_url
+            }
+          }
+        }
+      }
+    `, {
+      selectedCity,
+      searchQuery,
+      filters,
+      existingWishlistActivities
+    })) as any;
+
+    console.log('[searchActivities] GraphQL response:', result?.data?.searchActivities);
+
+    return result?.data?.searchActivities ?? { activities: [], query: searchQuery };
+  } catch (error) {
+    console.error('[searchActivities] GraphQL error:', error);
     throw error;
   }
 }

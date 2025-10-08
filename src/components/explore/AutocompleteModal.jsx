@@ -14,8 +14,7 @@ import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-g
 import { runOnJS } from 'react-native-reanimated';
 import { Colors } from '../../../constants/Colors';
 import { FilterChips } from './FilterChips';
-import { getSearchAutocomplete } from '../../services/searchService';
-import { generateCategoryActivities } from '../../services/generateCategoryActivities';
+import { getSearchAutocomplete, searchActivities } from '../../services/searchService';
 import { WishlistActivities } from '../trip-view/wishlist_activities';
 import { ActivityDetailView } from '../trip-view/description_card';
 
@@ -186,7 +185,7 @@ export const AutocompleteModal = ({
     }
   };
 
-  // Handle enter key press - triggers generateCategoryActivities
+  // Handle enter key press - triggers searchActivities (uses searchBarActivities Lambda)
   const handleEnterKeyPress = async () => {
     if (localQuery.trim().length < 2) {
       return;
@@ -195,20 +194,21 @@ export const AutocompleteModal = ({
     setSearchLoading(true);
     setSearchError(null);
     setShowingResults(true);
-    
+
     try {
-      // Get existing wishlist activities to avoid duplicates
-      const existingActivityIds = wishlistActivities.map(activity => activity.place_id).filter(Boolean);
-      
-      const result = await generateCategoryActivities(selectedCity, localQuery, existingActivityIds);
-      
+      // Get existing wishlist activity names to avoid duplicates
+      const existingActivityNames = wishlistActivities.map(activity => activity.name).filter(Boolean);
+
+      const result = await searchActivities(selectedCity, localQuery, filters, existingActivityNames);
+
       if (result && result.activities) {
         setSearchResults(result.activities);
       } else {
         setSearchResults([]);
       }
     } catch (error) {
-      setSearchError('Failed to generate activities. Please try again.');
+      console.error('[AutocompleteModal] Search error:', error);
+      setSearchError('Failed to search activities. Please try again.');
       setSearchResults([]);
     } finally {
       setSearchLoading(false);
