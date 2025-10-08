@@ -91,11 +91,11 @@ export function DaySchedule({
             {activities.length} {activities.length === 1 ? 'activity' : 'activities'}
           </Text>
         </View>
-        
+
         <View style={styles.actionButtons}>
-          {/* Optimize Route Button - only show if onOptimizeRoute is provided */}
-          {onOptimizeRoute && (
-            <TouchableOpacity 
+          {/* Optimize Route Button - only show if onOptimizeRoute is provided and there are activities */}
+          {onOptimizeRoute && activities.length > 0 && (
+            <TouchableOpacity
               style={[styles.actionButton, styles.optimizeButton]}
               onPress={handleOptimizeRoute}
               disabled={activities.length < 2 || disabled}
