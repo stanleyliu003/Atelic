@@ -162,6 +162,10 @@ export default function create_trip_1_city({ showBackButton = true }) {
                         placeholder='Ex: Boston, MA, USA'
                         onPress={async (data) => {
                             setSelectedCity(data.description);
+                            // Update the text field to show the selected city immediately
+                            if (googlePlacesRef.current) {
+                                googlePlacesRef.current.setAddressText(data.description);
+                            }
                             // Fetch city categories for trip planning (but don't save to cache)
                             fetchCityCategories(data.description); // Don't await - let it run independently
                         }}
@@ -169,6 +173,12 @@ export default function create_trip_1_city({ showBackButton = true }) {
                             key: API_KEYS.GOOGLE_MAPS,
                             language: 'en',
                             types: '(regions)',
+                        }}
+                        textInputProps={{
+                            autoCorrect: false,
+                            autoComplete: 'off',
+                            autoCapitalize: 'words',
+                            spellCheck: false,
                         }}
                         styles={{
                             container: {
