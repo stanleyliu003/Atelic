@@ -114,9 +114,9 @@ export function TripMapView({
     const minLng = Math.min(...longitudes);
     const maxLng = Math.max(...longitudes);
     
-    // Calculate the center point
-    const centerLat = (minLat + maxLat) / 2;
-    const centerLng = (minLng + maxLng) / 2;
+    // Calculate the center point of activities
+    const activitiesCenterLat = (minLat + maxLat) / 2;
+    const activitiesCenterLng = (minLng + maxLng) / 2;
     
     // Calculate the span of coordinates
     const latSpan = maxLat - minLat;
@@ -127,44 +127,42 @@ export function TripMapView({
     const minDelta = 0.005; // Minimum zoom level for very close markers
     
     // Calculate base deltas with padding, ensuring minimum zoom
-    let latitudeDelta = Math.max(latSpan * (1 + paddingFactor), minDelta) * 2;
-    let longitudeDelta = Math.max(lngSpan * (1 + paddingFactor), minDelta) * 2;
+    const baseLatitudeDelta = Math.max(latSpan * (1 + paddingFactor), minDelta);
+    const baseLongitudeDelta = Math.max(lngSpan * (1 + paddingFactor), minDelta);
     
-    // Calculate visible map area based on current height state
-    const currentBottomSheetHeight = heightStates[currentHeightState];
-    const visibleMapHeight = 1 - currentBottomSheetHeight; // Percentage of screen that shows map
+    let finalCenterLat = activitiesCenterLat;
+    let finalCenterLng = activitiesCenterLng;
+    let finalLatitudeDelta = baseLatitudeDelta;
+    let finalLongitudeDelta = baseLongitudeDelta;
     
-    let finalCenterLat = centerLat;
-    let finalLatitudeDelta = latitudeDelta;
-    let finalLongitudeDelta = longitudeDelta;
-    
-    if (currentHeightState === 1) { // DEFAULT_HEIGHT = 65%
-      const visibleAreaRatio = visibleMapHeight; // 0.65 for DEFAULT_HEIGHT
-    
-      const requiredLatSpanForVisibleArea = latSpan * (1 + paddingFactor);
-      finalLatitudeDelta = (requiredLatSpanForVisibleArea * 2) / visibleAreaRatio;
-      const hiddenAreaRatio = 1 - visibleAreaRatio; // 0.35 for DEFAULT_HEIGHT
-      finalCenterLat = centerLat - (finalLatitudeDelta * hiddenAreaRatio * 0.5);
+    // Adjust based on height state
+    if (currentHeightState === 0) {
+      // MIN_HEIGHT = 30%, map occupies 70% of screen height (0% to 70%)
+      // No adjustment needed - activities should be centered in the full map area
+      finalLatitudeDelta = baseLatitudeDelta;
+      finalLongitudeDelta = baseLongitudeDelta;
+    } else if (currentHeightState === 1) {
+      // DEFAULT_HEIGHT = 65%, map occupies 35% of screen height (0% to 35%)
+      // Need more subtle adjustments - don't zoom out as aggressively
       
-      // Adjust longitude proportionally to maintain aspect ratio
-      finalLongitudeDelta = longitudeDelta * (finalLatitudeDelta / latitudeDelta);
+      const visibleMapHeight = 0.35; // 35% of screen is visible
+      const originalMapHeight = 0.70; // 70% was the original map height
       
-    }
-    // currentHeightState === 0 (MIN_HEIGHT = 30%) needs no adjustment as map is fully visible
-    
-    // Adjust for map aspect ratio (70% height means it's wider than tall)
-    const mapAspectRatio = 1 / 0.7; // width/height ratio
-    const coordinateAspectRatio = finalLongitudeDelta / finalLatitudeDelta;
-    
-    // If coordinates are more spread horizontally than the map aspect ratio suggests,
-    // we might need to adjust the latitude delta to maintain proper centering
-    if (coordinateAspectRatio > mapAspectRatio) {
-      finalLatitudeDelta = finalLongitudeDelta / mapAspectRatio;
+      // Use a more conservative zoom adjustment - only zoom out by about 40% more
+      const zoomAdjustmentFactor = 1.2; // Instead of 2x, use 1.4x
+      finalLatitudeDelta = baseLatitudeDelta * zoomAdjustmentFactor;
+      finalLongitudeDelta = baseLongitudeDelta * zoomAdjustmentFactor;
+      
+      // Shift the center UP (north) to ensure all activities, including high latitude outliers,
+      // remain visible in the upper portion of the screen when bottom sheet covers lower area
+      const centerShiftFactor = 0.7; // More conservative shift
+      const visibleCenterOffset = finalLatitudeDelta * centerShiftFactor;
+      finalCenterLat = activitiesCenterLat - visibleCenterOffset; // Shift UP (north) to keep outliers visible
     }
     
     return {
       latitude: finalCenterLat,
-      longitude: centerLng,
+      longitude: finalCenterLng,
       latitudeDelta: finalLatitudeDelta,
       longitudeDelta: finalLongitudeDelta,
     };
