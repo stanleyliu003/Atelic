@@ -173,7 +173,7 @@
         },
         "searchBarActivities": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/searchBarActivities-6977507a5851504b5977-build.zip",
+          "s3Key": "amplify-builds/searchBarActivities-34775976636d4d753751-build.zip",
           "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw",
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
         }

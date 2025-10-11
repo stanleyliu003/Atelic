@@ -29,6 +29,11 @@ const ADDRESS_REGEX = /\d+[A-Z]?[-#]?\s+[\w\s]+(?:street|st|avenue|ave|road|rd|d
  * Handles two modes:
  * 1. Address mode: User provides specific address -> Google Places Text Search
  * 2. General search mode: User provides search query -> Gemini AI recommendations
+ * 
+ * DEDUPLICATION BEHAVIOR:
+ * - Activities already in wishlist WILL appear in search results (UI shows "On list" tag)
+ * - Only internal deduplication: same place_id won't appear twice in one result set
+ * - "Generate More" uses existingWishlistActivities to avoid repeating previously shown results
  */
 exports.handler = async (event) => {
     console.log('searchBarActivities input:', JSON.stringify(event, null, 2));
@@ -113,6 +118,9 @@ exports.handler = async (event) => {
  *
  * OPTIMIZATION: Uses getLocationCoordinates which has place_id-based caching
  * This ensures address queries benefit from the shared place_id cache
+ * 
+ * NOTE: Activities already in wishlist will still appear in results.
+ * The UI displays "On list" tags to indicate wishlist items.
  */
 async function handleAddressQuery(searchQuery, selectedCity, existingActivityNames, existingActivityPlaceIds, cacheKey) {
     try {
@@ -202,7 +210,8 @@ async function handleAddressQuery(searchQuery, selectedCity, existingActivityNam
             await setCachedData('activity', activity.place_id, activity, SEARCH_ACTIVITIES_TTL);
         }
 
-        // Apply deduplication
+        // Apply deduplication against activities passed from UI
+        // UI controls what to deduplicate: empty [] for first search, [searchResults] for "Generate More"
         const deduplicatedActivities = deduplicateActivities([activity], existingActivityNames, existingActivityPlaceIds);
 
         // Cache the result only for initial requests
@@ -233,6 +242,10 @@ async function handleAddressQuery(searchQuery, selectedCity, existingActivityNam
 /**
  * Handle general search queries using Gemini AI
  * Returns 4 recommended activities based on search query and filters
+ * 
+ * NOTE: Activities already in wishlist will still appear in results.
+ * The UI displays "On list" tags to indicate wishlist items.
+ * Internal deduplication prevents the same place_id from appearing twice in one result set.
  */
 async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActivityNames, existingActivityPlaceIds, filters, cacheKey) {
     try {
@@ -395,13 +408,14 @@ async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActiv
             return activity;
         });
 
-        // Apply deduplication against existing activities (by place_id)
+        // Apply deduplication against activities passed from UI
+        // UI controls what to deduplicate: empty [] for first search, [searchResults] for "Generate More"
         let deduplicatedActivities = deduplicateActivities(finalActivities, existingActivityNames, existingActivityPlaceIds);
 
-        // Deduplicate by place_id within the current results
+        // Also deduplicate identical place_ids within the current results (prevents same place appearing twice)
         deduplicatedActivities = deduplicateByPlaceId(deduplicatedActivities);
 
-        // Cache the result only for initial requests (cache deduplicated activities)
+        // Cache the result only for initial requests
         if (existingActivityNames.length === 0 && existingActivityPlaceIds.length === 0) {
             await setCachedData('activities', cacheKey, {
                 activities: deduplicatedActivities,
@@ -410,7 +424,7 @@ async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActiv
             }, SEARCH_ACTIVITIES_TTL);
         }
 
-        console.log(`Returning ${deduplicatedActivities.length} activities for general search (after place_id deduplication)`);
+        console.log(`Returning ${deduplicatedActivities.length} activities for general search (after deduplication)`);
 
         return {
             activities: deduplicatedActivities,
@@ -478,10 +492,18 @@ Generate 4 diverse, distinct physical locations for "${searchQuery}" in ${select
 }
 
 /**
- * Deduplication logic - remove activities that already exist by place_id
+ * Deduplication logic - remove activities that match existing place_ids
+ * 
+ * USAGE:
+ * - First search: UI passes [] (empty) → no deduplication, all results shown (wishlist items get "On list" tag)
+ * - Generate More: UI passes [searchResults] → deduplicates against previously shown results only
+ * 
+ * This allows wishlist items to appear in search results while preventing duplicate results
+ * when user clicks "Generate More".
+ * 
  * @param {Array} activities - Array of activity objects to deduplicate
  * @param {Array} existingActivityNames - Array of existing activity names (unused, kept for backward compatibility)
- * @param {Array} existingActivityPlaceIds - Array of existing activity place_ids
+ * @param {Array} existingActivityPlaceIds - Array of existing activity place_ids to filter out
  */
 function deduplicateActivities(activities, existingActivityNames, existingActivityPlaceIds = []) {
     if (!existingActivityPlaceIds || existingActivityPlaceIds.length === 0) {

@@ -199,15 +199,9 @@ export const AutocompleteModal = ({
     setShowingResults(true);
 
     try {
-      // Pass full activity objects with name and place_id for proper deduplication
-      const existingActivities = wishlistActivities
-        .filter(activity => activity.name)
-        .map(activity => ({
-          name: activity.name,
-          place_id: activity.place_id
-        }));
-
-      const result = await searchActivities(selectedCity, localQuery, filters, existingActivities);
+      // First search: Don't pass any existing activities
+      // This allows wishlist items to appear with "On list" tag
+      const result = await searchActivities(selectedCity, localQuery, filters, []);
 
       if (result && result.activities) {
         setSearchResults(result.activities);
@@ -266,22 +260,15 @@ export const AutocompleteModal = ({
     setLoadingMoreResults(true);
 
     try {
-      // Pass ALL existing activities (wishlist + current search results) with name and place_id
-      // This enables proper deduplication across BOTH original and new batches
-      const existingActivities = [
-        ...wishlistActivities
-          .filter(activity => activity.name)
-          .map(activity => ({
-            name: activity.name,
-            place_id: activity.place_id
-          })),
-        ...searchResults
-          .filter(activity => activity.name)
-          .map(activity => ({
-            name: activity.name,
-            place_id: activity.place_id
-          }))
-      ];
+      // Pass only current search results to avoid showing duplicates of what was already shown
+      // Do NOT pass wishlist - this allows wishlist items to appear (with "On list" tag)
+      // if they match the search but weren't in the previous batch
+      const existingActivities = searchResults
+        .filter(activity => activity.name)
+        .map(activity => ({
+          name: activity.name,
+          place_id: activity.place_id
+        }));
 
       const result = await searchActivities(selectedCity, localQuery, filters, existingActivities);
 
