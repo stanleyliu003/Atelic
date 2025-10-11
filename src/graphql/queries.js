@@ -181,7 +181,7 @@ export const searchActivities = /* GraphQL */ `
     $selectedCity: String!
     $searchQuery: String!
     $filters: [String!]
-    $existingWishlistActivities: [String!]
+    $existingWishlistActivities: [ActivityDeduplicationInput!]
   ) {
     searchActivities(
       selectedCity: $selectedCity
