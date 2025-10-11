@@ -11,7 +11,7 @@ import { Colors } from './../../constants/Colors';
 
 export default function WishlistInfo() {
     const router = useRouter();
-    const { activities, updateActivities, selectedCity, searchActivities } = useCreateTrip();
+    const { activities, updateActivities, removeActivities, selectedCity, searchActivities } = useCreateTrip();
 
     // State for selected activities - initialize with all activities selected
     const [selectedActivities, setSelectedActivities] = useState([]);
@@ -94,19 +94,27 @@ export default function WishlistInfo() {
     };
 
     // Handler for saving search results
-    const handleSaveSearchResults = (selectedActivitiesFromSearch) => {
-        if (selectedActivitiesFromSearch.length === 0) {
-            return;
+    const handleSaveSearchResults = (selectedActivitiesFromSearch, deselectedWishlistActivityIds = []) => {
+        // Remove deselected wishlist activities
+        if (deselectedWishlistActivityIds.length > 0) {
+            removeActivities(deselectedWishlistActivityIds);
+            // Also remove from local selected state
+            setSelectedActivities(prev => 
+                prev.filter(id => !deselectedWishlistActivityIds.includes(id))
+            );
         }
 
-        // Add the selected activities to the wishlist
-        updateActivities([...(activities || []), ...selectedActivitiesFromSearch]);
+        // Add newly selected activities
+        if (selectedActivitiesFromSearch.length > 0) {
+            // Add the selected activities to the wishlist
+            updateActivities([...(activities || []), ...selectedActivitiesFromSearch]);
 
-        // Auto-select the newly added activities
-        const newActivityIds = selectedActivitiesFromSearch
-            .map(activity => activity.place_id)
-            .filter(Boolean);
-        setSelectedActivities(prev => [...prev, ...newActivityIds]);
+            // Auto-select the newly added activities
+            const newActivityIds = selectedActivitiesFromSearch
+                .map(activity => activity.place_id)
+                .filter(Boolean);
+            setSelectedActivities(prev => [...prev, ...newActivityIds]);
+        }
 
         // Close the autocomplete modal and reset search
         setShowAutocomplete(false);

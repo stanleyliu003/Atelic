@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -35,6 +35,26 @@ import { ActivityDetailView } from '../trip-view/description_card';
 export const CategoryModal = ({ visible, category, activities, loading = false, loadingMore = false, onSave, onClose, onGenerateMore, wishlistActivities = [] }) => {
   const [selectedActivityIds, setSelectedActivityIds] = useState([]);
   const [selectedActivity, setSelectedActivity] = useState(null);
+  
+  // Track which activities from category results are already in wishlist
+  const [wishlistActivityIdsInResults, setWishlistActivityIdsInResults] = useState([]);
+
+  // Auto-select activities that are in wishlist when activities change
+  useEffect(() => {
+    if (activities.length > 0 && wishlistActivities.length > 0) {
+      const wishlistPlaceIds = wishlistActivities.map(a => a.place_id).filter(Boolean);
+      const activitiesInWishlist = activities
+        .filter(activity => activity.place_id && wishlistPlaceIds.includes(activity.place_id))
+        .map(activity => activity.place_id);
+      
+      setWishlistActivityIdsInResults(activitiesInWishlist);
+      setSelectedActivityIds(activitiesInWishlist);
+    } else if (activities.length === 0) {
+      // Reset when activities are cleared
+      setWishlistActivityIdsInResults([]);
+      setSelectedActivityIds([]);
+    }
+  }, [activities, wishlistActivities]);
 
   // Toggle activity selection
   const handleActivityToggle = (activityId) => {
@@ -49,17 +69,30 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
 
   // Handle save button press
   const handleSave = () => {
-    const selectedActivities = activities.filter((activity) =>
-      selectedActivityIds.includes(activity.place_id)
+    // Get newly selected activities (not in wishlist)
+    const newlySelectedActivities = activities.filter((activity) =>
+      activity.place_id && 
+      selectedActivityIds.includes(activity.place_id) &&
+      !wishlistActivityIdsInResults.includes(activity.place_id)
     );
-    onSave(selectedActivities);
+    
+    // Get deselected wishlist activities (were in wishlist but now deselected)
+    const deselectedWishlistActivityIds = wishlistActivityIdsInResults.filter(
+      (activityId) => !selectedActivityIds.includes(activityId)
+    );
+    
+    // Call onSave with both additions and removals
+    onSave(newlySelectedActivities, deselectedWishlistActivityIds);
+    
     // Reset selection
     setSelectedActivityIds([]);
+    setWishlistActivityIdsInResults([]);
   };
 
   // Handle modal close
   const handleClose = () => {
     setSelectedActivityIds([]);
+    setWishlistActivityIdsInResults([]);
     onClose();
   };
 
@@ -155,7 +188,7 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
                   onActivityDeselect={handleActivityToggle}
                   onDescriptionCardPress={handleActivityPress}
                   showSelectionIndicator={true}
-                  wishlistActivities={wishlistActivities}
+                  wishlistActivities={[]}
                 />
                 
                 {/* Generate More Category Activities Button - Show at bottom of activities list */}
@@ -181,16 +214,22 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
             )}
           </ScrollView>
 
-          {/* Save Button - Only show when activities are selected */}
-          {selectedActivityIds.length > 0 && (
-            <View style={styles.footer}>
-              <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.8}>
-                <Text style={styles.saveButtonText}>
-                  Save to Wishlist {"("}{selectedActivityIds.length}{''}{")"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {/* Save Button - Show when there are any changes (additions or removals) */}
+          {(() => {
+            const hasNewSelections = selectedActivityIds.some(id => !wishlistActivityIdsInResults.includes(id));
+            const hasDeselections = wishlistActivityIdsInResults.some(id => !selectedActivityIds.includes(id));
+            const hasChanges = hasNewSelections || hasDeselections;
+            
+            return hasChanges && (
+              <View style={styles.footer}>
+                <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.8}>
+                  <Text style={styles.saveButtonText}>
+                    Save to Wishlist
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })()}
         </GestureHandlerRootView>
       </View>
 

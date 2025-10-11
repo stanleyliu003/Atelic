@@ -71,6 +71,9 @@ export const AutocompleteModal = ({
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [showDescriptionCard, setShowDescriptionCard] = useState(false);
 
+  // Track which activities from search results are already in wishlist
+  const [wishlistActivityIdsInResults, setWishlistActivityIdsInResults] = useState([]);
+
   // Handle close modal
   const handleCloseModal = () => {
     console.log('[AutocompleteModal] Close button pressed');
@@ -85,6 +88,7 @@ export const AutocompleteModal = ({
     setShowingResults(false);
     setSearchResults([]);
     setSelectedActivityIds([]);
+    setWishlistActivityIdsInResults([]);
     console.log('[AutocompleteModal] Calling onClose');
     onClose();
   };
@@ -205,8 +209,19 @@ export const AutocompleteModal = ({
 
       if (result && result.activities) {
         setSearchResults(result.activities);
+        
+        // Auto-select activities that are already in wishlist
+        const wishlistPlaceIds = wishlistActivities.map(a => a.place_id).filter(Boolean);
+        const activitiesInWishlist = result.activities
+          .filter(activity => activity.place_id && wishlistPlaceIds.includes(activity.place_id))
+          .map(activity => activity.place_id);
+        
+        setWishlistActivityIdsInResults(activitiesInWishlist);
+        setSelectedActivityIds(activitiesInWishlist);
       } else {
         setSearchResults([]);
+        setWishlistActivityIdsInResults([]);
+        setSelectedActivityIds([]);
       }
     } catch (error) {
       console.error('[AutocompleteModal] Search error:', error);
@@ -230,13 +245,24 @@ export const AutocompleteModal = ({
   
   // Handle save selected activities
   const handleSaveActivities = () => {
-    const selectedActivities = searchResults.filter((activity) =>
-      selectedActivityIds.includes(activity.place_id)
+    // Get newly selected activities (not in wishlist)
+    const newlySelectedActivities = searchResults.filter((activity) =>
+      activity.place_id && 
+      selectedActivityIds.includes(activity.place_id) &&
+      !wishlistActivityIdsInResults.includes(activity.place_id)
     );
-    onSaveActivities(selectedActivities);
+    
+    // Get deselected wishlist activities (were in wishlist but now deselected)
+    const deselectedWishlistActivityIds = wishlistActivityIdsInResults.filter(
+      (activityId) => !selectedActivityIds.includes(activityId)
+    );
+    
+    // Call onSaveActivities with both additions and removals
+    onSaveActivities(newlySelectedActivities, deselectedWishlistActivityIds);
 
     // Reset state
     setSelectedActivityIds([]);
+    setWishlistActivityIdsInResults([]);
     setShowingResults(false);
     setSearchResults([]);
     setLocalQuery('');
@@ -275,6 +301,18 @@ export const AutocompleteModal = ({
       if (result && result.activities) {
         // Append new activities to existing search results
         setSearchResults(prev => [...prev, ...result.activities]);
+        
+        // Auto-select any new activities that are in wishlist
+        const wishlistPlaceIds = wishlistActivities.map(a => a.place_id).filter(Boolean);
+        const newActivitiesInWishlist = result.activities
+          .filter(activity => activity.place_id && wishlistPlaceIds.includes(activity.place_id))
+          .map(activity => activity.place_id);
+        
+        // Add to wishlist tracking and selection
+        if (newActivitiesInWishlist.length > 0) {
+          setWishlistActivityIdsInResults(prev => [...prev, ...newActivitiesInWishlist]);
+          setSelectedActivityIds(prev => [...prev, ...newActivitiesInWishlist]);
+        }
       }
     } catch (error) {
       console.error('[AutocompleteModal] Error generating more results:', error);
@@ -418,7 +456,7 @@ export const AutocompleteModal = ({
                           onActivityDeselect={handleActivityToggle}
                           onDescriptionCardPress={handleActivityPress}
                           showSelectionIndicator={true}
-                          wishlistActivities={wishlistActivities}
+                          wishlistActivities={[]}
                         />
 
                         {/* Generate More Search Results Button */}
@@ -487,16 +525,22 @@ export const AutocompleteModal = ({
             )}
           </ScrollView>
 
-          {/* Save Button - Only show when activities are selected */}
-          {showingResults && selectedActivityIds.length > 0 && (
-            <View style={styles.footer}>
-              <TouchableOpacity style={styles.saveButton} onPress={handleSaveActivities} activeOpacity={0.8}>
-                <Text style={styles.saveButtonText}>
-                Save to {getTabDisplayName(activeTab)}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {/* Save Button - Show when there are any changes (additions or removals) */}
+          {showingResults && (() => {
+            const hasNewSelections = selectedActivityIds.some(id => !wishlistActivityIdsInResults.includes(id));
+            const hasDeselections = wishlistActivityIdsInResults.some(id => !selectedActivityIds.includes(id));
+            const hasChanges = hasNewSelections || hasDeselections;
+            
+            return hasChanges && (
+              <View style={styles.footer}>
+                <TouchableOpacity style={styles.saveButton} onPress={handleSaveActivities} activeOpacity={0.8}>
+                  <Text style={styles.saveButtonText}>
+                    Save to {getTabDisplayName(activeTab)}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })()}
         </GestureHandlerRootView>
       </View>
 

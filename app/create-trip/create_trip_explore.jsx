@@ -27,6 +27,7 @@ export default function create_trip_explore() {
     cityCategories,
     setIsCreatingTrip,
     addToWishlist,
+    removeActivities,
     searchActivities,
     generateActivitiesForCategory,
     categoryActivities: contextCategoryActivities,
@@ -85,12 +86,16 @@ export default function create_trip_explore() {
   };
 
   // Handle saving activities from AutocompleteModal
-  const handleSaveSearchResults = (selectedActivities) => {
-    if (selectedActivities.length === 0) {
-      return;
+  const handleSaveSearchResults = (selectedActivities, deselectedWishlistActivityIds = []) => {
+    // Remove deselected wishlist activities
+    if (deselectedWishlistActivityIds.length > 0) {
+      removeActivities(deselectedWishlistActivityIds);
     }
 
-    addToWishlist(selectedActivities);
+    // Add newly selected activities
+    if (selectedActivities.length > 0) {
+      addToWishlist(selectedActivities);
+    }
 
     // Close the autocomplete modal
     setShowAutocomplete(false);
@@ -137,13 +142,16 @@ export default function create_trip_explore() {
     }
   };
 
-  const handleSaveCategoryActivities = (selectedActivities) => {
-    if (selectedActivities.length === 0) {
-      setShowCategoryModal(false);
-      return;
+  const handleSaveCategoryActivities = (selectedActivities, deselectedWishlistActivityIds = []) => {
+    // Remove deselected wishlist activities
+    if (deselectedWishlistActivityIds.length > 0) {
+      removeActivities(deselectedWishlistActivityIds);
     }
 
-    addToWishlist(selectedActivities);
+    // Add newly selected activities
+    if (selectedActivities.length > 0) {
+      addToWishlist(selectedActivities);
+    }
 
     setShowCategoryModal(false);
   };
