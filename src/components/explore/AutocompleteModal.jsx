@@ -199,10 +199,15 @@ export const AutocompleteModal = ({
     setShowingResults(true);
 
     try {
-      // Get existing wishlist activity names to avoid duplicates
-      const existingActivityNames = wishlistActivities.map(activity => activity.name).filter(Boolean);
+      // Pass full activity objects with name and place_id for proper deduplication
+      const existingActivities = wishlistActivities
+        .filter(activity => activity.name)
+        .map(activity => ({
+          name: activity.name,
+          place_id: activity.place_id
+        }));
 
-      const result = await searchActivities(selectedCity, localQuery, filters, existingActivityNames);
+      const result = await searchActivities(selectedCity, localQuery, filters, existingActivities);
 
       if (result && result.activities) {
         setSearchResults(result.activities);
@@ -261,13 +266,24 @@ export const AutocompleteModal = ({
     setLoadingMoreResults(true);
 
     try {
-      // Get existing search result names to avoid duplicates
-      const existingActivityNames = [
-        ...wishlistActivities.map(activity => activity.name).filter(Boolean),
-        ...searchResults.map(activity => activity.name).filter(Boolean)
+      // Pass ALL existing activities (wishlist + current search results) with name and place_id
+      // This enables proper deduplication across BOTH original and new batches
+      const existingActivities = [
+        ...wishlistActivities
+          .filter(activity => activity.name)
+          .map(activity => ({
+            name: activity.name,
+            place_id: activity.place_id
+          })),
+        ...searchResults
+          .filter(activity => activity.name)
+          .map(activity => ({
+            name: activity.name,
+            place_id: activity.place_id
+          }))
       ];
 
-      const result = await searchActivities(selectedCity, localQuery, filters, existingActivityNames);
+      const result = await searchActivities(selectedCity, localQuery, filters, existingActivities);
 
       if (result && result.activities) {
         // Append new activities to existing search results

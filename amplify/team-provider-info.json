@@ -130,7 +130,7 @@
         },
         "getLocationCoordinates": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/getLocationCoordinates-51736e494139474d2b44-build.zip",
+          "s3Key": "amplify-builds/getLocationCoordinates-417279326f494a73635a-build.zip",
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
         },
         "getTripIDs": {
@@ -162,7 +162,7 @@
         "regionImageStorage": {},
         "generateCategoryActivities": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/generateCategoryActivities-43663379546e7070544c-build.zip",
+          "s3Key": "amplify-builds/generateCategoryActivities-50794a67616a57772f49-build.zip",
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
           "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw"
         },
@@ -173,7 +173,7 @@
         },
         "searchBarActivities": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/searchBarActivities-6e49754c67592f333954-build.zip",
+          "s3Key": "amplify-builds/searchBarActivities-4e35383361732b4f5a52-build.zip",
           "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw",
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
         }

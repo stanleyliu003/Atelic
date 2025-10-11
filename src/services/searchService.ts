@@ -10,6 +10,11 @@ interface SearchActivitiesResponse {
   query: string;
 }
 
+interface ActivityDeduplication {
+  name: string;
+  place_id?: string;
+}
+
 /**
  * Get search autocomplete suggestions using Gemini AI
  * @param selectedCity - The city to search in
@@ -56,21 +61,34 @@ export async function getSearchAutocomplete(
  * @param selectedCity - The city to search in
  * @param searchQuery - The user's search query (can be address or general search)
  * @param filters - Optional array of filter IDs
- * @param existingWishlistActivities - Activities to exclude from results (for deduplication)
+ * @param existingWishlistActivities - Activities to exclude from results (for deduplication). Pass full Activity objects with name and place_id for best results.
  * @returns Search activities response with activities array
  */
 export async function searchActivities(
   selectedCity: string,
   searchQuery: string,
   filters: string[] = [],
-  existingWishlistActivities: string[] = []
+  existingWishlistActivities: ActivityDeduplication[] | Activity[] = []
 ): Promise<SearchActivitiesResponse> {
   try {
+    // Map activities to the new format with name and place_id
+    const formattedActivities = existingWishlistActivities.map(activity => {
+      if (typeof activity === 'string') {
+        // Legacy string format - convert to object format
+        return { name: activity, place_id: undefined };
+      }
+      // Object format - extract name and place_id
+      return {
+        name: activity.name,
+        place_id: activity.place_id || undefined
+      };
+    });
+
     console.log('[searchActivities] Making GraphQL call with params:', {
       selectedCity,
       searchQuery,
       filters,
-      existingWishlistActivities
+      existingWishlistActivities: formattedActivities
     });
 
     const result = await API.graphql(graphqlOperation(`
@@ -78,7 +96,7 @@ export async function searchActivities(
         $selectedCity: String!
         $searchQuery: String!
         $filters: [String!]
-        $existingWishlistActivities: [String!]
+        $existingWishlistActivities: [ActivityDeduplicationInput!]
       ) {
         searchActivities(
           selectedCity: $selectedCity
@@ -124,7 +142,7 @@ export async function searchActivities(
       selectedCity,
       searchQuery,
       filters,
-      existingWishlistActivities
+      existingWishlistActivities: formattedActivities
     })) as any;
 
     console.log('[searchActivities] GraphQL response:', result?.data?.searchActivities);
