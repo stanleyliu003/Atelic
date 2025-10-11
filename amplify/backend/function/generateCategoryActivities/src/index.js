@@ -114,19 +114,21 @@ exports.handler = async (event) => {
             console.warn(`Could not get coordinates for city "${selectedCity}". Proceeding without bias.`);
         }
 
-        // Geocode the recommendations (following wishlistAnalyzer batch processing pattern)
-        console.log(`Geocoding ${recommendations.length} recommendations with city-specific bias.`);
-        const batchSize = 5;
-        const geocodedLocations = [];
+        // First, check place_id-based activity cache for recommendations that may already exist
+        // This helps with "Generate More" requests and cross-category deduplication
+        console.log(`Checking place_id-based activity cache for ${recommendations.length} recommendations`);
+        const cachedActivitiesMap = new Map(); // name -> cached activity
+        const recommendationsToGeocode = [];
 
+        // Try to find cached activities by doing a preliminary geocode to get place_ids
+        const batchSize = 5;
         for (let i = 0; i < recommendations.length; i += batchSize) {
             const batch = recommendations.slice(i, i + batchSize);
 
             const batchPromises = batch.map(async (recommendationObj) => {
                 const { name } = recommendationObj;
 
-                console.log(`Geocoding "${name}" in "${selectedCity}" with bias:`, cityBias);
-
+                // First do a quick geocode to get the place_id
                 const locationInvokeCommand = new InvokeCommand({
                     FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
                     Payload: JSON.stringify({
@@ -140,32 +142,58 @@ exports.handler = async (event) => {
                     const locationPayload = JSON.parse(new TextDecoder().decode(locationResponse.Payload));
                     const locationResult = JSON.parse(locationPayload.body);
 
-                    if (locationResult && locationResult.length > 0) {
-                        return locationResult;
+                    if (locationResult && locationResult.length > 0 && locationResult[0].place_id) {
+                        const placeId = locationResult[0].place_id;
+                        
+                        // Check if we have a cached activity for this place_id
+                        const cachedActivity = await getCachedData('activity', placeId);
+                        if (cachedActivity) {
+                            console.log(`Cache HIT for activity with place_id: ${placeId} (${name})`);
+                            cachedActivitiesMap.set(name, cachedActivity);
+                            return { name, cached: true, data: locationResult[0] };
+                        }
+                        
+                        // If not cached, the geocode already happened, just use it
+                        console.log(`Cache MISS for activity with place_id: ${placeId} (${name})`);
+                        return { name, cached: false, data: locationResult[0] };
                     } else {
-                        console.warn(`No geocoding results for "${name}" in "${selectedCity}"`);
-                        return [];
+                        console.warn(`No place_id found for "${name}" in "${selectedCity}"`);
+                        return { name, cached: false, data: null };
                     }
                 } catch (error) {
-                    console.error(`Error geocoding "${name}" in "${selectedCity}":`, error);
-                    return [];
+                    console.error(`Error checking cache for "${name}":`, error);
+                    return { name, cached: false, data: null };
                 }
             });
 
             const batchResults = await Promise.all(batchPromises);
-            batchResults.forEach(results => {
-                if (results.length > 0) {
-                    geocodedLocations.push(...results);
-                }
-            });
+            recommendationsToGeocode.push(...batchResults);
 
-            console.log(`Completed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(recommendations.length/batchSize)}, total geocoded: ${geocodedLocations.length}`);
+            console.log(`Completed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(recommendations.length/batchSize)}, total processed: ${recommendationsToGeocode.length}`);
         }
 
-        // Create final activities array (following wishlistAnalyzer pattern)
+        console.log(`Found ${cachedActivitiesMap.size} cached activities, ${recommendationsToGeocode.length - cachedActivitiesMap.size} need processing`);
+
+        // Create final activities array using cached data or fresh geocode data
         const finalActivities = recommendations.map(recommendationObj => {
-            const coordData = geocodedLocations.find(c => c.name === recommendationObj.name);
-            return {
+            const { name } = recommendationObj;
+            
+            // Check if we have a cached activity
+            if (cachedActivitiesMap.has(name)) {
+                const cachedActivity = cachedActivitiesMap.get(name);
+                console.log(`Using cached activity for: ${name}`);
+                return {
+                    ...cachedActivity,
+                    city: selectedCity, // Ensure city is updated to current context
+                    is_recommended: true // Category-generated activities are recommended
+                };
+            }
+            
+            // Otherwise use the fresh geocode data
+            const geocodeResult = recommendationsToGeocode.find(r => r.name === name);
+            const coordData = geocodeResult?.data;
+            
+            const activity = {
                 name: recommendationObj.name,
                 city: selectedCity,
                 lat: coordData ? coordData.lat : null,
@@ -186,6 +214,15 @@ exports.handler = async (event) => {
                 primary_type_display_name: coordData ? coordData.primary_type_display_name : null,
                 international_phone_number: coordData ? coordData.international_phone_number : null,
             };
+            
+            // Cache the new activity by place_id for future reuse
+            if (activity.place_id) {
+                setCachedData('activity', activity.place_id, activity, CATEGORY_ACTIVITIES_TTL).catch(err => {
+                    console.warn(`Failed to cache activity for place_id ${activity.place_id}:`, err);
+                });
+            }
+            
+            return activity;
         });
 
         // Apply deduplication against existing activities (by name)

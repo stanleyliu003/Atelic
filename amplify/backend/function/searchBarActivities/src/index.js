@@ -11,7 +11,6 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
-const axios = require('axios');
 
 // Initialize clients
 const ddbClient = new DynamoDBClient({ region: process.env.REGION });
@@ -109,12 +108,11 @@ exports.handler = async (event) => {
 };
 
 /**
- * Handle address queries using Google Places Text Search API
+ * Handle address queries using getLocationCoordinates (leverages place_id cache)
  * Returns the specific place/establishment at the given address
  *
- * OPTIMIZATION: Uses Text Search data directly + single Place Details call
- * Previous: 3 API calls (Text Search + FindPlace + Place Details)
- * Current: 2 API calls (Text Search + Place Details)
+ * OPTIMIZATION: Uses getLocationCoordinates which has place_id-based caching
+ * This ensures address queries benefit from the shared place_id cache
  */
 async function handleAddressQuery(searchQuery, selectedCity, existingActivityNames, existingActivityPlaceIds, cacheKey) {
     try {
@@ -130,156 +128,79 @@ async function handleAddressQuery(searchQuery, selectedCity, existingActivityNam
             }
         }
 
-        const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
-
-        // Use Text Search API to find establishments at this address
-        const textSearchUrl = 'https://maps.googleapis.com/maps/api/place/textsearch/json';
+        // Construct full address query with city context
         const fullQuery = `${searchQuery}, ${selectedCity}`;
-        const textSearchParams = {
-            query: fullQuery,
-            key: GOOGLE_PLACES_API_KEY
-        };
+        console.log(`Looking up address via getLocationCoordinates: "${fullQuery}"`);
 
-        console.log(`Calling Google Places Text Search for: "${fullQuery}"`);
-        const textSearchResponse = await axios.get(textSearchUrl, { params: textSearchParams });
+        // Get city coordinates for bias
+        console.log(`Getting bias coordinates for city: ${selectedCity}`);
+        const cityInvokeCommand = new InvokeCommand({
+            FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
+            Payload: JSON.stringify({ locations: [selectedCity] }),
+        });
+        const cityResponse = await lambdaClient.send(cityInvokeCommand);
+        const cityPayload = JSON.parse(new TextDecoder().decode(cityResponse.Payload));
+        const cityCoordsArr = JSON.parse(cityPayload.body);
 
-        if (!textSearchResponse.data.results || textSearchResponse.data.results.length === 0) {
-            console.log(`No text search results found for: "${fullQuery}"`);
+        // Create city-specific location bias for precise geocoding
+        let cityBias = null;
+        if (cityCoordsArr && cityCoordsArr.length > 0) {
+            cityBias = { lat: cityCoordsArr[0].lat, lng: cityCoordsArr[0].lng };
+            console.log(`Successfully got bias for ${selectedCity}:`, cityBias);
+        }
+
+        // Call getLocationCoordinates with the full address query
+        // This will leverage place_id-based caching for Place Details
+        const locationInvokeCommand = new InvokeCommand({
+            FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
+            Payload: JSON.stringify({
+                locations: [fullQuery],
+                bias: cityBias
+            }),
+        });
+
+        const locationResponse = await lambdaClient.send(locationInvokeCommand);
+        const locationPayload = JSON.parse(new TextDecoder().decode(locationResponse.Payload));
+        const locationResults = JSON.parse(locationPayload.body);
+
+        if (!locationResults || locationResults.length === 0) {
+            console.log(`No results found for address: "${fullQuery}"`);
             return {
                 activities: [],
                 query: searchQuery
             };
         }
 
-        // Find the most relevant place from results
-        const results = textSearchResponse.data.results;
-        console.log(`Text Search returned ${results.length} results`);
+        // Use the first result (most relevant from FindPlace API)
+        const coordData = locationResults[0];
 
-        // Generic types to exclude (too generic or not useful for travel planning)
-        const genericTypes = [
-            'premise', 'street_address', 'geocode', 'route', 'neighborhood',
-            'locality', 'political', 'sublocality', 'administrative_area_level_1',
-            'administrative_area_level_2', 'postal_code', 'subpremise'
-        ];
-
-        // Find the first interesting place (has non-generic type)
-        let selectedPlace = results.find(place => {
-            const types = place.types || [];
-            return types.some(type => !genericTypes.includes(type));
-        }) || results[0]; // Fallback to first result if none found
-
-        console.log(`Initial selection: "${selectedPlace.name}" (types: ${selectedPlace.types?.join(', ')})`);
-
-        // If we only got a generic address, search for establishments at this location
-        const isGenericAddress = selectedPlace.types?.every(type => genericTypes.includes(type)) ?? true;
-        
-        if (isGenericAddress && selectedPlace.geometry?.location) {
-            console.log(`Generic address detected. Searching for establishments at this location...`);
-            
-            const nearbySearchUrl = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json';
-            const nearbyParams = {
-                location: `${selectedPlace.geometry.location.lat},${selectedPlace.geometry.location.lng}`,
-                radius: 20, // 20 meter radius - very close to the address
-                key: GOOGLE_PLACES_API_KEY
-            };
-
-            try {
-                const nearbyResponse = await axios.get(nearbySearchUrl, { params: nearbyParams });
-                
-                if (nearbyResponse.data.results && nearbyResponse.data.results.length > 0) {
-                    // Filter out generic results and find actual establishments
-                    const establishments = nearbyResponse.data.results.filter(place => {
-                        const types = place.types || [];
-                        return types.some(type => !genericTypes.includes(type));
-                    });
-
-                    if (establishments.length > 0) {
-                        selectedPlace = establishments[0];
-                        console.log(`Found establishment at address: "${selectedPlace.name}" (types: ${selectedPlace.types?.join(', ')})`);
-                    } else {
-                        console.log(`No establishments found nearby, using original address`);
-                    }
-                } else {
-                    console.log(`Nearby search returned no results`);
-                }
-            } catch (nearbyError) {
-                console.warn(`Nearby search failed: ${nearbyError.message}, using original address`);
-            }
-        }
-
-        console.log(`Final selected place: "${selectedPlace.name}" (types: ${selectedPlace.types?.join(', ')})`);
-
-        // Extract data from Text Search response
-        const location = selectedPlace.geometry?.location || {};
-        const photoReference = selectedPlace.photos?.[0]?.photo_reference || null;
-
-        // Get additional details only if we have a place_id
-        let placeDetails = {
-            display_name: selectedPlace.name,
-            website_uri: null,
-            regular_opening_hours: null,
-            reviews: [],
-            editorial_summary: null,
-            primary_type_display_name: null,
-            international_phone_number: null
-        };
-
-        if (selectedPlace.place_id) {
-            console.log(`Fetching details for place_id: ${selectedPlace.place_id}`);
-            const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json`;
-            const detailsParams = {
-                place_id: selectedPlace.place_id,
-                fields: 'name,opening_hours,website,reviews,editorial_summary,international_phone_number',
-                key: GOOGLE_PLACES_API_KEY
-            };
-
-            try {
-                const detailsResponse = await axios.get(detailsUrl, { params: detailsParams });
-                if (detailsResponse.data.status === 'OK' && detailsResponse.data.result) {
-                    const details = detailsResponse.data.result;
-                    
-                    placeDetails = {
-                        display_name: details.name || selectedPlace.name,
-                        website_uri: details.website || null,
-                        regular_opening_hours: details.opening_hours ? {
-                            open_now: details.opening_hours.open_now || false,
-                            periods: details.opening_hours.periods || [],
-                            weekday_text: details.opening_hours.weekday_text || []
-                        } : null,
-                        reviews: (details.reviews || []).slice(0, 5).map(review => ({
-                            author_name: review.author_name || null,
-                            rating: review.rating || null,
-                            text: review.text || null,
-                            time: review.time || null,
-                            author_url: review.author_url || null,
-                            profile_photo_url: review.profile_photo_url || null
-                        })),
-                        editorial_summary: details.editorial_summary?.overview || null,
-                        primary_type_display_name: selectedPlace.types?.[0]?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || null,
-                        international_phone_number: details.international_phone_number || null
-                    };
-                }
-            } catch (detailsError) {
-                console.warn(`Could not fetch place details: ${detailsError.message}`);
-            }
-        }
-
-        // Create activity object using Text Search + Place Details data
+        // Create activity object using getLocationCoordinates data
         const activity = {
-            name: selectedPlace.name,
+            name: coordData.foundName || coordData.name,
             city: selectedCity,
-            lat: location.lat || null,
-            lng: location.lng || null,
-            rating: selectedPlace.rating || null,
-            user_ratings_total: selectedPlace.user_ratings_total || null,
-            formatted_address: selectedPlace.formatted_address || null,
-            types: selectedPlace.types || [],
-            primaryType: selectedPlace.types?.[0] || null,
-            place_id: selectedPlace.place_id || null,
-            photo_reference: photoReference,
+            lat: coordData.lat || null,
+            lng: coordData.lng || null,
+            rating: coordData.rating || null,
+            user_ratings_total: coordData.user_ratings_total || null,
+            formatted_address: coordData.formatted_address || null,
+            types: coordData.types || [],
+            primaryType: coordData.primaryType || null,
+            place_id: coordData.place_id || null,
+            photo_reference: coordData.photo_reference || null,
             is_recommended: true,
-            ...placeDetails
+            display_name: coordData.display_name || null,
+            website_uri: coordData.website_uri || null,
+            regular_opening_hours: coordData.regular_opening_hours || null,
+            reviews: coordData.reviews || [],
+            editorial_summary: coordData.editorial_summary || null,
+            primary_type_display_name: coordData.primary_type_display_name || null,
+            international_phone_number: coordData.international_phone_number || null
         };
+
+        // Check place_id-based activity cache and update if new
+        if (activity.place_id) {
+            await setCachedData('activity', activity.place_id, activity, SEARCH_ACTIVITIES_TTL);
+        }
 
         // Apply deduplication
         const deduplicatedActivities = deduplicateActivities([activity], existingActivityNames, existingActivityPlaceIds);
@@ -365,19 +286,21 @@ async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActiv
             console.warn(`Could not get coordinates for city "${selectedCity}". Proceeding without bias.`);
         }
 
-        // Geocode the recommendations
-        console.log(`Geocoding ${recommendations.length} recommendations with city-specific bias.`);
-        const batchSize = 5;
-        const geocodedLocations = [];
+        // First, check place_id-based activity cache for recommendations that may already exist
+        // This helps with "Generate More" requests and cross-query deduplication
+        console.log(`Checking place_id-based activity cache for ${recommendations.length} recommendations`);
+        const cachedActivitiesMap = new Map(); // name -> cached activity
+        const recommendationsToGeocode = [];
 
-        for (let i = 0; i < recommendations.length; i += batchSize) {
-            const batch = recommendations.slice(i, i + batchSize);
-
+        // Try to find cached activities by doing a preliminary geocode to get place_ids
+        const preliminaryBatchSize = 5;
+        for (let i = 0; i < recommendations.length; i += preliminaryBatchSize) {
+            const batch = recommendations.slice(i, i + preliminaryBatchSize);
+            
             const batchPromises = batch.map(async (recommendationObj) => {
                 const { name } = recommendationObj;
-
-                console.log(`Geocoding "${name}" in "${selectedCity}" with bias:`, cityBias);
-
+                
+                // First do a quick geocode to get the place_id
                 const locationInvokeCommand = new InvokeCommand({
                     FunctionName: process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME,
                     Payload: JSON.stringify({
@@ -391,32 +314,56 @@ async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActiv
                     const locationPayload = JSON.parse(new TextDecoder().decode(locationResponse.Payload));
                     const locationResult = JSON.parse(locationPayload.body);
 
-                    if (locationResult && locationResult.length > 0) {
-                        return locationResult;
+                    if (locationResult && locationResult.length > 0 && locationResult[0].place_id) {
+                        const placeId = locationResult[0].place_id;
+                        
+                        // Check if we have a cached activity for this place_id
+                        const cachedActivity = await getCachedData('activity', placeId);
+                        if (cachedActivity) {
+                            console.log(`Cache HIT for activity with place_id: ${placeId} (${name})`);
+                            cachedActivitiesMap.set(name, cachedActivity);
+                            return { name, cached: true, data: locationResult[0] };
+                        }
+                        
+                        // If not cached, the geocode already happened, just use it
+                        console.log(`Cache MISS for activity with place_id: ${placeId} (${name})`);
+                        return { name, cached: false, data: locationResult[0] };
                     } else {
-                        console.warn(`No geocoding results for "${name}" in "${selectedCity}"`);
-                        return [];
+                        console.warn(`No place_id found for "${name}" in "${selectedCity}"`);
+                        return { name, cached: false, data: null };
                     }
                 } catch (error) {
-                    console.error(`Error geocoding "${name}" in "${selectedCity}":`, error);
-                    return [];
+                    console.error(`Error checking cache for "${name}":`, error);
+                    return { name, cached: false, data: null };
                 }
             });
 
             const batchResults = await Promise.all(batchPromises);
-            batchResults.forEach(results => {
-                if (results.length > 0) {
-                    geocodedLocations.push(...results);
-                }
-            });
-
-            console.log(`Completed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(recommendations.length/batchSize)}, total geocoded: ${geocodedLocations.length}`);
+            recommendationsToGeocode.push(...batchResults);
         }
 
-        // Create final activities array
+        console.log(`Found ${cachedActivitiesMap.size} cached activities, ${recommendationsToGeocode.length - cachedActivitiesMap.size} need processing`);
+
+        // Create final activities array using cached data or fresh geocode data
         const finalActivities = recommendations.map(recommendationObj => {
-            const coordData = geocodedLocations.find(c => c.name === recommendationObj.name);
-            return {
+            const { name } = recommendationObj;
+            
+            // Check if we have a cached activity
+            if (cachedActivitiesMap.has(name)) {
+                const cachedActivity = cachedActivitiesMap.get(name);
+                console.log(`Using cached activity for: ${name}`);
+                return {
+                    ...cachedActivity,
+                    city: selectedCity, // Ensure city is updated to current context
+                    is_recommended: true
+                };
+            }
+            
+            // Otherwise use the fresh geocode data
+            const geocodeResult = recommendationsToGeocode.find(r => r.name === name);
+            const coordData = geocodeResult?.data;
+            
+            const activity = {
                 name: recommendationObj.name,
                 city: selectedCity,
                 lat: coordData ? coordData.lat : null,
@@ -437,6 +384,15 @@ async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActiv
                 primary_type_display_name: coordData ? coordData.primary_type_display_name : null,
                 international_phone_number: coordData ? coordData.international_phone_number : null,
             };
+            
+            // Cache the new activity by place_id for future reuse
+            if (activity.place_id) {
+                setCachedData('activity', activity.place_id, activity, SEARCH_ACTIVITIES_TTL).catch(err => {
+                    console.warn(`Failed to cache activity for place_id ${activity.place_id}:`, err);
+                });
+            }
+            
+            return activity;
         });
 
         // Apply deduplication against existing activities (by place_id)
