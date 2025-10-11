@@ -46,7 +46,8 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
 }) => {
   const { getCurrentUser } = useCreateTrip();
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const [selectedRole, setSelectedRole] = useState<CollaboratorRole>(currentUserRole === 'owner' ? 'editor' : 'viewer');
+  // TEMPORARILY DISABLED: Owners default to 'viewer' (was 'editor')
+  const [selectedRole, setSelectedRole] = useState<CollaboratorRole>(currentUserRole === 'owner' ? 'viewer' : 'viewer'); // const [selectedRole, setSelectedRole] = useState<CollaboratorRole>(currentUserRole === 'owner' ? 'editor' : 'viewer');
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [includeMessage, setIncludeMessage] = useState(false);
   const [message, setMessage] = useState('');
@@ -62,9 +63,9 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
     console.log('[ShareTripModal] User selected for invitation:', user);
     setSelectedUser(user);
     // Default role based on current user's role:
-    // - Owners default to 'editor'
+    // - Owners default to 'viewer' (TEMPORARILY DISABLED: was 'editor')
     // - Editors default to 'viewer'
-    const defaultRole = currentUserRole === 'owner' ? 'editor' : 'viewer';
+    const defaultRole = currentUserRole === 'owner' ? 'viewer' : 'viewer'; // const defaultRole = currentUserRole === 'owner' ? 'editor' : 'viewer';
     setSelectedRole(defaultRole);
   };
 
@@ -95,7 +96,8 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
       }
 
       setSelectedUser(null);
-      setSelectedRole('editor');
+      // TEMPORARILY DISABLED: Reset to 'viewer' (was 'editor')
+      setSelectedRole('viewer'); // setSelectedRole('editor');
     } catch (error) {
       console.error('[ShareTripModal] Error adding collaborator:', error);
       Alert.alert('Error', 'Failed to add collaborator. Please try again.');
@@ -112,7 +114,8 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
   const clearSelectedUser = () => {
     setSelectedUser(null);
     // Reset to default role based on current user's role
-    const defaultRole = currentUserRole === 'owner' ? 'editor' : 'viewer';
+    // TEMPORARILY DISABLED: Owners default to 'viewer' (was 'editor')
+    const defaultRole = currentUserRole === 'owner' ? 'viewer' : 'viewer'; // const defaultRole = currentUserRole === 'owner' ? 'editor' : 'viewer';
     setSelectedRole(defaultRole);
     setIncludeMessage(false);
     setMessage('');
@@ -120,7 +123,8 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
 
   const getAvailableRoles = (): CollaboratorRole[] => {
     if (currentUserRole === 'owner') {
-      return ['editor', 'viewer'];
+      // TEMPORARILY DISABLED: Owners can only add viewers (not editors)
+      return ['viewer']; // return ['editor', 'viewer'];
     } else if (currentUserRole === 'editor') {
       return ['viewer']; // Editors can only invite viewers
     }
