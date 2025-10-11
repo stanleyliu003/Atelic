@@ -79,12 +79,34 @@ export default function TripViewMain() {
     const [dayScrollPositions, setDayScrollPositions] = useState<{ [key: number]: number }>({});
     const [shouldRestoreScrollPositions, setShouldRestoreScrollPositions] = useState<{ [key: number]: boolean }>({});
 
-    // State for draggable bottom section
+    // State for draggable bottom section with 3 discrete states
     const screenHeight = Dimensions.get('window').height;
-    const MIN_HEIGHT = 0.65; //
+    const MIN_HEIGHT = 0.30; // 30% of screen height (minimum)
+    const DEFAULT_HEIGHT = 0.65; // 65% of screen height (default)
     const MAX_HEIGHT = 0.90; // 90% of screen height (maximum)
-    const DEFAULT_HEIGHT = 0.65; // 60% of screen height (default starting position)
+    
+    // Current height state (0 = min, 1 = default, 2 = max)
+    const [currentHeightState, setCurrentHeightState] = useState(1); // Start at default
     const [bottomHeight] = useState(new Animated.Value(DEFAULT_HEIGHT));
+    
+    // Ref to track current state for pan responder (avoids stale closure)
+    const currentHeightStateRef = useRef(1);
+    
+    // Array of height states for easy access
+    const heightStates = [MIN_HEIGHT, DEFAULT_HEIGHT, MAX_HEIGHT];
+    
+    // Function to programmatically change height state
+    const changeHeightState = (newState: number) => {
+        if (newState >= 0 && newState < heightStates.length && newState !== currentHeightState) {
+            setCurrentHeightState(newState);
+            Animated.spring(bottomHeight, {
+                toValue: heightStates[newState],
+                useNativeDriver: false,
+                tension: 80,
+                friction: 8,
+            }).start();
+        }
+    };
 
     // Save-in-progress lock to prevent concurrent saves and duplicate tripID generation
     const [isSaving, setIsSaving] = useState(false);
@@ -109,6 +131,19 @@ export default function TripViewMain() {
     useEffect(() => {
         tripIdRef.current = tripId;
     }, [tripId]);
+
+    // Reset height to default state on component mount/reload
+    useEffect(() => {
+        setCurrentHeightState(1); // Reset to default state
+        currentHeightStateRef.current = 1; // Also reset the ref
+        bottomHeight.setValue(DEFAULT_HEIGHT);
+    }, []); // Empty dependency array means this runs only on mount
+
+    // Keep ref in sync with state
+    useEffect(() => {
+        currentHeightStateRef.current = currentHeightState;
+    }, [currentHeightState]);
+
 
     // Track screen focus to control subscription
     useFocusEffect(
@@ -137,54 +172,46 @@ export default function TripViewMain() {
         }));
     };
 
-    // Pan responder for draggable indicator
-    const currentHeight = useRef(DEFAULT_HEIGHT);
+    // Pan responder for swipe gestures between discrete states
     const panResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: () => true,
-            onPanResponderGrant: () => {
-                // Store the current height when gesture starts
-                bottomHeight.stopAnimation((value) => {
-                    currentHeight.current = value;
-                });
+            onMoveShouldSetPanResponder: (_, gestureState) => {
+                // Only respond to significant vertical movement
+                return Math.abs(gestureState.dy) > 10;
             },
-            onPanResponderMove: (_, gestureState) => {
-                // Calculate new height based on drag (negative dy means dragging up)
-                const draggedAmount = -gestureState.dy / screenHeight;
-                const newHeight = currentHeight.current + draggedAmount;
-
-                // Clamp between min and max heights
-                const clampedHeight = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, newHeight));
-                bottomHeight.setValue(clampedHeight);
+            onPanResponderGrant: () => {
+                // Stop any ongoing animation
+                bottomHeight.stopAnimation();
+            },
+            onPanResponderMove: () => {
+                // Don't update position during move - we'll snap on release
             },
             onPanResponderRelease: (_, gestureState) => {
-                // Update current height reference
-                bottomHeight.stopAnimation((value) => {
-                    currentHeight.current = value;
-                });
-
-                // Only apply subtle bounce-back if user dragged beyond limits
-                const finalHeight = currentHeight.current;
-
-                if (finalHeight < MIN_HEIGHT) {
+                const swipeThreshold = 50; // Minimum distance for a swipe
+                const swipeVelocityThreshold = 0.5; // Minimum velocity for a swipe
+                
+                const currentState = currentHeightStateRef.current; // Use ref for current value
+                let newState = currentState;
+                
+                // Check for swipe up (negative dy) - go one step higher
+                if (gestureState.dy < -swipeThreshold || gestureState.vy < -swipeVelocityThreshold) {
+                    newState = Math.min(currentState + 1, 2); // Max state is 2
+                }
+                // Check for swipe down (positive dy) - go one step lower
+                else if (gestureState.dy > swipeThreshold || gestureState.vy > swipeVelocityThreshold) {
+                    newState = Math.max(currentState - 1, 0); // Min state is 0
+                }
+                
+                // Animate to the new state if it changed
+                if (newState !== currentState) {
+                    setCurrentHeightState(newState);
                     Animated.spring(bottomHeight, {
-                        toValue: MIN_HEIGHT,
+                        toValue: heightStates[newState],
                         useNativeDriver: false,
-                        tension: 65,
+                        tension: 80,
                         friction: 8,
-                    }).start(() => {
-                        currentHeight.current = MIN_HEIGHT;
-                    });
-                } else if (finalHeight > MAX_HEIGHT) {
-                    Animated.spring(bottomHeight, {
-                        toValue: MAX_HEIGHT,
-                        useNativeDriver: false,
-                        tension: 65,
-                        friction: 8,
-                    }).start(() => {
-                        currentHeight.current = MAX_HEIGHT;
-                    });
+                    }).start();
                 }
             },
         })
@@ -1002,7 +1029,7 @@ export default function TripViewMain() {
 
                 Alert.alert(
                     'Trip Updated',
-                    `This trip was updated by another user while you were editing. Your local version (${version}) is outdated. Please reload to see the latest changes.`,
+                    `This trip was updated by another user while you were editing. Please reload to see the latest changes.`,
                     [
                         {
                             text: 'Reload Now',
