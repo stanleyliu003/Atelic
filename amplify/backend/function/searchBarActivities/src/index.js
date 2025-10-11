@@ -426,7 +426,10 @@ async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActiv
         });
 
         // Apply deduplication against existing activities (by name)
-        const deduplicatedActivities = deduplicateActivities(finalActivities, existingActivities);
+        let deduplicatedActivities = deduplicateActivities(finalActivities, existingActivities);
+
+        // Deduplicate by place_id within the current results
+        deduplicatedActivities = deduplicateByPlaceId(deduplicatedActivities);
 
         // Cache the result only for initial requests
         if (existingActivities.length === 0) {
@@ -437,10 +440,10 @@ async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActiv
             }, SEARCH_ACTIVITIES_TTL);
         }
 
-        console.log(`Returning ${deduplicatedActivities.length} activities for general search`);
+        console.log(`Returning ${deduplicatedActivities.length} activities for general search (after place_id deduplication)`);
 
         return {
-            activities: deduplicatedActivities.slice(0, 4),
+            activities: deduplicatedActivities,
             query: searchQuery
         };
 
@@ -483,6 +486,8 @@ CRITICAL CONSTRAINTS:
 3. Use precise, official names suitable for Google Places API
 4. Don't recommend neighborhoods or areas, only specific locations
 5. Focus on well-regarded, authentic experiences
+6. Each recommendation MUST be a DIFFERENT physical location with a DIFFERENT address
+7. DO NOT recommend multiple tour operators, companies, or services for the same attraction/location
 ${filtersContext}${existingActivitiesContext}
 
 SEARCH QUERY: "${searchQuery}"
@@ -491,12 +496,14 @@ Generate 4 recommendations that:
 - Are highly rated and well-regarded locations
 - Are accessible to visitors
 - Are specific venues, not districts or neighborhoods
+- Are at DIFFERENT addresses (not the same place with different names)
+- Are distinct physical locations (not multiple ways to access the same attraction)
 
 STRICT OUTPUT FORMAT:
 Return ONLY this JSON structure with no additional text:
 {"recommendations":[{"name":"Specific Place Name 1","region":"${selectedCity}"},{"name":"Specific Place Name 2","region":"${selectedCity}"}]}
 
-Generate 4 specific recommendations for "${searchQuery}" in ${selectedCity} now:
+Generate 4 diverse, distinct physical locations for "${searchQuery}" in ${selectedCity} now:
     `;
 }
 
@@ -510,6 +517,30 @@ function deduplicateActivities(activities, existingActivityNames) {
 
     const existingNamesSet = new Set(existingActivityNames);
     return activities.filter(activity => !existingNamesSet.has(activity.name));
+}
+
+/**
+ * Deduplicate activities by place_id within the current batch
+ * Keeps the first occurrence of each unique place_id
+ */
+function deduplicateByPlaceId(activities) {
+    const seenPlaceIds = new Set();
+    const uniqueActivities = [];
+
+    for (const activity of activities) {
+        // Skip activities without place_id or with duplicate place_id
+        if (activity.place_id && !seenPlaceIds.has(activity.place_id)) {
+            seenPlaceIds.add(activity.place_id);
+            uniqueActivities.push(activity);
+        } else if (!activity.place_id) {
+            // Keep activities without place_id (geocoding may have failed)
+            uniqueActivities.push(activity);
+        } else {
+            console.log(`Skipping duplicate place_id: ${activity.place_id} for activity: ${activity.name}`);
+        }
+    }
+
+    return uniqueActivities;
 }
 
 // Cache helper functions
