@@ -19,7 +19,7 @@ const lambdaClient = new LambdaClient({ region: process.env.REGION });
 const tableName = process.env.STORAGE_PLACESAPIACTIVITYSTORAGE_NAME;
 
 // Cache TTL constants (in seconds)
-const CATEGORY_ACTIVITIES_TTL = 24 * 60 * 60; // 24 hours
+const CATEGORY_ACTIVITIES_TTL = 365 * 24 * 60 * 60; // 1 year (31,536,000 seconds)
 
 /**
  * Lambda function to generate activities for a specific category using Gemini AI

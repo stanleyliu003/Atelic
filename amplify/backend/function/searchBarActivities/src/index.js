@@ -20,7 +20,7 @@ const lambdaClient = new LambdaClient({ region: process.env.REGION });
 const tableName = process.env.STORAGE_PLACESAPIACTIVITYSTORAGE_NAME;
 
 // Cache TTL constants (in seconds)
-const SEARCH_ACTIVITIES_TTL = 24 * 60 * 60; // 24 hours
+const SEARCH_ACTIVITIES_TTL = 365 * 24 * 60 * 60; // 1 year (31,536,000 seconds)
 
 // Address detection regex - detects if query looks like a street address
 const ADDRESS_REGEX = /\d+[A-Z]?[-#]?\s+[\w\s]+(?:street|st|avenue|ave|road|rd|drive|dr|boulevard|blvd|lane|ln|way|place|pl|court|ct|circle|cir|parkway|pkwy|terrace|ter|alley|plaza|square|sq|highway|hwy|route|rt|row|crescent|cres)/i;
