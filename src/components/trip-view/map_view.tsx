@@ -14,6 +14,8 @@ interface MapViewProps {
   selectedActivities?: string[]; // Add selected activities prop
   onMarkerPress?: (activity: Activity) => void; // Add callback for marker press
   selectedMarker?: string | null; // Add selected marker prop
+  currentHeightState?: number; // Current height state (0=min, 1=default, 2=max)
+  heightStates?: number[]; // Array of height percentages [MIN_HEIGHT, DEFAULT_HEIGHT, MAX_HEIGHT]
   // Collaboration props
   onShareTrip?: () => void;
 }
@@ -52,6 +54,8 @@ export function TripMapView({
   selectedActivities = [], // Add default value
   onMarkerPress, // Add callback prop
   selectedMarker = null, // Add selected marker prop
+  currentHeightState = 1, // Default to middle state
+  heightStates = [0.30, 0.65, 0.90], // Default height states
   onShareTrip
 }: MapViewProps) {
   const mapRef = useRef<MapView>(null);
@@ -122,26 +126,47 @@ export function TripMapView({
     const paddingFactor = 0.3; // 30% padding around the bounds
     const minDelta = 0.005; // Minimum zoom level for very close markers
     
-    // Calculate deltas with padding, ensuring minimum zoom
+    // Calculate base deltas with padding, ensuring minimum zoom
     let latitudeDelta = Math.max(latSpan * (1 + paddingFactor), minDelta) * 2;
     let longitudeDelta = Math.max(lngSpan * (1 + paddingFactor), minDelta) * 2;
     
+    // Calculate visible map area based on current height state
+    const currentBottomSheetHeight = heightStates[currentHeightState];
+    const visibleMapHeight = 1 - currentBottomSheetHeight; // Percentage of screen that shows map
+    
+    let finalCenterLat = centerLat;
+    let finalLatitudeDelta = latitudeDelta;
+    let finalLongitudeDelta = longitudeDelta;
+    
+    if (currentHeightState === 1) { // DEFAULT_HEIGHT = 65%
+      const visibleAreaRatio = visibleMapHeight; // 0.65 for DEFAULT_HEIGHT
+    
+      const requiredLatSpanForVisibleArea = latSpan * (1 + paddingFactor);
+      finalLatitudeDelta = (requiredLatSpanForVisibleArea * 2) / visibleAreaRatio;
+      const hiddenAreaRatio = 1 - visibleAreaRatio; // 0.35 for DEFAULT_HEIGHT
+      finalCenterLat = centerLat - (finalLatitudeDelta * hiddenAreaRatio * 0.5);
+      
+      // Adjust longitude proportionally to maintain aspect ratio
+      finalLongitudeDelta = longitudeDelta * (finalLatitudeDelta / latitudeDelta);
+      
+    }
+    // currentHeightState === 0 (MIN_HEIGHT = 30%) needs no adjustment as map is fully visible
+    
     // Adjust for map aspect ratio (70% height means it's wider than tall)
-    // For a 70% height map, we might want to adjust the latitude delta slightly
     const mapAspectRatio = 1 / 0.7; // width/height ratio
-    const coordinateAspectRatio = longitudeDelta / latitudeDelta;
+    const coordinateAspectRatio = finalLongitudeDelta / finalLatitudeDelta;
     
     // If coordinates are more spread horizontally than the map aspect ratio suggests,
     // we might need to adjust the latitude delta to maintain proper centering
     if (coordinateAspectRatio > mapAspectRatio) {
-      latitudeDelta = longitudeDelta / mapAspectRatio;
+      finalLatitudeDelta = finalLongitudeDelta / mapAspectRatio;
     }
     
     return {
-      latitude: centerLat,
+      latitude: finalCenterLat,
       longitude: centerLng,
-      latitudeDelta,
-      longitudeDelta,
+      latitudeDelta: finalLatitudeDelta,
+      longitudeDelta: finalLongitudeDelta,
     };
   };
 
@@ -167,15 +192,15 @@ export function TripMapView({
   // Center the map on the first marker, or a default location if no markers exist
   const initialRegion: Region = useMemo(() => {
     return getInitialRegion();
-  }, [activeTab, dynamicMarkers]);
+  }, [activeTab, dynamicMarkers, currentHeightState]);
 
-  // Animate to show all activities when activities or activeTab changes
+  // Animate to show all activities when activities, activeTab, or height state changes
   useEffect(() => {
     if (mapRef.current && dynamicMarkers.length > 0) {
       const newRegion = getInitialRegion();
       mapRef.current.animateToRegion(newRegion, 1000); // 1 second animation
     }
-  }, [activities, activeTab, dynamicMarkers]);
+  }, [activities, activeTab, dynamicMarkers, currentHeightState]);
 
   // Updated useEffect for selected marker zoom
   useEffect(() => {

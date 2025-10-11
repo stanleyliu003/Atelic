@@ -1250,6 +1250,8 @@ export default function TripViewMain() {
                 selectedActivities={selectedActivities}
                 onMarkerPress={handleActivityDescriptionCardSelect}
                 selectedMarker={selectedMarker}
+                currentHeightState={currentHeightState}
+                heightStates={heightStates}
                 onShareTrip={async () => {
                     if (!tripId) {
                         // Save trip first if it doesn't exist
