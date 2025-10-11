@@ -50,8 +50,22 @@ exports.handler = async (event) => {
             throw new Error('searchQuery is required');
         }
 
-        // Alias for internal use
-        const existingActivities = existingWishlistActivities;
+        // Parse existing activities - support both string arrays (legacy) and object arrays (new)
+        let existingActivityNames = [];
+        let existingActivityPlaceIds = [];
+
+        if (existingWishlistActivities.length > 0) {
+            if (typeof existingWishlistActivities[0] === 'string') {
+                // Legacy format: array of names only
+                existingActivityNames = existingWishlistActivities;
+                console.log('Using legacy format: array of activity names');
+            } else if (typeof existingWishlistActivities[0] === 'object') {
+                // New format: array of activity objects with name and place_id
+                existingActivityNames = existingWishlistActivities.map(a => a.name).filter(n => n);
+                existingActivityPlaceIds = existingWishlistActivities.map(a => a.place_id).filter(id => id);
+                console.log(`Parsed existing activities: ${existingActivityNames.length} names, ${existingActivityPlaceIds.length} place_ids`);
+            }
+        }
 
         // Build cache key
         const filterString = filters.length > 0 ? `-${filters.sort().join(',')}` : '';
@@ -59,7 +73,7 @@ exports.handler = async (event) => {
 
         // Check cache first (only for initial requests)
         let cachedResult = null;
-        if (existingActivities.length === 0) {
+        if (existingActivityNames.length === 0 && existingActivityPlaceIds.length === 0) {
             cachedResult = await getCachedData('activities', cacheKey);
             if (cachedResult && cachedResult.activities) {
                 console.log(`Returning cached search results for: ${searchQuery}`);
@@ -77,10 +91,10 @@ exports.handler = async (event) => {
 
         if (isAddress) {
             console.log(`Detected address query: "${searchQuery}". Routing to Google Places Text Search.`);
-            return await handleAddressQuery(searchQuery, selectedCity, existingActivities, cacheKey);
+            return await handleAddressQuery(searchQuery, selectedCity, existingActivityNames, existingActivityPlaceIds, cacheKey);
         } else {
             console.log(`Detected general search query: "${searchQuery}". Routing to Gemini AI.`);
-            return await handleGeneralSearchQuery(searchQuery, selectedCity, existingActivities, filters, cacheKey);
+            return await handleGeneralSearchQuery(searchQuery, selectedCity, existingActivityNames, existingActivityPlaceIds, filters, cacheKey);
         }
 
     } catch (error) {
@@ -97,15 +111,15 @@ exports.handler = async (event) => {
 /**
  * Handle address queries using Google Places Text Search API
  * Returns the specific place/establishment at the given address
- * 
+ *
  * OPTIMIZATION: Uses Text Search data directly + single Place Details call
  * Previous: 3 API calls (Text Search + FindPlace + Place Details)
  * Current: 2 API calls (Text Search + Place Details)
  */
-async function handleAddressQuery(searchQuery, selectedCity, existingActivities, cacheKey) {
+async function handleAddressQuery(searchQuery, selectedCity, existingActivityNames, existingActivityPlaceIds, cacheKey) {
     try {
         // Check cache for address query
-        if (existingActivities.length === 0) {
+        if (existingActivityNames.length === 0 && existingActivityPlaceIds.length === 0) {
             const cachedResult = await getCachedData('activities', cacheKey);
             if (cachedResult && cachedResult.activities) {
                 console.log(`Returning cached address result for: ${searchQuery}`);
@@ -268,10 +282,10 @@ async function handleAddressQuery(searchQuery, selectedCity, existingActivities,
         };
 
         // Apply deduplication
-        const deduplicatedActivities = deduplicateActivities([activity], existingActivities);
+        const deduplicatedActivities = deduplicateActivities([activity], existingActivityNames, existingActivityPlaceIds);
 
         // Cache the result only for initial requests
-        if (existingActivities.length === 0) {
+        if (existingActivityNames.length === 0 && existingActivityPlaceIds.length === 0) {
             await setCachedData('activities', cacheKey, {
                 activities: [activity],
                 query: searchQuery,
@@ -299,14 +313,14 @@ async function handleAddressQuery(searchQuery, selectedCity, existingActivities,
  * Handle general search queries using Gemini AI
  * Returns 4 recommended activities based on search query and filters
  */
-async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActivities, filters, cacheKey) {
+async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActivityNames, existingActivityPlaceIds, filters, cacheKey) {
     try {
         // Initialize Gemini with API key from environment
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
         // Build prompt for general search
-        const prompt = buildSearchPrompt(selectedCity, searchQuery, filters, existingActivities);
+        const prompt = buildSearchPrompt(selectedCity, searchQuery, filters, existingActivityNames);
         console.log(`Gemini prompt created for search: ${searchQuery}`);
 
         // Call Gemini API
@@ -425,16 +439,16 @@ async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActiv
             };
         });
 
-        // Apply deduplication against existing activities (by name)
-        let deduplicatedActivities = deduplicateActivities(finalActivities, existingActivities);
+        // Apply deduplication against existing activities (by place_id)
+        let deduplicatedActivities = deduplicateActivities(finalActivities, existingActivityNames, existingActivityPlaceIds);
 
         // Deduplicate by place_id within the current results
         deduplicatedActivities = deduplicateByPlaceId(deduplicatedActivities);
 
-        // Cache the result only for initial requests
-        if (existingActivities.length === 0) {
+        // Cache the result only for initial requests (cache deduplicated activities)
+        if (existingActivityNames.length === 0 && existingActivityPlaceIds.length === 0) {
             await setCachedData('activities', cacheKey, {
-                activities: finalActivities,
+                activities: deduplicatedActivities,
                 query: searchQuery,
                 timestamp: new Date().toISOString()
             }, SEARCH_ACTIVITIES_TTL);
@@ -508,15 +522,29 @@ Generate 4 diverse, distinct physical locations for "${searchQuery}" in ${select
 }
 
 /**
- * Deduplication logic - remove activities that already exist by name
+ * Deduplication logic - remove activities that already exist by place_id
+ * @param {Array} activities - Array of activity objects to deduplicate
+ * @param {Array} existingActivityNames - Array of existing activity names (unused, kept for backward compatibility)
+ * @param {Array} existingActivityPlaceIds - Array of existing activity place_ids
  */
-function deduplicateActivities(activities, existingActivityNames) {
-    if (!existingActivityNames || existingActivityNames.length === 0) {
+function deduplicateActivities(activities, existingActivityNames, existingActivityPlaceIds = []) {
+    if (!existingActivityPlaceIds || existingActivityPlaceIds.length === 0) {
         return activities;
     }
 
-    const existingNamesSet = new Set(existingActivityNames);
-    return activities.filter(activity => !existingNamesSet.has(activity.name));
+    const existingPlaceIdsSet = new Set(existingActivityPlaceIds.filter(id => id)); // Filter out null/undefined
+
+    return activities.filter(activity => {
+        // Check place_id match (only if activity has a place_id)
+        const placeIdMatch = activity.place_id && existingPlaceIdsSet.has(activity.place_id);
+
+        if (placeIdMatch) {
+            console.log(`Filtering out duplicate by place_id: ${activity.place_id} (${activity.name})`);
+            return false;
+        }
+
+        return true;
+    });
 }
 
 /**

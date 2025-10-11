@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -10,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Feather from '@expo/vector-icons/Feather';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { Colors } from '../../../constants/Colors';
@@ -63,7 +65,8 @@ export const AutocompleteModal = ({
   const [searchError, setSearchError] = useState(null);
   const [selectedActivityIds, setSelectedActivityIds] = useState([]);
   const [showingResults, setShowingResults] = useState(false);
-  
+  const [loadingMoreResults, setLoadingMoreResults] = useState(false);
+
   // Description card modal state
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [showDescriptionCard, setShowDescriptionCard] = useState(false);
@@ -232,7 +235,7 @@ export const AutocompleteModal = ({
       selectedActivityIds.includes(activity.place_id)
     );
     onSaveActivities(selectedActivities);
-    
+
     // Reset state
     setSelectedActivityIds([]);
     setShowingResults(false);
@@ -240,6 +243,41 @@ export const AutocompleteModal = ({
     setLocalQuery('');
     if (onQueryChange) {
       onQueryChange('');
+    }
+  };
+
+  // Handle generating more search results
+  const handleGenerateMoreResults = async () => {
+    // Check if search results already have 8 or more activities
+    if (searchResults.length >= 8) {
+      Alert.alert(
+        'Activity Limit Reached',
+        `Generation limit reached for search results.`,
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
+
+    setLoadingMoreResults(true);
+
+    try {
+      // Get existing search result names to avoid duplicates
+      const existingActivityNames = [
+        ...wishlistActivities.map(activity => activity.name).filter(Boolean),
+        ...searchResults.map(activity => activity.name).filter(Boolean)
+      ];
+
+      const result = await searchActivities(selectedCity, localQuery, filters, existingActivityNames);
+
+      if (result && result.activities) {
+        // Append new activities to existing search results
+        setSearchResults(prev => [...prev, ...result.activities]);
+      }
+    } catch (error) {
+      console.error('[AutocompleteModal] Error generating more results:', error);
+      setSearchError('Failed to generate more results. Please try again.');
+    } finally {
+      setLoadingMoreResults(false);
     }
   };
   
@@ -379,6 +417,24 @@ export const AutocompleteModal = ({
                           showSelectionIndicator={true}
                           wishlistActivities={wishlistActivities}
                         />
+
+                        {/* Generate More Search Results Button */}
+                        <View style={styles.generateMoreContainer}>
+                          <TouchableOpacity
+                            style={[styles.generateMoreButton, loadingMoreResults && styles.generateMoreButtonDisabled]}
+                            onPress={() => !loadingMoreResults && handleGenerateMoreResults()}
+                            disabled={loadingMoreResults}
+                          >
+                            {loadingMoreResults ? (
+                              <ActivityIndicator size="small" color="#666" />
+                            ) : (
+                              <Feather name="plus-circle" size={24} color="black" />
+                            )}
+                            <Text style={[styles.generateMoreButtonText, loadingMoreResults && styles.generateMoreButtonTextDisabled]}>
+                              {loadingMoreResults ? 'Loading...' : `More ${localQuery}`}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     )}
                   </>
@@ -628,5 +684,39 @@ const styles = StyleSheet.create({
   descriptionCardContainer: {
     flex: 1,
     paddingTop: 70,
+  },
+  generateMoreContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  generateMoreButton: {
+    marginTop: -20,
+    marginBottom: 70,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginHorizontal: -20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  generateMoreButtonText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
+    color: '#1a1a1a',
+    fontWeight: '500',
+  },
+  generateMoreButtonDisabled: {
+    opacity: 0.6,
+  },
+  generateMoreButtonTextDisabled: {
+    color: '#666',
   },
 });

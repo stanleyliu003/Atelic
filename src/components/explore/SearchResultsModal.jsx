@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   ScrollView,
   StyleSheet,
@@ -8,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Feather from '@expo/vector-icons/Feather';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { Colors } from '../../../constants/Colors';
@@ -21,10 +23,12 @@ import { WishlistActivities } from '../trip-view/wishlist_activities';
  * @param {boolean} visible - Whether modal is visible
  * @param {string} query - Search query that was used
  * @param {Activity[]} activities - Array of activity objects to display
+ * @param {boolean} loadingMore - Whether more activities are being generated (for button loading state)
  * @param {function} onSave - Callback when "Save to Wishlist" is clicked (receives array of selected activities)
  * @param {function} onClose - Callback to close modal
+ * @param {function} onGenerateMore - Callback when "More [query]" button is clicked
  */
-export const SearchResultsModal = ({ visible, query, activities, onSave, onClose }) => {
+export const SearchResultsModal = ({ visible, query, activities, loadingMore = false, onSave, onClose, onGenerateMore }) => {
   const [selectedActivityIds, setSelectedActivityIds] = useState([]);
 
   // Toggle activity selection
@@ -52,6 +56,13 @@ export const SearchResultsModal = ({ visible, query, activities, onSave, onClose
   const handleClose = () => {
     setSelectedActivityIds([]);
     onClose();
+  };
+
+  // Handle generating more search results
+  const handleGenerateMoreResults = async () => {
+    if (onGenerateMore) {
+      await onGenerateMore(query);
+    }
   };
 
   // Swipe down gesture to close
@@ -100,13 +111,35 @@ export const SearchResultsModal = ({ visible, query, activities, onSave, onClose
                 <Text style={styles.emptySubtext}>Try adjusting your search or filters</Text>
               </View>
             ) : (
-              <WishlistActivities
-                activities={activities}
-                selectedActivities={selectedActivityIds}
-                onActivitySelect={handleActivityToggle}
-                onActivityDeselect={handleActivityToggle}
-                showSelectionIndicator={true}
-              />
+              <>
+                <WishlistActivities
+                  activities={activities}
+                  selectedActivities={selectedActivityIds}
+                  onActivitySelect={handleActivityToggle}
+                  onActivityDeselect={handleActivityToggle}
+                  showSelectionIndicator={true}
+                />
+
+                {/* Generate More Search Results Button - Show at bottom of activities list */}
+                {onGenerateMore && (
+                  <View style={styles.generateMoreContainer}>
+                    <TouchableOpacity
+                      style={[styles.generateMoreButton, loadingMore && styles.generateMoreButtonDisabled]}
+                      onPress={() => !loadingMore && handleGenerateMoreResults()}
+                      disabled={loadingMore}
+                    >
+                      {loadingMore ? (
+                        <ActivityIndicator size="small" color="#666" />
+                      ) : (
+                        <Feather name="plus-circle" size={24} color="black" />
+                      )}
+                      <Text style={[styles.generateMoreButtonText, loadingMore && styles.generateMoreButtonTextDisabled]}>
+                        {loadingMore ? 'Loading...' : `More ${query}`}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </>
             )}
           </ScrollView>
 
@@ -224,5 +257,39 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit-bold',
     fontSize: 16,
     color: Colors.WHITE,
+  },
+  generateMoreContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  generateMoreButton: {
+    marginTop: -20,
+    marginBottom: 70,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginHorizontal: -20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  generateMoreButtonText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
+    color: '#1a1a1a',
+    fontWeight: '500',
+  },
+  generateMoreButtonDisabled: {
+    opacity: 0.6,
+  },
+  generateMoreButtonTextDisabled: {
+    color: '#666',
   },
 });
