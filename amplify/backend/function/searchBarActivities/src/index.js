@@ -465,21 +465,27 @@ DO NOT recommend any of these existing locations. Generate DIFFERENT recommendat
 You are an expert travel assistant. Generate exactly 4 high-quality recommendations for "${searchQuery}" in ${selectedCity}.
 
 CRITICAL CONSTRAINTS:
-1. ONLY focus on ${selectedCity}
-2. Generate exactly 4 specific locations matching "${searchQuery}" that are WITHIN ${selectedCity} only
+1. PRIORITIZE EXACT MATCHES: If "${searchQuery}" appears to be the name of a specific attraction, landmark, or institution, include that EXACT place as your first recommendation
+2. GEOGRAPHIC SCOPE: Focus on ${selectedCity} but include famous attractions within reasonable travel distance (e.g., Niagara Falls attractions when searching from Toronto)
 3. Use precise, official names suitable for Google Places API
-4. Don't recommend neighborhoods or areas, only specific locations
-5. Focus on well-regarded, authentic experiences
-6. Each recommendation MUST be a DIFFERENT physical location with a DIFFERENT address
-7. DO NOT recommend multiple tour operators, companies, or services for the same attraction/location
+4. Don't recommend neighborhoods, only specific locations (landmarks, attractions, institutions, etc.)
+5. Each recommendation MUST be a DIFFERENT physical location with a DIFFERENT address
+6. DO NOT recommend multiple tour operators, companies, or services for the same attraction/location
 ${filtersContext}${existingActivitiesContext}
 
 SEARCH QUERY: "${searchQuery}"
+
+SEARCH STRATEGY:
+- FIRST: Check if "${searchQuery}" is a specific place name (like "White Water Walk", "University of Tokyo", "CN Tower") - if so, recommend that exact place
+- THEN: Find 3 additional related recommendations
+- Prioritize the main attraction/institution over sub-components (ex: "University of Tokyo" not "University of Tokyo Library")
+- For well-known attractions outside the city but nearby, include them if they match the search
+
 Generate 4 recommendations that:
-- Directly match or closely relate to "${searchQuery}"
+- Start with the exact place if the search query is a specific place name
 - Are highly rated and well-regarded locations
 - Are accessible to visitors
-- Are specific venues, not districts or neighborhoods
+- Are specific places, landmarks, or major institutions, not general districts or neighborhoods
 - Are at DIFFERENT addresses (not the same place with different names)
 - Are distinct physical locations (not multiple ways to access the same attraction)
 
@@ -487,7 +493,7 @@ STRICT OUTPUT FORMAT:
 Return ONLY this JSON structure with no additional text:
 {"recommendations":[{"name":"Specific Place Name 1","region":"${selectedCity}"},{"name":"Specific Place Name 2","region":"${selectedCity}"}]}
 
-Generate 4 diverse, distinct physical locations for "${searchQuery}" in ${selectedCity} now:
+Generate 4 recommendations for "${searchQuery}" prioritizing exact matches first:
     `;
 }
 
