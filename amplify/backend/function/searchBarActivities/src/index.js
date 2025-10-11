@@ -145,16 +145,55 @@ async function handleAddressQuery(searchQuery, selectedCity, existingActivities,
         const genericTypes = [
             'premise', 'street_address', 'geocode', 'route', 'neighborhood',
             'locality', 'political', 'sublocality', 'administrative_area_level_1',
-            'administrative_area_level_2', 'postal_code'
+            'administrative_area_level_2', 'postal_code', 'subpremise'
         ];
 
         // Find the first interesting place (has non-generic type)
-        const selectedPlace = results.find(place => {
+        let selectedPlace = results.find(place => {
             const types = place.types || [];
             return types.some(type => !genericTypes.includes(type));
         }) || results[0]; // Fallback to first result if none found
 
-        console.log(`Selected place: "${selectedPlace.name}" (types: ${selectedPlace.types?.join(', ')})`);
+        console.log(`Initial selection: "${selectedPlace.name}" (types: ${selectedPlace.types?.join(', ')})`);
+
+        // If we only got a generic address, search for establishments at this location
+        const isGenericAddress = selectedPlace.types?.every(type => genericTypes.includes(type)) ?? true;
+        
+        if (isGenericAddress && selectedPlace.geometry?.location) {
+            console.log(`Generic address detected. Searching for establishments at this location...`);
+            
+            const nearbySearchUrl = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json';
+            const nearbyParams = {
+                location: `${selectedPlace.geometry.location.lat},${selectedPlace.geometry.location.lng}`,
+                radius: 20, // 20 meter radius - very close to the address
+                key: GOOGLE_PLACES_API_KEY
+            };
+
+            try {
+                const nearbyResponse = await axios.get(nearbySearchUrl, { params: nearbyParams });
+                
+                if (nearbyResponse.data.results && nearbyResponse.data.results.length > 0) {
+                    // Filter out generic results and find actual establishments
+                    const establishments = nearbyResponse.data.results.filter(place => {
+                        const types = place.types || [];
+                        return types.some(type => !genericTypes.includes(type));
+                    });
+
+                    if (establishments.length > 0) {
+                        selectedPlace = establishments[0];
+                        console.log(`Found establishment at address: "${selectedPlace.name}" (types: ${selectedPlace.types?.join(', ')})`);
+                    } else {
+                        console.log(`No establishments found nearby, using original address`);
+                    }
+                } else {
+                    console.log(`Nearby search returned no results`);
+                }
+            } catch (nearbyError) {
+                console.warn(`Nearby search failed: ${nearbyError.message}, using original address`);
+            }
+        }
+
+        console.log(`Final selected place: "${selectedPlace.name}" (types: ${selectedPlace.types?.join(', ')})`);
 
         // Extract data from Text Search response
         const location = selectedPlace.geometry?.location || {};
