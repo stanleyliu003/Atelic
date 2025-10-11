@@ -86,9 +86,10 @@ export function TripMapView({
       }));
   }, [activities, markerColor, selectedActivities, selectedMarker]);
 
-  // Calculate the region to show all markers
+  // Calculate the region to show all markers with proper bounds
   const getRegionForActivities = (): Region => {
     if (dynamicMarkers.length === 0) {
+      // Default fallback location (you might want to use user's location or city center)
       return {
         latitude: 39.95,
         longitude: -75.16,
@@ -97,55 +98,63 @@ export function TripMapView({
       };
     }
 
-    if (dynamicMarkers.length === 1) {
-      return {
-        latitude: dynamicMarkers[0].coordinate.latitude,
-        longitude: dynamicMarkers[0].coordinate.longitude,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-      };
-    }
-
-    // Calculate bounds for multiple markers
-    const latitudes = dynamicMarkers.map(marker => marker.coordinate.latitude);
-    const longitudes = dynamicMarkers.map(marker => marker.coordinate.longitude);
+    // Extract all coordinates
+    const coordinates = dynamicMarkers.map(marker => marker.coordinate);
+    
+    // Calculate bounding box
+    const latitudes = coordinates.map(coord => coord.latitude);
+    const longitudes = coordinates.map(coord => coord.longitude);
     
     const minLat = Math.min(...latitudes);
     const maxLat = Math.max(...latitudes);
     const minLng = Math.min(...longitudes);
     const maxLng = Math.max(...longitudes);
-
-    const latDelta = (maxLat - minLat) * 1.7; // Add 58% padding (10% more zoom out)
-    const lngDelta = (maxLng - minLng) * 1.7; // Add 58% padding (10% more zoom out)
-
-    // Ensure minimum delta values for zoom
-    const minDelta = 0.01;
-    const finalLatDelta = Math.max(latDelta, minDelta);
-    const finalLngDelta = Math.max(lngDelta, minDelta);
-
+    
+    // Calculate the center point
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLng = (minLng + maxLng) / 2;
+    
+    // Calculate the span of coordinates
+    const latSpan = maxLat - minLat;
+    const lngSpan = maxLng - minLng;
+    
+    // Add padding - use percentage-based padding for better scaling
+    const paddingFactor = 0.3; // 30% padding around the bounds
+    const minDelta = 0.005; // Minimum zoom level for very close markers
+    
+    // Calculate deltas with padding, ensuring minimum zoom
+    let latitudeDelta = Math.max(latSpan * (1 + paddingFactor), minDelta) * 2;
+    let longitudeDelta = Math.max(lngSpan * (1 + paddingFactor), minDelta) * 2;
+    
+    // Adjust for map aspect ratio (70% height means it's wider than tall)
+    // For a 70% height map, we might want to adjust the latitude delta slightly
+    const mapAspectRatio = 1 / 0.7; // width/height ratio
+    const coordinateAspectRatio = longitudeDelta / latitudeDelta;
+    
+    // If coordinates are more spread horizontally than the map aspect ratio suggests,
+    // we might need to adjust the latitude delta to maintain proper centering
+    if (coordinateAspectRatio > mapAspectRatio) {
+      latitudeDelta = longitudeDelta / mapAspectRatio;
+    }
+    
     return {
-      latitude: (minLat + maxLat) / 2 - finalLatDelta * 0.1, // Shift center slightly down
-      longitude: (minLng + maxLng) / 2,
-      latitudeDelta: finalLatDelta,
-      longitudeDelta: finalLngDelta,
+      latitude: centerLat,
+      longitude: centerLng,
+      latitudeDelta,
+      longitudeDelta,
     };
   };
 
-  // Calculate the region to center on the first activity
-  const getRegionForSingleActivity = (): Region => {
-    if (dynamicMarkers.length > 0) {
-      return {
-        latitude: dynamicMarkers[0].coordinate.latitude,
-        longitude: dynamicMarkers[0].coordinate.longitude,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-      };
-    }
+  // Simplified region calculation for selected marker
+  const getRegionForSelectedMarker = (selectedCoordinate: { latitude: number; longitude: number }): Region => {
+    // Use a reasonable zoom level for individual markers
+    const zoomDelta = 0.008; // Adjust this value based on your needs
+    
     return {
-      latitude: 39.95,
-      longitude: -75.16,
-      latitudeDelta: 0.05,
-      longitudeDelta: 0.05,
+      latitude: selectedCoordinate.latitude,
+      longitude: selectedCoordinate.longitude,
+      latitudeDelta: zoomDelta,
+      longitudeDelta: zoomDelta,
     };
   };
 
@@ -168,19 +177,13 @@ export function TripMapView({
     }
   }, [activities, activeTab, dynamicMarkers]);
 
-  // Zoom to selected marker when selectedMarker changes
+  // Updated useEffect for selected marker zoom
   useEffect(() => {
     if (mapRef.current && selectedMarker) {
       const selectedMarkerData = dynamicMarkers.find(marker => marker.activity.place_id === selectedMarker);
       if (selectedMarkerData) {
-        const latitudeDelta = 0.01;
-        const zoomRegion = {
-          latitude: selectedMarkerData.coordinate.latitude - latitudeDelta * 0.1, // Shift Y down by 10%
-          longitude: selectedMarkerData.coordinate.longitude,
-          latitudeDelta: latitudeDelta, // Zoom in closer
-          longitudeDelta: 0.01,
-        };
-        mapRef.current.animateToRegion(zoomRegion, 800); // Zoom animation
+        const zoomRegion = getRegionForSelectedMarker(selectedMarkerData.coordinate);
+        mapRef.current.animateToRegion(zoomRegion, 800);
       }
     }
   }, [selectedMarker, dynamicMarkers]);
