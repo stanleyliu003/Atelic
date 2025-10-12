@@ -37,7 +37,158 @@ const makeRequest = (url) => {
     });
 };
 
-// Function to get route between multiple points using Google Routes API with fallback travel modes
+// Helper function to get route with specific travel mode priorities for polyline display
+const getRouteForPolyline = async (waypoints) => {
+    // Try travel modes in order: WALK -> DRIVE -> TRANSIT (prioritize walking for visual display)
+    const travelModes = ['WALK', 'DRIVE', 'TRANSIT'];
+    let lastError = null;
+    
+    for (const travelMode of travelModes) {
+        try {
+            console.log(`Attempting polyline route calculation with travel mode: ${travelMode}`);
+            
+            const result = await getSingleModeRoute(waypoints, travelMode);
+            if (result && result.routes && result.routes.length > 0) {
+                console.log(`Successfully calculated polyline route with travel mode: ${travelMode}`);
+                return { ...result, usedTravelMode: travelMode };
+            } else {
+                console.log(`No polyline routes found for travel mode: ${travelMode}`);
+                lastError = new Error(`No routes available for ${travelMode} mode`);
+            }
+        } catch (error) {
+            console.log(`Failed to get polyline route with travel mode ${travelMode}:`, error.message);
+            
+            // Special handling for TRANSIT with 3+ waypoints when Google API explicitly rejects intermediate waypoints
+            if (travelMode === 'TRANSIT' && waypoints.length > 2 && 
+                (error.message.includes('Intermediate waypoints are not supported') || 
+                 error.message.includes('intermediate waypoints'))) {
+                console.log('TRANSIT mode rejected intermediate waypoints for polyline, trying segment-based fallback');
+                try {
+                    const segmentResult = await getSegmentBasedRoute(waypoints, travelMode);
+                    return { ...segmentResult, usedTravelMode: travelMode };
+                } catch (segmentError) {
+                    console.log('Segment-based TRANSIT routing failed for polyline:', segmentError.message);
+                    lastError = segmentError;
+                }
+            } else {
+                lastError = error;
+            }
+        }
+    }
+    
+    throw new Error(`Polyline route calculation failed for all travel modes. Last error: ${lastError?.message || 'Unknown error'}`);
+};
+
+// Helper function to get route with specific travel mode priorities for distance/time data
+const getRouteForDistance = async (waypoints) => {
+    // Try travel modes in order: DRIVE -> WALK -> TRANSIT (prioritize driving for distance/time accuracy)
+    const travelModes = ['DRIVE', 'WALK', 'TRANSIT'];
+    let lastError = null;
+    
+    for (const travelMode of travelModes) {
+        try {
+            console.log(`Attempting distance/time route calculation with travel mode: ${travelMode}`);
+            
+            const result = await getSingleModeRoute(waypoints, travelMode);
+            if (result && result.routes && result.routes.length > 0) {
+                console.log(`Successfully calculated distance/time route with travel mode: ${travelMode}`);
+                return { ...result, usedTravelMode: travelMode };
+            } else {
+                console.log(`No distance/time routes found for travel mode: ${travelMode}`);
+                lastError = new Error(`No routes available for ${travelMode} mode`);
+            }
+        } catch (error) {
+            console.log(`Failed to get distance/time route with travel mode ${travelMode}:`, error.message);
+            
+            // Special handling for TRANSIT with 3+ waypoints when Google API explicitly rejects intermediate waypoints
+            if (travelMode === 'TRANSIT' && waypoints.length > 2 && 
+                (error.message.includes('Intermediate waypoints are not supported') || 
+                 error.message.includes('intermediate waypoints'))) {
+                console.log('TRANSIT mode rejected intermediate waypoints for distance/time, trying segment-based fallback');
+                try {
+                    const segmentResult = await getSegmentBasedRoute(waypoints, travelMode);
+                    return { ...segmentResult, usedTravelMode: travelMode };
+                } catch (segmentError) {
+                    console.log('Segment-based TRANSIT routing failed for distance/time:', segmentError.message);
+                    lastError = segmentError;
+                }
+            } else {
+                lastError = error;
+            }
+        }
+    }
+    
+    throw new Error(`Distance/time route calculation failed for all travel modes. Last error: ${lastError?.message || 'Unknown error'}`);
+};
+
+// Helper function to get route for a single travel mode
+const getSingleModeRoute = async (waypoints, travelMode) => {
+    // Prepare the request body for current travel mode
+    const requestBody = {
+        origin: {
+            location: {
+                latLng: {
+                    latitude: waypoints[0].lat,
+                    longitude: waypoints[0].lng
+                }
+            }
+        },
+        destination: {
+            location: {
+                latLng: {
+                    latitude: waypoints[waypoints.length - 1].lat,
+                    longitude: waypoints[waypoints.length - 1].lng
+                }
+            }
+        },
+        intermediates: waypoints.slice(1, -1).map(point => ({
+            location: {
+                latLng: {
+                    latitude: point.lat,
+                    longitude: point.lng
+                }
+            }
+        })),
+        travelMode: travelMode,
+        routingPreference: travelMode === 'DRIVE' ? "TRAFFIC_AWARE" : undefined,
+        computeAlternativeRoutes: false,
+        routeModifiers: travelMode === 'DRIVE' ? {
+            avoidTolls: false,
+            avoidHighways: false
+        } : undefined,
+        languageCode: "en-US",
+        units: "METRIC"
+    };
+
+    // Remove undefined properties
+    Object.keys(requestBody).forEach(key => {
+        if (requestBody[key] === undefined) {
+            delete requestBody[key];
+        }
+    });
+
+    const result = await makeRouteRequest(requestBody);
+    
+    // If we get a successful result with routes, return it
+    if (result && result.routes && result.routes.length > 0) {
+        return { ...result, usedTravelMode: travelMode };
+    } else {
+        // Special handling for TRANSIT with 3+ waypoints - try segment-based approach immediately
+        if (travelMode === 'TRANSIT' && waypoints.length > 2) {
+            console.log('TRANSIT mode failed for multi-waypoint route, trying segment-based fallback');
+            try {
+                return await getSegmentBasedRoute(waypoints, travelMode);
+            } catch (segmentError) {
+                console.log('Segment-based TRANSIT routing failed:', segmentError.message);
+                throw new Error(`No routes available for ${travelMode} mode: ${segmentError.message}`);
+            }
+        } else {
+            throw new Error(`No routes available for ${travelMode} mode`);
+        }
+    }
+};
+
+// Function to get route between multiple points using Google Routes API with separate polyline and distance logic
 const getRoute = async (waypoints) => {
     if (!apiKey) {
         throw new Error('GOOGLE_PLACES_API_KEY environment variable not set');
@@ -47,109 +198,64 @@ const getRoute = async (waypoints) => {
         throw new Error('At least 2 waypoints are required');
     }
 
-    // Format waypoints for the API
-    const waypointParams = waypoints.map(point => `${point.lat},${point.lng}`).join('|');
+    console.log('Starting dual route calculation: polyline (WALK priority) and distance (DRIVE priority)');
     
-    // Build the URL for Google Routes API
-    const url = `https://routes.googleapis.com/directions/v2:computeRoutes?key=${apiKey}`;
+    let polylineResult = null;
+    let distanceResult = null;
+    let polylineTravelMode = null;
+    let distanceTravelMode = null;
     
-    // Try different travel modes in order: DRIVE -> WALK -> TRANSIT
-    const travelModes = ['DRIVE', 'WALK', 'TRANSIT'];
-    let lastError = null;
-    
-    for (const travelMode of travelModes) {
-        try {
-            console.log(`Attempting route calculation with travel mode: ${travelMode}`);
-            
-            // Prepare the request body for current travel mode
-            const requestBody = {
-                origin: {
-                    location: {
-                        latLng: {
-                            latitude: waypoints[0].lat,
-                            longitude: waypoints[0].lng
-                        }
-                    }
-                },
-                destination: {
-                    location: {
-                        latLng: {
-                            latitude: waypoints[waypoints.length - 1].lat,
-                            longitude: waypoints[waypoints.length - 1].lng
-                        }
-                    }
-                },
-                intermediates: waypoints.slice(1, -1).map(point => ({
-                    location: {
-                        latLng: {
-                            latitude: point.lat,
-                            longitude: point.lng
-                        }
-                    }
-                })),
-                travelMode: travelMode,
-                routingPreference: travelMode === 'DRIVE' ? "TRAFFIC_AWARE" : undefined,
-                computeAlternativeRoutes: false,
-                routeModifiers: travelMode === 'DRIVE' ? {
-                    avoidTolls: false,
-                    avoidHighways: false
-                } : undefined,
-                languageCode: "en-US",
-                units: "METRIC"
-            };
-
-            // Remove undefined properties
-            Object.keys(requestBody).forEach(key => {
-                if (requestBody[key] === undefined) {
-                    delete requestBody[key];
-                }
-            });
-
-            const result = await makeRouteRequest(requestBody);
-            
-            // If we get a successful result with routes, return it
-            if (result && result.routes && result.routes.length > 0) {
-                console.log(`Successfully calculated route with travel mode: ${travelMode}`);
-                return { ...result, usedTravelMode: travelMode };
-            } else {
-                console.log(`No routes found for travel mode: ${travelMode}`);
-                
-                // Special handling for TRANSIT with 3+ waypoints - try segment-based approach immediately
-                if (travelMode === 'TRANSIT' && waypoints.length > 2) {
-                    console.log('TRANSIT mode failed for multi-waypoint route, trying segment-based fallback');
-                    try {
-                        return await getSegmentBasedRoute(waypoints, travelMode);
-                    } catch (segmentError) {
-                        console.log('Segment-based TRANSIT routing failed:', segmentError.message);
-                        lastError = segmentError;
-                    }
-                } else {
-                    lastError = new Error(`No routes available for ${travelMode} mode`);
-                }
-            }
-        } catch (error) {
-            console.log(`Failed to get route with travel mode ${travelMode}:`, error.message);
-            
-            // Special handling for TRANSIT with 3+ waypoints when Google API explicitly rejects intermediate waypoints
-            if (travelMode === 'TRANSIT' && waypoints.length > 2 && 
-                (error.message.includes('Intermediate waypoints are not supported') || 
-                 error.message.includes('intermediate waypoints'))) {
-                console.log('TRANSIT mode rejected intermediate waypoints, trying segment-based fallback');
-                try {
-                    return await getSegmentBasedRoute(waypoints, travelMode);
-                } catch (segmentError) {
-                    console.log('Segment-based TRANSIT routing failed:', segmentError.message);
-                    lastError = segmentError;
-                }
-            } else {
-                lastError = error;
-            }
-            // Continue to next travel mode
-        }
+    // Try to get polyline route (prioritizing WALK)
+    try {
+        polylineResult = await getRouteForPolyline(waypoints);
+        polylineTravelMode = polylineResult.usedTravelMode;
+        console.log(`Polyline route obtained using travel mode: ${polylineTravelMode}`);
+    } catch (polylineError) {
+        console.log('Failed to get polyline route:', polylineError.message);
     }
     
-    // If we get here, all travel modes failed
-    throw new Error(`Route calculation failed for all travel modes. Last error: ${lastError?.message || 'Unknown error'}`);
+    // Try to get distance/time route (prioritizing DRIVE)
+    try {
+        distanceResult = await getRouteForDistance(waypoints);
+        distanceTravelMode = distanceResult.usedTravelMode;
+        console.log(`Distance/time route obtained using travel mode: ${distanceTravelMode}`);
+    } catch (distanceError) {
+        console.log('Failed to get distance/time route:', distanceError.message);
+    }
+    
+    // Handle fallbacks
+    if (!polylineResult && !distanceResult) {
+        throw new Error('Failed to calculate route with any travel mode for both polyline and distance data');
+    }
+    
+    if (!polylineResult) {
+        console.log('Using distance route data for polyline fallback');
+        polylineResult = distanceResult;
+        polylineTravelMode = distanceTravelMode;
+    }
+    
+    if (!distanceResult) {
+        console.log('Using polyline route data for distance fallback');
+        distanceResult = polylineResult;
+        distanceTravelMode = polylineTravelMode;
+    }
+    
+    // Combine results: polyline from polylineResult, distance/time from distanceResult
+    const combinedResult = {
+        routes: [{
+            polyline: polylineResult.routes[0].polyline,
+            distanceMeters: distanceResult.routes[0].distanceMeters,
+            duration: distanceResult.routes[0].duration,
+            legs: distanceResult.routes[0].legs
+        }],
+        usedTravelMode: distanceTravelMode, // Maintain backward compatibility
+        polylineTravelMode: polylineTravelMode,
+        distanceTravelMode: distanceTravelMode,
+        isSegmentBased: distanceResult.isSegmentBased || false
+    };
+    
+    console.log(`Final route: polyline from ${polylineTravelMode}, distance/time from ${distanceTravelMode}`);
+    return combinedResult;
 };
 
 // Function to calculate route using segment-based approach (point-to-point)
@@ -559,7 +665,9 @@ exports.handler = async (event) => {
             polyline: route.polyline?.encodedPolyline || '',
             totalDistance: route.distanceMeters || 0,
             totalDuration: route.duration || '',
-            travelMode: routeData.usedTravelMode || 'DRIVE',
+            travelMode: routeData.usedTravelMode || routeData.distanceTravelMode || 'DRIVE',
+            polylineTravelMode: routeData.polylineTravelMode || routeData.usedTravelMode || 'DRIVE',
+            distanceTravelMode: routeData.distanceTravelMode || routeData.usedTravelMode || 'DRIVE',
             legs: processedLegs
         };
 

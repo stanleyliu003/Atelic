@@ -122,7 +122,7 @@
         "GetRoute": {
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/GetRoute-4a7a373857424c554539-build.zip"
+          "s3Key": "amplify-builds/GetRoute-644c73546d7133686963-build.zip"
         },
         "deleteTrip": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
