@@ -4,6 +4,13 @@ const { DynamoDBDocumentClient, QueryCommand, ScanCommand } = require('@aws-sdk/
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
 
+// Helper function to normalize tripPhotoReference to array format
+const normalizePhotoReferences = (photoRef) => {
+  if (!photoRef) return [];
+  if (Array.isArray(photoRef)) return photoRef;
+  return [photoRef]; // Convert old string format to array
+};
+
 exports.handler = async (event) => {
   console.log('Received event:', JSON.stringify(event));
 
@@ -66,7 +73,7 @@ exports.handler = async (event) => {
     const ownedTripSummaries = ownedTripsResult.Items.map(item => ({
       tripId: item.tripID,
       selectedCity: item.selectedCity,
-      tripPhotoReference: item.tripPhotoReference,
+      tripPhotoReference: normalizePhotoReferences(item.tripPhotoReference),
       createdAt: item.createdAt,
       tripLength: item.tripLength,
       userRole: getUserRole(item, userID)
@@ -81,7 +88,7 @@ exports.handler = async (event) => {
       .map(item => ({
         tripId: item.tripID,
         selectedCity: item.selectedCity,
-        tripPhotoReference: item.tripPhotoReference,
+        tripPhotoReference: normalizePhotoReferences(item.tripPhotoReference),
         createdAt: item.createdAt,
         tripLength: item.tripLength,
         userRole: getUserRole(item, userID)

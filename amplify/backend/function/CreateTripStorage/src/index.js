@@ -22,6 +22,18 @@ exports.handler = async (event) => {
   console.log('input:', input);
   console.log('userId:', userId);
 
+  // Normalize tripPhotoReference to ensure it's an array with max 5 elements
+  let normalizedPhotoRefs = [];
+  if (input.tripPhotoReference) {
+    if (Array.isArray(input.tripPhotoReference)) {
+      // Already an array, limit to 5 elements
+      normalizedPhotoRefs = input.tripPhotoReference.slice(0, 5);
+    } else if (typeof input.tripPhotoReference === 'string') {
+      // Legacy string format, convert to array
+      normalizedPhotoRefs = [input.tripPhotoReference];
+    }
+  }
+
   // Compose the item to store
   const item = {
     userID: userId,
@@ -30,7 +42,7 @@ exports.handler = async (event) => {
     tripLength: input.tripLength,
     selectedCity: input.selectedCity,
     wishlist: input.wishlist,
-    tripPhotoReference: input.tripPhotoReference,
+    tripPhotoReference: normalizedPhotoRefs,
     createdAt: input.createdAt,
     collaborators: input.collaborators || [],
     version: input.version || 1,
@@ -63,7 +75,7 @@ exports.handler = async (event) => {
       wishlist: input.wishlist || [],
       tripLength: input.tripLength,
       selectedCity: input.selectedCity,
-      tripPhotoReference: input.tripPhotoReference,
+      tripPhotoReference: normalizedPhotoRefs,
       createdAt: item.createdAt,
       collaborators: item.collaborators,
       version: item.version,

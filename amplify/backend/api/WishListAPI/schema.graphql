@@ -170,7 +170,7 @@
      wishlist: [Activity!]!
      tripLength: Int
      selectedCity: String
-     tripPhotoReference: String
+     tripPhotoReference: [String]
      createdAt: String
      collaborators: [Collaborator!]!
      version: Int
@@ -181,7 +181,7 @@
    type TripSummary {
      tripId: String!
      selectedCity: String
-     tripPhotoReference: String
+     tripPhotoReference: [String]
      createdAt: String
      tripLength: Int
      userRole: CollaboratorRole
@@ -252,7 +252,7 @@
      wishlist: [ActivityInput!]!
      tripLength: Int
      selectedCity: String
-     tripPhotoReference: String
+     tripPhotoReference: [String]
      createdAt: String
      collaborators: [CollaboratorInput!]!
      version: Int

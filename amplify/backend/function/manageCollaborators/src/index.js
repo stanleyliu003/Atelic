@@ -12,6 +12,13 @@ const { DynamoDBDocumentClient, GetCommand, UpdateCommand } = require('@aws-sdk/
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
 
+// Helper function to normalize tripPhotoReference to array format
+const normalizePhotoReferences = (photoRef) => {
+  if (!photoRef) return [];
+  if (Array.isArray(photoRef)) return photoRef;
+  return [photoRef]; // Convert old string format to array
+};
+
 /**
  * Manage trip collaborators - add, remove, update roles
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
@@ -276,7 +283,7 @@ function convertDynamoItemToTrip(item) {
     wishlist: item.wishlist || [],
     tripLength: item.tripLength,
     selectedCity: item.selectedCity,
-    tripPhotoReference: item.tripPhotoReference,
+    tripPhotoReference: normalizePhotoReferences(item.tripPhotoReference),
     createdAt: item.createdAt,
     collaborators: item.collaborators || []
   };
