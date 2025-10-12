@@ -16,11 +16,11 @@
         "GetRoute": {
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/GetRoute-4a7a373857424c554539-build.zip"
+          "s3Key": "amplify-builds/GetRoute-644c73546d7133686963-build.zip"
         },
         "getLocationCoordinates": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/getLocationCoordinates-51736e494139474d2b44-build.zip",
+          "s3Key": "amplify-builds/getLocationCoordinates-417279326f494a73635a-build.zip",
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
         },
         "wishlistAnalyzer": {
@@ -30,7 +30,7 @@
         },
         "CreateTripStorage": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/CreateTripStorage-674751754e7371697675-build.zip"
+          "s3Key": "amplify-builds/CreateTripStorage-6f484b76345257596561-build.zip"
         },
         "RetrieveTripStorage": {},
         "CityCategories": {
@@ -41,11 +41,11 @@
         },
         "getUserTrips": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/getUserTrips-795971546a474e4b5944-build.zip"
+          "s3Key": "amplify-builds/getUserTrips-36437358557a6b434236-build.zip"
         },
         "getTripIDs": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/getTripIDs-43674d58556b70457069-build.zip"
+          "s3Key": "amplify-builds/getTripIDs-6a377a616343796b6561-build.zip"
         },
         "deleteTrip": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
@@ -57,7 +57,7 @@
         },
         "manageCollaborators": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/manageCollaborators-7a5435715a572b7a4e6a-build.zip"
+          "s3Key": "amplify-builds/manageCollaborators-5a6f473052675842586a-build.zip"
         },
         "categoryStorage": {},
         "amplifybackend59ccdbf8": {},
@@ -69,12 +69,18 @@
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
           "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw",
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/generateCategoryActivities-47584c54414635623074-build.zip"
+          "s3Key": "amplify-builds/generateCategoryActivities-653975744e4546624462-build.zip"
         },
         "searchAutocomplete": {
           "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw",
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
           "s3Key": "amplify-builds/searchAutocomplete-33335a49344238467246-build.zip"
+        },
+        "searchBarActivities": {
+          "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/searchBarActivities-343253387a412b4e3832-build.zip"
         }
       },
       "auth": {
