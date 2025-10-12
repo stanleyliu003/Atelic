@@ -38,7 +38,7 @@ export const CreateTripProvider = ({ children }) => {
     const [tripLength, setTripLength] = useState(null);
     const [cityCategories, setCityCategories] = useState(null);
     const [selectedCategories, setSelectedCategories] = useState([]);
-    const [tripPhotoReference, setTripPhotoReference] = useState('');
+    const [tripPhotoReference, setTripPhotoReference] = useState([]);
 
     // Category activities state
     const [categoryActivities, setCategoryActivities] = useState({}); // {categoryName: [activities]}
@@ -115,19 +115,49 @@ export const CreateTripProvider = ({ children }) => {
         setDayActivities(newVal);
     };
 
-    // Helper function to get first activity photo reference (from publish_success.tsx logic)
-    const getFirstActivityPhotoRef = () => {
-        const day1Activities = dayActivities[1]?.activities;
-        const firstDayActivity = day1Activities && day1Activities.length > 0 ? day1Activities[0] : null;
-        const firstWishlistActivity = (!firstDayActivity && activities && activities.length > 0) ? activities[0] : null;
+    // Helper function to collect up to 5 unique photo references from activities
+    const getTripPhotoReferences = () => {
+        const photoRefs = [];
 
-        return firstDayActivity?.photo_reference || firstWishlistActivity?.photo_reference || '';
+        // Strategy: Collect photos from activities across all days + wishlist
+        // Priority: Day 1 → Day 2 → Day 3 → ... → Wishlist activities
+
+        // 1. Iterate through dayActivities (days 1, 2, 3, etc.)
+        const dayNumbers = Object.keys(dayActivities).sort((a, b) => Number(a) - Number(b));
+
+        for (const dayNumber of dayNumbers) {
+            const dayData = dayActivities[dayNumber];
+            if (dayData?.activities && Array.isArray(dayData.activities)) {
+                for (const activity of dayData.activities) {
+                    if (activity.photo_reference && photoRefs.length < 5) {
+                        // Avoid duplicates
+                        if (!photoRefs.includes(activity.photo_reference)) {
+                            photoRefs.push(activity.photo_reference);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. If still < 5 photos, pull from wishlist activities
+        if (photoRefs.length < 5 && activities && Array.isArray(activities)) {
+            for (const activity of activities) {
+                if (activity.photo_reference && photoRefs.length < 5) {
+                    if (!photoRefs.includes(activity.photo_reference)) {
+                        photoRefs.push(activity.photo_reference);
+                    }
+                }
+            }
+        }
+
+        // Return array of up to 5 unique photo references
+        return photoRefs.slice(0, 5);
     };
 
     // Auto-update tripPhotoReference when activities or dayActivities change
     useEffect(() => {
-        const photoRef = getFirstActivityPhotoRef();
-        setTripPhotoReference(photoRef);
+        const photoRefs = getTripPhotoReferences();
+        setTripPhotoReference(photoRefs);
     }, [activities, dayActivities]);
 
     // Restore all trip state from a trip object
@@ -143,9 +173,15 @@ export const CreateTripProvider = ({ children }) => {
             // Derive tripLength from the number of days if not explicitly stored
             setTripLength(trip.days.length);
         }
-        // Restore tripPhotoReference if available
+        // Restore tripPhotoReference if available (should be an array from backend)
         if (trip.tripPhotoReference) {
-            setTripPhotoReference(trip.tripPhotoReference);
+            // Backend should always return array, but handle safely
+            const photoRefs = Array.isArray(trip.tripPhotoReference)
+                ? trip.tripPhotoReference
+                : [trip.tripPhotoReference];
+            setTripPhotoReference(photoRefs);
+        } else {
+            setTripPhotoReference([]);
         }
         // Restore createdAt timestamp
         if (trip.createdAt) {
@@ -199,7 +235,7 @@ export const CreateTripProvider = ({ children }) => {
         setWishlistText('');
         setDayPolylines({});
         setDayActivities({});
-        setTripPhotoReference('');
+        setTripPhotoReference([]);
         setCollaborators([]);
         setCurrentUserRole(null);
         // Note: Don't reset selectedCity and tripLength during create trip flow
@@ -231,7 +267,7 @@ export const CreateTripProvider = ({ children }) => {
         setCategoryActivities({});
         setSelectedActivityIds([]);
         setLoadingCategories({});
-        setTripPhotoReference('');
+        setTripPhotoReference([]);
         setCollaborators([]);
         setCurrentUserRole(null);
         setVersion(1);
@@ -548,7 +584,6 @@ export const CreateTripProvider = ({ children }) => {
         ACTIVITY_GENERATION_LIMIT,
         tripPhotoReference,
         setTripPhotoReference,
-        getFirstActivityPhotoRef,
         CACHE_KEYS,
         // Collaboration state and functions
         currentUserRole,
