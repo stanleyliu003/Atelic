@@ -93,7 +93,6 @@ export function TripMapView({
   // Calculate the region to show all markers with proper bounds
   const getRegionForActivities = (): Region => {
     if (dynamicMarkers.length === 0) {
-      // Default fallback location (you might want to use user's location or city center)
       return {
         latitude: 39.95,
         longitude: -75.16,
@@ -102,70 +101,77 @@ export function TripMapView({
       };
     }
 
-    // Extract all coordinates
-    const coordinates = dynamicMarkers.map(marker => marker.coordinate);
-    
-    // Calculate bounding box
-    const latitudes = coordinates.map(coord => coord.latitude);
-    const longitudes = coordinates.map(coord => coord.longitude);
-    
-    const minLat = Math.min(...latitudes);
-    const maxLat = Math.max(...latitudes);
-    const minLng = Math.min(...longitudes);
-    const maxLng = Math.max(...longitudes);
-    
-    // Calculate the center point of activities
-    const activitiesCenterLat = (minLat + maxLat) / 2;
-    const activitiesCenterLng = (minLng + maxLng) / 2;
-    
-    // Calculate the span of coordinates
-    const latSpan = maxLat - minLat;
-    const lngSpan = maxLng - minLng;
-    
-    // Add padding - use percentage-based padding for better scaling
-    const paddingFactor = 0.3; // 30% padding around the bounds
-    const minDelta = 0.005; // Minimum zoom level for very close markers
-    
-    // Calculate base deltas with padding, ensuring minimum zoom
-    const baseLatitudeDelta = Math.max(latSpan * (1 + paddingFactor), minDelta);
-    const baseLongitudeDelta = Math.max(lngSpan * (1 + paddingFactor), minDelta);
-    
-    let finalCenterLat = activitiesCenterLat;
-    let finalCenterLng = activitiesCenterLng;
-    let finalLatitudeDelta = baseLatitudeDelta;
-    let finalLongitudeDelta = baseLongitudeDelta;
-    
-    // Adjust based on height state
-    if (currentHeightState === 0) {
-      // MIN_HEIGHT = 30%, map occupies 70% of screen height (0% to 70%)
-      // No adjustment needed - activities should be centered in the full map area
-      finalLatitudeDelta = baseLatitudeDelta;
-      finalLongitudeDelta = baseLongitudeDelta;
-    } else if (currentHeightState === 1) {
-      // DEFAULT_HEIGHT = 65%, map occupies 35% of screen height (0% to 35%)
-      // Need more subtle adjustments - don't zoom out as aggressively
+    if (currentHeightState === 1 || currentHeightState === 2) {
+      // Use the previous working logic for currentHeightState === 1
+      if (dynamicMarkers.length === 1) {
+        return {
+          latitude: dynamicMarkers[0].coordinate.latitude,
+          longitude: dynamicMarkers[0].coordinate.longitude,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        };
+      }
+
+      // Calculate bounds for multiple markers
+      const latitudes = dynamicMarkers.map(marker => marker.coordinate.latitude);
+      const longitudes = dynamicMarkers.map(marker => marker.coordinate.longitude);
+     
+      const minLat = Math.min(...latitudes);
+      const maxLat = Math.max(...latitudes);
+      const minLng = Math.min(...longitudes);
+      const maxLng = Math.max(...longitudes);
+
+      const latDelta = (maxLat - minLat) * 1.7; // Add 58% padding (10% more zoom out)
+      const lngDelta = (maxLng - minLng) * 1.7; // Add 58% padding (10% more zoom out)
+
+      // Ensure minimum delta values for zoom
+      const minDelta = 0.01;
+      const finalLatDelta = Math.max(latDelta, minDelta);
+      const finalLngDelta = Math.max(lngDelta, minDelta);
+
+      return {
+        latitude: (minLat + maxLat) / 2 - finalLatDelta * 0.1, // Shift center slightly down
+        longitude: (minLng + maxLng) / 2,
+        latitudeDelta: finalLatDelta,
+        longitudeDelta: finalLngDelta,
+      };
+    } else {
+      // Use the current logic for currentHeightState === 0
+      // Extract all coordinates
+      const coordinates = dynamicMarkers.map(marker => marker.coordinate);
       
-      const visibleMapHeight = 0.35; // 35% of screen is visible
-      const originalMapHeight = 0.70; // 70% was the original map height
+      // Calculate bounding box
+      const latitudes = coordinates.map(coord => coord.latitude);
+      const longitudes = coordinates.map(coord => coord.longitude);
       
-      // Use a more conservative zoom adjustment - only zoom out by about 40% more
-      const zoomAdjustmentFactor = 1.2; // Instead of 2x, use 1.4x
-      finalLatitudeDelta = baseLatitudeDelta * zoomAdjustmentFactor;
-      finalLongitudeDelta = baseLongitudeDelta * zoomAdjustmentFactor;
+      const minLat = Math.min(...latitudes);
+      const maxLat = Math.max(...latitudes);
+      const minLng = Math.min(...longitudes);
+      const maxLng = Math.max(...longitudes);
       
-      // Shift the center UP (north) to ensure all activities, including high latitude outliers,
-      // remain visible in the upper portion of the screen when bottom sheet covers lower area
-      const centerShiftFactor = 0.7; // More conservative shift
-      const visibleCenterOffset = finalLatitudeDelta * centerShiftFactor;
-      finalCenterLat = activitiesCenterLat - visibleCenterOffset; // Shift UP (north) to keep outliers visible
+      // Calculate the center point of activities
+      const activitiesCenterLat = (minLat + maxLat) / 2;
+      const activitiesCenterLng = (minLng + maxLng) / 2;
+      
+      // Calculate the span of coordinates
+      const latSpan = maxLat - minLat;
+      const lngSpan = maxLng - minLng;
+      
+      // Add padding - use percentage-based padding for better scaling
+      const paddingFactor = 0.3; // 30% padding around the bounds
+      const minDelta = 0.005; // Minimum zoom level for very close markers
+      
+      // Calculate base deltas with padding, ensuring minimum zoom
+      const baseLatitudeDelta = Math.max(latSpan * (1 + paddingFactor), minDelta);
+      const baseLongitudeDelta = Math.max(lngSpan * (1 + paddingFactor), minDelta);
+      
+      return {
+        latitude: activitiesCenterLat,
+        longitude: activitiesCenterLng,
+        latitudeDelta: baseLatitudeDelta,
+        longitudeDelta: baseLongitudeDelta,
+      };
     }
-    
-    return {
-      latitude: finalCenterLat,
-      longitude: finalCenterLng,
-      latitudeDelta: finalLatitudeDelta,
-      longitudeDelta: finalLongitudeDelta,
-    };
   };
 
   // Simplified region calculation for selected marker
@@ -205,14 +211,30 @@ export function TripMapView({
     if (mapRef.current && selectedMarker) {
       const selectedMarkerData = dynamicMarkers.find(marker => marker.activity.place_id === selectedMarker);
       if (selectedMarkerData) {
-        const zoomRegion = getRegionForSelectedMarker(selectedMarkerData.coordinate);
-        mapRef.current.animateToRegion(zoomRegion, 800);
+        if (currentHeightState === 1) {
+          // Use the previous working logic for currentHeightState === 1
+          const latitudeDelta = 0.01;
+          const zoomRegion = {
+            latitude: selectedMarkerData.coordinate.latitude - latitudeDelta * 0.1, // Shift Y down by 10%
+            longitude: selectedMarkerData.coordinate.longitude,
+            latitudeDelta: latitudeDelta, // Zoom in closer
+            longitudeDelta: 0.01,
+          };
+          mapRef.current.animateToRegion(zoomRegion, 800);
+        } else {
+          // Use the current logic for currentHeightState === 0
+          const zoomRegion = getRegionForSelectedMarker(selectedMarkerData.coordinate);
+          mapRef.current.animateToRegion(zoomRegion, 800);
+        }
       }
     }
-  }, [selectedMarker, dynamicMarkers]);
+  }, [selectedMarker, dynamicMarkers, currentHeightState]);
+
+  // Dynamic map container height based on currentHeightState
+  const mapContainerHeight = currentHeightState === 1 || currentHeightState === 2 ? '40%' : '70%';
 
   return (
-    <View style={styles.mapContainer}>
+    <View style={[styles.mapContainer, { height: mapContainerHeight }]}>
       <MapView
         ref={mapRef}
         style={styles.map}
