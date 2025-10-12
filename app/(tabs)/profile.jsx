@@ -338,20 +338,18 @@ export default function Profile() {
                       <Text style={styles.tripCardTitle}>
                         {trip.selectedCity || 'Unknown City'}
                       </Text>
-                      <Text style={styles.tripCardDate}>
-                        Created {trip.createdAt ? new Date(trip.createdAt).toLocaleDateString(undefined, {
+                      <Text style={styles.tripCardLength}>
+                      {trip.createdAt ? new Date(trip.createdAt).toLocaleDateString(undefined, {
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric'
                         }) : 'No date'}
-                      </Text>
-                      <Text style={styles.tripCardLength}>
-                        {trip.tripLength != null ? `${trip.tripLength} day trip` : 'Unknown length'}
+                        {trip.tripLength != null ? ` - ${trip.tripLength} day trip` : 'Unknown length'}
                       </Text>
                     </View>
-                    {selectedTripId === trip.tripId && isLoadingTrip && (
-                      <ActivityIndicator size="small" color={Colors.PRIMARY} />
-                    )}
+                      {selectedTripId === trip.tripId && isLoadingTrip && (
+                        <ActivityIndicator size="small" color={Colors.PRIMARY} style={styles.loadingIndicator} />
+                      )}
                   </View>
                 </TouchableOpacity>
 
@@ -418,9 +416,9 @@ export default function Profile() {
                         {trip.tripLength != null ? `${trip.tripLength} day trip` : 'Unknown length'}
                       </Text>
                     </View>
-                    {selectedTripId === trip.tripId && isLoadingTrip && (
-                      <ActivityIndicator size="small" color={Colors.PRIMARY} />
-                    )}
+                      {selectedTripId === trip.tripId && isLoadingTrip && (
+                        <ActivityIndicator size="small" color={Colors.PRIMARY} style={styles.loadingIndicator} />
+                      )}
                   </View>
                 </TouchableOpacity>
 
@@ -665,28 +663,29 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   tripCardContent: {
-    flexDirection: 'row',
-    padding: 15,
-    alignItems: 'center',
+    flexDirection: 'column',
   },
   tripCardImage: {
-    width: 110,
-    height: 110,
-    borderRadius: 8,
-    marginRight: 30,
+    width: '100%',
+    height: 160,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   tripCardImagePlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
+    width: '100%',
+    height: 160,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
     backgroundColor: '#f0f0f0',
-    marginRight: 15,
     justifyContent: 'center',
     alignItems: 'center',
   },
   tripCardInfo: {
-    flex: 1,
-    marginRight: 15,
+    padding: 15,
+    alignItems: 'flex-start',
+  },
+  loadingIndicator: {
+    marginTop: 10,
   },
   tripCardTitle: {
     fontFamily: 'outfit-medium',
