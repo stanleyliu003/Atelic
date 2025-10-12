@@ -265,16 +265,6 @@ export default function Profile() {
         </View>
       </View>
 
-      {/* Welcome Back Full Name */}
-      {fullName ? (
-        <Text style={{
-          fontFamily: 'outfit',
-          fontSize: 22,
-          marginTop: 30,
-          color: Colors.PRIMARY
-        }}>Welcome back, {fullName}!</Text>
-      ) : null}
-
       {/* My Trips Section */}
       <View style={styles.myTripsSection}>
         {tripsError && (
@@ -300,6 +290,10 @@ export default function Profile() {
           </View>
         ) : (ownedTrips.length > 0 || sharedTrips.length > 0) ? (
           <ScrollView style={styles.tripsScrollView} showsVerticalScrollIndicator={true}>
+            {/* Welcome Back Full Name - scrolls with content */}
+            {fullName ? (
+              <Text style={styles.welcomeText}>Welcome back, {fullName}!</Text>
+            ) : null}
             {/* My Trips Title - scrolls with content */}
             {ownedTrips.length > 0 && (
               <Text style={styles.sectionTitle}>My Trips</Text>
@@ -339,18 +333,23 @@ export default function Profile() {
                         <Text style={styles.tripCardTitle}>
                           {trip.selectedCity || 'Unknown City'}
                         </Text>
-                        {/* Menu button - show for owners or editors */}
-                        {(trip.userRole === 'owner' || trip.userRole === 'editor') && (
-                          <TouchableOpacity
-                            style={styles.menuButton}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              setMenuVisible(trip.tripId);
-                            }}
-                            disabled={isLoadingTrip || deletingTripId === trip.tripId}
-                          >
-                            <FontAwesome name="ellipsis-h" size={16} color={Colors.GRAY} />
-                          </TouchableOpacity>
+                        {/* Show loading indicator in place of menu button when loading this trip */}
+                        {selectedTripId === trip.tripId && isLoadingTrip ? (
+                          <ActivityIndicator size="small" color={Colors.PRIMARY} style={styles.menuButton} />
+                        ) : (
+                          /* Menu button - show for owners or editors */
+                          (trip.userRole === 'owner' || trip.userRole === 'editor') && (
+                            <TouchableOpacity
+                              style={styles.menuButton}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                setMenuVisible(trip.tripId);
+                              }}
+                              disabled={isLoadingTrip || deletingTripId === trip.tripId}
+                            >
+                              <FontAwesome name="ellipsis-h" size={16} color={Colors.GRAY} />
+                            </TouchableOpacity>
+                          )
                         )}
                       </View>
                       <Text style={styles.tripCardLength}>
@@ -361,9 +360,6 @@ export default function Profile() {
                         }) : 'No date'}
                         {trip.tripLength != null ? ` - ${trip.tripLength} day trip` : 'Unknown length'}
                       </Text>
-                      {selectedTripId === trip.tripId && isLoadingTrip && (
-                        <ActivityIndicator size="small" color={Colors.PRIMARY} style={styles.loadingIndicator} />
-                      )}
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -582,6 +578,12 @@ const styles = StyleSheet.create({
     marginTop: 30,
     flex: 1,
   },
+  welcomeText: {
+    fontFamily: 'outfit',
+    fontSize: 22,
+    marginBottom: 30,
+    color: Colors.PRIMARY,
+  },
   sectionTitle: {
     fontFamily: 'outfit-bold',
     fontSize: 28,
@@ -680,9 +682,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     marginBottom: 4,
-  },
-  loadingIndicator: {
-    marginTop: 10,
   },
   tripCardTitle: {
     fontFamily: 'outfit-medium',
