@@ -1,7 +1,7 @@
 import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
+import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions } from 'react-native';
 import { Auth, API } from 'aws-amplify';
 import { useEffect, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
@@ -10,6 +10,10 @@ import { useCreateTrip } from '../../context/CreateTripContext';
 import { listUserTripsFromCloud, retrieveTripFromCloud } from '../../src/services/lambdaService';
 import { deleteTrip } from '../../src/graphql/customMutations';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
+import Carousel from 'react-native-reanimated-carousel';
+
+const { width: screenWidth } = Dimensions.get('window');
+const CARD_WIDTH = screenWidth - 40; // 20px padding on each side
 
 export default function Profile() {
   const { restoreTripFromObject, setSelectedCity } = useCreateTrip();
@@ -28,6 +32,7 @@ export default function Profile() {
   const [selectedTripForSharing, setSelectedTripForSharing] = useState(null);
   const [currentUserID, setCurrentUserID] = useState('');
   const [isLoadingTripData, setIsLoadingTripData] = useState(false);
+  const [carouselIndices, setCarouselIndices] = useState({}); // Track current index per trip
 
   const loadUserData = useCallback(async () => {
     try {
@@ -66,8 +71,48 @@ export default function Profile() {
       const tripSummaries = await listUserTripsFromCloud(userID);
       const allTrips = tripSummaries || [];
 
+      // Normalize tripPhotoReference to always be an array
+      const normalizedTrips = allTrips.map(trip => {
+        let photoRef = trip.tripPhotoReference;
+
+        // If it's a stringified array, parse it
+        if (typeof photoRef === 'string') {
+          // Remove double brackets if present [[...]] -> [...]
+          if (photoRef.startsWith('[[') && photoRef.endsWith(']]')) {
+            photoRef = photoRef.slice(1, -1);
+          }
+
+          // Check if it looks like an array format [...]
+          if (photoRef.startsWith('[') && photoRef.endsWith(']')) {
+            // Remove brackets and split by comma
+            const content = photoRef.slice(1, -1);
+            if (content.trim()) {
+              photoRef = content.split(',').map(item => item.trim());
+            } else {
+              photoRef = [];
+            }
+          } else {
+            // Try standard JSON parse for properly quoted arrays
+            try {
+              const parsed = JSON.parse(photoRef);
+              photoRef = Array.isArray(parsed) ? parsed : [photoRef];
+            } catch (e) {
+              // If parsing fails, treat it as a single photo reference string
+              photoRef = [photoRef];
+            }
+          }
+        } else if (!Array.isArray(photoRef)) {
+          photoRef = photoRef ? [photoRef] : [];
+        }
+
+        return {
+          ...trip,
+          tripPhotoReference: photoRef
+        };
+      });
+
       // Sort trips by creation date (newest first)
-      const sortedTrips = allTrips.sort((a, b) => {
+      const sortedTrips = normalizedTrips.sort((a, b) => {
         const dateA = new Date(a.createdAt || 0);
         const dateB = new Date(b.createdAt || 0);
         return dateB - dateA; // Descending order (newest first)
@@ -211,7 +256,7 @@ export default function Profile() {
 
   const getImageUrl = (photoReference) => {
     const { GOOGLE_PLACES_API_KEY } = require('../../src/constants/api');
-    return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`;
+    return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=350&photoreference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`;
   };
 
   const handleLogout = async () => {
@@ -316,12 +361,39 @@ export default function Profile() {
                   disabled={isLoadingTrip || deletingTripId === trip.tripId}
                 >
                   <View style={styles.tripCardContent}>
-                    {trip.tripPhotoReference ? (
-                      <Image
-                        source={{ uri: getImageUrl(trip.tripPhotoReference) }}
-                        style={styles.tripCardImage}
-                        resizeMode="cover"
-                      />
+                    {trip.tripPhotoReference && trip.tripPhotoReference.length > 0 ? (
+                      <View style={styles.carouselContainer}>
+                        <Carousel
+                          loop={false}
+                          width={350}
+                          height={180}
+                          data={trip.tripPhotoReference}
+                          scrollAnimationDuration={300}
+                          onSnapToItem={(index) =>
+                            setCarouselIndices(prev => ({ ...prev, [trip.tripId]: index }))
+                          }
+                          renderItem={({ item }) => (
+                            <Image
+                              source={{ uri: getImageUrl(item) }}
+                              style={styles.tripCardImage}
+                              resizeMode="cover"
+                            />
+                          )}
+                        />
+                        {trip.tripPhotoReference && trip.tripPhotoReference.length > 1 && (
+                          <View style={styles.paginationDots}>
+                            {trip.tripPhotoReference.map((_, index) => (
+                              <View
+                                key={index}
+                                style={[
+                                  styles.dot,
+                                  (carouselIndices[trip.tripId] || 0) === index && styles.activeDot
+                                ]}
+                              />
+                            ))}
+                          </View>
+                        )}
+                      </View>
                     ) : (
                       <View style={styles.tripCardImagePlaceholder}>
                         <FontAwesome name="map-marker" size={30} color={Colors.GRAY} />
@@ -388,12 +460,39 @@ export default function Profile() {
                   disabled={isLoadingTrip || deletingTripId === trip.tripId}
                 >
                   <View style={styles.tripCardContent}>
-                    {trip.tripPhotoReference ? (
-                      <Image
-                        source={{ uri: getImageUrl(trip.tripPhotoReference) }}
-                        style={styles.tripCardImage}
-                        resizeMode="cover"
-                      />
+                    {trip.tripPhotoReference && trip.tripPhotoReference.length > 0 ? (
+                      <View style={styles.carouselContainer}>
+                        <Carousel
+                          loop={false}
+                          width={350}
+                          height={180}
+                          data={trip.tripPhotoReference}
+                          scrollAnimationDuration={300}
+                          onSnapToItem={(index) =>
+                            setCarouselIndices(prev => ({ ...prev, [`shared-${trip.tripId}`]: index }))
+                          }
+                          renderItem={({ item }) => (
+                            <Image
+                              source={{ uri: getImageUrl(item) }}
+                              style={styles.tripCardImage}
+                              resizeMode="cover"
+                            />
+                          )}
+                        />
+                        {trip.tripPhotoReference && trip.tripPhotoReference.length > 1 && (
+                          <View style={styles.paginationDots}>
+                            {trip.tripPhotoReference.map((_, index) => (
+                              <View
+                                key={index}
+                                style={[
+                                  styles.dot,
+                                  (carouselIndices[`shared-${trip.tripId}`] || 0) === index && styles.activeDot
+                                ]}
+                              />
+                            ))}
+                          </View>
+                        )}
+                      </View>
                     ) : (
                       <View style={styles.tripCardImagePlaceholder}>
                         <FontAwesome name="map-marker" size={30} color={Colors.GRAY} />
@@ -665,13 +764,13 @@ const styles = StyleSheet.create({
   },
   tripCardImage: {
     width: '100%',
-    height: 160,
+    height: 180,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
   },
   tripCardImagePlaceholder: {
     width: '100%',
-    height: 160,
+    height: 180,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
     backgroundColor: '#f0f0f0',
@@ -795,5 +894,31 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit-medium',
     fontSize: 20,
     marginLeft: 12,
+  },
+  carouselContainer: {
+    position: 'relative',
+  },
+  paginationDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    bottom: 10,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginHorizontal: 4,
+  },
+  activeDot: {
+    backgroundColor: Colors.WHITE,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
 });
