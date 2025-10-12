@@ -55,6 +55,8 @@ export default function Profile() {
   // Reload data every time the screen comes into focus
   useFocusEffect(
     useCallback(() => {
+      // Reset carousel indices when coming back to this screen
+      setCarouselIndices({});
       loadUserData();
     }, [loadUserData])
   );
@@ -356,6 +358,7 @@ export default function Profile() {
                     handleLoadTrip(trip.tripId);
                   }}
                   disabled={isLoadingTrip || deletingTripId === trip.tripId}
+                  activeOpacity={1}
                 >
                   <View style={styles.tripCardContent}>
                     {trip.tripPhotoReference && trip.tripPhotoReference.length > 0 ? (
@@ -456,6 +459,7 @@ export default function Profile() {
                     handleLoadTrip(trip.tripId);
                   }}
                   disabled={isLoadingTrip || deletingTripId === trip.tripId}
+                  activeOpacity={1}
                 >
                   <View style={styles.tripCardContent}>
                     {trip.tripPhotoReference && trip.tripPhotoReference.length > 0 ? (
