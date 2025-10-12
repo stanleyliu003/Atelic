@@ -261,7 +261,6 @@ export default function Profile() {
             <Ionicons name="log-out-outline" size={24} color={Colors.GRAY} />
             <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
-          <FontAwesome name="user-circle" size={40} color="black" />
         </View>
       </View>
 
@@ -565,8 +564,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
+    backgroundColor: Colors.WHITE,
     borderRadius: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2.84,
   },
   logoutText: {
     fontFamily: 'outfit',
