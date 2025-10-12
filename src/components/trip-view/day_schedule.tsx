@@ -93,8 +93,8 @@ export function DaySchedule({
         </View>
 
         <View style={styles.actionButtons}>
-          {/* Optimize Route Button - only show if onOptimizeRoute is provided and there are activities */}
-          {onOptimizeRoute && activities.length > 0 && (
+          {/* Optimize Route Button - only show if onOptimizeRoute is provided and there are more than 2 activities */}
+          {onOptimizeRoute && activities.length > 2 && (
             <TouchableOpacity
               style={[styles.actionButton, styles.optimizeButton]}
               onPress={handleOptimizeRoute}

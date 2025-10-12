@@ -117,7 +117,7 @@
         },
         "CreateTripStorage": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/CreateTripStorage-674751754e7371697675-build.zip"
+          "s3Key": "amplify-builds/CreateTripStorage-6f484b76345257596561-build.zip"
         },
         "GetRoute": {
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
@@ -139,7 +139,7 @@
         },
         "getUserTrips": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/getUserTrips-795971546a474e4b5944-build.zip"
+          "s3Key": "amplify-builds/getUserTrips-36437358557a6b434236-build.zip"
         },
         "manageCollaborators": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
