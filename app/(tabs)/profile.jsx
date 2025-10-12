@@ -335,9 +335,24 @@ export default function Profile() {
                       </View>
                     )}
                     <View style={styles.tripCardInfo}>
-                      <Text style={styles.tripCardTitle}>
-                        {trip.selectedCity || 'Unknown City'}
-                      </Text>
+                      <View style={styles.tripCardTitleRow}>
+                        <Text style={styles.tripCardTitle}>
+                          {trip.selectedCity || 'Unknown City'}
+                        </Text>
+                        {/* Menu button - show for owners or editors */}
+                        {(trip.userRole === 'owner' || trip.userRole === 'editor') && (
+                          <TouchableOpacity
+                            style={styles.menuButton}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              setMenuVisible(trip.tripId);
+                            }}
+                            disabled={isLoadingTrip || deletingTripId === trip.tripId}
+                          >
+                            <FontAwesome name="ellipsis-h" size={16} color={Colors.GRAY} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
                       <Text style={styles.tripCardLength}>
                       {trip.createdAt ? new Date(trip.createdAt).toLocaleDateString(undefined, {
                           year: 'numeric',
@@ -346,23 +361,11 @@ export default function Profile() {
                         }) : 'No date'}
                         {trip.tripLength != null ? ` - ${trip.tripLength} day trip` : 'Unknown length'}
                       </Text>
-                    </View>
                       {selectedTripId === trip.tripId && isLoadingTrip && (
                         <ActivityIndicator size="small" color={Colors.PRIMARY} style={styles.loadingIndicator} />
                       )}
+                    </View>
                   </View>
-                </TouchableOpacity>
-
-                {/* Menu button */}
-                <TouchableOpacity
-                  style={styles.menuButton}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    setMenuVisible(trip.tripId);
-                  }}
-                  disabled={isLoadingTrip || deletingTripId === trip.tripId}
-                >
-                  <FontAwesome name="ellipsis-h" size={16} color={Colors.GRAY} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -422,19 +425,6 @@ export default function Profile() {
                   </View>
                 </TouchableOpacity>
 
-                {/* Menu button - only show for editors */}
-                {trip.userRole === 'editor' && (
-                  <TouchableOpacity
-                    style={styles.menuButton}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      setMenuVisible(trip.tripId);
-                    }}
-                    disabled={isLoadingTrip || deletingTripId === trip.tripId}
-                  >
-                    <FontAwesome name="ellipsis-h" size={16} color={Colors.GRAY} />
-                  </TouchableOpacity>
-                )}
               </View>
             ))}
           </ScrollView>
@@ -684,6 +674,13 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: 'flex-start',
   },
+  tripCardTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 4,
+  },
   loadingIndicator: {
     marginTop: 10,
   },
@@ -691,7 +688,7 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit-medium',
     fontSize: 18,
     color: Colors.PRIMARY,
-    marginBottom: 4,
+    flex: 1,
   },
   tripCardDate: {
     fontFamily: 'outfit',
@@ -725,16 +722,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   menuButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
+    marginLeft: 10,
   },
   modalOverlay: {
     flex: 1,
