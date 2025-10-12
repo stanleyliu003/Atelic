@@ -12,9 +12,6 @@ import { deleteTrip } from '../../src/graphql/customMutations';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import Carousel from 'react-native-reanimated-carousel';
 
-const { width: screenWidth } = Dimensions.get('window');
-const CARD_WIDTH = screenWidth - 40; // 20px padding on each side
-
 export default function Profile() {
   const { restoreTripFromObject, setSelectedCity } = useCreateTrip();
 
@@ -366,9 +363,10 @@ export default function Profile() {
                         <Carousel
                           loop={false}
                           width={350}
-                          height={180}
+                          height={170}
                           data={trip.tripPhotoReference}
                           scrollAnimationDuration={300}
+                          defaultIndex={0}
                           onSnapToItem={(index) =>
                             setCarouselIndices(prev => ({ ...prev, [trip.tripId]: index }))
                           }
@@ -465,9 +463,10 @@ export default function Profile() {
                         <Carousel
                           loop={false}
                           width={350}
-                          height={180}
+                          height={170}
                           data={trip.tripPhotoReference}
                           scrollAnimationDuration={300}
+                          defaultIndex={0}
                           onSnapToItem={(index) =>
                             setCarouselIndices(prev => ({ ...prev, [`shared-${trip.tripId}`]: index }))
                           }
@@ -764,13 +763,13 @@ const styles = StyleSheet.create({
   },
   tripCardImage: {
     width: '100%',
-    height: 180,
+    height: 170,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
   },
   tripCardImagePlaceholder: {
     width: '100%',
-    height: 180,
+    height: 170,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
     backgroundColor: '#f0f0f0',
