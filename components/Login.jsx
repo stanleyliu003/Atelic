@@ -63,31 +63,40 @@ export default function Login() {
   const checkAuthenticationState = async () => {
     try {
       console.log('Checking authentication state...');
-      
+
       // This automatically handles token refresh if needed
       const user = await Auth.currentAuthenticatedUser({
         bypassCache: false // Use cached tokens for better performance
       });
-      
+
       console.log('User authenticated:', user?.username);
-      
+
       // Get current session to check token expiry
       const session = await Auth.currentSession();
       const accessToken = session.getAccessToken();
       const now = Math.floor(Date.now() / 1000);
       const expiresIn = accessToken.payload.exp - now;
-      
+
       console.log(`Access token expires in: ${Math.floor(expiresIn / 60)} minutes`);
-      
+
       // If token expires within 30 minutes, proactively refresh
       if (expiresIn < 1800) {
         console.log('Token expiring soon, refreshing proactively...');
         await Auth.currentSession(); // This triggers refresh
       }
-      
-      // User is authenticated, redirect to main app
+
+      // Check if user has a username set (important for Google OAuth users)
+      const preferredUsername = user?.attributes?.preferred_username;
+
+      if (!preferredUsername) {
+        console.log('User missing username, redirecting to username setup...');
+        router.replace('/authorization/username-setup');
+        return;
+      }
+
+      // User is authenticated and has username, redirect to main app
       router.replace('(tabs)/create_new_trip');
-      
+
     } catch (error) {
       console.log('User not authenticated:', error.message);
       

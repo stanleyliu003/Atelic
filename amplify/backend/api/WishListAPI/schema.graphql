@@ -108,6 +108,7 @@
    userID: String!
    email: String!
    fullName: String!
+   username: String!
  }
 
  type CategoryActivitiesResult {
@@ -153,6 +154,7 @@
    type Collaborator {
      email: String!
      fullName: String!
+     username: String!
      userID: String!
      role: CollaboratorRole!
      addedBy: String!
@@ -240,6 +242,7 @@
    input CollaboratorInput {
      email: String!
      fullName: String!
+     username: String!
      userID: String!
      role: CollaboratorRole!
      addedBy: String!
