@@ -1,8 +1,20 @@
 import { Colors } from '../../constants/Colors';
-import { Auth } from 'aws-amplify';
+import { Auth, API } from 'aws-amplify';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+
+const searchUsers = /* GraphQL */ `
+  query SearchUsers($searchTerm: String!) {
+    searchUsers(searchTerm: $searchTerm) {
+      userID
+      email
+      fullName
+      username
+      __typename
+    }
+  }
+`;
 
 export default function UsernameSetup() {
   const router = useRouter();
@@ -14,7 +26,7 @@ export default function UsernameSetup() {
     setError('');
     setIsLoading(true);
 
-    // Validate username
+    // Validate username format first
     if (!username || username.trim().length < 5) {
       setError('Username must be at least 5 characters long.');
       setIsLoading(false);
@@ -29,7 +41,30 @@ export default function UsernameSetup() {
     }
 
     try {
-      // Get current user
+      // Step 1: Check if username is already taken
+      console.log('Checking username availability for:', username.trim());
+
+      const result = await API.graphql({
+        query: searchUsers,
+        variables: { searchTerm: username.trim() }
+      });
+
+      const users = result.data?.searchUsers || [];
+
+      // Check if any user has this exact username
+      const usernameExists = users.some(
+        user => user.username?.toLowerCase() === username.trim().toLowerCase()
+      );
+
+      if (usernameExists) {
+        setError('This username is already taken. Please choose another one.');
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('Username is available, proceeding to update...');
+
+      // Step 2: Username is available, update the user's preferred_username
       const user = await Auth.currentAuthenticatedUser();
 
       // Update preferred_username attribute
@@ -41,6 +76,7 @@ export default function UsernameSetup() {
 
       // Redirect to main app
       router.replace('(tabs)/create_new_trip');
+
     } catch (err) {
       console.error('Failed to update username:', err);
 
@@ -49,7 +85,6 @@ export default function UsernameSetup() {
       } else {
         setError(err.message || 'Failed to set username. Please try again.');
       }
-    } finally {
       setIsLoading(false);
     }
   };

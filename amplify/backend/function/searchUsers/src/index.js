@@ -42,8 +42,9 @@ exports.handler = async (event) => {
     // so we'll get all users and filter on the Lambda side for now
     const params = {
       UserPoolId: userPoolId,
-      Limit: 60, // Get more users to have better filtering results
-      AttributesToGet: ['email', 'name'] // Only get the attributes we need
+      Limit: 60 // Get more users to have better filtering results
+      // Don't use AttributesToGet - it doesn't support preferred_username
+      // Instead, fetch all attributes and filter on Lambda side
     };
 
     console.log('Cognito listUsers params:', JSON.stringify(params));
@@ -55,26 +56,30 @@ exports.handler = async (event) => {
     const searchTermLower = searchTerm.toLowerCase().trim();
     const filteredUsers = result.Users
       .filter(user => {
-        // Get email and name attributes
+        // Get email, name, and username attributes
         const emailAttr = user.Attributes.find(attr => attr.Name === 'email');
         const nameAttr = user.Attributes.find(attr => attr.Name === 'name');
+        const usernameAttr = user.Attributes.find(attr => attr.Name === 'preferred_username');
 
         const email = emailAttr ? emailAttr.Value.toLowerCase() : '';
         const fullName = nameAttr ? nameAttr.Value.toLowerCase() : '';
+        const username = usernameAttr ? usernameAttr.Value.toLowerCase() : '';
 
-        // Match against email OR full name (partial matching)
-        return email.includes(searchTermLower) || fullName.includes(searchTermLower);
+        // Match against username (highest priority), full name, or email (partial matching)
+        return username.includes(searchTermLower) || fullName.includes(searchTermLower) || email.includes(searchTermLower);
       })
       .slice(0, 5) // Limit to top 5 results
       .map(user => {
         // Extract user attributes
         const emailAttr = user.Attributes.find(attr => attr.Name === 'email');
         const nameAttr = user.Attributes.find(attr => attr.Name === 'name');
+        const usernameAttr = user.Attributes.find(attr => attr.Name === 'preferred_username');
 
         return {
           userID: user.Username,
           email: emailAttr ? emailAttr.Value : '',
-          fullName: nameAttr ? nameAttr.Value : ''
+          fullName: nameAttr ? nameAttr.Value : '',
+          username: usernameAttr ? usernameAttr.Value : ''
         };
       });
 
@@ -84,6 +89,7 @@ exports.handler = async (event) => {
 
   } catch (error) {
     console.error('Cognito listUsers error:', error);
-    throw new Error('Failed to search users');
+    console.error('Full error details:', JSON.stringify(error, null, 2));
+    throw new Error(`Failed to search users: ${error.message}`);
   }
 };

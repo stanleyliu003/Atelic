@@ -75,6 +75,7 @@ export const createTrip = /* GraphQL */ `
       collaborators {
         email
         fullName
+        username
         userID
         role
         addedBy
@@ -147,6 +148,7 @@ export const addCollaborator = /* GraphQL */ `
       collaborators {
         email
         fullName
+        username
         userID
         role
         addedBy
@@ -195,6 +197,7 @@ export const removeCollaborator = /* GraphQL */ `
       collaborators {
         email
         fullName
+        username
         userID
         role
         addedBy
@@ -251,6 +254,7 @@ export const updateCollaboratorRole = /* GraphQL */ `
       collaborators {
         email
         fullName
+        username
         userID
         role
         addedBy

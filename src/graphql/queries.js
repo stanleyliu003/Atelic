@@ -263,6 +263,7 @@ export const getUserTrips = /* GraphQL */ `
       collaborators {
         email
         fullName
+        username
         userID
         role
         addedBy
@@ -281,6 +282,7 @@ export const searchUsers = /* GraphQL */ `
       userID
       email
       fullName
+      username
       __typename
     }
   }
