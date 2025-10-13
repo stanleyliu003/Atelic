@@ -11,6 +11,7 @@ export default function SignUp() {
   const router=useRouter();
 
   const [email,setEmail]=useState('');
+  const [username,setUsername]=useState('');
   const [password,setPassword]=useState('');
   const [fullName,setFullName]=useState('');
   const [error, setError] = useState('');
@@ -30,7 +31,7 @@ export default function SignUp() {
      setError('');
      setIsLoading(true);
 
-     if (!email || !password || !fullName || !birthdate || !gender) {
+     if (!email || !username || !password || !fullName || !birthdate || !gender) {
        setError('Please fill out all fields.');
        setIsLoading(false);
        return;
@@ -40,6 +41,14 @@ export default function SignUp() {
      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
      if (!emailRegex.test(email)) {
        setError('Please enter a valid email address.');
+       setIsLoading(false);
+       return;
+     }
+
+     // Username validation
+     const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+     if (!usernameRegex.test(username)) {
+       setError('Username must be 3-20 characters and contain only letters, numbers, and underscores.');
        setIsLoading(false);
        return;
      }
@@ -60,6 +69,7 @@ export default function SignUp() {
            name: fullName,
            birthdate,
            gender,
+           preferred_username: username,
          },
        });
 
@@ -150,12 +160,29 @@ export default function SignUp() {
           <Text style={{
             fontFamily:'outfit'
           }}>Email</Text>
-          <TextInput 
+          <TextInput
           style={styles.input}
           placeholder='Enter Email'
           value={email}
           onChangeText={(value)=>setEmail(value)}
           keyboardType="email-address"
+          autoCapitalize="none"
+          />
+        </View>
+
+        {/* Enter Username */}
+        <View style={{
+          marginTop:20,
+          marginBottom:5
+        }}>
+          <Text style={{
+            fontFamily:'outfit'
+          }}>Username</Text>
+          <TextInput
+          style={styles.input}
+          placeholder='Enter Username (4-15 characters)'
+          value={username}
+          onChangeText={(value)=>setUsername(value)}
           autoCapitalize="none"
           />
         </View>
