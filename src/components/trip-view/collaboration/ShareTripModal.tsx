@@ -11,11 +11,13 @@ interface UserProfile {
   userID: string;
   email: string;
   fullName: string;
+  username: string;
 }
 
 interface Collaborator {
   email: string;
   fullName: string;
+  username: string;
   userID: string;
   role: 'owner' | 'editor' | 'viewer';
   addedBy: string;
@@ -84,6 +86,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
           userID: user.userID,
           userEmail: user.email,
           fullName: user.fullName,
+          username: user.username,
           role,
           addedBy
         }

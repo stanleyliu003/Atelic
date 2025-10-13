@@ -918,10 +918,12 @@ export default function TripViewMain() {
             let currentUserID;
             let currentUserEmail;
             let currentUserName;
+            let currentUsername;
             const currentUser = await Auth.currentAuthenticatedUser();
             currentUserID = currentUser.attributes?.sub || currentUser.username;
             currentUserEmail = currentUser.attributes?.email || '';
             currentUserName = currentUser.attributes?.name || '';
+            currentUsername = currentUser.attributes?.preferred_username || currentUser.username || currentUserEmail.split('@')[0];
             console.log('[trip-view_main] Current user ID:', currentUserID);
 
             // Handle collaborators and determine the owner's userID
@@ -938,6 +940,7 @@ export default function TripViewMain() {
                 collaboratorsToSave = [{
                     email: currentUserEmail,
                     fullName: currentUserName,
+                    username: currentUsername,
                     userID: currentUserID,
                     role: 'owner',
                     addedBy: currentUserName
@@ -959,6 +962,7 @@ export default function TripViewMain() {
                 collaboratorsToSave = collaborators.map(collaborator => ({
                     email: collaborator.email,
                     fullName: collaborator.fullName,
+                    username: collaborator.username || collaborator.email.split('@')[0], // Fallback for legacy data
                     userID: collaborator.userID,
                     role: collaborator.role,
                     addedBy: collaborator.addedBy
@@ -1205,10 +1209,12 @@ export default function TripViewMain() {
                 const currentUserID = currentUser.attributes?.sub || currentUser.username;
                 const currentUserEmail = currentUser.attributes?.email || '';
                 const currentUserName = currentUser.attributes?.name || '';
+                const currentUsername = currentUser.attributes?.preferred_username || currentUser.username || currentUserEmail.split('@')[0];
 
                 const ownerCollaborator = {
                     email: currentUserEmail,
                     fullName: currentUserName,
+                    username: currentUsername,
                     userID: currentUserID,
                     role: 'owner',
                     addedBy: currentUserName

@@ -12,6 +12,7 @@ import {
 interface Collaborator {
   email: string;
   fullName: string;
+  username: string;
   userID: string;
   role: 'owner' | 'editor' | 'viewer';
   addedBy: string;
@@ -219,7 +220,7 @@ export const CollaboratorListItem: React.FC<CollaboratorListItemProps> = ({
               {isCurrentUser && <Text style={styles.youIndicator}> (You)</Text>}
             </Text>
           </View>
-          <Text style={styles.userEmail}>{collaborator.email}</Text>
+          <Text style={styles.userEmail}>@{collaborator.username}</Text>
           {/* Commented out for now to hide the added by text. Backlog item to do {collaborator.addedBy && collaborator.addedBy !== 'Self' && (
             <Text style={styles.addedByText}>Added by {collaborator.addedBy}</Text>
           )} */}

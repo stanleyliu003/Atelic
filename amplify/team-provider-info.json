@@ -149,7 +149,7 @@
         },
         "manageCollaborators": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/manageCollaborators-5a6f473052675842586a-build.zip"
+          "s3Key": "amplify-builds/manageCollaborators-416c516769664d47384f-build.zip"
         },
         "searchUsers": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",

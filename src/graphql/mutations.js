@@ -104,6 +104,7 @@ export const addCollaborator = /* GraphQL */ `
     $userID: String!
     $userEmail: String!
     $fullName: String!
+    $username: String!
     $role: CollaboratorRole!
     $addedBy: String
   ) {
@@ -112,6 +113,7 @@ export const addCollaborator = /* GraphQL */ `
       userID: $userID
       userEmail: $userEmail
       fullName: $fullName
+      username: $username
       role: $role
       addedBy: $addedBy
     ) {

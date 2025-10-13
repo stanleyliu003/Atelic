@@ -141,7 +141,7 @@ function canPerformAction(requesterRole, targetRole, action) {
 
 // Add collaborator handler
 async function handleAddCollaborator(trip, args, requesterId, requesterRole, tableName) {
-  const { userID, userEmail, fullName, role, addedBy } = args;
+  const { userID, userEmail, fullName, username, role, addedBy } = args;
 
   // Validate permissions
   if (!canPerformAction(requesterRole, role, 'add')) {
@@ -157,6 +157,7 @@ async function handleAddCollaborator(trip, args, requesterId, requesterRole, tab
   const newCollaborator = {
     email: userEmail,
     fullName: fullName,
+    username: username,
     userID: userID,
     role: role,
     addedBy: addedBy || 'Self'

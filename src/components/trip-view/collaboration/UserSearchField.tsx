@@ -16,6 +16,7 @@ interface UserProfile {
   userID: string;
   email: string;
   fullName: string;
+  username: string;
 }
 
 interface UserSearchFieldProps {
