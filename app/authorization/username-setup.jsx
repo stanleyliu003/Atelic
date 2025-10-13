@@ -66,10 +66,12 @@ export default function UsernameSetup() {
             <Text style={styles.label}>Username</Text>
             <TextInput
               style={styles.input}
-              placeholder='Enter Username (5-15 characters)'
+              placeholder='Enter Username (5-20 characters)'
               value={username}
               onChangeText={(value) => setUsername(value)}
               autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
               autoFocus={true}
               editable={!isLoading}
             />
