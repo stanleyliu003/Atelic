@@ -409,19 +409,17 @@ export default function Profile() {
                         {selectedTripId === trip.tripId && isLoadingTrip ? (
                           <ActivityIndicator size="small" color={Colors.PRIMARY} style={styles.menuButton} />
                         ) : (
-                          /* Menu button - show for owners or editors */
-                          (trip.userRole === 'owner' || trip.userRole === 'editor') && (
-                            <TouchableOpacity
-                              style={styles.menuButton}
-                              onPress={(e) => {
-                                e.stopPropagation();
-                                setMenuVisible(trip.tripId);
-                              }}
-                              disabled={isLoadingTrip || deletingTripId === trip.tripId}
-                            >
-                              <FontAwesome name="ellipsis-h" size={16} color={Colors.GRAY} />
-                            </TouchableOpacity>
-                          )
+                          /* Menu button - show for all users */
+                          <TouchableOpacity
+                            style={styles.menuButton}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              setMenuVisible(trip.tripId);
+                            }}
+                            disabled={isLoadingTrip || deletingTripId === trip.tripId}
+                          >
+                            <FontAwesome name="ellipsis-h" size={16} color={Colors.GRAY} />
+                          </TouchableOpacity>
                         )}
                       </View>
                       <Text style={styles.tripCardLength}>
@@ -502,23 +500,36 @@ export default function Profile() {
                       </View>
                     )}
                     <View style={styles.tripCardInfo}>
-                      <Text style={styles.tripCardTitle}>
-                        {trip.selectedCity || 'Unknown City'}
-                      </Text>
-                      <Text style={styles.tripCardDate}>
-                        Created {trip.createdAt ? new Date(trip.createdAt).toLocaleDateString(undefined, {
+                      <View style={styles.tripCardTitleRow}>
+                        <Text style={styles.tripCardTitle}>
+                          {trip.selectedCity || 'Unknown City'}
+                        </Text>
+                        {/* Show loading indicator in place of menu button when loading this trip */}
+                        {selectedTripId === trip.tripId && isLoadingTrip ? (
+                          <ActivityIndicator size="small" color={Colors.PRIMARY} style={styles.menuButton} />
+                        ) : (
+                          /* Menu button - show for all users */
+                          <TouchableOpacity
+                            style={styles.menuButton}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              setMenuVisible(trip.tripId);
+                            }}
+                            disabled={isLoadingTrip || deletingTripId === trip.tripId}
+                          >
+                            <FontAwesome name="ellipsis-h" size={16} color={Colors.GRAY} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      <Text style={styles.tripCardLength}>
+                      {trip.createdAt ? new Date(trip.createdAt).toLocaleDateString(undefined, {
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric'
                         }) : 'No date'}
-                      </Text>
-                      <Text style={styles.tripCardLength}>
-                        {trip.tripLength != null ? `${trip.tripLength} day trip` : 'Unknown length'}
+                        {trip.tripLength != null ? ` - ${trip.tripLength} day trip` : 'Unknown length'}
                       </Text>
                     </View>
-                      {selectedTripId === trip.tripId && isLoadingTrip && (
-                        <ActivityIndicator size="small" color={Colors.PRIMARY} style={styles.loadingIndicator} />
-                      )}
                   </View>
                 </TouchableOpacity>
 
@@ -796,12 +807,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: Colors.PRIMARY,
     flex: 1,
-  },
-  tripCardDate: {
-    fontFamily: 'outfit',
-    fontSize: 14,
-    color: Colors.GRAY,
-    marginBottom: 2,
   },
   tripCardLength: {
     fontFamily: 'outfit',
