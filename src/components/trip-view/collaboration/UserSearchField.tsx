@@ -155,7 +155,7 @@ export const UserSearchField: React.FC<UserSearchFieldProps> = ({
                   </View>
                   <View style={styles.userInfo}>
                     <Text style={styles.userName}>{user.fullName}</Text>
-                    <Text style={styles.userEmail}>{user.email}</Text>
+                    <Text style={styles.userEmail}>@{user.username}</Text>
                   </View>
                 </TouchableOpacity>
               ))
