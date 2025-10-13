@@ -1,10 +1,22 @@
 import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Auth } from 'aws-amplify';
+import { Auth, API } from 'aws-amplify';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+
+const searchUsers = /* GraphQL */ `
+  query SearchUsers($searchTerm: String!) {
+    searchUsers(searchTerm: $searchTerm) {
+      userID
+      email
+      fullName
+      username
+      __typename
+    }
+  }
+`;
 
 export default function SignUp() {
   const navigation=useNavigation();
@@ -15,6 +27,8 @@ export default function SignUp() {
   const [password,setPassword]=useState('');
   const [fullName,setFullName]=useState('');
   const [error, setError] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [birthdate, setBirthdate] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -29,6 +43,8 @@ export default function SignUp() {
    //creating a new method
    const OnCreateAccount = async () => {
      setError('');
+     setUsernameError('');
+     setEmailError('');
      setIsLoading(true);
 
      if (!email || !username || !password || !fullName || !birthdate || !gender) {
@@ -37,21 +53,81 @@ export default function SignUp() {
        return;
      }
 
-     // Basic email validation
-     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-     if (!emailRegex.test(email)) {
-       setError('Please enter a valid email address.');
-       setIsLoading(false);
-       return;
-     }
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setEmailError('Please enter a valid email address.');
+      setIsLoading(false);
+      return;
+    }
 
-     // Username validation
-     const usernameRegex = /^[a-zA-Z0-9_]{5,20}$/;
-     if (!usernameRegex.test(username)) {
-       setError('Username must be 5-20 characters and contain only letters, numbers, and underscores.');
-       setIsLoading(false);
-       return;
-     }
+    // Check if email is already taken
+    try {
+      console.log('Checking email availability for:', email.trim());
+
+      const emailResult = await API.graphql({
+        query: searchUsers,
+        variables: { searchTerm: email.trim() }
+      });
+
+      const emailUsers = emailResult.data?.searchUsers || [];
+
+      // Check if any user has this exact email
+      const emailExists = emailUsers.some(
+        user => user.email?.toLowerCase() === email.trim().toLowerCase()
+      );
+
+      if (emailExists) {
+        setEmailError('An account with this email already exists. Please sign in instead.');
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('Email is available, checking username...');
+    } catch (emailCheckErr) {
+      console.error('Email check failed:', emailCheckErr);
+      setError('Unable to verify email availability. Please try again.');
+      setIsLoading(false);
+      return;
+    }
+
+    // Username validation
+    const usernameRegex = /^[a-zA-Z0-9_]{5,15}$/;
+    if (!usernameRegex.test(username)) {
+      setError('Username must be 5-15 characters and contain only letters, numbers, and underscores.');
+      setIsLoading(false);
+      return;
+    }
+
+    // Check if username is already taken
+    try {
+      console.log('Checking username availability for:', username.trim());
+
+      const result = await API.graphql({
+        query: searchUsers,
+        variables: { searchTerm: username.trim() }
+      });
+
+      const users = result.data?.searchUsers || [];
+
+      // Check if any user has this exact username
+      const usernameExists = users.some(
+        user => user.username?.toLowerCase() === username.trim().toLowerCase()
+      );
+
+      if (usernameExists) {
+        setUsernameError('This username is already taken. Please choose another one.');
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('Username is available, proceeding with sign up...');
+    } catch (usernameCheckErr) {
+      console.error('Username check failed:', usernameCheckErr);
+      setError('Unable to verify username availability. Please try again.');
+      setIsLoading(false);
+      return;
+    }
 
      // Password validation (minimum 8 characters as per Cognito config)
      if (password.length < 8) {
@@ -78,7 +154,7 @@ export default function SignUp() {
      } catch (err) {
        console.error('Sign up error:', err);
        if (err.name === 'UsernameExistsException') {
-         setError('An account with this email already exists. Please sign in instead.');
+         setError('An account with this email already exists');
        } else if (err.name === 'InvalidPasswordException') {
          setError('Password does not meet requirements. Please use at least 8 characters.');
        } else {
@@ -148,7 +224,9 @@ export default function SignUp() {
           style={styles.input}
           placeholder='Enter Full Name'
           value={fullName}
-          onChangeText={(value)=>setFullName(value)} 
+          onChangeText={(value)=>setFullName(value)}
+          autoCorrect={false}
+          spellCheck={false}
           />
         </View>
 
@@ -167,7 +245,12 @@ export default function SignUp() {
           onChangeText={(value)=>setEmail(value)}
           keyboardType="email-address"
           autoCapitalize="none"
+          autoCorrect={false}
+          spellCheck={false}
           />
+          {emailError ? (
+            <Text style={{ color: 'red', marginTop: 5, fontFamily: 'outfit', fontSize: 14 }}>{emailError}</Text>
+          ) : null}
         </View>
 
         {/* Enter Username */}
@@ -180,11 +263,16 @@ export default function SignUp() {
           }}>Username</Text>
           <TextInput
           style={styles.input}
-          placeholder='Enter Username (5-20 characters)'
+          placeholder='Enter Username (5-15 characters)'
           value={username}
           onChangeText={(value)=>setUsername(value)}
           autoCapitalize="none"
+          autoCorrect={false}
+          spellCheck={false}
           />
+          {usernameError ? (
+            <Text style={{ color: 'red', marginTop: 5, fontFamily: 'outfit', fontSize: 14 }}>{usernameError}</Text>
+          ) : null}
         </View>
 
         {/* Enter Birthdate */}
@@ -287,6 +375,8 @@ export default function SignUp() {
           onChangeText={(value)=>setPassword(value)}
           secureTextEntry={true}
           autoCapitalize="none"
+          autoCorrect={false}
+          spellCheck={false}
           />
         </View>
 

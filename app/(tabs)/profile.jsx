@@ -331,16 +331,19 @@ export default function Profile() {
             <ActivityIndicator size="large" color={Colors.PRIMARY} />
             <Text style={styles.loadingText}>Loading trips...</Text>
           </View>
-        ) : (ownedTrips.length > 0 || sharedTrips.length > 0) ? (
+        ) : (
           <ScrollView style={styles.tripsScrollView} showsVerticalScrollIndicator={true}>
-            {/* Welcome Back Full Name - scrolls with content */}
+            {/* Welcome Back Full Name - always show when we have the name */}
             {fullName ? (
               <Text style={styles.welcomeText}>Welcome back, {fullName}!</Text>
             ) : null}
-            {/* My Trips Title - scrolls with content */}
-            {ownedTrips.length > 0 && (
-              <Text style={styles.sectionTitle}>My Trips</Text>
-            )}
+            
+            {(ownedTrips.length > 0 || sharedTrips.length > 0) ? (
+              <>
+                {/* My Trips Title - scrolls with content */}
+                {ownedTrips.length > 0 && (
+                  <Text style={styles.sectionTitle}>My Trips</Text>
+                )}
 
             {/* Owned Trips */}
             {ownedTrips.map((trip) => (
@@ -535,14 +538,16 @@ export default function Profile() {
 
               </View>
             ))}
+              </>
+            ) : (
+              <View style={styles.noTripsContainer}>
+                <FontAwesome name="suitcase" size={50} color={Colors.GRAY} />
+                <Text style={styles.noTripsText}>No trips found</Text>
+                <Text style={styles.noTripsSubtext}>Create your first trip to get started!</Text>
+              </View>
+            )}
           </ScrollView>
-        ) : (
-          <View style={styles.noTripsContainer}>
-            <FontAwesome name="suitcase" size={50} color={Colors.GRAY} />
-            <Text style={styles.noTripsText}>No trips found</Text>
-            <Text style={styles.noTripsSubtext}>Create your first trip to get started!</Text>
-        </View>
-      )}
+        )}
       </View>
 
 
