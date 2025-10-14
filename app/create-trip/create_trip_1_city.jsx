@@ -5,12 +5,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Animated } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { API } from 'aws-amplify';
 import { getCityCategories } from '../../src/graphql/queries';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CalendarPicker from 'react-native-calendar-picker';
 
 export default function create_trip_1_city({ showBackButton = true }) {
     const router = useRouter();
@@ -28,6 +29,9 @@ export default function create_trip_1_city({ showBackButton = true }) {
     } = useCreateTrip();
     const googlePlacesRef = useRef(null);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
 
     // Note: CACHE_KEYS now comes from context
 
@@ -241,7 +245,8 @@ export default function create_trip_1_city({ showBackButton = true }) {
                             <Text style={styles.promptTitle}>How long is your trip?</Text>
                         </View>
 
-                        <View style={{
+                        {/* DROPDOWN MENU CODE - COMMENTED OUT FOR FUTURE USE */}
+                        {/* <View style={{
                             marginTop: -10
                         }}>
                             <View style={styles.dropdownContainer}>
@@ -287,7 +292,105 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                     </View>
                                 )}
                             </View>
+                        </View> */}
+
+                        {/* Calendar Button */}
+                        <View style={{ marginTop: -10 }}>
+                            <TouchableOpacity
+                                style={styles.calendarButton}
+                                onPress={() => setIsCalendarOpen(true)}
+                            >
+                                <View style={styles.calendarButtonContent}>
+                                    <MaterialCommunityIcons name="calendar-clock-outline" size={24} color="black" />
+                                    <Text style={[styles.calendarButtonText, !startDate && styles.placeholderText]}>
+                                        {startDate && endDate
+                                            ? `${startDate.format('MMM D')} - ${endDate.format('MMM D, YYYY')}`
+                                            : 'Select dates'}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
                         </View>
+
+                        {/* Calendar Modal */}
+                        <Modal
+                            visible={isCalendarOpen}
+                            transparent={true}
+                            animationType="slide"
+                            onRequestClose={() => setIsCalendarOpen(false)}
+                        >
+                            <View style={styles.modalOverlay}>
+                                <View style={styles.modalContent}>
+                                    {/* Top Handle */}
+                                    <View style={styles.modalHandle} />
+
+                                    {/* Header */}
+                                    <View style={styles.modalHeader}>
+                                        <Text style={styles.modalTitle}>When is your trip?</Text>
+                                    </View>
+
+                                    {/* Calendar */}
+                                    <ScrollView
+                                        style={styles.calendarScrollView}
+                                        showsVerticalScrollIndicator={false}
+                                    >
+                                        <CalendarPicker
+                                            startFromMonday={false}
+                                            allowRangeSelection={true}
+                                            minDate={new Date()}
+                                            maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 3))}
+                                            todayBackgroundColor="#E8F4FD"
+                                            selectedDayColor="#000000"
+                                            selectedDayTextColor="#FFFFFF"
+                                            onDateChange={(date, type) => {
+                                                if (type === 'END_DATE') {
+                                                    setEndDate(date);
+                                                } else {
+                                                    setStartDate(date);
+                                                    setEndDate(null);
+                                                }
+                                            }}
+                                            width={350}
+                                            textStyle={{
+                                                fontFamily: 'outfit',
+                                                fontSize: 16,
+                                            }}
+                                            monthTitleStyle={{
+                                                fontFamily: 'outfit-bold',
+                                                fontSize: 24,
+                                                color: '#1a1a1a',
+                                            }}
+                                            yearTitleStyle={{
+                                                fontFamily: 'outfit-bold',
+                                                fontSize: 24,
+                                                color: '#1a1a1a',
+                                            }}
+                                            dayLabelsWrapper={{
+                                                borderTopWidth: 0,
+                                                borderBottomWidth: 0,
+                                            }}
+                                        />
+                                    </ScrollView>
+
+                                    {/* Confirm Button */}
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.confirmButton,
+                                            (!startDate || !endDate) && styles.confirmButtonDisabled
+                                        ]}
+                                        onPress={() => {
+                                            if (startDate && endDate) {
+                                                const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+                                                setTripLength(days);
+                                                setIsCalendarOpen(false);
+                                            }
+                                        }}
+                                        disabled={!startDate || !endDate}
+                                    >
+                                        <Text style={styles.confirmButtonText}>Confirm</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </Modal>
                     </View>
                 )}
 
@@ -458,5 +561,83 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontFamily: 'outfit-bold',
         fontSize: 17,
+    },
+    // Calendar Button Styles
+    calendarButton: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 15,
+        borderWidth: 0,
+        borderRadius: 20,
+        backgroundColor: 'white',
+        height: 55,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    calendarButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    calendarButtonText: {
+        fontFamily: 'outfit',
+        fontSize: 16,
+        color: '#1a1a1a',
+    },
+    // Calendar Modal Styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 25,
+        borderTopRightRadius: 25,
+        paddingHorizontal: 20,
+        paddingBottom: 40,
+        maxHeight: '80%',
+    },
+    modalHandle: {
+        width: 40,
+        height: 4,
+        backgroundColor: '#D1D5DB',
+        borderRadius: 2,
+        alignSelf: 'center',
+        marginTop: 12,
+        marginBottom: 20,
+    },
+    modalHeader: {
+        alignItems: 'left',
+        marginBottom: 20,
+    },
+    modalTitle: {
+        fontFamily: 'outfit-bold',
+        fontSize: 24,
+        color: '#1a1a1a',
+        textAlign: 'left',
+    },
+    calendarScrollView: {
+        maxHeight: 450,
+    },
+    confirmButton: {
+        backgroundColor: '#000000',
+        borderRadius: 25,
+        paddingVertical: 16,
+        marginTop: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    confirmButtonDisabled: {
+        backgroundColor: '#CCCCCC',
+    },
+    confirmButtonText: {
+        color: '#FFFFFF',
+        fontFamily: 'outfit-bold',
+        fontSize: 18,
     },
 })
