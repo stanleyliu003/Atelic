@@ -289,6 +289,8 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                     <Text style={[styles.calendarButtonText, !tripLength && styles.placeholderText]}>
                                         {startDate && endDate
                                             ? `${formatDate(startDate)}   -   ${formatDate(endDate)}`
+                                            : tripLength
+                                            ? `${tripLength} day${tripLength > 1 ? 's' : ''}`
                                             : 'Select dates'}
                                     </Text>
                                 </View>
