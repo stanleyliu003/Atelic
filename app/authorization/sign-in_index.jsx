@@ -1,9 +1,23 @@
 import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Auth } from 'aws-amplify';
+import { Auth, API } from 'aws-amplify';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, ScrollView, Platform, Image } from 'react-native';
+
+const searchUsers = /* GraphQL */ `
+  query SearchUsers($searchTerm: String!) {
+    searchUsers(searchTerm: $searchTerm) {
+      userID
+      email
+      fullName
+      username
+      isExternalProvider
+      identities
+      __typename
+    }
+  }
+`;
 
 export default function SignIn() {
   const navigation=useNavigation();
@@ -30,6 +44,44 @@ export default function SignIn() {
       return;
     }
 
+    // Check if the email is associated with a Google OAuth account
+    try {
+      console.log('Checking if email is associated with Google account:', username.trim());
+      
+      const emailResult = await API.graphql({
+        query: searchUsers,
+        variables: { searchTerm: username.trim() }
+      });
+
+      const emailUsers = emailResult.data?.searchUsers || [];
+      
+      // Find user with exact email match
+      const existingUser = emailUsers.find(
+        user => user.email?.toLowerCase() === username.trim().toLowerCase()
+      );
+
+      // If user exists and is from Google OAuth, auto-redirect to Google sign-in
+      if (existingUser && existingUser.isExternalProvider) {
+        console.log('User is Google OAuth user, redirecting to Google sign-in');
+        setError('This account uses Google sign-in. Redirecting...');
+        // Wait a moment for user to see the message
+        setTimeout(async () => {
+          try {
+            await Auth.federatedSignIn({ provider: 'Google' });
+          } catch (googleErr) {
+            console.error('Google sign-in error:', googleErr);
+            setError('This account uses Google sign-in. Please use the "Or Login with" Google button below.');
+            setIsLoading(false);
+          }
+        }, 1000);
+        return;
+      }
+    } catch (checkErr) {
+      console.error('Email check failed:', checkErr);
+      // Continue with normal sign-in if check fails
+    }
+
+    // Proceed with normal email/password sign-in
     try {
       const user = await Auth.signIn(username, password);
 
