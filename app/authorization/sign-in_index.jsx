@@ -44,20 +44,20 @@ export default function SignIn() {
       return;
     }
 
-    // Check if the email is associated with a Google OAuth account
+    // Check if the username is associated with a Google OAuth account
     try {
-      console.log('Checking if email is associated with Google account:', username.trim());
+      console.log('Checking if username is associated with Google account:', username.trim());
       
-      const emailResult = await API.graphql({
+      const usernameResult = await API.graphql({
         query: searchUsers,
         variables: { searchTerm: username.trim() }
       });
 
-      const emailUsers = emailResult.data?.searchUsers || [];
+      const users = usernameResult.data?.searchUsers || [];
       
-      // Find user with exact email match
-      const existingUser = emailUsers.find(
-        user => user.email?.toLowerCase() === username.trim().toLowerCase()
+      // Find user with exact username match
+      const existingUser = users.find(
+        user => user.username?.toLowerCase() === username.trim().toLowerCase()
       );
 
       // If user exists and is from Google OAuth, auto-redirect to Google sign-in
@@ -76,12 +76,46 @@ export default function SignIn() {
         }, 1000);
         return;
       }
+
+      // If username search found a user, get their email for Cognito sign-in
+      // (Cognito uses email as the username for internal users)
+      if (existingUser && !existingUser.isExternalProvider) {
+        console.log('Found internal user, using email for sign-in:', existingUser.email);
+        // Proceed with normal email/password sign-in using the user's email
+        try {
+          const user = await Auth.signIn(existingUser.email, password);
+
+          if (user.challengeName === 'USER_UNCONFIRMED') {
+            // User is not confirmed, redirect to confirm-signup
+            router.replace('/authorization/confirm_sign-up_index?email=' + encodeURIComponent(existingUser.email));
+          } else if (user.signInUserSession) {
+            // Successful sign in
+            router.replace('(tabs)/create_new_trip');
+          } else {
+            setError('Sign in failed. Please try again.');
+          }
+        } catch (err) {
+          if (err.code === 'UserNotConfirmedException') {
+            // User exists but is not confirmed
+            router.replace('/authorization/confirm_sign-up_index?email=' + encodeURIComponent(existingUser.email));
+          } else if (err.name === 'NotAuthorizedException') {
+            setError('Incorrect username or password.');
+          } else if (err.name === 'UserNotFoundException') {
+            setError('No account found with this username. Please create an account first.');
+          } else {
+            setError(err.message || 'Sign in failed. Please try again.');
+          }
+        } finally {
+          setIsLoading(false);
+        }
+        return;
+      }
     } catch (checkErr) {
-      console.error('Email check failed:', checkErr);
-      // Continue with normal sign-in if check fails
+      console.error('Username check failed:', checkErr);
+      // Continue with fallback sign-in if check fails
     }
 
-    // Proceed with normal email/password sign-in
+    // Fallback: Try to sign in with username directly (in case it's an email)
     try {
       const user = await Auth.signIn(username, password);
 
@@ -101,7 +135,7 @@ export default function SignIn() {
       } else if (err.name === 'NotAuthorizedException') {
         setError('Incorrect username or password.');
       } else if (err.name === 'UserNotFoundException') {
-        setError('No account found with this email. Please create an account first.');
+        setError('No account found with this username. Please create an account first.');
       } else {
         setError(err.message || 'Sign in failed. Please try again.');
       }
@@ -156,21 +190,21 @@ export default function SignIn() {
             marginTop:20
           }}>Welcome back, you've been missed!</Text>
         
-        {/* Email/Username */}
+        {/* Username */}
         <View style={{
           marginTop:30
         }}>
           <Text style={{
             fontFamily:'outfit'
-          }}>Email</Text>
+          }}>Username</Text>
           <TextInput 
           style={styles.input}
-          placeholder='Enter Email'
+          placeholder='Enter Username'
           value={username}
           onChangeText={(value)=>setUsername(value)} 
-          keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
+          spellCheck={false}
           />
         </View>
 
