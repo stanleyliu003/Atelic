@@ -33,11 +33,8 @@ export default function create_trip_1_city({ showBackButton = true }) {
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
     const [isFlexibleDays, setIsFlexibleDays] = useState(false);
+    const startDateRef = useRef(null);
 
-    // Console log whenever dates or trip length change
-    useEffect(() => {
-        console.log('State updated - Start Date:', startDate, 'End Date:', endDate, 'Trip Length:', tripLength);
-    }, [startDate, endDate, tripLength]);
 
     // Pan responder for swipe-down gesture to close calendar
     const panResponder = useRef(
@@ -290,13 +287,9 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                 <View style={styles.calendarButtonContent}>
                                     <MaterialCommunityIcons name="calendar-clock-outline" size={24} color="black" />
                                     <Text style={[styles.calendarButtonText, !tripLength && styles.placeholderText]}>
-                                        {(() => {
-                                            const displayText = startDate && endDate
-                                                ? `${formatDate(startDate)}   -   ${formatDate(endDate)}`
-                                                : 'Select dates';
-                                            console.log('📱 CALENDAR BUTTON DISPLAY - Start Date:', startDate, '| End Date:', endDate, '| Trip Length:', tripLength, 'days | Display Text:', displayText);
-                                            return displayText;
-                                        })()}
+                                        {startDate && endDate
+                                            ? `${formatDate(startDate)}   -   ${formatDate(endDate)}`
+                                            : 'Select dates'}
                                     </Text>
                                 </View>
                             </TouchableOpacity>
@@ -325,10 +318,10 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                                 onValueChange={(value) => {
                                                     setIsFlexibleDays(value);
                                                     // Clear all selections when switching modes
+                                                    startDateRef.current = null;
                                                     setStartDate(null);
                                                     setEndDate(null);
                                                     setTripLength(null);
-                                                    console.log('🔄 FLEXIBLE DAYS TOGGLE - Mode changed to:', value ? 'Flexible' : 'Calendar', '| All dates cleared - Start Date: null | End Date: null | Trip Length: null');
                                                 }}
                                                 trackColor={{ false: '#D1D5DB', true: '#FFA53F' }}
                                                 thumbColor={isFlexibleDays ? '#FFFFFF' : '#f4f3f4'}
@@ -356,46 +349,50 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                                 weekdays={['S', 'M', 'T', 'W', 'T', 'F', 'S']}
                                                 allowBackwardRangeSelect={true}
                                             onDateChange={(date, type) => {
-                                                console.log('📅 CALENDAR DATE CHANGE - Type:', type, 'Selected Date:', date);
                                                 if (type === 'END_DATE') {
                                                     // Only proceed if we have a valid date
                                                     if (!date) {
-                                                        console.log('⚠️ END_DATE is null, skipping calculation');
+                                                        setEndDate(null);
+                                                        setTripLength(null);
                                                         return;
                                                     }
-                                                    
-                                                    // Check if the selected end date is before the start date
-                                                    if (startDate && date < startDate) {
-                                                        // Swap: the earlier date becomes start, later becomes end
-                                                        const newStartDate = date;
-                                                        const newEndDate = startDate;
-                                                        
-                                                        // Calculate trip length BEFORE setting state (inclusive of both start and end dates)
-                                                        const timeDiff = newEndDate.getTime() - newStartDate.getTime();
-                                                        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1;
-                                                        
-                                                        // Update all state together
-                                                        setStartDate(newStartDate);
-                                                        setEndDate(newEndDate);
-                                                        setTripLength(days);
-                                                        
-                                                        console.log('🔄 DATE SWAPPED - Start Date:', newStartDate, '| End Date:', newEndDate, '| Trip Length:', days, 'days');
-                                                    } else if (startDate) {
-                                                        setEndDate(date);
-                                                        // Calculate trip length (inclusive of both start and end dates)
-                                                        const timeDiff = date.getTime() - startDate.getTime();
-                                                        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1;
-                                                        setTripLength(days);
-                                                        console.log('✅ END DATE SELECTED - Start Date:', startDate, '| End Date:', date, '| Trip Length:', days, 'days');
-                                                    } else {
-                                                        console.log('⚠️ No start date available, cannot calculate trip length');
+
+                                                    // Use the ref to get the latest start date value
+                                                    const currentStartDate = startDateRef.current;
+
+                                                    if (currentStartDate) {
+                                                        // Calculate time difference in milliseconds
+                                                        const timeDiff = date.getTime() - currentStartDate.getTime();
+
+                                                        // Check if the selected end date is before the start date
+                                                        if (timeDiff < 0) {
+                                                            // Swap: the earlier date becomes start, later becomes end
+                                                            const newStartDate = date;
+                                                            const newEndDate = currentStartDate;
+
+                                                            // Recalculate trip length with swapped dates (inclusive of both start and end dates)
+                                                            const swappedTimeDiff = newEndDate.getTime() - newStartDate.getTime();
+                                                            const swappedDays = Math.floor(swappedTimeDiff / (1000 * 60 * 60 * 24)) + 1;
+
+                                                            // Update ref and state together
+                                                            startDateRef.current = newStartDate;
+                                                            setStartDate(newStartDate);
+                                                            setEndDate(newEndDate);
+                                                            setTripLength(swappedDays);
+                                                        } else {
+                                                            // Normal forward selection - end date is after start date
+                                                            const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+
+                                                            setEndDate(date);
+                                                            setTripLength(days);
+                                                        }
                                                     }
                                                 } else {
                                                     // Clear end date and trip length when selecting a new start date
+                                                    startDateRef.current = date;
                                                     setStartDate(date);
                                                     setEndDate(null);
                                                     setTripLength(null);
-                                                    console.log('🎯 START DATE SELECTED - Start Date:', date, '| End Date: null | Trip Length: null');
                                                 }
                                             }}
                                                 width={350}
@@ -457,7 +454,6 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                                     onPress={() => {
                                                         setTripLength(day);
                                                         setIsDropdownOpen(false);
-                                                        console.log('📊 FLEXIBLE DAYS SELECTED - Trip Length:', day, 'days | Start Date: null | End Date: null');
                                                     }}
                                                 >
                                                     <Text style={[
