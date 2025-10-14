@@ -358,12 +358,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                     {/* Header */}
                                     <View style={styles.modalHeader}>
                                         <Text style={styles.modalTitle}>When is your trip?</Text>
-                                        <TouchableOpacity 
-                                            onPress={() => setIsCalendarOpen(false)}
-                                            style={styles.closeButton}
-                                        >
-                                            <Ionicons name="close" size={28} color="#333" />
-                                        </TouchableOpacity>
+
                                     </View>
 
                                     {/* Calendar */}
@@ -371,17 +366,29 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                         <CalendarPicker
                                             startFromMonday={false}
                                             allowRangeSelection={true}
-                                            minDate={new Date()}
+                                            minDate={new Date(new Date().setHours(0, 0, 0, 0))}
                                             maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 3))}
                                             todayBackgroundColor="#E8F4FD"
-                                            selectedDayColor="#F36406"
+                                            todayTextStyle={{ color: '#27BFFF' }}
+                                            selectedDayColor="#FFA53F"
                                             selectedDayTextColor="#FFFFFF"
+                                            selectedStartDate={startDate}
+                                            selectedEndDate={endDate}
                                             enableSwipe={true}
                                             weekdays={['S', 'M', 'T', 'W', 'T', 'F', 'S']}
+                                            allowBackwardRangeSelect={true}
                                             onDateChange={(date, type) => {
                                                 if (type === 'END_DATE') {
-                                                    setEndDate(date);
+                                                    // Check if the selected end date is before the start date
+                                                    if (startDate && date < startDate) {
+                                                        // Swap: the earlier date becomes start, later becomes end
+                                                        setEndDate(startDate);
+                                                        setStartDate(date);
+                                                    } else {
+                                                        setEndDate(date);
+                                                    }
                                                 } else {
+                                                    // Clear end date when selecting a new start date
                                                     setStartDate(date);
                                                     setEndDate(null);
                                                 }
@@ -662,15 +669,13 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         marginTop: 8,
     },
-    closeButton: {
-        padding: 4,
-    },
+
     modalTitle: {
         fontFamily: 'outfit-bold',
         fontSize: 24,
         color: '#1a1a1a',
         textAlign: 'left',
-        marginBottom: 15,
+        marginBottom: 10,
     },
     calendarContainer: {
         height: 300,
