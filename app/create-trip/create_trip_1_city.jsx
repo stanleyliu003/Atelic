@@ -33,6 +33,19 @@ export default function create_trip_1_city({ showBackButton = true }) {
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
 
+    // Format date to "Sat Nov 18" format
+    const formatDate = (date) => {
+        if (!date) return '';
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        const dayName = days[date.getDay()];
+        const monthName = months[date.getMonth()];
+        const dayNumber = date.getDate();
+
+        return `${dayName} ${monthName} ${dayNumber}`;
+    };
+
     // Note: CACHE_KEYS now comes from context
 
     // No longer loading cached values - fields should always start empty
@@ -304,7 +317,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                     <MaterialCommunityIcons name="calendar-clock-outline" size={24} color="black" />
                                     <Text style={[styles.calendarButtonText, !startDate && styles.placeholderText]}>
                                         {startDate && endDate
-                                            ? `${startDate.format('MMM D')} - ${endDate.format('MMM D, YYYY')}`
+                                            ? `${formatDate(startDate)}   -   ${formatDate(endDate)}`
                                             : 'Select dates'}
                                     </Text>
                                 </View>
@@ -341,6 +354,8 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                             todayBackgroundColor="#E8F4FD"
                                             selectedDayColor="#000000"
                                             selectedDayTextColor="#FFFFFF"
+                                            enableSwipe={true}
+                                            weekdays={['S', 'M', 'T', 'W', 'T', 'F', 'S']}
                                             onDateChange={(date, type) => {
                                                 if (type === 'END_DATE') {
                                                     setEndDate(date);
@@ -368,6 +383,12 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                                 borderTopWidth: 0,
                                                 borderBottomWidth: 0,
                                             }}
+                                            previousComponent={
+                                                <Ionicons name="chevron-back" size={24} color="#666666" />
+                                            }
+                                            nextComponent={
+                                                <Ionicons name="chevron-forward" size={24} color="#666666" />
+                                            }
                                         />
                                     </ScrollView>
 
