@@ -1,5 +1,6 @@
 import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions } from 'react-native';
 import { Auth, API } from 'aws-amplify';
@@ -421,7 +422,7 @@ export default function Profile() {
                             }}
                             disabled={isLoadingTrip || deletingTripId === trip.tripId}
                           >
-                            <FontAwesome name="ellipsis-h" size={16} color={Colors.GRAY} />
+                            <FontAwesome6 name="ellipsis" size={24} color={Colors.GRAY} />
                           </TouchableOpacity>
                         )}
                       </View>
@@ -430,8 +431,8 @@ export default function Profile() {
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric'
-                        }) : 'No date'}
-                        {trip.tripLength != null ? ` - ${trip.tripLength} day trip` : 'Unknown length'}
+                        }) : ''}
+                        {trip.tripLength != null ? `${trip.startDate ? ' - ' : ''}${trip.tripLength} day trip` : 'Unknown length'}
                       </Text>
                     </View>
                   </View>
@@ -534,7 +535,7 @@ export default function Profile() {
                           month: 'short',
                           day: 'numeric'
                         }) : 'No date'}
-                        {trip.tripLength != null ? ` - ${trip.tripLength} day trip` : 'Unknown length'}
+                        {trip.tripLength != null ? `${(trip.startDate || trip.createdAt) ? ' - ' : ''}${trip.tripLength} day trip` : 'Unknown length'}
                       </Text>
                     </View>
                   </View>
@@ -812,7 +813,7 @@ const styles = StyleSheet.create({
   },
   tripCardTitle: {
     fontFamily: 'outfit-medium',
-    fontSize: 18,
+    fontSize: 20,
     color: Colors.PRIMARY,
     flex: 1,
   },
