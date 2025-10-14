@@ -427,12 +427,66 @@ export default function Profile() {
                         )}
                       </View>
                       <Text style={styles.tripCardLength}>
-                      {trip.startDate ? new Date(trip.startDate).toLocaleDateString(undefined, {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        }) : ''}
-                        {trip.tripLength != null ? `${trip.startDate ? ' - ' : ''}${trip.tripLength} day trip` : 'Unknown length'}
+                        {(() => {
+                          if (trip.startDate && trip.endDate) {
+                            const startDate = new Date(trip.startDate);
+                            const endDate = new Date(trip.endDate);
+                            const sameMonth = startDate.getMonth() === endDate.getMonth() && startDate.getFullYear() === endDate.getFullYear();
+                            
+                            if (sameMonth) {
+                              // Same month/year: "Jan 15 - 20, 2025"
+                              const startFormatted = startDate.toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric'
+                              });
+                              const endDay = endDate.getDate();
+                              const year = endDate.getFullYear();
+                              return `${startFormatted} - ${endDay}, ${year}`;
+                            } else if (startDate.getFullYear() === endDate.getFullYear()) {
+                              // Different month but same year: "Dec 28 - Jan 7, 2026"
+                              const startFormatted = startDate.toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric'
+                              });
+                              const endFormatted = endDate.toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric'
+                              });
+                              const year = endDate.getFullYear();
+                              return `${startFormatted} - ${endFormatted}, ${year}`;
+                            } else {
+                              // Different month/year: "Dec 28, 2025 - Jan 7, 2026"
+                              const startFormatted = startDate.toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              });
+                              const endFormatted = endDate.toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              });
+                              return `${startFormatted} - ${endFormatted}`;
+                            }
+                          } else if (trip.startDate) {
+                            // Only start date
+                            return new Date(trip.startDate).toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            });
+                          } else if (trip.endDate) {
+                            // Only end date
+                            return new Date(trip.endDate).toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            });
+                          } else {
+                            // No dates - show trip duration
+                            return trip.tripLength != null ? `${trip.tripLength} day trip` : 'Unknown length';
+                          }
+                        })()}
                       </Text>
                     </View>
                   </View>
@@ -526,16 +580,67 @@ export default function Profile() {
                         )}
                       </View>
                       <Text style={styles.tripCardLength}>
-                      {trip.startDate ? new Date(trip.startDate).toLocaleDateString(undefined, {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        }) : trip.createdAt ? new Date(trip.createdAt).toLocaleDateString(undefined, {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        }) : 'No date'}
-                        {trip.tripLength != null ? `${(trip.startDate || trip.createdAt) ? ' - ' : ''}${trip.tripLength} day trip` : 'Unknown length'}
+                        {(() => {
+                          const referenceDate = trip.startDate ? new Date(trip.startDate) : (trip.createdAt ? new Date(trip.createdAt) : null);
+                          
+                          if (referenceDate && trip.endDate) {
+                            const endDate = new Date(trip.endDate);
+                            const sameMonth = referenceDate.getMonth() === endDate.getMonth() && referenceDate.getFullYear() === endDate.getFullYear();
+                            
+                            if (sameMonth) {
+                              // Same month/year: "Jan 15 - 20, 2025"
+                              const startFormatted = referenceDate.toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric'
+                              });
+                              const endDay = endDate.getDate();
+                              const year = endDate.getFullYear();
+                              return `${startFormatted} - ${endDay}, ${year}`;
+                            } else if (referenceDate.getFullYear() === endDate.getFullYear()) {
+                              // Different month but same year: "Dec 28 - Jan 7, 2026"
+                              const startFormatted = referenceDate.toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric'
+                              });
+                              const endFormatted = endDate.toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric'
+                              });
+                              const year = endDate.getFullYear();
+                              return `${startFormatted} - ${endFormatted}, ${year}`;
+                            } else {
+                              // Different month/year: "Dec 28, 2025 - Jan 7, 2026"
+                              const startFormatted = referenceDate.toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              });
+                              const endFormatted = endDate.toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              });
+                              return `${startFormatted} - ${endFormatted}`;
+                            }
+                          } else if (referenceDate) {
+                            // Only reference date (startDate or createdAt)
+                            return referenceDate.toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            });
+                          } else if (trip.endDate) {
+                            // Only end date
+                            return new Date(trip.endDate).toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            });
+                          } else {
+                            // No dates - show trip duration
+                            return trip.tripLength != null ? `${trip.tripLength} day trip` : 'Unknown length';
+                          }
+                        })()}
                       </Text>
                     </View>
                   </View>
