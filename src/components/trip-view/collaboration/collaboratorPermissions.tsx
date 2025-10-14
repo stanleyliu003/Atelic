@@ -56,7 +56,8 @@ export const CollaboratorListItem: React.FC<CollaboratorListItemProps> = ({
 
   const getAvailableRoles = (): CollaboratorRole[] => {
     if (currentUserRole === 'owner') {
-      return ['editor', 'viewer'];
+      // Temporarily disabled: owner cannot change viewer to editor
+      return [/* 'editor', */ 'viewer'];
     } else if (currentUserRole === 'editor') {
       // Editors can only change viewers (but only to viewer, so no actual role changes)
       // However, they can remove viewers, so we still need to show the menu
