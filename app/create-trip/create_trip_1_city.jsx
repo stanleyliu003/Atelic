@@ -5,7 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Animated } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Animated, PanResponder } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { API } from 'aws-amplify';
@@ -32,6 +32,23 @@ export default function create_trip_1_city({ showBackButton = true }) {
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
+
+    // Pan responder for swipe-down gesture to close calendar
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: (evt, gestureState) => {
+                // Only respond to vertical swipes
+                return Math.abs(gestureState.dy) > 5;
+            },
+            onPanResponderRelease: (evt, gestureState) => {
+                // If swiped down more than 50 pixels, close the modal
+                if (gestureState.dy > 50) {
+                    setIsCalendarOpen(false);
+                }
+            },
+        })
+    ).current;
 
     // Format date to "Sat Nov 18" format
     const formatDate = (date) => {
@@ -255,7 +272,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
                 {selectedCity && (
                     <View style={styles.tripLengthSection}>
                         <View style={styles.promptSection}>
-                            <Text style={styles.promptTitle}>How long is your trip?</Text>
+                            <Text style={styles.promptTitle}>When is your trip?</Text>
                         </View>
 
                         {/* DROPDOWN MENU CODE - COMMENTED OUT FOR FUTURE USE */}
@@ -333,19 +350,24 @@ export default function create_trip_1_city({ showBackButton = true }) {
                         >
                             <View style={styles.modalOverlay}>
                                 <View style={styles.modalContent}>
-                                    {/* Top Handle */}
-                                    <View style={styles.modalHandle} />
+                                    {/* Top Handle - Swipeable */}
+                                    <View {...panResponder.panHandlers} style={styles.modalHandleContainer}>
+                                        <View style={styles.modalHandle} />
+                                    </View>
 
                                     {/* Header */}
                                     <View style={styles.modalHeader}>
                                         <Text style={styles.modalTitle}>When is your trip?</Text>
+                                        <TouchableOpacity 
+                                            onPress={() => setIsCalendarOpen(false)}
+                                            style={styles.closeButton}
+                                        >
+                                            <Ionicons name="close" size={28} color="#333" />
+                                        </TouchableOpacity>
                                     </View>
 
                                     {/* Calendar */}
-                                    <ScrollView
-                                        style={styles.calendarScrollView}
-                                        showsVerticalScrollIndicator={false}
-                                    >
+                                    <View style={styles.calendarContainer}>
                                         <CalendarPicker
                                             startFromMonday={false}
                                             allowRangeSelection={true}
@@ -390,7 +412,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                                 <Ionicons name="chevron-forward" size={24} color="#666666" />
                                             }
                                         />
-                                    </ScrollView>
+                                    </View>
 
                                     {/* Confirm Button */}
                                     <TouchableOpacity
@@ -623,33 +645,43 @@ const styles = StyleSheet.create({
         paddingBottom: 40,
         maxHeight: '80%',
     },
+    modalHandleContainer: {
+        paddingVertical: 12,
+        alignItems: 'center',
+    },
     modalHandle: {
         width: 40,
         height: 4,
         backgroundColor: '#D1D5DB',
         borderRadius: 2,
-        alignSelf: 'center',
-        marginTop: 12,
-        marginBottom: 20,
     },
     modalHeader: {
-        alignItems: 'left',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: 20,
+        marginTop: 8,
+    },
+    closeButton: {
+        padding: 4,
     },
     modalTitle: {
         fontFamily: 'outfit-bold',
         fontSize: 24,
         color: '#1a1a1a',
         textAlign: 'left',
+        marginBottom: 15,
     },
-    calendarScrollView: {
-        maxHeight: 450,
+    calendarContainer: {
+        height: 300,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     confirmButton: {
         backgroundColor: '#F36406',
         borderRadius: 25,
         paddingVertical: 16,
-        marginTop: 20,
+        marginTop: 35,
         alignItems: 'center',
         justifyContent: 'center',
     },
