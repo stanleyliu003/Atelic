@@ -2,10 +2,10 @@ import 'react-native-get-random-values';
 import { Colors } from '../../constants/Colors';
 import { API_KEYS } from '../../constants/ApiKeys';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Animated, PanResponder } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Animated, PanResponder, Switch } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { API } from 'aws-amplify';
@@ -32,6 +32,12 @@ export default function create_trip_1_city({ showBackButton = true }) {
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
+    const [isFlexibleDays, setIsFlexibleDays] = useState(false);
+
+    // Console log whenever dates or trip length change
+    useEffect(() => {
+        console.log('State updated - Start Date:', startDate, 'End Date:', endDate, 'Trip Length:', tripLength);
+    }, [startDate, endDate, tripLength]);
 
     // Pan responder for swipe-down gesture to close calendar
     const panResponder = useRef(
@@ -158,7 +164,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
         router.push('/create-trip/create_trip_explore');
     };
 
-    const dayOptions = Array.from({ length: 14 }, (_, i) => i + 1);
+    const dayOptions = Array.from({ length: 30 }, (_, i) => i + 1);
 
     return (
         <KeyboardAvoidingView
@@ -272,13 +278,156 @@ export default function create_trip_1_city({ showBackButton = true }) {
                 {selectedCity && (
                     <View style={styles.tripLengthSection}>
                         <View style={styles.promptSection}>
-                            <Text style={styles.promptTitle}>When is your trip?</Text>
+                            <Text style={styles.promptTitle}>How long is your trip?</Text>
                         </View>
 
-                        {/* DROPDOWN MENU CODE - COMMENTED OUT FOR FUTURE USE */}
-                        {/* <View style={{
-                            marginTop: -10
-                        }}>
+                        {/* Calendar Button */}
+                        <View style={{ marginTop: -10 }}>
+                            <TouchableOpacity
+                                style={styles.calendarButton}
+                                onPress={() => setIsCalendarOpen(true)}
+                            >
+                                <View style={styles.calendarButtonContent}>
+                                    <MaterialCommunityIcons name="calendar-clock-outline" size={24} color="black" />
+                                    <Text style={[styles.calendarButtonText, !tripLength && styles.placeholderText]}>
+                                        {(() => {
+                                            const displayText = startDate && endDate
+                                                ? `${formatDate(startDate)}   -   ${formatDate(endDate)}`
+                                                : 'Select dates';
+                                            console.log('📱 CALENDAR BUTTON DISPLAY - Start Date:', startDate, '| End Date:', endDate, '| Trip Length:', tripLength, 'days | Display Text:', displayText);
+                                            return displayText;
+                                        })()}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Calendar Modal */}
+                        <Modal
+                            visible={isCalendarOpen}
+                            transparent={true}
+                            animationType="slide"
+                            onRequestClose={() => setIsCalendarOpen(false)}
+                        >
+                            <View style={styles.modalOverlay}>
+                                <View style={styles.modalContent}>
+                                    {/* Top Handle - Swipeable */}
+                                    <View {...panResponder.panHandlers} style={styles.modalHandleContainer}>
+                                        <View style={styles.modalHandle} />
+                                    </View>
+
+                                    {/* Header */}
+                                    <View style={styles.modalHeader}>
+                                        <View style={styles.toggleContainer}>
+                                            <Text style={styles.toggleLabel}>Flexible days</Text>
+                                            <Switch
+                                                value={isFlexibleDays}
+                                                onValueChange={(value) => {
+                                                    setIsFlexibleDays(value);
+                                                    // Clear all selections when switching modes
+                                                    setStartDate(null);
+                                                    setEndDate(null);
+                                                    setTripLength(null);
+                                                    console.log('🔄 FLEXIBLE DAYS TOGGLE - Mode changed to:', value ? 'Flexible' : 'Calendar', '| All dates cleared - Start Date: null | End Date: null | Trip Length: null');
+                                                }}
+                                                trackColor={{ false: '#D1D5DB', true: '#FFA53F' }}
+                                                thumbColor={isFlexibleDays ? '#FFFFFF' : '#f4f3f4'}
+                                                ios_backgroundColor="#D1D5DB"
+                                            />
+                                        </View>
+                                    </View>
+
+                                    {/* Calendar or Flexible Days Dropdown */}
+                                    {!isFlexibleDays ? (
+                                        // Calendar View
+                                        <View style={styles.calendarContainer}>
+                                            <CalendarPicker
+                                                startFromMonday={false}
+                                                allowRangeSelection={true}
+                                                minDate={new Date(new Date().setHours(0, 0, 0, 0))}
+                                                maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 3))}
+                                                todayBackgroundColor="#E8F4FD"
+                                                todayTextStyle={{ color: '#27BFFF' }}
+                                                selectedDayColor="#FFA53F"
+                                                selectedDayTextColor="#FFFFFF"
+                                                selectedStartDate={startDate}
+                                                selectedEndDate={endDate}
+                                                enableSwipe={true}
+                                                weekdays={['S', 'M', 'T', 'W', 'T', 'F', 'S']}
+                                                allowBackwardRangeSelect={true}
+                                            onDateChange={(date, type) => {
+                                                console.log('📅 CALENDAR DATE CHANGE - Type:', type, 'Selected Date:', date);
+                                                if (type === 'END_DATE') {
+                                                    // Only proceed if we have a valid date
+                                                    if (!date) {
+                                                        console.log('⚠️ END_DATE is null, skipping calculation');
+                                                        return;
+                                                    }
+                                                    
+                                                    // Check if the selected end date is before the start date
+                                                    if (startDate && date < startDate) {
+                                                        // Swap: the earlier date becomes start, later becomes end
+                                                        const newStartDate = date;
+                                                        const newEndDate = startDate;
+                                                        
+                                                        // Calculate trip length BEFORE setting state (inclusive of both start and end dates)
+                                                        const timeDiff = newEndDate.getTime() - newStartDate.getTime();
+                                                        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+                                                        
+                                                        // Update all state together
+                                                        setStartDate(newStartDate);
+                                                        setEndDate(newEndDate);
+                                                        setTripLength(days);
+                                                        
+                                                        console.log('🔄 DATE SWAPPED - Start Date:', newStartDate, '| End Date:', newEndDate, '| Trip Length:', days, 'days');
+                                                    } else if (startDate) {
+                                                        setEndDate(date);
+                                                        // Calculate trip length (inclusive of both start and end dates)
+                                                        const timeDiff = date.getTime() - startDate.getTime();
+                                                        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+                                                        setTripLength(days);
+                                                        console.log('✅ END DATE SELECTED - Start Date:', startDate, '| End Date:', date, '| Trip Length:', days, 'days');
+                                                    } else {
+                                                        console.log('⚠️ No start date available, cannot calculate trip length');
+                                                    }
+                                                } else {
+                                                    // Clear end date and trip length when selecting a new start date
+                                                    setStartDate(date);
+                                                    setEndDate(null);
+                                                    setTripLength(null);
+                                                    console.log('🎯 START DATE SELECTED - Start Date:', date, '| End Date: null | Trip Length: null');
+                                                }
+                                            }}
+                                                width={350}
+                                                textStyle={{
+                                                    fontFamily: 'outfit',
+                                                    fontSize: 16,
+                                                }}
+                                                monthTitleStyle={{
+                                                    fontFamily: 'outfit-bold',
+                                                    fontSize: 24,
+                                                    color: '#1a1a1a',
+                                                }}
+                                                yearTitleStyle={{
+                                                    fontFamily: 'outfit-bold',
+                                                    fontSize: 24,
+                                                    color: '#1a1a1a',
+                                                }}
+                                                dayLabelsWrapper={{
+                                                    borderTopWidth: 0,
+                                                    borderBottomWidth: 0,
+                                                }}
+                                                previousComponent={
+                                                    <Ionicons name="chevron-back" size={24} color="#666666" />
+                                                }
+                                                nextComponent={
+                                                    <Ionicons name="chevron-forward" size={24} color="#666666" />
+                                                }
+                                            />
+                                        </View>
+                                    ) : (
+                                        // Flexible Days Dropdown
+                                        <View style={styles.flexibleDaysContainer}>
                             <View style={styles.dropdownContainer}>
                                 <TouchableOpacity
                                     style={styles.dropdownButton}
@@ -308,6 +457,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                                     onPress={() => {
                                                         setTripLength(day);
                                                         setIsDropdownOpen(false);
+                                                        console.log('📊 FLEXIBLE DAYS SELECTED - Trip Length:', day, 'days | Start Date: null | End Date: null');
                                                     }}
                                                 >
                                                     <Text style={[
@@ -322,119 +472,22 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                     </View>
                                 )}
                             </View>
-                        </View> */}
-
-                        {/* Calendar Button */}
-                        <View style={{ marginTop: -10 }}>
-                            <TouchableOpacity
-                                style={styles.calendarButton}
-                                onPress={() => setIsCalendarOpen(true)}
-                            >
-                                <View style={styles.calendarButtonContent}>
-                                    <MaterialCommunityIcons name="calendar-clock-outline" size={24} color="black" />
-                                    <Text style={[styles.calendarButtonText, !startDate && styles.placeholderText]}>
-                                        {startDate && endDate
-                                            ? `${formatDate(startDate)}   -   ${formatDate(endDate)}`
-                                            : 'Select dates'}
-                                    </Text>
                                 </View>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Calendar Modal */}
-                        <Modal
-                            visible={isCalendarOpen}
-                            transparent={true}
-                            animationType="slide"
-                            onRequestClose={() => setIsCalendarOpen(false)}
-                        >
-                            <View style={styles.modalOverlay}>
-                                <View style={styles.modalContent}>
-                                    {/* Top Handle - Swipeable */}
-                                    <View {...panResponder.panHandlers} style={styles.modalHandleContainer}>
-                                        <View style={styles.modalHandle} />
-                                    </View>
-
-                                    {/* Header */}
-                                    <View style={styles.modalHeader}>
-                                        <Text style={styles.modalTitle}>When is your trip?</Text>
-
-                                    </View>
-
-                                    {/* Calendar */}
-                                    <View style={styles.calendarContainer}>
-                                        <CalendarPicker
-                                            startFromMonday={false}
-                                            allowRangeSelection={true}
-                                            minDate={new Date(new Date().setHours(0, 0, 0, 0))}
-                                            maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 3))}
-                                            todayBackgroundColor="#E8F4FD"
-                                            todayTextStyle={{ color: '#27BFFF' }}
-                                            selectedDayColor="#FFA53F"
-                                            selectedDayTextColor="#FFFFFF"
-                                            selectedStartDate={startDate}
-                                            selectedEndDate={endDate}
-                                            enableSwipe={true}
-                                            weekdays={['S', 'M', 'T', 'W', 'T', 'F', 'S']}
-                                            allowBackwardRangeSelect={true}
-                                            onDateChange={(date, type) => {
-                                                if (type === 'END_DATE') {
-                                                    // Check if the selected end date is before the start date
-                                                    if (startDate && date < startDate) {
-                                                        // Swap: the earlier date becomes start, later becomes end
-                                                        setEndDate(startDate);
-                                                        setStartDate(date);
-                                                    } else {
-                                                        setEndDate(date);
-                                                    }
-                                                } else {
-                                                    // Clear end date when selecting a new start date
-                                                    setStartDate(date);
-                                                    setEndDate(null);
-                                                }
-                                            }}
-                                            width={350}
-                                            textStyle={{
-                                                fontFamily: 'outfit',
-                                                fontSize: 16,
-                                            }}
-                                            monthTitleStyle={{
-                                                fontFamily: 'outfit-bold',
-                                                fontSize: 24,
-                                                color: '#1a1a1a',
-                                            }}
-                                            yearTitleStyle={{
-                                                fontFamily: 'outfit-bold',
-                                                fontSize: 24,
-                                                color: '#1a1a1a',
-                                            }}
-                                            dayLabelsWrapper={{
-                                                borderTopWidth: 0,
-                                                borderBottomWidth: 0,
-                                            }}
-                                            previousComponent={
-                                                <Ionicons name="chevron-back" size={24} color="#666666" />
-                                            }
-                                            nextComponent={
-                                                <Ionicons name="chevron-forward" size={24} color="#666666" />
-                                            }
-                                        />
-                                    </View>
+                                    )}
 
                                     {/* Confirm Button */}
                                     <TouchableOpacity
                                         style={[
                                             styles.confirmButton,
-                                            { opacity: (startDate && endDate) ? 1 : 0.3 }
+                                            { opacity: tripLength ? 1 : 0.3 }
                                         ]}
                                         onPress={() => {
-                                            if (startDate && endDate) {
-                                                const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-                                                setTripLength(days);
+                                            // tripLength is already set in both modes, just close the modal
+                                            if (tripLength) {
                                                 setIsCalendarOpen(false);
                                             }
                                         }}
-                                        disabled={!startDate || !endDate}
+                                        disabled={!tripLength}
                                     >
                                         <Text style={styles.confirmButtonText}>Confirm</Text>
                                     </TouchableOpacity>
@@ -663,22 +716,35 @@ const styles = StyleSheet.create({
         borderRadius: 2,
     },
     modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexDirection: 'column',
         marginBottom: 20,
         marginTop: 8,
     },
-
+    toggleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        gap: 8,
+        marginTop: -4,
+    },
+    toggleLabel: {
+        fontFamily: 'outfit',
+        fontSize: 16,
+        color: '#666666',
+    },
     modalTitle: {
         fontFamily: 'outfit-bold',
         fontSize: 24,
         color: '#1a1a1a',
         textAlign: 'left',
-        marginBottom: 10,
+    },
+    flexibleDaysContainer: {
+        height: 300,
+        justifyContent: 'flex-start',
+        paddingTop: 20,
     },
     calendarContainer: {
-        height: 300,
+        height: 292,
         justifyContent: 'center',
         alignItems: 'center',
     },
