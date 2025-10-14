@@ -32,7 +32,7 @@ exports.handler = async (event) => {
       ExpressionAttributeValues: {
         ':userID': userID
       },
-      ProjectionExpression: 'tripID, selectedCity, tripPhotoReference, createdAt, tripLength, collaborators'
+      ProjectionExpression: 'tripID, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators'
     };
 
     console.log('Querying owned trips:', JSON.stringify(ownedTripsParams));
@@ -47,7 +47,7 @@ exports.handler = async (event) => {
       ExpressionAttributeValues: {
         ':userID': userID
       },
-      ProjectionExpression: 'tripID, selectedCity, tripPhotoReference, createdAt, tripLength, collaborators, userID'
+      ProjectionExpression: 'tripID, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators, userID'
     };
 
     console.log('Scanning for collaborated trips:', JSON.stringify(collaboratedTripsParams));
@@ -75,6 +75,8 @@ exports.handler = async (event) => {
       selectedCity: item.selectedCity,
       tripPhotoReference: normalizePhotoReferences(item.tripPhotoReference),
       createdAt: item.createdAt,
+      startDate: item.startDate || null,
+      endDate: item.endDate || null,
       tripLength: item.tripLength,
       userRole: getUserRole(item, userID)
     }));
@@ -90,6 +92,8 @@ exports.handler = async (event) => {
         selectedCity: item.selectedCity,
         tripPhotoReference: normalizePhotoReferences(item.tripPhotoReference),
         createdAt: item.createdAt,
+        startDate: item.startDate || null,
+        endDate: item.endDate || null,
         tripLength: item.tripLength,
         userRole: getUserRole(item, userID)
       }));

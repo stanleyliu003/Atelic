@@ -48,7 +48,7 @@ export default function TripViewMain() {
     const navigation = useNavigation();
     const params = useLocalSearchParams();
     const { restoreTrip } = params;
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference, collaborators, currentUserRole, setCollaborators, isOwner, searchActivities, version, setVersion, updatedAt, setUpdatedAt, lastUpdatedBy, setLastUpdatedBy } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, startDate, endDate, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference, collaborators, currentUserRole, setCollaborators, isOwner, searchActivities, version, setVersion, updatedAt, setUpdatedAt, lastUpdatedBy, setLastUpdatedBy } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -910,6 +910,8 @@ export default function TripViewMain() {
                 selectedCity,
                 tripPhotoReference: tripPhotoReference || '',
                 createdAt: tripCreatedAt,
+                startDate: startDate || null,
+                endDate: endDate || null,
             };
 
             console.log('[trip-view_main] Saving trip with data:', tripData);

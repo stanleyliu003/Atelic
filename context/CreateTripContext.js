@@ -33,6 +33,8 @@ export const CreateTripProvider = ({ children }) => {
     const [wishlistText, setWishlistText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [createdAt, setCreatedAt] = useState(null);
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
     const [isCreatingTrip, setIsCreatingTrip] = useState(false);
     const [selectedCity, setSelectedCity] = useState('');
     const [tripLength, setTripLength] = useState(null);
@@ -187,6 +189,13 @@ export const CreateTripProvider = ({ children }) => {
         if (trip.createdAt) {
             setCreatedAt(trip.createdAt);
         }
+        // Restore trip dates
+        if (trip.startDate) {
+            setStartDate(trip.startDate);
+        }
+        if (trip.endDate) {
+            setEndDate(trip.endDate);
+        }
         // Restore collaboration state
         setCollaborators(trip.collaborators || []);
         if (currentUserID) {
@@ -238,6 +247,8 @@ export const CreateTripProvider = ({ children }) => {
         setTripPhotoReference([]);
         setCollaborators([]);
         setCurrentUserRole(null);
+        setStartDate(null);
+        setEndDate(null);
         // Note: Don't reset selectedCity and tripLength during create trip flow
         // setSelectedCity('');
         // setTripLength(null);
@@ -270,6 +281,8 @@ export const CreateTripProvider = ({ children }) => {
         setTripPhotoReference([]);
         setCollaborators([]);
         setCurrentUserRole(null);
+        setStartDate(null);
+        setEndDate(null);
         setVersion(1);
         setUpdatedAt(null);
         setLastUpdatedBy(null);
@@ -558,6 +571,10 @@ export const CreateTripProvider = ({ children }) => {
         checkTripExistsInCloud,
         createdAt,
         setCreatedAt,
+        startDate,
+        setStartDate,
+        endDate,
+        setEndDate,
         isCreatingTrip,
         setIsCreatingTrip,
         selectedCity,

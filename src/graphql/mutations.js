@@ -72,6 +72,8 @@ export const createTrip = /* GraphQL */ `
       selectedCity
       tripPhotoReference
       createdAt
+      startDate
+      endDate
       collaborators {
         email
         fullName
@@ -147,6 +149,8 @@ export const addCollaborator = /* GraphQL */ `
       selectedCity
       tripPhotoReference
       createdAt
+      startDate
+      endDate
       collaborators {
         email
         fullName
@@ -196,6 +200,8 @@ export const removeCollaborator = /* GraphQL */ `
       selectedCity
       tripPhotoReference
       createdAt
+      startDate
+      endDate
       collaborators {
         email
         fullName
@@ -253,6 +259,8 @@ export const updateCollaboratorRole = /* GraphQL */ `
       selectedCity
       tripPhotoReference
       createdAt
+      startDate
+      endDate
       collaborators {
         email
         fullName

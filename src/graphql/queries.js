@@ -221,6 +221,8 @@ export const getTripIDs = /* GraphQL */ `
       selectedCity
       tripPhotoReference
       createdAt
+      startDate
+      endDate
       tripLength
       userRole
       __typename
@@ -260,6 +262,8 @@ export const getUserTrips = /* GraphQL */ `
       selectedCity
       tripPhotoReference
       createdAt
+      startDate
+      endDate
       collaborators {
         email
         fullName

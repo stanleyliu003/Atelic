@@ -25,6 +25,8 @@ export default function create_trip_1_city({ showBackButton = true }) {
         setCityCategories,
         tripLength,
         setTripLength,
+        setStartDate: setContextStartDate,
+        setEndDate: setContextEndDate,
         CACHE_KEYS
     } = useCreateTrip();
     const googlePlacesRef = useRef(null);
@@ -322,7 +324,9 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                                     // Clear all selections when switching modes
                                                     startDateRef.current = null;
                                                     setStartDate(null);
+                                                    setContextStartDate(null);
                                                     setEndDate(null);
+                                                    setContextEndDate(null);
                                                     setTripLength(null);
                                                 }}
                                                 trackColor={{ false: '#D1D5DB', true: '#FFA53F' }}
@@ -355,6 +359,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                                     // Only proceed if we have a valid date
                                                     if (!date) {
                                                         setEndDate(null);
+                                                        setContextEndDate(null);
                                                         setTripLength(null);
                                                         return;
                                                     }
@@ -376,16 +381,19 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                                             const swappedTimeDiff = newEndDate.getTime() - newStartDate.getTime();
                                                             const swappedDays = Math.floor(swappedTimeDiff / (1000 * 60 * 60 * 24)) + 1;
 
-                                                            // Update ref and state together
+                                                            // Update ref, local state, and context together
                                                             startDateRef.current = newStartDate;
                                                             setStartDate(newStartDate);
+                                                            setContextStartDate(newStartDate.toISOString());
                                                             setEndDate(newEndDate);
+                                                            setContextEndDate(newEndDate.toISOString());
                                                             setTripLength(swappedDays);
                                                         } else {
                                                             // Normal forward selection - end date is after start date
                                                             const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1;
 
                                                             setEndDate(date);
+                                                            setContextEndDate(date.toISOString());
                                                             setTripLength(days);
                                                         }
                                                     }
@@ -393,7 +401,9 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                                     // Clear end date and trip length when selecting a new start date
                                                     startDateRef.current = date;
                                                     setStartDate(date);
+                                                    setContextStartDate(date.toISOString());
                                                     setEndDate(null);
+                                                    setContextEndDate(null);
                                                     setTripLength(null);
                                                 }
                                             }}

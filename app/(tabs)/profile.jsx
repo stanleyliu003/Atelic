@@ -110,10 +110,10 @@ export default function Profile() {
         };
       });
 
-      // Sort trips by creation date (newest first)
+      // Sort trips by start date (newest first, fallback to createdAt)
       const sortedTrips = normalizedTrips.sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
+        const dateA = new Date(a.startDate || a.createdAt || 0);
+        const dateB = new Date(b.startDate || b.createdAt || 0);
         return dateB - dateA; // Descending order (newest first)
       });
 
@@ -426,7 +426,7 @@ export default function Profile() {
                         )}
                       </View>
                       <Text style={styles.tripCardLength}>
-                      {trip.createdAt ? new Date(trip.createdAt).toLocaleDateString(undefined, {
+                      {trip.startDate ? new Date(trip.startDate).toLocaleDateString(undefined, {
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric'
@@ -525,7 +525,11 @@ export default function Profile() {
                         )}
                       </View>
                       <Text style={styles.tripCardLength}>
-                      {trip.createdAt ? new Date(trip.createdAt).toLocaleDateString(undefined, {
+                      {trip.startDate ? new Date(trip.startDate).toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        }) : trip.createdAt ? new Date(trip.createdAt).toLocaleDateString(undefined, {
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric'

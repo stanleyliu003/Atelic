@@ -176,6 +176,8 @@
      selectedCity: String
      tripPhotoReference: [String]
      createdAt: String
+     startDate: String
+     endDate: String
      collaborators: [Collaborator!]!
      version: Int
      updatedAt: String
@@ -187,6 +189,8 @@
      selectedCity: String
      tripPhotoReference: [String]
      createdAt: String
+     startDate: String
+     endDate: String
      tripLength: Int
      userRole: CollaboratorRole
    }
@@ -259,6 +263,8 @@
      selectedCity: String
      tripPhotoReference: [String]
      createdAt: String
+     startDate: String
+     endDate: String
      collaborators: [CollaboratorInput!]!
      version: Int
      updatedAt: String
