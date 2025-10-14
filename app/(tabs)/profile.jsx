@@ -17,6 +17,7 @@ export default function Profile() {
   const { restoreTripFromObject, setSelectedCity } = useCreateTrip();
 
   const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
   const [userTrips, setUserTrips] = useState([]);
   const [ownedTrips, setOwnedTrips] = useState([]);
   const [sharedTrips, setSharedTrips] = useState([]);
@@ -36,8 +37,10 @@ export default function Profile() {
     try {
       const user = await Auth.currentAuthenticatedUser();
       const name = user.attributes?.name || '';
+      const userName = user.attributes?.preferred_username || '';
       const userID = user.attributes?.sub || user.username;
       setFullName(name);
+      setUsername(userName);
       setCurrentUserID(userID);
 
       // Load user trips from cloud
@@ -45,6 +48,7 @@ export default function Profile() {
     } catch (error) {
       console.error('[Profile] Error loading user data:', error);
       setFullName('');
+      setUsername('');
       setTripsError('Failed to load user data');
     }
   }, []);
@@ -277,6 +281,7 @@ export default function Profile() {
                 await Auth.signOut();
                 // Clear any stored user data
                 setFullName('');
+                setUsername('');
                 setUserTrips([]);
                 // Navigate to login/onboarding screen
                 router.replace('/');
@@ -334,9 +339,9 @@ export default function Profile() {
           </View>
         ) : (
           <ScrollView style={styles.tripsScrollView} showsVerticalScrollIndicator={true}>
-            {/* Welcome Back Full Name - always show when we have the name */}
-            {fullName ? (
-              <Text style={styles.welcomeText}>Welcome back, {fullName}!</Text>
+            {/* Welcome Back Username - always show when we have the username */}
+            {username ? (
+              <Text style={styles.welcomeText}>Welcome back, {username}</Text>
             ) : null}
             
             {(ownedTrips.length > 0 || sharedTrips.length > 0) ? (
