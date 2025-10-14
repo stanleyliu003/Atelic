@@ -99,9 +99,9 @@ export default function SignUp() {
     }
 
     // Username validation
-    const usernameRegex = /^[a-zA-Z0-9_]{5,15}$/;
+    const usernameRegex = /^[a-zA-Z0-9_]{5,20}$/;
     if (!usernameRegex.test(username)) {
-      setError('Username must be 5-15 characters and contain only letters, numbers, and underscores.');
+      setError('Username must be 5-20 characters and contain only letters, numbers, and underscores.');
       setIsLoading(false);
       return;
     }
@@ -270,7 +270,7 @@ export default function SignUp() {
           }}>Username</Text>
           <TextInput
           style={styles.input}
-          placeholder='Enter Username (5-15 characters)'
+          placeholder='Enter Username (5-20 characters)'
           value={username}
           onChangeText={(value)=>setUsername(value)}
           autoCapitalize="none"
