@@ -17,6 +17,8 @@ interface UserProfile {
   email: string;
   fullName: string;
   username: string;
+  isExternalProvider?: boolean;
+  identities?: string | null;
 }
 
 interface UserSearchFieldProps {

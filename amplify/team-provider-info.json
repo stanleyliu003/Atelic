@@ -153,7 +153,7 @@
         },
         "searchUsers": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/searchUsers-4730454633556149582b-build.zip"
+          "s3Key": "amplify-builds/searchUsers-3079386a657a5a7a5731-build.zip"
         },
         "wishlistAnalyzer": {
           "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw",

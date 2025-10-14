@@ -109,6 +109,8 @@
    email: String!
    fullName: String!
    username: String!
+   isExternalProvider: Boolean
+   identities: String
  }
 
  type CategoryActivitiesResult {

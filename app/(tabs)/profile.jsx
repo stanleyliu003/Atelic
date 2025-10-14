@@ -543,7 +543,6 @@ export default function Profile() {
               <View style={styles.noTripsContainer}>
                 <FontAwesome name="suitcase" size={50} color={Colors.GRAY} />
                 <Text style={styles.noTripsText}>No trips found</Text>
-                <Text style={styles.noTripsSubtext}>Create your first trip to get started!</Text>
               </View>
             )}
           </ScrollView>
@@ -831,12 +830,6 @@ const styles = StyleSheet.create({
     color: Colors.GRAY,
     marginTop: 15,
     marginBottom: 5,
-  },
-  noTripsSubtext: {
-    fontFamily: 'outfit',
-    fontSize: 14,
-    color: Colors.GRAY,
-    textAlign: 'center',
   },
   menuButton: {
     width: 32,

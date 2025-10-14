@@ -283,6 +283,8 @@ export const searchUsers = /* GraphQL */ `
       email
       fullName
       username
+      isExternalProvider
+      identities
       __typename
     }
   }

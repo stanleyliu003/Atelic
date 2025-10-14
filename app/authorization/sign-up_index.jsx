@@ -13,6 +13,8 @@ const searchUsers = /* GraphQL */ `
       email
       fullName
       username
+      isExternalProvider
+      identities
       __typename
     }
   }
@@ -73,12 +75,17 @@ export default function SignUp() {
       const emailUsers = emailResult.data?.searchUsers || [];
 
       // Check if any user has this exact email
-      const emailExists = emailUsers.some(
+      const existingUser = emailUsers.find(
         user => user.email?.toLowerCase() === email.trim().toLowerCase()
       );
 
-      if (emailExists) {
-        setEmailError('An account with this email already exists. Please sign in instead.');
+      if (existingUser) {
+        // Provide different error messages based on authentication method
+        if (existingUser.isExternalProvider) {
+          setEmailError('An account with this email exists via Google sign-in. Please use "Sign in with Google" instead.');
+        } else {
+          setEmailError('An account with this email already exists. Please sign in instead.');
+        }
         setIsLoading(false);
         return;
       }

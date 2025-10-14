@@ -74,12 +74,20 @@ exports.handler = async (event) => {
         const emailAttr = user.Attributes.find(attr => attr.Name === 'email');
         const nameAttr = user.Attributes.find(attr => attr.Name === 'name');
         const usernameAttr = user.Attributes.find(attr => attr.Name === 'preferred_username');
+        const identitiesAttr = user.Attributes.find(attr => attr.Name === 'identities');
+
+        // Determine if user is from external provider (Google)
+        // Users authenticated via Google OAuth will have an 'identities' attribute
+        // or their Username will start with 'google_'
+        const isExternalProvider = !!identitiesAttr || user.Username.startsWith('google_');
 
         return {
           userID: user.Username,
           email: emailAttr ? emailAttr.Value : '',
           fullName: nameAttr ? nameAttr.Value : '',
-          username: usernameAttr ? usernameAttr.Value : ''
+          username: usernameAttr ? usernameAttr.Value : '',
+          isExternalProvider: isExternalProvider,
+          identities: identitiesAttr ? identitiesAttr.Value : null
         };
       });
 
