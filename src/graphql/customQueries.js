@@ -120,6 +120,7 @@ export const getUserTripsDetailed = /* GraphQL */ `
         email
         fullName
         userID
+        username
         role
         addedBy
         __typename
