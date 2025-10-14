@@ -352,7 +352,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                             minDate={new Date()}
                                             maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 3))}
                                             todayBackgroundColor="#E8F4FD"
-                                            selectedDayColor="#000000"
+                                            selectedDayColor="#F36406"
                                             selectedDayTextColor="#FFFFFF"
                                             enableSwipe={true}
                                             weekdays={['S', 'M', 'T', 'W', 'T', 'F', 'S']}
@@ -396,7 +396,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                     <TouchableOpacity
                                         style={[
                                             styles.confirmButton,
-                                            (!startDate || !endDate) && styles.confirmButtonDisabled
+                                            { opacity: (startDate && endDate) ? 1 : 0.3 }
                                         ]}
                                         onPress={() => {
                                             if (startDate && endDate) {
@@ -646,15 +646,12 @@ const styles = StyleSheet.create({
         maxHeight: 450,
     },
     confirmButton: {
-        backgroundColor: '#000000',
+        backgroundColor: '#F36406',
         borderRadius: 25,
         paddingVertical: 16,
         marginTop: 20,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    confirmButtonDisabled: {
-        backgroundColor: '#CCCCCC',
     },
     confirmButtonText: {
         color: '#FFFFFF',
