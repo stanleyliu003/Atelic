@@ -223,6 +223,13 @@ exports.handler = async (event) => {
             }
             
             return activity;
+        }).filter(activity => {
+            // Filter out activities without place_id to prevent empty cards
+            if (!activity.place_id) {
+                console.warn(`Filtering out activity "${activity.name}" - no place_id found`);
+                return false;
+            }
+            return true;
         });
 
         // Apply deduplication against existing activities (by name)

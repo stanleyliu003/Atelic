@@ -205,6 +205,15 @@ async function handleAddressQuery(searchQuery, selectedCity, existingActivityNam
             international_phone_number: coordData.international_phone_number || null
         };
 
+        // Filter out activity if no place_id (prevents empty cards)
+        if (!activity.place_id) {
+            console.warn(`Filtering out activity "${activity.name}" - no place_id found in address query`);
+            return {
+                activities: [],
+                query: searchQuery
+            };
+        }
+
         // Check place_id-based activity cache and update if new
         if (activity.place_id) {
             await setCachedData('activity', activity.place_id, activity, SEARCH_ACTIVITIES_TTL);
@@ -406,6 +415,13 @@ async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActiv
             }
             
             return activity;
+        }).filter(activity => {
+            // Filter out activities without place_id to prevent empty cards
+            if (!activity.place_id) {
+                console.warn(`Filtering out activity "${activity.name}" - no place_id found in search query`);
+                return false;
+            }
+            return true;
         });
 
         // Apply deduplication against activities passed from UI
