@@ -233,7 +233,10 @@ exports.handler = async (event) => {
         });
 
         // Apply deduplication against existing activities (by name)
-        const deduplicatedActivities = deduplicateActivities(finalActivities, existingActivities);
+        let deduplicatedActivities = deduplicateActivities(finalActivities, existingActivities);
+
+        // Also deduplicate identical place_ids within the current results (prevents same place appearing twice)
+        deduplicatedActivities = deduplicateByPlaceId(deduplicatedActivities);
 
         // Cache the result only for initial requests
         if (existingActivities.length === 0) {
@@ -317,6 +320,30 @@ function deduplicateActivities(activities, existingActivityNames) {
 
     const existingNamesSet = new Set(existingActivityNames);
     return activities.filter(activity => !existingNamesSet.has(activity.name));
+}
+
+/**
+ * Deduplicate activities by place_id within the current batch
+ * Keeps the first occurrence of each unique place_id
+ */
+function deduplicateByPlaceId(activities) {
+    const seenPlaceIds = new Set();
+    const uniqueActivities = [];
+
+    for (const activity of activities) {
+        // Skip activities without place_id or with duplicate place_id
+        if (activity.place_id && !seenPlaceIds.has(activity.place_id)) {
+            seenPlaceIds.add(activity.place_id);
+            uniqueActivities.push(activity);
+        } else if (!activity.place_id) {
+            // Keep activities without place_id (geocoding may have failed)
+            uniqueActivities.push(activity);
+        } else {
+            console.log(`Skipping duplicate place_id: ${activity.place_id} for activity: ${activity.name}`);
+        }
+    }
+
+    return uniqueActivities;
 }
 
 // Cache helper functions (following getLocationCoordinates pattern)

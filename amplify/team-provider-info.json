@@ -168,7 +168,7 @@
         "regionImageStorage": {},
         "generateCategoryActivities": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/generateCategoryActivities-4276584b596341793546-build.zip",
+          "s3Key": "amplify-builds/generateCategoryActivities-2f617156333444427a50-build.zip",
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
           "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw"
         },
