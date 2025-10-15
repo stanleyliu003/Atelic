@@ -402,7 +402,7 @@ function DraggableActivityCard({
   };
 
   const longPressGesture = Gesture.LongPress()
-    .minDuration(200) // 1.5 seconds
+    .minDuration(150) // 200ms
     .onStart(() => {
       runOnJS(setIsGripPressed)(true);
     });
