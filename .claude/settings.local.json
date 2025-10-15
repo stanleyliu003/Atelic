@@ -4,7 +4,8 @@
       "Bash(npm install:*)",
       "WebSearch",
       "Bash(npm uninstall:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(amplify push:*)"
     ],
     "deny": [],
     "ask": [],

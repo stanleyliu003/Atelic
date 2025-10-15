@@ -86,6 +86,12 @@ export const createTrip = /* GraphQL */ `
       version
       updatedAt
       lastUpdatedBy
+      cityCategories {
+        category
+        category_items
+        emoji
+        __typename
+      }
       __typename
     }
   }
@@ -163,6 +169,12 @@ export const addCollaborator = /* GraphQL */ `
       version
       updatedAt
       lastUpdatedBy
+      cityCategories {
+        category
+        category_items
+        emoji
+        __typename
+      }
       __typename
     }
   }
@@ -214,6 +226,12 @@ export const removeCollaborator = /* GraphQL */ `
       version
       updatedAt
       lastUpdatedBy
+      cityCategories {
+        category
+        category_items
+        emoji
+        __typename
+      }
       __typename
     }
   }
@@ -273,6 +291,12 @@ export const updateCollaboratorRole = /* GraphQL */ `
       version
       updatedAt
       lastUpdatedBy
+      cityCategories {
+        category
+        category_items
+        emoji
+        __typename
+      }
       __typename
     }
   }

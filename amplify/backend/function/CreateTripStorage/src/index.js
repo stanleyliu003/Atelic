@@ -49,7 +49,9 @@ exports.handler = async (event) => {
     collaborators: input.collaborators || [],
     version: input.version || 1,
     updatedAt: input.updatedAt || new Date().toISOString(),
-    lastUpdatedBy: input.lastUpdatedBy || 'unknown'
+    lastUpdatedBy: input.lastUpdatedBy || 'unknown',
+    // Persist cityCategories if provided
+    cityCategories: Array.isArray(input.cityCategories) ? input.cityCategories : []
   };
 
   console.log('item to put:', item);
@@ -84,7 +86,8 @@ exports.handler = async (event) => {
       collaborators: item.collaborators,
       version: item.version,
       updatedAt: item.updatedAt,
-      lastUpdatedBy: item.lastUpdatedBy
+      lastUpdatedBy: item.lastUpdatedBy,
+      cityCategories: item.cityCategories || []
     };
   } catch (error) {
     console.error('DynamoDB put error:', error);

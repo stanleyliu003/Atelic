@@ -128,6 +128,12 @@ export const getUserTripsDetailed = /* GraphQL */ `
       version
       updatedAt
       lastUpdatedBy
+      cityCategories {
+        category
+        category_items
+        emoji
+        __typename
+      }
       __typename
     }
   }

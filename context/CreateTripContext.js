@@ -164,10 +164,19 @@ export const CreateTripProvider = ({ children }) => {
 
     // Restore all trip state from a trip object
     const restoreTripFromObject = (trip, currentUserID = null) => {
+        console.log('[CreateTripContext] restoreTripFromObject: incoming tripId:', trip?.tripId);
         setTripId(trip.tripId);
         updateActivities(trip.wishlist);
         setAllDayActivities(trip.days);
         setAllDayPolylines(trip.days);
+        // Restore city categories from cloud (if provided)
+        if (trip.cityCategories) {
+            console.log('[CreateTripContext] Restoring cityCategories from cloud. Count:', Array.isArray(trip.cityCategories) ? trip.cityCategories.length : 'null');
+            setCityCategories(trip.cityCategories);
+        } else {
+            console.log('[CreateTripContext] No cityCategories on cloud trip. Clearing local cityCategories');
+            setCityCategories(null);
+        }
         // Restore tripLength if available, otherwise derive from days
         if (trip.tripLength) {
             setTripLength(trip.tripLength);

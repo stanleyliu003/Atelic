@@ -1,7 +1,7 @@
 import { Colors } from '../../constants/Colors';
 import { useNavigation, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert, AppState, Animated, PanResponder, Dimensions } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert, AppState, Animated, PanResponder, Dimensions, ActivityIndicator } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { encodePolyline } from '../../src/utils/polyline';
 import { DaySchedule, TabBar, WishlistActivities } from '../../src/components/trip-view';
@@ -12,6 +12,7 @@ import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import { ActivityDetailView } from '../../src/components/trip-view/description_card';
 import { SearchBar } from '../../src/components/explore/SearchBar';
 import { AutocompleteModal } from '../../src/components/explore/AutocompleteModal';
+import { CategoryModal } from '../../src/components/explore/CategoryModal';
 import { useActivitySelection } from '../../src/hooks/use_activity_selection';
 import { useDayActivities } from '../../src/hooks/use_day_activities';
 import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
@@ -48,7 +49,7 @@ export default function TripViewMain() {
     const navigation = useNavigation();
     const params = useLocalSearchParams();
     const { restoreTrip } = params;
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, startDate, endDate, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference, collaborators, currentUserRole, setCollaborators, isOwner, searchActivities, version, setVersion, updatedAt, setUpdatedAt, lastUpdatedBy, setLastUpdatedBy } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, startDate, endDate, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference, collaborators, currentUserRole, setCollaborators, isOwner, searchActivities, version, setVersion, updatedAt, setUpdatedAt, lastUpdatedBy, setLastUpdatedBy, cityCategories, generateActivitiesForCategory, categoryActivities, addToWishlist } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -67,6 +68,12 @@ export default function TripViewMain() {
     const [showAutocomplete, setShowAutocomplete] = useState(false);
     const [isShareModalVisible, setIsShareModalVisible] = useState(false);
     const [currentUserID, setCurrentUserID] = useState<string>('');
+
+    // State for CategoryModal
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [loadingCategoryActivities, setLoadingCategoryActivities] = useState(false);
+    const [loadingMoreCategoryActivities, setLoadingMoreCategoryActivities] = useState(false);
 
     // State for activity detail view
     const [selectedActivityForDetail, setSelectedActivityForDetail] = useState<Activity | null>(null);
@@ -764,6 +771,77 @@ export default function TripViewMain() {
         setSearchQuery('');
     };
 
+    // ===== CATEGORY FLOW HANDLERS =====
+
+    // Debug log: city categories and UI conditions
+    useEffect(() => {
+        console.log('[trip-view_main] cityCategories updated:', Array.isArray(cityCategories) ? cityCategories.length : cityCategories);
+        if (Array.isArray(cityCategories)) {
+            console.log('[trip-view_main] cityCategories sample:', cityCategories[0]);
+        }
+        console.log('[trip-view_main] selectedCity:', selectedCity);
+    }, [cityCategories, selectedCity]);
+
+    // Handler for category card press
+    const handleCategoryPress = async (category: any) => {
+        setSelectedCategory(category.category);
+        setShowCategoryModal(true);
+
+        // Check if we already have cached activities for this category in context
+        if (categoryActivities[category.category] && categoryActivities[category.category].length > 0) {
+            // Activities already exist in context, no need to fetch
+            return;
+        }
+
+        // If not cached, fetch new activities
+        setLoadingCategoryActivities(true);
+
+        try {
+            // Generate activities for this category (this updates context's categoryActivities)
+            await generateActivitiesForCategory(category.category);
+        } catch (error) {
+            console.error('[trip-view_main] Error generating category activities:', error);
+            Alert.alert('Error', 'Failed to load activities. Please try again.');
+            setShowCategoryModal(false);
+        } finally {
+            setLoadingCategoryActivities(false);
+        }
+    };
+
+    // Handler for saving category activities
+    const handleSaveCategoryActivities = (selectedActivities: Activity[], deselectedWishlistActivityIds: string[] = []) => {
+        // Remove deselected wishlist activities
+        if (deselectedWishlistActivityIds.length > 0) {
+            removeActivities(deselectedWishlistActivityIds);
+        }
+
+        // Add newly selected activities
+        if (selectedActivities.length > 0) {
+            addToWishlist(selectedActivities);
+        }
+
+        setShowCategoryModal(false);
+    };
+
+    // Handler for generating more category activities
+    const handleGenerateMoreCategoryActivities = async (categoryName: string) => {
+        setLoadingMoreCategoryActivities(true);
+
+        try {
+            // Generate more activities for this category (updates context automatically)
+            await generateActivitiesForCategory(categoryName);
+        } catch (error: any) {
+            // Check if this is a limit reached error
+            if (error.message && error.message.includes('Activity generation limit reached')) {
+                throw error; // Re-throw to let CategoryModal handle the alert
+            } else {
+                throw error; // Re-throw to let CategoryModal handle the alert
+            }
+        } finally {
+            setLoadingMoreCategoryActivities(false);
+        }
+    };
+
     // Handler to reload trip with latest changes from remote
     const handleReloadTrip = async () => {
         try {
@@ -902,6 +980,15 @@ export default function TripViewMain() {
                 console.log('[trip-view_main] Using existing createdAt:', tripCreatedAt);
             }
 
+            // Sanitize cityCategories to only include allowed fields per GraphQL input
+            const cleanCityCategories = Array.isArray(cityCategories)
+                ? cityCategories.map((c: any) => ({
+                    category: c?.category,
+                    category_items: Array.isArray(c?.category_items) ? c.category_items : [],
+                    ...(typeof c?.emoji === 'string' ? { emoji: c.emoji } : {})
+                }))
+                : null;
+
             const tripData = {
                 tripId: currentTripId,
                 days,
@@ -912,6 +999,7 @@ export default function TripViewMain() {
                 createdAt: tripCreatedAt,
                 startDate: startDate || null,
                 endDate: endDate || null,
+                cityCategories: cleanCityCategories || null, // Save city categories for restoration
             };
 
             console.log('[trip-view_main] Saving trip with data:', tripData);
@@ -1357,12 +1445,50 @@ export default function TripViewMain() {
                                             {/* SearchBar when no wishlist activities - hide for viewers */}
                                             {currentUserRole !== 'viewer' && (
                                                 <View style={{ marginTop: 0, marginBottom: 0 }}>
-                                                <SearchBar
+                                                    <SearchBar
                                                         value={searchQuery}
                                                         onChangeText={handleSearchQueryChange}
                                                         onPress={handleSearchPress}
                                                         placeholder="Add more activities"
                                                     />
+                                                </View>
+                                            )}
+
+                                            {/* Category Cards - hide for viewers */}
+                                            {currentUserRole !== 'viewer' && (
+                                                <View style={styles.categoriesSection}>
+                                                    <Text style={styles.categoriesTitle}>Browse by Category</Text>
+                {Array.isArray(cityCategories) && cityCategories.length > 0 ? (
+                                                        <View style={styles.categoriesGrid}>
+                                                            {cityCategories.map((category: any, index: number) => (
+                                                                <TouchableOpacity
+                                                                    key={index}
+                                                                    style={styles.categoryCard}
+                                                                    onPress={() => handleCategoryPress(category)}
+                                                                    activeOpacity={0.7}
+                                                                >
+                                                                    <View style={styles.categoryContent}>
+                                                                        {category.emoji && (
+                                                                            <View style={styles.emojiContainer}>
+                                                                                <Text style={styles.categoryEmoji}>{category.emoji}</Text>
+                                                                            </View>
+                                                                        )}
+                                                                        <Text style={styles.categoryName}>{category.category}</Text>
+                                                                        <Text style={styles.categoryItems} numberOfLines={1}>
+                                                                            {category.category_items[0]}
+                                                                        </Text>
+                                                                    </View>
+                                                                </TouchableOpacity>
+                                                            ))}
+                                                        </View>
+                                                    ) : (
+                                                        <View style={styles.loadingContainer}>
+                                                            <ActivityIndicator size="large" color={Colors.PRIMARY} />
+                                                            <Text style={styles.loadingText}>
+                                                                Loading categories for {selectedCity}...
+                                                            </Text>
+                                                        </View>
+                                                    )}
                                                 </View>
                                             )}
                                         </View>
@@ -1384,13 +1510,51 @@ export default function TripViewMain() {
 
                                             {/* SearchBar after all activities - hide for viewers */}
                                             {currentUserRole !== 'viewer' && (
-                                                <View style={{ marginTop: -30 }}>
+                                                <View style={{ marginTop: -30, marginBottom: 20 }}>
                                                     <SearchBar
                                                         value={searchQuery}
                                                         onChangeText={handleSearchQueryChange}
                                                         onPress={handleSearchPress}
                                                         placeholder="Add more activities"
                                                     />
+                                                </View>
+                                            )}
+
+                                            {/* Category Cards - hide for viewers */}
+                                            {currentUserRole !== 'viewer' && (
+                                                <View style={styles.categoriesSection}>
+                                                    <Text style={styles.categoriesTitle}>Browse by Category</Text>
+                {Array.isArray(cityCategories) && cityCategories.length > 0 ? (
+                                                        <View style={styles.categoriesGrid}>
+                                                            {cityCategories.map((category: any, index: number) => (
+                                                                <TouchableOpacity
+                                                                    key={index}
+                                                                    style={styles.categoryCard}
+                                                                    onPress={() => handleCategoryPress(category)}
+                                                                    activeOpacity={0.7}
+                                                                >
+                                                                    <View style={styles.categoryContent}>
+                                                                        {category.emoji && (
+                                                                            <View style={styles.emojiContainer}>
+                                                                                <Text style={styles.categoryEmoji}>{category.emoji}</Text>
+                                                                            </View>
+                                                                        )}
+                                                                        <Text style={styles.categoryName}>{category.category}</Text>
+                                                                        <Text style={styles.categoryItems} numberOfLines={1}>
+                                                                            {category.category_items[0]}
+                                                                        </Text>
+                                                                    </View>
+                                                                </TouchableOpacity>
+                                                            ))}
+                                                        </View>
+                                                    ) : (
+                                                        <View style={styles.loadingContainer}>
+                                                            <ActivityIndicator size="large" color={Colors.PRIMARY} />
+                                                            <Text style={styles.loadingText}>
+                                                                Loading categories for {selectedCity}...
+                                                            </Text>
+                                                        </View>
+                                                    )}
                                                 </View>
                                             )}
                                         </>
@@ -1471,6 +1635,19 @@ export default function TripViewMain() {
                     )
                 ]}
                 activeTab={activeTab}
+            />
+
+            {/* CategoryModal for browsing activities by category */}
+            <CategoryModal
+                visible={showCategoryModal}
+                category={selectedCategory}
+                activities={categoryActivities[selectedCategory] || []}
+                loading={loadingCategoryActivities}
+                loadingMore={loadingMoreCategoryActivities}
+                onSave={handleSaveCategoryActivities}
+                onClose={() => setShowCategoryModal(false)}
+                onGenerateMore={handleGenerateMoreCategoryActivities}
+                wishlistActivities={activities || []}
             />
 
             {/* Share Trip Modal */}
@@ -1668,5 +1845,80 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 20,
         fontFamily: 'outfit-bold',
+    },
+    categoriesSection: {
+        marginTop: -10,
+        marginBottom: 20,
+    },
+    categoriesTitle: {
+        fontFamily: 'outfit-bold',
+        fontSize: 18,
+        color: '#333',
+        marginBottom: 15,
+        textAlign: 'center',
+    },
+    categoriesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+    },
+    categoryCard: {
+        width: '48%',
+        backgroundColor: '#f8f9fa',
+        borderRadius: 12,
+        padding: 15,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#e9ecef',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+        position: 'relative',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    categoryContent: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    emojiContainer: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: '#e9ecef',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    categoryEmoji: {
+        fontSize: 24,
+        textAlign: 'center',
+    },
+    categoryName: {
+        fontFamily: 'outfit-bold',
+        fontSize: 14,
+        color: '#333',
+        textAlign: 'center',
+        marginBottom: 5,
+    },
+    categoryItems: {
+        fontFamily: 'outfit',
+        fontSize: 10,
+        color: '#666',
+        lineHeight: 16,
+        textAlign: 'center',
+    },
+    loadingContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 40,
+    },
+    loadingText: {
+        fontFamily: 'outfit',
+        fontSize: 14,
+        color: '#666',
+        marginTop: 10,
     },
 });
