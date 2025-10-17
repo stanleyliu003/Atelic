@@ -481,7 +481,7 @@ DO NOT recommend any of these existing locations. Generate DIFFERENT recommendat
 You are an expert travel assistant. Generate exactly 4 high-quality recommendations for "${searchQuery}" in ${selectedCity}.
 
 CRITICAL CONSTRAINTS:
-1. PRIORITIZE EXACT MATCHES: If "${searchQuery}" appears to be the name of a specific attraction, landmark, or institution, include that EXACT place as your first recommendation
+1. PRIORITIZE EXACT MATCHES: If "${searchQuery}" appears to be the name of a specific attraction, landmark, or institution, include that EXACT place as your first recommendation. Include the 2nd, 3rd, and 4th best match to "${searchQuery}" for the rest of the reccomendations.
 2. GEOGRAPHIC SCOPE: Focus on ${selectedCity} but include famous attractions within reasonable travel distance 
 3. Use precise, official names suitable for Google Places API
 4. Don't recommend neighborhoods, only specific locations (landmarks, attractions, institutions, etc.)
@@ -492,8 +492,7 @@ ${filtersContext}${existingActivitiesContext}
 SEARCH QUERY: "${searchQuery}"
 
 SEARCH STRATEGY:
-- FIRST: Check if "${searchQuery}" is a specific place name (like "University of Tokyo") if so, recommend that exact place
-- THEN: Find 3 additional related recommendations
+- FIRST: Check if "${searchQuery}" is a specific place name (like "University of Tokyo") if so, recommend that exact place as the first recommendation. The 2nd, 3rd, and 4th best matches to "${searchQuery}" should be the rest of the reccomendations. 
 - Prioritize the main attraction/institution over sub-components (ex: "University of Tokyo" not "University of Tokyo Library")
 - For well-known attractions outside the city but nearby, include them if they match the search
 
