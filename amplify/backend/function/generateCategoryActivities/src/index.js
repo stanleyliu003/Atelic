@@ -287,8 +287,8 @@ DO NOT recommend any of these existing locations. Generate 4 DIFFERENT ${categor
 You are an expert travel assistant. Generate exactly 4 high-quality ${category} recommendations for ${selectedCity}.
 
 CRITICAL CONSTRAINTS:
-1. ONLY focus on ${selectedCity}
-2. Generate exactly 4 specific ${category} locations that are WITHIN ${selectedCity} only
+1. ONLY focus on places in ${selectedCity} or places nearby ${selectedCity}. Do not recommend locations far away from ${selectedCity}
+2. Generate exactly 4 specific ${category} locations that are WITHIN or NEARBY ${selectedCity} only
 3. Use precise, official names suitable for Google Places API
 4. Don't recommend neighborhoods or areas, only specific locations
 5. Focus on well-regarded, authentic ${category} experiences
@@ -296,7 +296,7 @@ ${existingActivitiesContext}
 
 CATEGORY FOCUS: ${category}
 Generate 4 recommendations that are:
-- Highly rated and well-regarded ${category} locations
+- Highly rated and well-regarded ${category} locations in ${selectedCity} or places nearby ${selectedCity}.
 - Accessible to visitors
 - Specific venues, not districts or neighborhoods
 

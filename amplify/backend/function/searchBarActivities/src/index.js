@@ -482,7 +482,7 @@ You are an expert travel assistant. Generate exactly 4 high-quality recommendati
 
 CRITICAL CONSTRAINTS:
 1. PRIORITIZE EXACT MATCHES: If "${searchQuery}" appears to be the name of a specific attraction, landmark, or institution, include that EXACT place as your first recommendation
-2. GEOGRAPHIC SCOPE: Focus on ${selectedCity} but include famous attractions within reasonable travel distance (e.g., Niagara Falls attractions when searching from Toronto)
+2. GEOGRAPHIC SCOPE: Focus on ${selectedCity} but include famous attractions within reasonable travel distance 
 3. Use precise, official names suitable for Google Places API
 4. Don't recommend neighborhoods, only specific locations (landmarks, attractions, institutions, etc.)
 5. Each recommendation MUST be a DIFFERENT physical location with a DIFFERENT address
@@ -492,7 +492,7 @@ ${filtersContext}${existingActivitiesContext}
 SEARCH QUERY: "${searchQuery}"
 
 SEARCH STRATEGY:
-- FIRST: Check if "${searchQuery}" is a specific place name (like "White Water Walk", "University of Tokyo", "CN Tower") - if so, recommend that exact place
+- FIRST: Check if "${searchQuery}" is a specific place name (like "University of Tokyo") if so, recommend that exact place
 - THEN: Find 3 additional related recommendations
 - Prioritize the main attraction/institution over sub-components (ex: "University of Tokyo" not "University of Tokyo Library")
 - For well-known attractions outside the city but nearby, include them if they match the search
@@ -500,9 +500,7 @@ SEARCH STRATEGY:
 Generate 4 recommendations that:
 - Start with the exact place if the search query is a specific place name
 - Are highly rated and well-regarded locations
-- Are accessible to visitors
 - Are specific places, landmarks, or major institutions, not general districts or neighborhoods
-- Are at DIFFERENT addresses (not the same place with different names)
 - Are distinct physical locations (not multiple ways to access the same attraction)
 
 STRICT OUTPUT FORMAT:
