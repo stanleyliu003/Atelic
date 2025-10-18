@@ -28,7 +28,6 @@ export default function create_trip_explore() {
     setIsCreatingTrip,
     addToWishlist,
     removeActivities,
-    searchActivities,
     generateActivitiesForCategory,
     categoryActivities: contextCategoryActivities,
     setCategoryActivities: setContextCategoryActivities,
@@ -72,17 +71,6 @@ export default function create_trip_explore() {
   const handleSearchQueryChange = (text) => {
     setSearchQuery(text);
     // Modal stays open regardless of text length - only closes via close button
-  };
-
-  // This function is now handled directly in AutocompleteModal
-  const handleSearchActivities = async (searchQuery, filters, existingActivities) => {
-    try {
-      const activities = await searchActivities(searchQuery, filters, existingActivities);
-      return activities;
-    } catch (error) {
-      console.error('[Explore] Error fetching search results:', error);
-      throw error;
-    }
   };
 
   // Handle saving activities from AutocompleteModal
@@ -287,7 +275,6 @@ export default function create_trip_explore() {
         }}
         onFilterToggle={handleFilterToggle}
         onQueryChange={handleSearchQueryChange}
-        onSearchActivities={handleSearchActivities}
         onSaveActivities={handleSaveSearchResults}
         wishlistActivities={activities}
       />

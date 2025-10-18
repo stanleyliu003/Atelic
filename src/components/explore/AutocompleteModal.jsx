@@ -33,7 +33,6 @@ import { ActivityDetailView } from '../trip-view/description_card';
  * @param {function} onClose - Callback to close modal
  * @param {function} onFilterToggle - Callback when a filter is toggled
  * @param {function} onQueryChange - Callback when search query changes in modal
- * @param {function} onSearchActivities - Callback to search for activities
  * @param {function} onSaveActivities - Callback to save selected activities
  * @param {Activity[]} wishlistActivities - Activities already in the wishlist for "On list" tag
  * @param {string} activeTab - Current active tab (e.g., 'wishlist', 'day1', 'day2')
@@ -47,7 +46,6 @@ export const AutocompleteModal = ({
   onClose,
   onFilterToggle,
   onQueryChange,
-  onSearchActivities,
   onSaveActivities,
   wishlistActivities = [],
   activeTab = 'wishlist',
@@ -174,15 +172,32 @@ export const AutocompleteModal = ({
     if (onQueryChange) {
       onQueryChange(suggestion);
     }
-    
+
     // Start search
     setSearchLoading(true);
     setSearchError(null);
     setShowingResults(true);
-    
+
     try {
-      const activities = await onSearchActivities(suggestion, filters, []);
-      setSearchResults(activities);
+      // Use searchActivities directly with proper empty array format
+      const result = await searchActivities(selectedCity, suggestion, filters, []);
+
+      if (result && result.activities) {
+        setSearchResults(result.activities);
+
+        // Auto-select activities that are already in wishlist
+        const wishlistPlaceIds = wishlistActivities.map(a => a.place_id).filter(Boolean);
+        const activitiesInWishlist = result.activities
+          .filter(activity => activity.place_id && wishlistPlaceIds.includes(activity.place_id))
+          .map(activity => activity.place_id);
+
+        setWishlistActivityIdsInResults(activitiesInWishlist);
+        setSelectedActivityIds(activitiesInWishlist);
+      } else {
+        setSearchResults([]);
+        setWishlistActivityIdsInResults([]);
+        setSelectedActivityIds([]);
+      }
     } catch (error) {
       console.error('[AutocompleteModal] Error searching activities:', error);
       setSearchError('Failed to search activities. Please try again.');

@@ -10,8 +10,7 @@ interface AutocompleteModalProps {
   onClose: () => void;
   onFilterToggle: (filterId: string) => void;
   onQueryChange: (text: string) => void;
-  onSearchActivities: (query: string, filters: string[], existingActivities: any[]) => Promise<Activity[]>;
-  onSaveActivities: (selectedActivities: Activity[]) => void;
+  onSaveActivities: (selectedActivities: Activity[], deselectedWishlistActivityIds?: string[]) => void;
   wishlistActivities?: Activity[];
   activeTab?: string;
 }

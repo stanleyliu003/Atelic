@@ -49,7 +49,7 @@ export default function TripViewMain() {
     const navigation = useNavigation();
     const params = useLocalSearchParams();
     const { restoreTrip } = params;
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, startDate, endDate, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference, collaborators, currentUserRole, setCollaborators, isOwner, searchActivities, version, setVersion, updatedAt, setUpdatedAt, lastUpdatedBy, setLastUpdatedBy, cityCategories, generateActivitiesForCategory, categoryActivities, addToWishlist } = useCreateTrip();
+    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, startDate, endDate, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference, collaborators, currentUserRole, setCollaborators, isOwner, version, setVersion, updatedAt, setUpdatedAt, lastUpdatedBy, setLastUpdatedBy, cityCategories, generateActivitiesForCategory, categoryActivities, addToWishlist } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -732,17 +732,6 @@ export default function TripViewMain() {
                 return [...prev, filterId];
             }
         });
-    };
-
-    // Handler for searching activities
-    const handleSearchActivities = async (query: string, filters: string[], existingActivities: any[]) => {
-        try {
-            const results = await searchActivities(query, filters, existingActivities);
-            return results;
-        } catch (error) {
-            console.error('[trip-view_main] Error fetching search results:', error);
-            throw error;
-        }
     };
 
     // Handler for saving search results
@@ -1626,7 +1615,6 @@ export default function TripViewMain() {
                 }}
                 onFilterToggle={handleFilterToggle}
                 onQueryChange={handleSearchQueryChange}
-                onSearchActivities={handleSearchActivities}
                 onSaveActivities={handleSaveSearchResults}
                 wishlistActivities={[
                     ...(activities || []),
