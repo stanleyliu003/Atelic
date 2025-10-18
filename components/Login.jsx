@@ -161,12 +161,14 @@ export default function Login() {
         />
         <View style = {styles.container}>
            <Image
-                source={require('../assets/logo_horizontal_transparent.png')}
+                source={require('../assets/Atelic_Logo_Updated.png')}
+                
                 style={{
-                    width: 750,
-                    height: 240,
+                    width: 325,
+                    height: 150,
                     alignSelf: 'center',
-                    marginTop: -50,
+                    marginTop: -20,
+                    marginBottom: 50,
                     resizeMode: 'contain'
                 }}
            />
