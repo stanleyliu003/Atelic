@@ -2,7 +2,7 @@ import { Colors } from '../../constants/Colors';
 import { Auth, API } from 'aws-amplify';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking } from 'react-native';
 
 const searchUsers = /* GraphQL */ `
   query SearchUsers($searchTerm: String!) {
@@ -134,7 +134,42 @@ export default function UsernameSetup() {
               <Text style={styles.buttonText}>Next</Text>
             )}
           </TouchableOpacity>
+
         </View>
+      </View>
+
+      {/* Terms and Privacy Policy - Fixed to bottom */}
+      <View style={{
+        position: 'absolute',
+        bottom: 20,
+        left: 0,
+        right: 0,
+        paddingHorizontal: 25,
+        paddingBottom: 20,
+        backgroundColor: Colors.WHITE
+      }}>
+        <Text style={{
+          fontFamily: 'outfit',
+          fontSize: 12,
+          color: Colors.GRAY,
+          textAlign: 'center',
+          lineHeight: 20
+        }}>
+          By continuing you agree to Atelic's{' '}
+          <Text 
+            style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+            onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
+          >
+            Terms of Service
+          </Text>
+          {' '}and acknowledge you've read our{' '}
+          <Text 
+            style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+            onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
+          >
+            Privacy Policy
+          </Text>
+        </Text>
       </View>
     </KeyboardAvoidingView>
   );

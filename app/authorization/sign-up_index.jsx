@@ -3,7 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Auth, API } from 'aws-amplify';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView, Platform, KeyboardAvoidingView, Linking } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const searchUsers = /* GraphQL */ `
@@ -401,7 +401,7 @@ export default function SignUp() {
               padding:20,
               backgroundColor: isLoading ? Colors.GRAY : Colors.PRIMARY,
               borderRadius:15, //rounded corners
-              marginTop:50,
+              marginTop:30,
               opacity: isLoading ? 0.7 : 1
             }}>
            <Text style = {{
@@ -411,6 +411,36 @@ export default function SignUp() {
            }}> {isLoading ? 'Creating Account...' : 'Create Account'}</Text>
             </TouchableOpacity>
           </View>
+
+        {/* Terms and Privacy Policy */}
+        <View style={{
+          marginTop: 20,
+          paddingHorizontal: 5
+        }}>
+          <Text style={{
+            fontFamily: 'outfit',
+            fontSize: 11,
+            color: Colors.GRAY,
+            textAlign: 'center',
+            lineHeight: 20
+          }}>
+            By continuing you agree to Atelic's{' '}
+            <Text 
+              style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+              onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
+            >
+              Terms of Service
+            </Text>
+            {' '}and acknowledge you've read our{' '}
+            <Text 
+              style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+              onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
+            >
+              Privacy Policy
+            </Text>
+          </Text>
+        </View>
+
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
