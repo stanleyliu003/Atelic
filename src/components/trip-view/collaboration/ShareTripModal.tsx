@@ -356,7 +356,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
               </View>
             </View>
 
-            {/* Link Sharing Section */}
+            {/* Link Sharing Section - TEMPORARILY DISABLED
             <View style={styles.linkSection}>
               <Text style={styles.sectionTitle}>Get link</Text>
               <TouchableOpacity style={styles.linkContainer} onPress={handleCopyLink}>
@@ -369,6 +369,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
                 <Text style={styles.copyText}>Copy link</Text>
               </TouchableOpacity>
             </View>
+            */}
           </ScrollView>
 
           {/* Loading Overlay */}

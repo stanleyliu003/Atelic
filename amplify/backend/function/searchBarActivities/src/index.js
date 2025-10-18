@@ -487,6 +487,7 @@ CRITICAL CONSTRAINTS:
 4. Don't recommend neighborhoods, only specific locations (landmarks, attractions, institutions, etc.)
 5. Each recommendation MUST be a DIFFERENT physical location with a DIFFERENT address
 6. DO NOT recommend multiple tour operators, companies, or services for the same attraction/location
+7. Reccomendations are accessible to visitors
 ${filtersContext}${existingActivitiesContext}
 
 SEARCH QUERY: "${searchQuery}"
@@ -500,6 +501,7 @@ Generate 4 recommendations that:
 - Start with the exact place if the search query is a specific place name
 - Are highly rated and well-regarded locations
 - Are specific places, landmarks, or major institutions, not general districts or neighborhoods
+- Are accessible to visitors
 - Are distinct physical locations (not multiple ways to access the same attraction)
 
 STRICT OUTPUT FORMAT:
