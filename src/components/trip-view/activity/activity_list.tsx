@@ -199,15 +199,29 @@ export function ActivityList({
     setCurrentActivities(activities);
   }, [activities]);
 
+  // Auto-scroll state
+  const autoScrollDirection = React.useRef<'up' | 'down' | 'none'>('none');
+  const autoScrollSpeed = React.useRef<number>(0);
+
   // Auto-scroll functions
   const startAutoScroll = useCallback((direction: 'up' | 'down', speed: number) => {
-    // Don't start if already running
+    // Update speed if already running in same direction
     if (autoScrollInterval.current !== null) {
-      console.log('🔄 [AUTO-SCROLL] Already running, ignoring startAutoScroll');
-      return;
+      if (autoScrollDirection.current === direction) {
+        // Just update speed, don't restart
+        autoScrollSpeed.current = speed;
+        return;
+      } else {
+        // Direction changed, stop and restart
+        console.log('🔄 [AUTO-SCROLL] Direction changed, restarting');
+        cancelAnimationFrame(autoScrollInterval.current);
+        autoScrollInterval.current = null;
+      }
     }
 
     console.log(`▶️ [AUTO-SCROLL] STARTED - Direction: ${direction}, Speed: ${speed.toFixed(2)}px/frame`);
+    autoScrollDirection.current = direction;
+    autoScrollSpeed.current = speed;
 
     const scroll = () => {
       const now = Date.now();
@@ -215,30 +229,47 @@ export function ActivityList({
       lastScrollTime.current = now;
 
       const currentOffset = currentScrollY.value;
-      const delta = speed * deltaTime;
-      const newOffset = direction === 'up'
-        ? Math.max(0, currentOffset - delta)
+      const currentSpeed = autoScrollSpeed.current;
+      const currentDirection = autoScrollDirection.current;
+
+      // Calculate content bounds
+      const ITEM_HEIGHT = 169;
+      const contentHeight = currentActivities.length * ITEM_HEIGHT;
+      const viewHeight = scrollViewLayout.value.height;
+      const maxScroll = Math.max(0, contentHeight - viewHeight);
+
+      const delta = currentSpeed * deltaTime;
+      let newOffset = currentDirection === 'up'
+        ? currentOffset - delta
         : currentOffset + delta;
 
-      console.log(`📜 [AUTO-SCROLL] Scrolling ${direction} | Current: ${currentOffset.toFixed(1)} → New: ${newOffset.toFixed(1)} (delta: ${delta.toFixed(2)})`);
+      // Clamp to valid scroll range
+      newOffset = Math.max(0, Math.min(maxScroll, newOffset));
 
       scrollViewRef.current?.scrollTo({
         y: newOffset,
         animated: false
       });
 
+      // Update shared value for next iteration
+      currentScrollY.value = newOffset;
+
       autoScrollInterval.current = requestAnimationFrame(scroll);
     };
 
     lastScrollTime.current = Date.now();
     scroll();
-  }, []);
+  }, [currentActivities.length]);
 
   const stopAutoScroll = useCallback(() => {
     if (autoScrollInterval.current !== null) {
-      console.log('⏹️ [AUTO-SCROLL] STOPPED');
+      console.log('⏹️ [AUTO-SCROLL] STOPPED - Called from:', new Error().stack?.split('\n')[2]);
       cancelAnimationFrame(autoScrollInterval.current);
       autoScrollInterval.current = null;
+      autoScrollDirection.current = 'none';
+      autoScrollSpeed.current = 0;
+    } else {
+      console.log('⏹️ [AUTO-SCROLL] STOPPED called but already stopped');
     }
   }, []);
 
@@ -256,17 +287,29 @@ export function ActivityList({
     if (handle) {
       UIManager.measureInWindow(handle, (_x: number, y: number, _width: number, _height: number) => {
         scrollViewLayout.value = { y, height };
-        console.log(`📐 [LAYOUT] ScrollView screen position Y: ${y.toFixed(1)}, Height: ${height.toFixed(1)}`);
+
+        // Calculate scrollable content
+        const ITEM_HEIGHT = 169;
+        const contentHeight = currentActivities.length * ITEM_HEIGHT;
+        const maxScroll = Math.max(0, contentHeight - height);
+
+        console.log(`📐 [LAYOUT] ScrollView Y: ${y.toFixed(1)}, Height: ${height.toFixed(1)}`);
+        console.log(`📏 [LAYOUT] Content: ${contentHeight.toFixed(1)}px, Max scroll: ${maxScroll.toFixed(1)}px, Activities: ${currentActivities.length}`);
       });
     }
-  }, []);
+  }, [currentActivities.length]);
 
   const handleScroll = useCallback((event: any) => {
     const newScrollY = event.nativeEvent.contentOffset.y;
-    currentScrollY.value = newScrollY;
-    // Only log occasionally to avoid spam (every 50px)
-    if (Math.abs(newScrollY - currentScrollY.value) > 50 || newScrollY === 0) {
-      console.log(`📊 [SCROLL] Scroll position: ${newScrollY.toFixed(1)}px`);
+    const oldScrollY = currentScrollY.value;
+
+    // Only update if not auto-scrolling (to avoid overwriting RAF loop updates)
+    if (autoScrollDirection.current === 'none') {
+      currentScrollY.value = newScrollY;
+      // Only log occasionally to avoid spam (every 50px change)
+      if (Math.abs(newScrollY - oldScrollY) > 50 || newScrollY === 0) {
+        console.log(`📊 [SCROLL] Manual scroll position: ${newScrollY.toFixed(1)}px`);
+      }
     }
   }, []);
 
@@ -584,7 +627,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       const isBeingDragged = activeDragIndex.value === cardIndex;
       if (!isBeingDragged) return { direction: 'none' as const, speed: 0, debug: '' };
 
-      const EDGE_ZONE = 60;  // 60px from top/bottom triggers scroll
+      const EDGE_ZONE = 120;  // 120px from top/bottom triggers scroll (larger for better UX)
       const MAX_SPEED = 15;  // Maximum scroll speed (px per frame)
 
       const dragY = dragAbsoluteY.value;
@@ -619,28 +662,30 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       return { direction: 'none' as const, speed: 0, debug: `dragY: ${dragY.toFixed(1)}, svTop: ${svTop.toFixed(1)}, svBottom: ${svBottom.toFixed(1)}, distTop: ${distFromTop.toFixed(1)}, distBottom: ${distFromBottom.toFixed(1)}` };
     },
     (result, previous) => {
-      // Only log when state changes to avoid spam
-      if (result.direction !== previous?.direction) {
+      // Only trigger start/stop when direction CHANGES (not every frame!)
+      const directionChanged = result.direction !== previous?.direction;
+
+      if (directionChanged) {
+        // Log when state changes
         if (result.direction !== 'none') {
           console.log(`🎯 [EDGE-DETECT] Entering ${result.direction} zone | ${result.debug}`);
+          // Start auto-scroll
+          runOnJS(startAutoScroll)(result.direction, result.speed);
         } else {
           console.log(`🎯 [EDGE-DETECT] Exiting edge zone | ${result.debug}`);
+          // Stop auto-scroll
+          runOnJS(stopAutoScroll)();
         }
+      } else if (result.direction !== 'none') {
+        // Direction hasn't changed but we're still in a zone - update speed
+        runOnJS(startAutoScroll)(result.direction, result.speed);
       }
 
-      // Log debug info when not in zone (only on direction change to avoid spam)
+      // Log debug info when not in zone (only occasionally to avoid spam)
       if (result.direction === 'none' && previous?.direction === 'none' && result.debug) {
-        // Only log occasionally when outside zones
         if (Math.random() < 0.05) { // 5% of the time
           console.log(`🔍 [EDGE-DETECT] Outside zones | ${result.debug}`);
         }
-      }
-
-      // Trigger auto-scroll on JS thread
-      if (result.direction !== 'none') {
-        runOnJS(startAutoScroll)(result.direction, result.speed);
-      } else {
-        runOnJS(stopAutoScroll)();
       }
     }
   );
