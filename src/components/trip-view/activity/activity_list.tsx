@@ -568,13 +568,19 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
   // Route card animated style - shifts with activity card but doesn't follow drag
   const routeCardAnimatedStyle = useAnimatedStyle(() => {
     const isBeingDragged = activeDragIndex.value === cardIndex;
+    const isAnyCardBeingDragged = activeDragIndex.value !== -1;
 
     // Route card only shifts when parent activity shifts
     // Don't follow drag, only follow shift
+    // Hide all route cards when any card is being dragged
     return {
       transform: [
         { translateY: isBeingDragged ? 0 : shiftOffset.value }
       ],
+      opacity: withTiming(isAnyCardBeingDragged ? 0 : 1, {
+        duration: 150, // Fast fade out/in
+      }),
+      height: isAnyCardBeingDragged ? 0 : undefined,
     };
   });
 
