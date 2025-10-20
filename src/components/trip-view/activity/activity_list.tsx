@@ -6,6 +6,8 @@ import Animated, {
   withSpring,
   runOnJS,
   withTiming,
+  useAnimatedReaction,
+  SharedValue,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RouteLeg } from '../../../services/getRoute_graphQL_call';
@@ -172,6 +174,10 @@ export function ActivityList({
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+
+  // Shared animated values for coordinated card shifting
+  const targetDropIndex = useSharedValue<number>(-1);
+  const activeDragIndex = useSharedValue<number>(-1);
   
 
   // Route info cards are now always visible - no hide/show logic needed
@@ -273,13 +279,15 @@ export function ActivityList({
           <DraggableActivityCard
             {...commonProps}
             currentActivity={activity}
+            cardIndex={index}
             onMove={moveItem}
             totalItems={currentActivities.length}
             isLoadingRoute={routeLoading}
             onDragStart={() => setDraggingIndex(index)}
             onDragEnd={() => setDraggingIndex(null)}
             isDraggingThisItem={draggingIndex === index}
-
+            targetDropIndex={targetDropIndex}
+            activeDragIndex={activeDragIndex}
           />
         );
       }
@@ -327,6 +335,7 @@ export function ActivityList({
 interface DraggableActivityCardProps {
   activity: Activity;
   index: number;
+  cardIndex: number; // Explicit card index for shift calculations
   isSelected: boolean;
   onPress: (activity: Activity) => void;
   onLongPress: (activity: Activity) => void;
@@ -348,11 +357,14 @@ interface DraggableActivityCardProps {
   hideRouteInfo?: boolean;
   duplicateActivityIndicator?: boolean;
   useInlineSelectionLayout?: boolean;
+  targetDropIndex: Animated.SharedValue<number>; // Shared state for coordinated shifting
+  activeDragIndex: Animated.SharedValue<number>; // Shared state for active drag
 }
 
-function DraggableActivityCard({
+const DraggableActivityCard = React.memo(function DraggableActivityCard({
   activity,
   index,
+  cardIndex,
   isSelected,
   onPress,
   onLongPress,
@@ -374,6 +386,8 @@ function DraggableActivityCard({
   hideRouteInfo = false,
   duplicateActivityIndicator = false,
   useInlineSelectionLayout = false,
+  targetDropIndex,
+  activeDragIndex,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -382,24 +396,75 @@ function DraggableActivityCard({
   const zIndex = useSharedValue(0);
   const [isGripPressed, setIsGripPressed] = React.useState(false);
 
-  // Track the original position and target position
+  // Shift offset for non-dragged cards to make space
+  const shiftOffset = useSharedValue(0);
+
+  // Track the original position
   const originalIndex = useSharedValue(index);
-  const targetIndex = useSharedValue(index);
 
   const ITEM_HEIGHT = 169; // Total height: activity card (110px) + route info card (~54px) + margins (5px)
-  const MOVEMENT_THRESHOLD = 1; // Card must be dragged at least 100% of ITEM_HEIGHT to trigger reorder
+  const MOVEMENT_THRESHOLD = 0.3; // Card must be dragged at least 30% of ITEM_HEIGHT to trigger reorder (~51px)
 
   // Update original index when component re-renders with new index
   React.useEffect(() => {
     if (!isDragging.value) {
-      originalIndex.value = index;
-      targetIndex.value = index;
+      originalIndex.value = cardIndex;
     }
-  }, [index]);
+  }, [cardIndex]);
 
   const handleGripPress = () => {
     setIsGripPressed(true);
   };
+
+  // Calculate shift offset for non-dragged cards
+  // This function determines if and how much a card should shift to make space
+  const calculateShiftOffset = (
+    myIndex: number,
+    draggedIndex: number,
+    targetIndex: number
+  ): number => {
+    'worklet';
+
+    // Not dragging? No shift
+    if (draggedIndex === -1) return 0;
+
+    // I'm the dragged card? Don't shift myself
+    if (myIndex === draggedIndex) return 0;
+
+    // Dragging DOWN (e.g., index 0 → 3)
+    if (targetIndex > draggedIndex) {
+      // Cards between original and target shift UP
+      if (myIndex > draggedIndex && myIndex <= targetIndex) {
+        return -ITEM_HEIGHT; // Shift up by one slot
+      }
+    }
+
+    // Dragging UP (e.g., index 3 → 0)
+    if (targetIndex < draggedIndex) {
+      // Cards between target and original shift DOWN
+      if (myIndex < draggedIndex && myIndex >= targetIndex) {
+        return ITEM_HEIGHT; // Shift down by one slot
+      }
+    }
+
+    return 0; // No shift needed
+  };
+
+  // React to drag state changes and animate shift offset
+  useAnimatedReaction(
+    () => ({
+      dragging: activeDragIndex.value,
+      target: targetDropIndex.value,
+    }),
+    ({ dragging, target }) => {
+      const offset = calculateShiftOffset(cardIndex, dragging, target);
+      shiftOffset.value = withSpring(offset, {
+        damping: 20,      // Smooth but responsive
+        stiffness: 180,   // Slightly snappy
+        mass: 0.8,        // Light feel
+      });
+    }
+  );
 
   const longPressGesture = Gesture.LongPress()
     .minDuration(150) // 200ms
@@ -412,10 +477,14 @@ function DraggableActivityCard({
     .minDistance(5) // Reduced threshold since grip is intentional
     .onStart(() => {
       isDragging.value = true;
-      scale.value = withSpring(1.05);
+      scale.value = withSpring(1.05, {
+        damping: 12,
+        stiffness: 200,
+      });
       zIndex.value = 1000;
-      originalIndex.value = index;
-      targetIndex.value = index;
+      originalIndex.value = cardIndex;
+      activeDragIndex.value = cardIndex; // Broadcast that this card is being dragged
+      targetDropIndex.value = cardIndex; // Initial target is current position
       runOnJS(onDragStart)();
     })
     .onUpdate((event) => {
@@ -426,8 +495,10 @@ function DraggableActivityCard({
       const positionChange = Math.round(dragDistance / ITEM_HEIGHT);
       const newTargetIndex = Math.max(0, Math.min(totalItems - 1, originalIndex.value + positionChange));
 
-      // Update target index for visual feedback (but don't reorder yet)
-      targetIndex.value = newTargetIndex;
+      // Broadcast target index to all cards for coordinated shifting
+      if (newTargetIndex !== targetDropIndex.value) {
+        targetDropIndex.value = newTargetIndex;
+      }
     })
     .onEnd((event) => {
 
@@ -438,8 +509,8 @@ function DraggableActivityCard({
       // Only trigger reorder if:
       // 1. The target position is different from original position
       // 2. The drag distance exceeds the movement threshold
-      if (targetIndex.value !== originalIndex.value && hasExceededThreshold) {
-        runOnJS(onMove)(originalIndex.value, targetIndex.value);
+      if (targetDropIndex.value !== originalIndex.value && hasExceededThreshold) {
+        runOnJS(onMove)(originalIndex.value, targetDropIndex.value);
 
         // Animate back to default position after reordering
         translateY.value = withSpring(0, {
@@ -450,12 +521,14 @@ function DraggableActivityCard({
         scale.value = withSpring(1);
         isDragging.value = false;
         zIndex.value = 0;
+
+        // Reset shared drag state
+        activeDragIndex.value = -1;
+        targetDropIndex.value = -1;
+
         runOnJS(onDragEnd)();
         runOnJS(setIsGripPressed)(false); // Reset grip state
       } else {
-
-        // Reset target index since we're not reordering
-        targetIndex.value = originalIndex.value;
 
         // IMPORTANT: Cancel any ongoing animations and reset immediately
         // This prevents the card from staying in a moved position
@@ -464,29 +537,45 @@ function DraggableActivityCard({
         scale.value = 1;
         isDragging.value = false;
         zIndex.value = 0;
+
+        // Reset shared drag state
+        activeDragIndex.value = -1;
+        targetDropIndex.value = -1;
+
         runOnJS(onDragEnd)();
         runOnJS(setIsGripPressed)(false); // Reset grip state
       }
     });
 
   const animatedStyle = useAnimatedStyle(() => {
-    const currentZIndex = isDragging.value ? 9999 : index;
-    const currentElevation = isDragging.value ? 9999 : index;
-
-    // Log z-index and elevation when dragging state changes
-    if (isDragging.value) {
-
-    }
+    const isBeingDragged = activeDragIndex.value === cardIndex;
 
     return {
       transform: [
         { translateX: translateX.value },
-        { translateY: translateY.value },
+        {
+          translateY: isBeingDragged
+            ? translateY.value        // Dragged card: follow finger
+            : shiftOffset.value       // Other cards: shift to make space
+        },
         { scale: scale.value },
       ],
-      zIndex: isDragging.value ? 9999 : index,
-      elevation: isDragging.value ? 9999 : index,
+      zIndex: isBeingDragged ? 9999 : cardIndex,
+      elevation: isBeingDragged ? 9999 : cardIndex,
     } as any;
+  });
+
+  // Route card animated style - shifts with activity card but doesn't follow drag
+  const routeCardAnimatedStyle = useAnimatedStyle(() => {
+    const isBeingDragged = activeDragIndex.value === cardIndex;
+
+    // Route card only shifts when parent activity shifts
+    // Don't follow drag, only follow shift
+    return {
+      transform: [
+        { translateY: isBeingDragged ? 0 : shiftOffset.value }
+      ],
+    };
   });
 
   const composedGesture = Gesture.Simultaneous(longPressGesture, panGesture);
@@ -519,20 +608,22 @@ function DraggableActivityCard({
         </Animated.View>
       </GestureDetector>
 
-      {/* Route info card - rendered separately, not draggable - Always render to prevent disappearing */}
+      {/* Route info card - rendered separately with shift animation */}
       {!hideRouteInfo && !isLastActivity && (
-        <RouteInfoCard
-          nextActivityDistance={nextActivityDistance || 0}
-          nextActivityDuration={nextActivityDuration || ''}
-          nextActivity={nextActivity}
-          currentActivity={currentActivity}
-          travelMode={travelMode}
-          isLoading={isLoadingRoute}
-        />
+        <Animated.View style={[routeCardAnimatedStyle]}>
+          <RouteInfoCard
+            nextActivityDistance={nextActivityDistance || 0}
+            nextActivityDuration={nextActivityDuration || ''}
+            nextActivity={nextActivity}
+            currentActivity={currentActivity}
+            travelMode={travelMode}
+            isLoading={isLoadingRoute}
+          />
+        </Animated.View>
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
