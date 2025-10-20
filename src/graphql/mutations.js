@@ -92,6 +92,13 @@ export const createTrip = /* GraphQL */ `
         emoji
         __typename
       }
+      notes
+      duration
+      arrivalTime
+      photos
+      hotel
+      flight
+      savedActivities
       __typename
     }
   }
@@ -175,6 +182,13 @@ export const addCollaborator = /* GraphQL */ `
         emoji
         __typename
       }
+      notes
+      duration
+      arrivalTime
+      photos
+      hotel
+      flight
+      savedActivities
       __typename
     }
   }
@@ -232,6 +246,13 @@ export const removeCollaborator = /* GraphQL */ `
         emoji
         __typename
       }
+      notes
+      duration
+      arrivalTime
+      photos
+      hotel
+      flight
+      savedActivities
       __typename
     }
   }
@@ -297,6 +318,13 @@ export const updateCollaboratorRole = /* GraphQL */ `
         emoji
         __typename
       }
+      notes
+      duration
+      arrivalTime
+      photos
+      hotel
+      flight
+      savedActivities
       __typename
     }
   }

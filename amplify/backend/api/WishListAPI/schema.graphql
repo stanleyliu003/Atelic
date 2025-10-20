@@ -168,22 +168,29 @@
      viewer
    }
 
-   type Trip {
-     tripId: String!
-     days: [Day!]!
-     wishlist: [Activity!]!
-     tripLength: Int
-     selectedCity: String
-     tripPhotoReference: [String]
-     createdAt: String
-     startDate: String
-     endDate: String
-     collaborators: [Collaborator!]!
-     version: Int
-     updatedAt: String
-     lastUpdatedBy: String
-     cityCategories: [CategoryItem]
-   }
+  type Trip {
+    tripId: String!
+    days: [Day!]!
+    wishlist: [Activity!]!
+    tripLength: Int
+    selectedCity: String
+    tripPhotoReference: [String]
+    createdAt: String
+    startDate: String
+    endDate: String
+    collaborators: [Collaborator!]!
+    version: Int
+    updatedAt: String
+    lastUpdatedBy: String
+    cityCategories: [CategoryItem]
+    notes: String
+    duration: String
+    arrivalTime: String
+    photos: String
+    hotel: String
+    flight: String
+    savedActivities: String
+  }
 
    type TripSummary {
      tripId: String!
@@ -261,23 +268,30 @@
      emoji: String
    }
 
-   input CreateTripInput {
-     tripId: String!
-     userID: String!
-     days: [DayInput!]!
-     wishlist: [ActivityInput!]!
-     tripLength: Int
-     selectedCity: String
-     tripPhotoReference: [String]
-     createdAt: String
-     startDate: String
-     endDate: String
-     collaborators: [CollaboratorInput!]!
-     version: Int
-     updatedAt: String
-     lastUpdatedBy: String
-     cityCategories: [CategoryItemInput]
-   }
+  input CreateTripInput {
+    tripId: String!
+    userID: String!
+    days: [DayInput!]!
+    wishlist: [ActivityInput!]!
+    tripLength: Int
+    selectedCity: String
+    tripPhotoReference: [String]
+    createdAt: String
+    startDate: String
+    endDate: String
+    collaborators: [CollaboratorInput!]!
+    version: Int
+    updatedAt: String
+    lastUpdatedBy: String
+    cityCategories: [CategoryItemInput]
+    notes: String
+    duration: String
+    arrivalTime: String
+    photos: String
+    hotel: String
+    flight: String
+    savedActivities: String
+  }
 
 
    input OpeningHoursInput {

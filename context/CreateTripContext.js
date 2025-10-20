@@ -56,6 +56,15 @@ export const CreateTripProvider = ({ children }) => {
     const [updatedAt, setUpdatedAt] = useState(null);
     const [lastUpdatedBy, setLastUpdatedBy] = useState(null);
 
+    // New fields for future features (empty for now)
+    const [notes, setNotes] = useState(null);
+    const [duration, setDuration] = useState(null);
+    const [arrivalTime, setArrivalTime] = useState(null);
+    const [photos, setPhotos] = useState(null);
+    const [hotel, setHotel] = useState(null);
+    const [flight, setFlight] = useState(null);
+    const [savedActivities, setSavedActivities] = useState(null);
+
     // Permission helpers
     const canEdit = () => ['owner','editor'].includes(currentUserRole);
     const canInviteEditors = () => currentUserRole === 'owner';
@@ -215,6 +224,14 @@ export const CreateTripProvider = ({ children }) => {
         setVersion(trip.version || 1);
         setUpdatedAt(trip.updatedAt || null);
         setLastUpdatedBy(trip.lastUpdatedBy || null);
+        // Restore new fields for future features
+        setNotes(trip.notes || null);
+        setDuration(trip.duration || null);
+        setArrivalTime(trip.arrivalTime || null);
+        setPhotos(trip.photos || null);
+        setHotel(trip.hotel || null);
+        setFlight(trip.flight || null);
+        setSavedActivities(trip.savedActivities || null);
         console.log('[CreateTripContext] Restored trip - createdAt:', trip.createdAt, 'version:', trip.version || 1);
     };
 
@@ -258,6 +275,14 @@ export const CreateTripProvider = ({ children }) => {
         setCurrentUserRole(null);
         setStartDate(null);
         setEndDate(null);
+        // Reset new fields for future features
+        setNotes(null);
+        setDuration(null);
+        setArrivalTime(null);
+        setPhotos(null);
+        setHotel(null);
+        setFlight(null);
+        setSavedActivities(null);
         // Note: Don't reset selectedCity and tripLength during create trip flow
         // setSelectedCity('');
         // setTripLength(null);
@@ -295,6 +320,14 @@ export const CreateTripProvider = ({ children }) => {
         setVersion(1);
         setUpdatedAt(null);
         setLastUpdatedBy(null);
+        // Reset new fields for future features
+        setNotes(null);
+        setDuration(null);
+        setArrivalTime(null);
+        setPhotos(null);
+        setHotel(null);
+        setFlight(null);
+        setSavedActivities(null);
     };
 
     // Load trip from cloud storage
@@ -630,6 +663,21 @@ export const CreateTripProvider = ({ children }) => {
         setUpdatedAt,
         lastUpdatedBy,
         setLastUpdatedBy,
+        // New fields for future features
+        notes,
+        setNotes,
+        duration,
+        setDuration,
+        arrivalTime,
+        setArrivalTime,
+        photos,
+        setPhotos,
+        hotel,
+        setHotel,
+        flight,
+        setFlight,
+        savedActivities,
+        setSavedActivities,
     };
 
     return (

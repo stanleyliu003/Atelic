@@ -54,6 +54,13 @@ export const onTripUpdated = /* GraphQL */ `
         emoji
         __typename
       }
+      notes
+      duration
+      arrivalTime
+      photos
+      hotel
+      flight
+      savedActivities
       __typename
     }
   }

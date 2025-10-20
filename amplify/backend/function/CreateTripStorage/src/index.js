@@ -51,7 +51,15 @@ exports.handler = async (event) => {
     updatedAt: input.updatedAt || new Date().toISOString(),
     lastUpdatedBy: input.lastUpdatedBy || 'unknown',
     // Persist cityCategories if provided
-    cityCategories: Array.isArray(input.cityCategories) ? input.cityCategories : []
+    cityCategories: Array.isArray(input.cityCategories) ? input.cityCategories : [],
+    // New fields for future features (empty for now)
+    notes: input.notes || null,
+    duration: input.duration || null,
+    arrivalTime: input.arrivalTime || null,
+    photos: input.photos || null,
+    hotel: input.hotel || null,
+    flight: input.flight || null,
+    savedActivities: input.savedActivities || null
   };
 
   console.log('item to put:', item);
@@ -87,7 +95,14 @@ exports.handler = async (event) => {
       version: item.version,
       updatedAt: item.updatedAt,
       lastUpdatedBy: item.lastUpdatedBy,
-      cityCategories: item.cityCategories || []
+      cityCategories: item.cityCategories || [],
+      notes: item.notes,
+      duration: item.duration,
+      arrivalTime: item.arrivalTime,
+      photos: item.photos,
+      hotel: item.hotel,
+      flight: item.flight,
+      savedActivities: item.savedActivities
     };
   } catch (error) {
     console.error('DynamoDB put error:', error);

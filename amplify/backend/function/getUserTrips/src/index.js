@@ -59,6 +59,13 @@ exports.handler = async (event) => {
         updatedAt: result.Item.updatedAt,
         lastUpdatedBy: result.Item.lastUpdatedBy,
         cityCategories: Array.isArray(result.Item.cityCategories) ? result.Item.cityCategories : [],
+        notes: result.Item.notes || null,
+        duration: result.Item.duration || null,
+        arrivalTime: result.Item.arrivalTime || null,
+        photos: result.Item.photos || null,
+        hotel: result.Item.hotel || null,
+        flight: result.Item.flight || null,
+        savedActivities: result.Item.savedActivities || null
       };
     }
 
@@ -99,6 +106,13 @@ exports.handler = async (event) => {
               updatedAt: item.updatedAt,
               lastUpdatedBy: item.lastUpdatedBy,
               cityCategories: Array.isArray(item.cityCategories) ? item.cityCategories : [],
+              notes: item.notes || null,
+              duration: item.duration || null,
+              arrivalTime: item.arrivalTime || null,
+              photos: item.photos || null,
+              hotel: item.hotel || null,
+              flight: item.flight || null,
+              savedActivities: item.savedActivities || null
             };
           }
         }
