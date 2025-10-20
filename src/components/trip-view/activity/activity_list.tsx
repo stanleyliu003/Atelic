@@ -474,7 +474,7 @@ export function ActivityList({
       <GestureHandlerRootView style={styles.container}>
         <Animated.ScrollView
           ref={scrollViewRef}
-          style={[styles.container, { maxHeight: 800 }]} // TEMP: Force scrolling for testing
+          style={[styles.container]} // TEMP: Force scrolling for testing
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
           onLayout={handleScrollViewLayout}
