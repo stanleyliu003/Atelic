@@ -116,6 +116,8 @@ export const getUserTripsDetailed = /* GraphQL */ `
       selectedCity
       tripPhotoReference
       createdAt
+      startDate
+      endDate
       collaborators {
         email
         fullName
