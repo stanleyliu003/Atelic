@@ -1152,10 +1152,8 @@ export default function TripViewMain() {
         });
     }, []);
 
-    // AppState listener for autosave when app goes to background - TEMPORARILY DISABLED
+    // AppState listener for autosave when app goes to background
     useEffect(() => {
-        // COMMENTED OUT: Temporarily disabling autosave on app background
-        /*
         const handleAppStateChange = (nextAppState: string) => {
             if (nextAppState === 'background') {
                 console.log('[trip-view_main] App going to background - checking autosave eligibility');
@@ -1195,7 +1193,6 @@ export default function TripViewMain() {
             }
             subscription?.remove();
         };
-        */
     }, [tripId, activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt, currentUserRole]);
 
     // Real-time subscription for trip updates
