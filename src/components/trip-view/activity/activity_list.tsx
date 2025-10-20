@@ -246,6 +246,11 @@ export function ActivityList({
       // Clamp to valid scroll range
       newOffset = Math.max(0, Math.min(maxScroll, newOffset));
 
+      // TEST 2: Check if ref is properly attached
+      const scrollViewExists = scrollViewRef.current !== null;
+      const scrollViewType = scrollViewRef.current?.constructor?.name;
+      console.log(`🔗 [TEST-2] Ref exists: ${scrollViewExists}, Type: ${scrollViewType}, Scrolling to: ${newOffset.toFixed(1)}px (current: ${currentOffset.toFixed(1)})`);
+
       scrollViewRef.current?.scrollTo({
         y: newOffset,
         animated: false
@@ -253,6 +258,11 @@ export function ActivityList({
 
       // Update shared value for next iteration
       currentScrollY.value = newOffset;
+
+      // Log the boundaries for debugging
+      if (newOffset === 0 || newOffset === maxScroll) {
+        console.log(`🛑 [AUTO-SCROLL] Reached ${newOffset === 0 ? 'top' : 'bottom'} boundary`);
+      }
 
       autoScrollInterval.current = requestAnimationFrame(scroll);
     };
@@ -302,6 +312,11 @@ export function ActivityList({
   const handleScroll = useCallback((event: any) => {
     const newScrollY = event.nativeEvent.contentOffset.y;
     const oldScrollY = currentScrollY.value;
+
+    // TEST 3: Log ALWAYS during auto-scroll to see if scrollTo triggers onScroll
+    if (autoScrollDirection.current !== 'none') {
+      console.log(`🎢 [TEST-3] SCROLL EVENT fired during auto-scroll: ${newScrollY.toFixed(1)}px (direction: ${autoScrollDirection.current})`);
+    }
 
     // Only update if not auto-scrolling (to avoid overwriting RAF loop updates)
     if (autoScrollDirection.current === 'none') {
@@ -432,13 +447,45 @@ export function ActivityList({
 
   
 
+  // TEST 1: Test button to check if scrollTo works outside of gesture
+  const testScroll = useCallback(() => {
+    const scrollViewExists = scrollViewRef.current !== null;
+    const ITEM_HEIGHT = 169;
+    const contentHeight = currentActivities.length * ITEM_HEIGHT;
+    const viewHeight = scrollViewLayout.value.height;
+    const maxScroll = Math.max(0, contentHeight - viewHeight);
+    
+    console.log(`📍 [TEST-1] Manual test button pressed. Ref exists: ${scrollViewExists}`);
+    console.log(`📍 [TEST-1] Current scroll position: ${currentScrollY.value.toFixed(1)}`);
+    console.log(`📍 [TEST-1] Content height: ${contentHeight.toFixed(1)}, View height: ${viewHeight.toFixed(1)}, Max scroll: ${maxScroll.toFixed(1)}`);
+    
+    if (maxScroll > 0) {
+      scrollViewRef.current?.scrollTo({ y: maxScroll, animated: true });
+      console.log(`📍 [TEST-1] Called scrollTo(${maxScroll.toFixed(1)}) - scrolling to BOTTOM`);
+    } else {
+      console.log(`📍 [TEST-1] ⚠️ Content not scrollable - max scroll is 0`);
+      console.log(`📍 [TEST-1] Try adding more activities to test scroll functionality`);
+    }
+  }, [currentActivities.length]);
+
   // Choose container based on requirements
   if (enableDragDrop && scrollable) {
     return (
       <GestureHandlerRootView style={styles.container}>
+        {/* TEST 1: Test button - Remove after debugging */}
+        <View style={styles.testButtonContainer}>
+          <TouchableOpacity 
+            style={styles.testButton} 
+            onPress={testScroll}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.testButtonText}>🧪 Test Scroll (No Gesture)</Text>
+          </TouchableOpacity>
+        </View>
+        
         <ScrollView
           ref={scrollViewRef}
-          style={styles.container}
+          style={[styles.container, { maxHeight: 800 }]} // TEMP: Force scrolling for testing
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
           onLayout={handleScrollViewLayout}
@@ -940,5 +987,23 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit',
     fontSize: 22,
     color: Colors.GRAY,
+  },
+  // TEST 1: Test button styles - Remove after debugging
+  testButtonContainer: {
+    padding: 10,
+    backgroundColor: '#fff3cd',
+    borderBottomWidth: 2,
+    borderBottomColor: '#ffc107',
+  },
+  testButton: {
+    backgroundColor: '#ffc107',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  testButtonText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 14,
+    color: '#000',
   },
 });
