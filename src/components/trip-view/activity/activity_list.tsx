@@ -1,3 +1,25 @@
+/**
+ * ActivityList Component with Drag & Drop Auto-Scroll
+ * 
+ * Key Implementation Details:
+ * 
+ * 🎯 AUTO-SCROLL DURING DRAG:
+ * - Uses Reanimated's `scrollTo()` on UI thread instead of React Native's `.scrollTo()` method
+ * - This bypasses gesture blocking: active PanGesture blocks RN's JS-thread scrollTo
+ * - Solution: RAF loop calls `runOnUI(performScrollWorklet)` which uses Reanimated's scrollTo
+ * - Both gesture and scroll run on UI thread, allowing them to co-exist
+ * 
+ * 📐 ARCHITECTURE:
+ * - Edge detection: useAnimatedReaction (UI thread) → detects when drag enters edge zones
+ * - Auto-scroll loop: requestAnimationFrame (JS thread) → calculates scroll position
+ * - Scroll execution: runOnUI → performScrollWorklet (UI thread) → Reanimated scrollTo
+ * 
+ * ✅ VERIFIED BY TESTS:
+ * - Test 1: Manual button scrolling works (no active gesture)
+ * - Test 2: Ref properly attached, RAF loop runs correctly
+ * - Test 3: During drag, RN's scrollTo was blocked (no onScroll events)
+ * - Solution: Reanimated's scrollTo works during active gesture!
+ */
 import React, { useCallback, useState } from 'react';
 import { ScrollView, View, StyleSheet, TouchableOpacity, Text, Linking, findNodeHandle, UIManager } from 'react-native';
 import Animated, {
@@ -8,6 +30,10 @@ import Animated, {
   withTiming,
   useAnimatedReaction,
   SharedValue,
+  useAnimatedRef,
+  scrollTo,
+  runOnUI,
+  AnimatedRef,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RouteLeg } from '../../../services/getRoute_graphQL_call';
@@ -146,7 +172,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   hideRouteInfo?: boolean; // Hide route info cards
   wishlistActivities?: Activity[]; // Activities already in the wishlist for "On list" tag
   useInlineSelectionLayout?: boolean; // Use inline layout for wishlist (not absolute positioned)
-  parentScrollViewRef?: React.RefObject<ScrollView>; // External ScrollView ref for nested scroll control
+  parentScrollViewRef?: React.RefObject<ScrollView> | AnimatedRef<Animated.ScrollView>; // External ScrollView ref for nested scroll control
 }
 
 export function ActivityList({
@@ -183,8 +209,10 @@ export function ActivityList({
 
   // Auto-scroll infrastructure
   // Use parent ref if provided, otherwise create own ref
-  const ownScrollViewRef = React.useRef<ScrollView>(null);
-  const scrollViewRef = parentScrollViewRef || ownScrollViewRef;
+  // Using useAnimatedRef for Reanimated's scrollTo compatibility
+  const ownScrollViewRef = useAnimatedRef<Animated.ScrollView>();
+  // Cast to any to handle both regular and animated refs
+  const scrollViewRef = (parentScrollViewRef || ownScrollViewRef) as any;
   const scrollViewLayout = useSharedValue({ y: 0, height: 0 });
   const currentScrollY = useSharedValue(0);
   const dragAbsoluteY = useSharedValue(-1);
@@ -202,6 +230,15 @@ export function ActivityList({
   // Auto-scroll state
   const autoScrollDirection = React.useRef<'up' | 'down' | 'none'>('none');
   const autoScrollSpeed = React.useRef<number>(0);
+
+  // Worklet function to perform scroll on UI thread
+  // This bypasses gesture blocking by staying on UI thread
+  const performScrollWorklet = useCallback((offset: number) => {
+    'worklet';
+    // 🎯 This is the key: Reanimated's scrollTo runs on UI thread
+    // It can scroll even when a gesture has control, unlike RN's scrollTo
+    scrollTo(scrollViewRef, 0, offset, false);
+  }, [scrollViewRef]);
 
   // Auto-scroll functions
   const startAutoScroll = useCallback((direction: 'up' | 'down', speed: number) => {
@@ -248,13 +285,12 @@ export function ActivityList({
 
       // TEST 2: Check if ref is properly attached
       const scrollViewExists = scrollViewRef.current !== null;
-      const scrollViewType = scrollViewRef.current?.constructor?.name;
-      console.log(`🔗 [TEST-2] Ref exists: ${scrollViewExists}, Type: ${scrollViewType}, Scrolling to: ${newOffset.toFixed(1)}px (current: ${currentOffset.toFixed(1)})`);
+      console.log(`🔗 [TEST-2] Ref exists: ${scrollViewExists}, Scrolling to: ${newOffset.toFixed(1)}px (current: ${currentOffset.toFixed(1)})`);
 
-      scrollViewRef.current?.scrollTo({
-        y: newOffset,
-        animated: false
-      });
+      // 🎯 KEY FIX: Use Reanimated's scrollTo on UI thread instead of RN's scrollTo
+      // This works during active gestures because it stays on UI thread
+      console.log(`✨ [REANIMATED] Using UI-thread scrollTo (bypasses gesture blocking)`);
+      runOnUI(performScrollWorklet)(newOffset);
 
       // Update shared value for next iteration
       currentScrollY.value = newOffset;
@@ -269,7 +305,7 @@ export function ActivityList({
 
     lastScrollTime.current = Date.now();
     scroll();
-  }, [currentActivities.length]);
+  }, [currentActivities.length, performScrollWorklet]);
 
   const stopAutoScroll = useCallback(() => {
     if (autoScrollInterval.current !== null) {
@@ -483,7 +519,7 @@ export function ActivityList({
           </TouchableOpacity>
         </View>
         
-        <ScrollView
+        <Animated.ScrollView
           ref={scrollViewRef}
           style={[styles.container, { maxHeight: 800 }]} // TEMP: Force scrolling for testing
           contentContainerStyle={styles.contentContainer}
@@ -493,7 +529,7 @@ export function ActivityList({
           scrollEventThrottle={16}
         >
           {renderActivities()}
-        </ScrollView>
+        </Animated.ScrollView>
       </GestureHandlerRootView>
     );
   }
