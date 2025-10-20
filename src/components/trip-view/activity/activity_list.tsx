@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ScrollView, View, StyleSheet, TouchableOpacity, Text, Linking } from 'react-native';
+import { ScrollView, View, StyleSheet, TouchableOpacity, Text, Linking, findNodeHandle, UIManager } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -146,6 +146,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   hideRouteInfo?: boolean; // Hide route info cards
   wishlistActivities?: Activity[]; // Activities already in the wishlist for "On list" tag
   useInlineSelectionLayout?: boolean; // Use inline layout for wishlist (not absolute positioned)
+  parentScrollViewRef?: React.RefObject<ScrollView>; // External ScrollView ref for nested scroll control
 }
 
 export function ActivityList({
@@ -169,7 +170,8 @@ export function ActivityList({
   routeLoading = false,
   hideRouteInfo = false,
   wishlistActivities = [],
-  useInlineSelectionLayout = false
+  useInlineSelectionLayout = false,
+  parentScrollViewRef
 }: EnhancedActivityListProps) {
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
@@ -178,6 +180,16 @@ export function ActivityList({
   // Shared animated values for coordinated card shifting
   const targetDropIndex = useSharedValue<number>(-1);
   const activeDragIndex = useSharedValue<number>(-1);
+
+  // Auto-scroll infrastructure
+  // Use parent ref if provided, otherwise create own ref
+  const ownScrollViewRef = React.useRef<ScrollView>(null);
+  const scrollViewRef = parentScrollViewRef || ownScrollViewRef;
+  const scrollViewLayout = useSharedValue({ y: 0, height: 0 });
+  const currentScrollY = useSharedValue(0);
+  const dragAbsoluteY = useSharedValue(-1);
+  const autoScrollInterval = React.useRef<number | null>(null);
+  const lastScrollTime = React.useRef(Date.now());
   
 
   // Route info cards are now always visible - no hide/show logic needed
@@ -187,7 +199,76 @@ export function ActivityList({
     setCurrentActivities(activities);
   }, [activities]);
 
-  // No cleanup needed - simplified without timers and state management
+  // Auto-scroll functions
+  const startAutoScroll = useCallback((direction: 'up' | 'down', speed: number) => {
+    // Don't start if already running
+    if (autoScrollInterval.current !== null) {
+      console.log('🔄 [AUTO-SCROLL] Already running, ignoring startAutoScroll');
+      return;
+    }
+
+    console.log(`▶️ [AUTO-SCROLL] STARTED - Direction: ${direction}, Speed: ${speed.toFixed(2)}px/frame`);
+
+    const scroll = () => {
+      const now = Date.now();
+      const deltaTime = (now - lastScrollTime.current) / 16.67; // Normalize to 60fps
+      lastScrollTime.current = now;
+
+      const currentOffset = currentScrollY.value;
+      const delta = speed * deltaTime;
+      const newOffset = direction === 'up'
+        ? Math.max(0, currentOffset - delta)
+        : currentOffset + delta;
+
+      console.log(`📜 [AUTO-SCROLL] Scrolling ${direction} | Current: ${currentOffset.toFixed(1)} → New: ${newOffset.toFixed(1)} (delta: ${delta.toFixed(2)})`);
+
+      scrollViewRef.current?.scrollTo({
+        y: newOffset,
+        animated: false
+      });
+
+      autoScrollInterval.current = requestAnimationFrame(scroll);
+    };
+
+    lastScrollTime.current = Date.now();
+    scroll();
+  }, []);
+
+  const stopAutoScroll = useCallback(() => {
+    if (autoScrollInterval.current !== null) {
+      console.log('⏹️ [AUTO-SCROLL] STOPPED');
+      cancelAnimationFrame(autoScrollInterval.current);
+      autoScrollInterval.current = null;
+    }
+  }, []);
+
+  // Cleanup on unmount
+  React.useEffect(() => {
+    return () => stopAutoScroll();
+  }, [stopAutoScroll]);
+
+  // ScrollView handlers
+  const handleScrollViewLayout = useCallback((event: any) => {
+    const { height } = event.nativeEvent.layout;
+
+    // Measure actual screen position using UIManager
+    const handle = findNodeHandle(scrollViewRef.current);
+    if (handle) {
+      UIManager.measureInWindow(handle, (_x: number, y: number, _width: number, _height: number) => {
+        scrollViewLayout.value = { y, height };
+        console.log(`📐 [LAYOUT] ScrollView screen position Y: ${y.toFixed(1)}, Height: ${height.toFixed(1)}`);
+      });
+    }
+  }, []);
+
+  const handleScroll = useCallback((event: any) => {
+    const newScrollY = event.nativeEvent.contentOffset.y;
+    currentScrollY.value = newScrollY;
+    // Only log occasionally to avoid spam (every 50px)
+    if (Math.abs(newScrollY - currentScrollY.value) > 50 || newScrollY === 0) {
+      console.log(`📊 [SCROLL] Scroll position: ${newScrollY.toFixed(1)}px`);
+    }
+  }, []);
 
   // Drag and drop handlers - always define these
   const moveItem = useCallback((fromIndex: number, toIndex: number) => {
@@ -288,6 +369,11 @@ export function ActivityList({
             isDraggingThisItem={draggingIndex === index}
             targetDropIndex={targetDropIndex}
             activeDragIndex={activeDragIndex}
+            dragAbsoluteY={dragAbsoluteY}
+            scrollViewLayout={scrollViewLayout}
+            currentScrollY={currentScrollY}
+            startAutoScroll={startAutoScroll}
+            stopAutoScroll={stopAutoScroll}
           />
         );
       }
@@ -308,13 +394,29 @@ export function ActivityList({
     return (
       <GestureHandlerRootView style={styles.container}>
         <ScrollView
+          ref={scrollViewRef}
           style={styles.container}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
+          onLayout={handleScrollViewLayout}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
         >
           {renderActivities()}
         </ScrollView>
       </GestureHandlerRootView>
+    );
+  }
+
+  // Drag & drop enabled but using parent ScrollView
+  if (enableDragDrop && !scrollable && parentScrollViewRef) {
+    return (
+      <View
+        style={styles.container}
+        onLayout={handleScrollViewLayout}
+      >
+        {renderActivities()}
+      </View>
     );
   }
 
@@ -359,6 +461,11 @@ interface DraggableActivityCardProps {
   useInlineSelectionLayout?: boolean;
   targetDropIndex: Animated.SharedValue<number>; // Shared state for coordinated shifting
   activeDragIndex: Animated.SharedValue<number>; // Shared state for active drag
+  dragAbsoluteY: Animated.SharedValue<number>; // Absolute Y position during drag
+  scrollViewLayout: Animated.SharedValue<{ y: number; height: number }>; // ScrollView position and size
+  currentScrollY: Animated.SharedValue<number>; // Current scroll offset
+  startAutoScroll: (direction: 'up' | 'down', speed: number) => void; // Start auto-scroll
+  stopAutoScroll: () => void; // Stop auto-scroll
 }
 
 const DraggableActivityCard = React.memo(function DraggableActivityCard({
@@ -388,6 +495,11 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
   useInlineSelectionLayout = false,
   targetDropIndex,
   activeDragIndex,
+  dragAbsoluteY,
+  scrollViewLayout,
+  currentScrollY,
+  startAutoScroll,
+  stopAutoScroll,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -466,6 +578,73 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
     }
   );
 
+  // Edge detection and auto-scroll trigger
+  useAnimatedReaction(
+    () => {
+      const isBeingDragged = activeDragIndex.value === cardIndex;
+      if (!isBeingDragged) return { direction: 'none' as const, speed: 0, debug: '' };
+
+      const EDGE_ZONE = 60;  // 60px from top/bottom triggers scroll
+      const MAX_SPEED = 15;  // Maximum scroll speed (px per frame)
+
+      const dragY = dragAbsoluteY.value;
+      const svTop = scrollViewLayout.value.y;
+      const svBottom = svTop + scrollViewLayout.value.height;
+
+      const distFromTop = dragY - svTop;
+      const distFromBottom = svBottom - dragY;
+
+      // Check top zone (scroll up)
+      if (distFromTop < EDGE_ZONE && distFromTop > 0) {
+        const ratio = 1 - (distFromTop / EDGE_ZONE);
+        const speed = Math.max(2, MAX_SPEED * ratio);
+        return {
+          direction: 'up' as const,
+          speed,
+          debug: `dragY: ${dragY.toFixed(1)}, svTop: ${svTop.toFixed(1)}, distFromTop: ${distFromTop.toFixed(1)}, ratio: ${ratio.toFixed(2)}`
+        };
+      }
+
+      // Check bottom zone (scroll down)
+      if (distFromBottom < EDGE_ZONE && distFromBottom > 0) {
+        const ratio = 1 - (distFromBottom / EDGE_ZONE);
+        const speed = Math.max(2, MAX_SPEED * ratio);
+        return {
+          direction: 'down' as const,
+          speed,
+          debug: `dragY: ${dragY.toFixed(1)}, svBottom: ${svBottom.toFixed(1)}, distFromBottom: ${distFromBottom.toFixed(1)}, ratio: ${ratio.toFixed(2)}`
+        };
+      }
+
+      return { direction: 'none' as const, speed: 0, debug: `dragY: ${dragY.toFixed(1)}, svTop: ${svTop.toFixed(1)}, svBottom: ${svBottom.toFixed(1)}, distTop: ${distFromTop.toFixed(1)}, distBottom: ${distFromBottom.toFixed(1)}` };
+    },
+    (result, previous) => {
+      // Only log when state changes to avoid spam
+      if (result.direction !== previous?.direction) {
+        if (result.direction !== 'none') {
+          console.log(`🎯 [EDGE-DETECT] Entering ${result.direction} zone | ${result.debug}`);
+        } else {
+          console.log(`🎯 [EDGE-DETECT] Exiting edge zone | ${result.debug}`);
+        }
+      }
+
+      // Log debug info when not in zone (only on direction change to avoid spam)
+      if (result.direction === 'none' && previous?.direction === 'none' && result.debug) {
+        // Only log occasionally when outside zones
+        if (Math.random() < 0.05) { // 5% of the time
+          console.log(`🔍 [EDGE-DETECT] Outside zones | ${result.debug}`);
+        }
+      }
+
+      // Trigger auto-scroll on JS thread
+      if (result.direction !== 'none') {
+        runOnJS(startAutoScroll)(result.direction, result.speed);
+      } else {
+        runOnJS(stopAutoScroll)();
+      }
+    }
+  );
+
   const longPressGesture = Gesture.LongPress()
     .minDuration(150) // 200ms
     .onStart(() => {
@@ -476,6 +655,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
     .enabled(isGripPressed) // Only enable pan gesture when grip is pressed or long press activated
     .minDistance(5) // Reduced threshold since grip is intentional
     .onStart(() => {
+      console.log(`🎬 [DRAG] Started dragging card ${cardIndex}`);
       isDragging.value = true;
       scale.value = withSpring(1.05, {
         damping: 12,
@@ -490,6 +670,19 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
     .onUpdate((event) => {
       translateY.value = event.translationY;
 
+      // Update absolute Y position for edge detection
+      // Use absoluteY from event if available, otherwise calculate
+      if (event.absoluteY !== undefined) {
+        dragAbsoluteY.value = event.absoluteY;
+        // Log occasionally to track position (every 50px movement)
+        if (Math.abs(event.translationY) % 50 < 5) {
+          console.log(`👆 [DRAG] absoluteY: ${event.absoluteY.toFixed(1)}, translationY: ${event.translationY.toFixed(1)}`);
+        }
+      } else {
+        // Log if absoluteY is not available
+        console.log('⚠️ [DRAG] event.absoluteY is undefined - edge detection may not work');
+      }
+
       // Calculate target index based on drag distance
       const dragDistance = event.translationY;
       const positionChange = Math.round(dragDistance / ITEM_HEIGHT);
@@ -497,10 +690,16 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
 
       // Broadcast target index to all cards for coordinated shifting
       if (newTargetIndex !== targetDropIndex.value) {
+        console.log(`🎯 [DRAG] Target index changed: ${targetDropIndex.value} → ${newTargetIndex}`);
         targetDropIndex.value = newTargetIndex;
       }
     })
     .onEnd((event) => {
+      console.log(`🏁 [DRAG] Ended dragging card ${cardIndex}`);
+
+      // Stop auto-scroll when drag ends
+      runOnJS(stopAutoScroll)();
+      dragAbsoluteY.value = -1;
 
       // Calculate the drag distance and check if it exceeds the threshold
       const dragDistance = Math.abs(event.translationY);
@@ -545,6 +744,12 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
         runOnJS(onDragEnd)();
         runOnJS(setIsGripPressed)(false); // Reset grip state
       }
+    })
+    .onFinalize(() => {
+      // Called on cancel, end, or fail - ensure cleanup
+      console.log(`🧹 [DRAG] Finalized (cleanup) for card ${cardIndex}`);
+      runOnJS(stopAutoScroll)();
+      dragAbsoluteY.value = -1;
     });
 
   const animatedStyle = useAnimatedStyle(() => {
