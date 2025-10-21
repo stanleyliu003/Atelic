@@ -3,7 +3,6 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RouteLeg } from '../../services/getRoute_graphQL_call';
 import { Activity } from '../../types/activity.types';
 import { ActivityList } from './activity/activity_list';
-import { SearchBar } from '../explore/SearchBar';
 
 interface DayScheduleProps {
   dayNumber: number;
@@ -117,19 +116,10 @@ export function DaySchedule({
         routeLoading={routeLoading}
         useInlineSelectionLayout={true}
         scrollable={true}
+        onAddPlace={onAddPlace}
+        searchQuery={searchQuery}
+        onSearchQueryChange={onSearchQueryChange}
       />
-
-      {/* SearchBar - visible after activities */}
-      {onAddPlace && activities.length > 0 && (
-        <View style={{ marginTop: -30, paddingHorizontal: 16 }}>
-          <SearchBar
-            value={searchQuery}
-            onChangeText={onSearchQueryChange || (() => {})}
-            onPress={onAddPlace}
-            placeholder="Add more activities"
-          />
-        </View>
-      )}
     </View>
   );
 }

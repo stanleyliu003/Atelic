@@ -1428,7 +1428,7 @@ export default function TripViewMain() {
                                             {selectedCity && (
                                                 <Text style={styles.cityTitle}>{selectedCity}</Text>
                                             )}
-                                            {/* SearchBar when no wishlist activities - hide for viewers */}
+                                            {/* SearchBar hide for viewers */}
                                             {currentUserRole !== 'viewer' && (
                                                 <View style={{ marginTop: 0, marginBottom: 0 }}>
                                                     <SearchBar

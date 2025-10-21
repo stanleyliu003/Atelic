@@ -42,6 +42,7 @@ import { ActivityCard } from './activity_card';
 import { NoActivities } from './no_activities';
 import { Colors } from '../../../../constants/Colors';
 import { formatDistance, formatDuration } from '../../../utils/routeUtils';
+import { SearchBar } from '../../explore/SearchBar';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -173,6 +174,9 @@ interface EnhancedActivityListProps extends ActivityListProps {
   wishlistActivities?: Activity[]; // Activities already in the wishlist for "On list" tag
   useInlineSelectionLayout?: boolean; // Use inline layout for wishlist (not absolute positioned)
   parentScrollViewRef?: React.RefObject<ScrollView> | AnimatedRef<Animated.ScrollView>; // External ScrollView ref for nested scroll control
+  onAddPlace?: () => void; // Search bar trigger
+  searchQuery?: string; // Search query value
+  onSearchQueryChange?: (text: string) => void; // Search query change handler
 }
 
 export function ActivityList({
@@ -197,7 +201,10 @@ export function ActivityList({
   hideRouteInfo = false,
   wishlistActivities = [],
   useInlineSelectionLayout = false,
-  parentScrollViewRef
+  parentScrollViewRef,
+  onAddPlace,
+  searchQuery = '',
+  onSearchQueryChange
 }: EnhancedActivityListProps) {
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
@@ -206,6 +213,10 @@ export function ActivityList({
   // Shared animated values for coordinated card shifting
   const targetDropIndex = useSharedValue<number>(-1);
   const activeDragIndex = useSharedValue<number>(-1);
+
+  // SearchBar height to exclude from auto-scroll range (only when shown)
+  const SEARCH_BAR_HEIGHT = 64; // Approximate height: container padding (20) + search bar (44) + margin
+  const hasSearchBar = onAddPlace && activities.length > 0;
 
   // Auto-scroll infrastructure
   // Use parent ref if provided, otherwise create own ref
@@ -280,11 +291,16 @@ export function ActivityList({
         ? scrollViewContentSize.value.height
         : currentActivities.length * 230; // Fallback to estimated height if not measured yet
       const viewHeight = scrollViewLayout.value.height;
-      const maxScroll = Math.max(0, contentHeight - viewHeight);
+      
+      // Subtract SearchBar height from content to prevent auto-scrolling to it
+      // SearchBar is not draggable, so no need to scroll to it during drag operations
+      const searchBarOffset = hasSearchBar ? SEARCH_BAR_HEIGHT : 0;
+      const draggableContentHeight = contentHeight - searchBarOffset;
+      const maxScroll = Math.max(0, draggableContentHeight - viewHeight);
 
       // Log content height source on first scroll of each auto-scroll session
       if (scrollFrameCount === 0) {
-        console.log(`📊 [SCROLL-CALC] Using ${useMeasured ? 'MEASURED' : 'ESTIMATED'} height: ${contentHeight.toFixed(1)}px, maxScroll: ${maxScroll.toFixed(1)}px`);
+        console.log(`📊 [SCROLL-CALC] Using ${useMeasured ? 'MEASURED' : 'ESTIMATED'} height: ${contentHeight.toFixed(1)}px, SearchBar offset: ${searchBarOffset}px, maxScroll: ${maxScroll.toFixed(1)}px`);
       }
       scrollFrameCount++;
 
@@ -316,7 +332,7 @@ export function ActivityList({
 
     lastScrollTime.current = Date.now();
     scroll();
-  }, [currentActivities.length, performScrollWorklet]);
+  }, [currentActivities.length, performScrollWorklet, hasSearchBar, SEARCH_BAR_HEIGHT]);
 
   const stopAutoScroll = useCallback(() => {
     if (autoScrollInterval.current !== null) {
@@ -352,15 +368,19 @@ export function ActivityList({
         const contentHeight = scrollViewContentSize.value.height > 0
           ? scrollViewContentSize.value.height
           : currentActivities.length * 230; // Fallback estimate
-        const maxScroll = Math.max(0, contentHeight - visibleHeight);
+        
+        // Subtract SearchBar height to get draggable content area
+        const searchBarOffset = hasSearchBar ? SEARCH_BAR_HEIGHT : 0;
+        const draggableContentHeight = contentHeight - searchBarOffset;
+        const maxScroll = Math.max(0, draggableContentHeight - visibleHeight);
 
         console.log(`📐 [LAYOUT] ScrollView Y: ${y.toFixed(1)}, Width: ${width.toFixed(1)}`);
         console.log(`📐 [LAYOUT] Layout Height (visible): ${layoutHeight.toFixed(1)}px, Content Height: ${measuredHeight.toFixed(1)}px`);
-        console.log(`📏 [LAYOUT] Content: ${contentHeight.toFixed(1)}px, Max scroll: ${maxScroll.toFixed(1)}px, Activities: ${currentActivities.length}`);
+        console.log(`📏 [LAYOUT] Content: ${contentHeight.toFixed(1)}px, SearchBar offset: ${searchBarOffset}px, Draggable: ${draggableContentHeight.toFixed(1)}px, Max scroll: ${maxScroll.toFixed(1)}px, Activities: ${currentActivities.length}`);
         console.log(`📱 [LAYOUT] Calculated visible cards: ${(visibleHeight / 189).toFixed(2)} cards (assuming 189px per card with route)`);
       });
     }
-  }, [currentActivities.length]);
+  }, [currentActivities.length, hasSearchBar, SEARCH_BAR_HEIGHT]);
 
   const handleScroll = useCallback((event: any) => {
     const newScrollY = event.nativeEvent.contentOffset.y;
@@ -515,6 +535,18 @@ export function ActivityList({
           }}
         >
           {renderActivities()}
+          
+          {/* SearchBar - visible at bottom of list */}
+          {onAddPlace && activities.length > 0 && (
+            <View style={{ marginTop: 0, paddingHorizontal: 16 }}>
+              <SearchBar
+                value={searchQuery}
+                onChangeText={onSearchQueryChange || (() => {})}
+                onPress={onAddPlace}
+                placeholder="Add more activities"
+              />
+            </View>
+          )}
         </Animated.ScrollView>
       </GestureHandlerRootView>
     );
@@ -543,6 +575,18 @@ export function ActivityList({
   return (
     <Container {...containerProps}>
       {renderActivities()}
+      
+      {/* SearchBar - visible at bottom of list */}
+      {onAddPlace && activities.length > 0 && (
+        <View style={{ marginTop: 0, paddingHorizontal: 16 }}>
+          <SearchBar
+            value={searchQuery}
+            onChangeText={onSearchQueryChange || (() => {})}
+            onPress={onAddPlace}
+            placeholder="Add more activities"
+          />
+        </View>
+      )}
     </Container>
   );
 }
