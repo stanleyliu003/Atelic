@@ -1633,6 +1633,9 @@ export default function TripViewMain() {
                 onClose={() => setShowCategoryModal(false)}
                 onGenerateMore={handleGenerateMoreCategoryActivities}
                 wishlistActivities={activities || []}
+                dayActivities={Object.values(dayActivities || {}).flatMap(dayObj =>
+                    Array.isArray((dayObj as any).activities) ? (dayObj as any).activities : []
+                )}
             />
 
             {/* Share Trip Modal */}

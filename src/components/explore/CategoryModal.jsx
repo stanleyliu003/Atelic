@@ -22,42 +22,64 @@ import { ActivityDetailView } from '../trip-view/description_card';
  * Shows activities for a specific category with selectable activity cards
  * User can select multiple activities and save them to wishlist
  *
- * @param {boolean} visible - Whether modal is visible
- * @param {string} category - Category name that was selected
- * @param {Activity[]} activities - Array of activity objects to display
- * @param {boolean} loading - Whether activities are being loaded
- * @param {boolean} loadingMore - Whether more activities are being generated (for button loading state)
- * @param {function} onSave - Callback when "Save to Wishlist" is clicked (receives array of selected activities)
- * @param {function} onClose - Callback to close modal
- * @param {function} onGenerateMore - Callback when "Generate More" button is clicked
- * @param {Activity[]} wishlistActivities - Activities already in the wishlist for "On list" tag
+ * @param {Object} props - Component props
+ * @param {boolean} props.visible - Whether modal is visible
+ * @param {string} props.category - Category name that was selected
+ * @param {Activity[]} props.activities - Array of activity objects to display
+ * @param {boolean} [props.loading] - Whether activities are being loaded
+ * @param {boolean} [props.loadingMore] - Whether more activities are being generated (for button loading state)
+ * @param {function} props.onSave - Callback when "Save to Wishlist" is clicked (receives array of selected activities)
+ * @param {function} props.onClose - Callback to close modal
+ * @param {function} [props.onGenerateMore] - Callback when "Generate More" button is clicked
+ * @param {Activity[]} [props.wishlistActivities] - Activities already in the wishlist for "On list" tag
+ * @param {Activity[]} [props.dayActivities] - Activities already in day tabs (can't be deselected)
  */
-export const CategoryModal = ({ visible, category, activities, loading = false, loadingMore = false, onSave, onClose, onGenerateMore, wishlistActivities = [] }) => {
+export const CategoryModal = ({ visible, category, activities, loading = false, loadingMore = false, onSave, onClose, onGenerateMore, wishlistActivities = [], dayActivities = [] }) => {
   const [selectedActivityIds, setSelectedActivityIds] = useState([]);
   const [selectedActivity, setSelectedActivity] = useState(null);
   
   // Track which activities from category results are already in wishlist
   const [wishlistActivityIdsInResults, setWishlistActivityIdsInResults] = useState([]);
+  
+  // Track which activities are in day tabs (cannot be deselected)
+  const [dayActivityIdsInResults, setDayActivityIdsInResults] = useState([]);
 
-  // Auto-select activities that are in wishlist when activities change
+  // Auto-select activities that are in wishlist or day tabs when activities change
   useEffect(() => {
-    if (activities.length > 0 && wishlistActivities.length > 0) {
+    if (activities.length > 0) {
+      // Track activities in wishlist
       const wishlistPlaceIds = wishlistActivities.map(a => a.place_id).filter(Boolean);
       const activitiesInWishlist = activities
         .filter(activity => activity.place_id && wishlistPlaceIds.includes(activity.place_id))
         .map(activity => activity.place_id);
       
+      // Track activities in day tabs
+      const dayPlaceIds = dayActivities.map(a => a.place_id).filter(Boolean);
+      const activitiesInDays = activities
+        .filter(activity => activity.place_id && dayPlaceIds.includes(activity.place_id))
+        .map(activity => activity.place_id);
+      
       setWishlistActivityIdsInResults(activitiesInWishlist);
-      setSelectedActivityIds(activitiesInWishlist);
+      setDayActivityIdsInResults(activitiesInDays);
+      
+      // Auto-select both wishlist and day activities
+      const allSelectedIds = [...new Set([...activitiesInWishlist, ...activitiesInDays])];
+      setSelectedActivityIds(allSelectedIds);
     } else if (activities.length === 0) {
       // Reset when activities are cleared
       setWishlistActivityIdsInResults([]);
+      setDayActivityIdsInResults([]);
       setSelectedActivityIds([]);
     }
-  }, [activities, wishlistActivities]);
+  }, [activities, wishlistActivities, dayActivities]);
 
   // Toggle activity selection
   const handleActivityToggle = (activityId) => {
+    // Prevent deselection if activity is in a day tab
+    if (dayActivityIdsInResults.includes(activityId)) {
+      return; // Do nothing - activity is in a day and cannot be deselected
+    }
+    
     setSelectedActivityIds((prev) => {
       if (prev.includes(activityId)) {
         return prev.filter((id) => id !== activityId);
@@ -69,16 +91,18 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
 
   // Handle save button press
   const handleSave = () => {
-    // Get newly selected activities (not in wishlist)
+    // Get newly selected activities (not in wishlist or days)
     const newlySelectedActivities = activities.filter((activity) =>
       activity.place_id && 
       selectedActivityIds.includes(activity.place_id) &&
-      !wishlistActivityIdsInResults.includes(activity.place_id)
+      !wishlistActivityIdsInResults.includes(activity.place_id) &&
+      !dayActivityIdsInResults.includes(activity.place_id)
     );
     
     // Get deselected wishlist activities (were in wishlist but now deselected)
+    // Only allow deselection if NOT in day tabs
     const deselectedWishlistActivityIds = wishlistActivityIdsInResults.filter(
-      (activityId) => !selectedActivityIds.includes(activityId)
+      (activityId) => !selectedActivityIds.includes(activityId) && !dayActivityIdsInResults.includes(activityId)
     );
     
     // Call onSave with both additions and removals
@@ -87,12 +111,14 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
     // Reset selection
     setSelectedActivityIds([]);
     setWishlistActivityIdsInResults([]);
+    setDayActivityIdsInResults([]);
   };
 
   // Handle modal close
   const handleClose = () => {
     setSelectedActivityIds([]);
     setWishlistActivityIdsInResults([]);
+    setDayActivityIdsInResults([]);
     onClose();
   };
 

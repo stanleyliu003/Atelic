@@ -289,6 +289,7 @@ export default function create_trip_explore() {
         onClose={() => setShowCategoryModal(false)}
         onGenerateMore={handleGenerateMoreCategoryActivities}
         wishlistActivities={activities}
+        dayActivities={[]}
       />
     </KeyboardAvoidingView>
   );

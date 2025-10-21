@@ -11,6 +11,7 @@ interface CategoryModalProps {
   onClose: () => void;
   onGenerateMore?: (categoryName: string) => Promise<void>;
   wishlistActivities?: Activity[];
+  dayActivities?: Activity[];
 }
 
 export const CategoryModal: FC<CategoryModalProps>;
