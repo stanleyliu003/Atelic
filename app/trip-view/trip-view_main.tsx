@@ -1444,7 +1444,7 @@ export default function TripViewMain() {
                                             {currentUserRole !== 'viewer' && (
                                                 <View style={styles.categoriesSection}>
                                                     <Text style={styles.categoriesTitle}>Browse by Category</Text>
-                {Array.isArray(cityCategories) && cityCategories.length > 0 ? (
+                                                        {Array.isArray(cityCategories) && cityCategories.length > 0 ? (
                                                         <View style={styles.categoriesGrid}>
                                                             {cityCategories.map((category: any, index: number) => (
                                                                 <TouchableOpacity
@@ -1510,7 +1510,7 @@ export default function TripViewMain() {
                                             {currentUserRole !== 'viewer' && (
                                                 <View style={styles.categoriesSection}>
                                                     <Text style={styles.categoriesTitle}>Browse by Category</Text>
-                {Array.isArray(cityCategories) && cityCategories.length > 0 ? (
+                                                        {Array.isArray(cityCategories) && cityCategories.length > 0 ? (
                                                         <View style={styles.categoriesGrid}>
                                                             {cityCategories.map((category: any, index: number) => (
                                                                 <TouchableOpacity

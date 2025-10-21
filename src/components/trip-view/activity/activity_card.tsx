@@ -27,8 +27,7 @@ interface ActivityCardProps {
   travelMode?: string; // Travel mode from route calculation (DRIVE, TRANSIT, WALK)
   hideRouteInfo?: boolean; // New prop to hide route info during drag operations
   duplicateActivityIndicator?: boolean; // New prop to indicate activities already in wishlist
-  enableDragDrop?: boolean; // New prop to show grip icon for drag & drop
-  onGripPress?: () => void; // Callback when grip icon is pressed
+  enableDragDrop?: boolean; // New prop to enable drag & drop functionality
   useInlineSelectionLayout?: boolean; // Use inline layout for wishlist (not absolute positioned)
 }
 
@@ -77,7 +76,6 @@ export function ActivityCard({
   hideRouteInfo = false,
   duplicateActivityIndicator = false,
   enableDragDrop = false,
-  onGripPress,
   useInlineSelectionLayout = false
 }: ActivityCardProps) {
 

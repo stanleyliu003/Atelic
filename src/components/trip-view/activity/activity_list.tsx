@@ -622,7 +622,8 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
   const isDragging = useSharedValue(false);
   const scale = useSharedValue(1);
   const zIndex = useSharedValue(0);
-  const [isGripPressed, setIsGripPressed] = React.useState(false);
+  // Use shared value instead of state to avoid race condition with gesture system
+  const isGripPressed = useSharedValue(false);
 
   // Shift offset for non-dragged cards to make space
   const shiftOffset = useSharedValue(0);
@@ -639,10 +640,6 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       originalIndex.value = cardIndex;
     }
   }, [cardIndex]);
-
-  const handleGripPress = () => {
-    setIsGripPressed(true);
-  };
 
   // Calculate shift offset for non-dragged cards
   // This function determines if and how much a card should shift to make space
@@ -785,14 +782,25 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
   );
 
   const longPressGesture = Gesture.LongPress()
-    .minDuration(150) // 200ms
+    .minDuration(150) // 150ms for immediate response
     .onStart(() => {
-      runOnJS(setIsGripPressed)(true);
+      'worklet';
+      // Set shared value directly in worklet - no async state update needed
+      isGripPressed.value = true;
     });
 
   const panGesture = Gesture.Pan()
-    .enabled(isGripPressed) // Only enable pan gesture when grip is pressed or long press activated
+    .manualActivation(true) // Enable manual activation
     .minDistance(5) // Reduced threshold since grip is intentional
+    .onTouchesMove((event, state) => {
+      'worklet';
+      // Only activate pan gesture if grip is pressed (from long press)
+      if (isGripPressed.value) {
+        state.activate();
+      } else {
+        state.fail();
+      }
+    })
     .onStart(() => {
       console.log(`🎬 [DRAG] Started dragging card ${cardIndex} - Route cards will collapse (height → 0)`);
       isDragging.value = true;
@@ -869,9 +877,9 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
         // Reset shared drag state
         activeDragIndex.value = -1;
         targetDropIndex.value = -1;
+        isGripPressed.value = false; // Reset grip state
 
         runOnJS(onDragEnd)();
-        runOnJS(setIsGripPressed)(false); // Reset grip state
       } else {
 
         // IMPORTANT: Cancel any ongoing animations and reset immediately
@@ -885,9 +893,9 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
         // Reset shared drag state
         activeDragIndex.value = -1;
         targetDropIndex.value = -1;
+        isGripPressed.value = false; // Reset grip state
 
         runOnJS(onDragEnd)();
-        runOnJS(setIsGripPressed)(false); // Reset grip state
       }
     })
     .onFinalize(() => {
@@ -958,7 +966,6 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
             hideRouteInfo={true} // Hide route info in draggable card - rendered separately below
             duplicateActivityIndicator={duplicateActivityIndicator}
             enableDragDrop={true}
-            onGripPress={handleGripPress}
             useInlineSelectionLayout={useInlineSelectionLayout}
           />
         </Animated.View>
