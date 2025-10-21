@@ -217,6 +217,7 @@ export function ActivityList({
   const scrollViewContentSize = useSharedValue({ width: 0, height: 0 }); // Track actual content size
   const currentScrollY = useSharedValue(0);
   const dragAbsoluteY = useSharedValue(-1);
+  const dragVelocity = useSharedValue(0); // Track drag velocity to cap scroll speed
   const autoScrollInterval = React.useRef<number | null>(null);
   const lastScrollTime = React.useRef(Date.now());
   
@@ -470,6 +471,7 @@ export function ActivityList({
             targetDropIndex={targetDropIndex}
             activeDragIndex={activeDragIndex}
             dragAbsoluteY={dragAbsoluteY}
+            dragVelocity={dragVelocity}
             scrollViewLayout={scrollViewLayout}
             currentScrollY={currentScrollY}
             startAutoScroll={startAutoScroll}
@@ -574,6 +576,7 @@ interface DraggableActivityCardProps {
   targetDropIndex: Animated.SharedValue<number>; // Shared state for coordinated shifting
   activeDragIndex: Animated.SharedValue<number>; // Shared state for active drag
   dragAbsoluteY: Animated.SharedValue<number>; // Absolute Y position during drag
+  dragVelocity: Animated.SharedValue<number>; // Drag velocity for capping scroll speed
   scrollViewLayout: Animated.SharedValue<{ y: number; height: number }>; // ScrollView position and size
   currentScrollY: Animated.SharedValue<number>; // Current scroll offset
   startAutoScroll: (direction: 'up' | 'down', speed: number) => void; // Start auto-scroll
@@ -608,6 +611,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
   targetDropIndex,
   activeDragIndex,
   dragAbsoluteY,
+  dragVelocity,
   scrollViewLayout,
   currentScrollY,
   startAutoScroll,
@@ -698,6 +702,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
 
       const EDGE_ZONE = 120;  // 120px from top/bottom triggers scroll (larger for better UX)
       const MAX_SPEED = 15;  // Maximum scroll speed (px per frame)
+      const MIN_SPEED = 2;   // Minimum scroll speed
 
       const dragY = dragAbsoluteY.value;
       const svTop = scrollViewLayout.value.y;
@@ -708,23 +713,43 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
 
       // Check top zone (scroll up)
       if (distFromTop < EDGE_ZONE && distFromTop > 0) {
-        const ratio = 1 - (distFromTop / EDGE_ZONE);
-        const speed = Math.max(2, MAX_SPEED * ratio);
+        const linearRatio = 1 - (distFromTop / EDGE_ZONE);
+        // Apply quadratic easing for gentler acceleration (ratio²)
+        // This keeps speed much lower until very close to edge
+        const ratio = linearRatio * linearRatio;
+        let speed = Math.max(MIN_SPEED, MAX_SPEED * ratio)*0.65;
+
+        // Cap speed to drag velocity + small buffer (1.5x) to prevent scrolling away from drag
+        const currentDragSpeed = dragVelocity.value;
+        if (currentDragSpeed > 0) {
+          speed = Math.min(speed, currentDragSpeed * 1.2);
+        }
+
         return {
           direction: 'up' as const,
           speed,
-          debug: `dragY: ${dragY.toFixed(1)}, svTop: ${svTop.toFixed(1)}, distFromTop: ${distFromTop.toFixed(1)}, ratio: ${ratio.toFixed(2)}`
+          debug: `dragY: ${dragY.toFixed(1)}, svTop: ${svTop.toFixed(1)}, distFromTop: ${distFromTop.toFixed(1)}, linearRatio: ${linearRatio.toFixed(2)}, easedRatio: ${ratio.toFixed(2)}, dragSpeed: ${currentDragSpeed.toFixed(1)}`
         };
       }
 
       // Check bottom zone (scroll down)
       if (distFromBottom < EDGE_ZONE && distFromBottom > 0) {
-        const ratio = 1 - (distFromBottom / EDGE_ZONE);
-        const speed = Math.max(2, MAX_SPEED * ratio);
+        const linearRatio = 1 - (distFromBottom / EDGE_ZONE);
+        // Apply quadratic easing for gentler acceleration (ratio²)
+        // This keeps speed much lower until very close to edge
+        const ratio = linearRatio * linearRatio;
+        let speed = Math.max(MIN_SPEED, MAX_SPEED * ratio)*0.65;
+
+        // Cap speed to drag velocity + small buffer (1.5x) to prevent scrolling away from drag
+        const currentDragSpeed = dragVelocity.value;
+        if (currentDragSpeed > 0) {
+          speed = Math.min(speed, currentDragSpeed * 1.2);
+        }
+
         return {
           direction: 'down' as const,
           speed,
-          debug: `dragY: ${dragY.toFixed(1)}, svBottom: ${svBottom.toFixed(1)}, distFromBottom: ${distFromBottom.toFixed(1)}, ratio: ${ratio.toFixed(2)}`
+          debug: `dragY: ${dragY.toFixed(1)}, svBottom: ${svBottom.toFixed(1)}, distFromBottom: ${distFromBottom.toFixed(1)}, linearRatio: ${linearRatio.toFixed(2)}, easedRatio: ${ratio.toFixed(2)}, dragSpeed: ${currentDragSpeed.toFixed(1)}`
         };
       }
 
@@ -783,6 +808,12 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
     })
     .onUpdate((event) => {
       translateY.value = event.translationY;
+
+      // Track drag velocity to cap auto-scroll speed
+      // velocityY is in px/ms, convert to px/frame (60fps = 16.67ms per frame)
+      if (event.velocityY !== undefined) {
+        dragVelocity.value = Math.abs(event.velocityY * 16.67);
+      }
 
       // Update absolute Y position for edge detection
       // Use absoluteY from event if available, otherwise calculate
