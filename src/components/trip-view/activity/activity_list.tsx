@@ -263,13 +263,13 @@ export function ActivityList({
         return;
       } else {
         // Direction changed, stop and restart
-        console.log('🔄 [AUTO-SCROLL] Direction changed, restarting');
+        // console.log('🔄 [AUTO-SCROLL] Direction changed, restarting');
         cancelAnimationFrame(autoScrollInterval.current);
         autoScrollInterval.current = null;
       }
     }
 
-    console.log(`▶️ [AUTO-SCROLL] STARTED - Direction: ${direction}, Speed: ${speed.toFixed(2)}px/frame`);
+    // console.log(`▶️ [AUTO-SCROLL] STARTED - Direction: ${direction}, Speed: ${speed.toFixed(2)}px/frame`);
     autoScrollDirection.current = direction;
     autoScrollSpeed.current = speed;
 
@@ -299,9 +299,9 @@ export function ActivityList({
       const maxScroll = Math.max(0, draggableContentHeight - viewHeight);
 
       // Log content height source on first scroll of each auto-scroll session
-      if (scrollFrameCount === 0) {
-        console.log(`📊 [SCROLL-CALC] Using ${useMeasured ? 'MEASURED' : 'ESTIMATED'} height: ${contentHeight.toFixed(1)}px, SearchBar offset: ${searchBarOffset}px, maxScroll: ${maxScroll.toFixed(1)}px`);
-      }
+      // if (scrollFrameCount === 0) {
+      //   console.log(`📊 [SCROLL-CALC] Using ${useMeasured ? 'MEASURED' : 'ESTIMATED'} height: ${contentHeight.toFixed(1)}px, SearchBar offset: ${searchBarOffset}px, maxScroll: ${maxScroll.toFixed(1)}px`);
+      // }
       scrollFrameCount++;
 
       const delta = currentSpeed * deltaTime;
@@ -319,13 +319,13 @@ export function ActivityList({
       currentScrollY.value = newOffset;
 
       // Log the boundaries for debugging
-      if (newOffset === 0 && maxScroll === 0) {
-        console.log(`🛑 [AUTO-SCROLL] Cannot scroll - content fits in view (maxScroll: 0px)`);
-      } else if (newOffset === 0) {
-        console.log(`🛑 [AUTO-SCROLL] Reached top boundary`);
-      } else if (newOffset >= maxScroll) {
-        console.log(`🛑 [AUTO-SCROLL] Reached bottom boundary`);
-      }
+      // if (newOffset === 0 && maxScroll === 0) {
+      //   console.log(`🛑 [AUTO-SCROLL] Cannot scroll - content fits in view (maxScroll: 0px)`);
+      // } else if (newOffset === 0) {
+      //   console.log(`🛑 [AUTO-SCROLL] Reached top boundary`);
+      // } else if (newOffset >= maxScroll) {
+      //   console.log(`🛑 [AUTO-SCROLL] Reached bottom boundary`);
+      // }
 
       autoScrollInterval.current = requestAnimationFrame(scroll);
     };
@@ -336,13 +336,13 @@ export function ActivityList({
 
   const stopAutoScroll = useCallback(() => {
     if (autoScrollInterval.current !== null) {
-      console.log('⏹️ [AUTO-SCROLL] STOPPED - Called from:', new Error().stack?.split('\n')[2]);
+      // console.log('⏹️ [AUTO-SCROLL] STOPPED - Called from:', new Error().stack?.split('\n')[2]);
       cancelAnimationFrame(autoScrollInterval.current);
       autoScrollInterval.current = null;
       autoScrollDirection.current = 'none';
       autoScrollSpeed.current = 0;
     } else {
-      console.log('⏹️ [AUTO-SCROLL] STOPPED called but already stopped');
+      // console.log('⏹️ [AUTO-SCROLL] STOPPED called but already stopped');
     }
   }, []);
 
@@ -374,10 +374,10 @@ export function ActivityList({
         const draggableContentHeight = contentHeight - searchBarOffset;
         const maxScroll = Math.max(0, draggableContentHeight - visibleHeight);
 
-        console.log(`📐 [LAYOUT] ScrollView Y: ${y.toFixed(1)}, Width: ${width.toFixed(1)}`);
-        console.log(`📐 [LAYOUT] Layout Height (visible): ${layoutHeight.toFixed(1)}px, Content Height: ${measuredHeight.toFixed(1)}px`);
-        console.log(`📏 [LAYOUT] Content: ${contentHeight.toFixed(1)}px, SearchBar offset: ${searchBarOffset}px, Draggable: ${draggableContentHeight.toFixed(1)}px, Max scroll: ${maxScroll.toFixed(1)}px, Activities: ${currentActivities.length}`);
-        console.log(`📱 [LAYOUT] Calculated visible cards: ${(visibleHeight / 189).toFixed(2)} cards (assuming 189px per card with route)`);
+        // console.log(`📐 [LAYOUT] ScrollView Y: ${y.toFixed(1)}, Width: ${width.toFixed(1)}`);
+        // console.log(`📐 [LAYOUT] Layout Height (visible): ${layoutHeight.toFixed(1)}px, Content Height: ${measuredHeight.toFixed(1)}px`);
+        // console.log(`📏 [LAYOUT] Content: ${contentHeight.toFixed(1)}px, SearchBar offset: ${searchBarOffset}px, Draggable: ${draggableContentHeight.toFixed(1)}px, Max scroll: ${maxScroll.toFixed(1)}px, Activities: ${currentActivities.length}`);
+        // console.log(`📱 [LAYOUT] Calculated visible cards: ${(visibleHeight / 189).toFixed(2)} cards (assuming 189px per card with route)`);
       });
     }
   }, [currentActivities.length, hasSearchBar, SEARCH_BAR_HEIGHT]);
@@ -526,8 +526,8 @@ export function ActivityList({
           scrollEventThrottle={16}
           onContentSizeChange={(width, height) => {
             const avgPerActivity = currentActivities.length > 0 ? height / currentActivities.length : 0;
-            console.log(`📏 [CONTENT-SIZE] Content size changed: ${height.toFixed(1)}px (${currentActivities.length} activities, avg ${avgPerActivity.toFixed(1)}px each)`);
-            console.log(`📏 [CONTENT-SIZE] Current scrollViewLayout height: ${scrollViewLayout.value.height.toFixed(1)}px`);
+            // console.log(`📏 [CONTENT-SIZE] Content size changed: ${height.toFixed(1)}px (${currentActivities.length} activities, avg ${avgPerActivity.toFixed(1)}px each)`);
+            // console.log(`📏 [CONTENT-SIZE] Current scrollViewLayout height: ${scrollViewLayout.value.height.toFixed(1)}px`);
             runOnUI(() => {
               'worklet';
               scrollViewContentSize.value = { width, height };
@@ -803,11 +803,11 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       if (directionChanged) {
         // Log when state changes
         if (result.direction !== 'none') {
-          console.log(`🎯 [EDGE-DETECT] Entering ${result.direction} zone | ${result.debug}`);
+          // console.log(`🎯 [EDGE-DETECT] Entering ${result.direction} zone | ${result.debug}`);
           // Start auto-scroll
           runOnJS(startAutoScroll)(result.direction, result.speed);
         } else {
-          console.log(`🎯 [EDGE-DETECT] Exiting edge zone | ${result.debug}`);
+          // console.log(`🎯 [EDGE-DETECT] Exiting edge zone | ${result.debug}`);
           // Stop auto-scroll
           runOnJS(stopAutoScroll)();
         }
@@ -817,11 +817,11 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       }
 
       // Log debug info when not in zone (only occasionally to avoid spam)
-      if (result.direction === 'none' && previous?.direction === 'none' && result.debug) {
-        if (Math.random() < 0.05) { // 5% of the time
-          console.log(`🔍 [EDGE-DETECT] Outside zones | ${result.debug}`);
-        }
-      }
+      // if (result.direction === 'none' && previous?.direction === 'none' && result.debug) {
+      //   if (Math.random() < 0.05) { // 5% of the time
+      //     console.log(`🔍 [EDGE-DETECT] Outside zones | ${result.debug}`);
+      //   }
+      // }
     }
   );
 
@@ -846,7 +846,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       }
     })
     .onStart(() => {
-      console.log(`🎬 [DRAG] Started dragging card ${cardIndex} - Route cards will collapse (height → 0)`);
+      // console.log(`🎬 [DRAG] Started dragging card ${cardIndex} - Route cards will collapse (height → 0)`);
       isDragging.value = true;
       scale.value = withSpring(1.05, {
         damping: 12,
@@ -872,12 +872,12 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       if (event.absoluteY !== undefined) {
         dragAbsoluteY.value = event.absoluteY;
         // Log occasionally to track position (every 50px movement)
-        if (Math.abs(event.translationY) % 50 < 5) {
-          console.log(`👆 [DRAG] absoluteY: ${event.absoluteY.toFixed(1)}, translationY: ${event.translationY.toFixed(1)}`);
-        }
+        // if (Math.abs(event.translationY) % 50 < 5) {
+        //   console.log(`👆 [DRAG] absoluteY: ${event.absoluteY.toFixed(1)}, translationY: ${event.translationY.toFixed(1)}`);
+        // }
       } else {
         // Log if absoluteY is not available
-        console.log('⚠️ [DRAG] event.absoluteY is undefined - edge detection may not work');
+        // console.log('⚠️ [DRAG] event.absoluteY is undefined - edge detection may not work');
       }
 
       // Calculate target index based on drag distance
@@ -887,12 +887,12 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
 
       // Broadcast target index to all cards for coordinated shifting
       if (newTargetIndex !== targetDropIndex.value) {
-        console.log(`🎯 [DRAG] Target index changed: ${targetDropIndex.value} → ${newTargetIndex}`);
+        // console.log(`🎯 [DRAG] Target index changed: ${targetDropIndex.value} → ${newTargetIndex}`);
         targetDropIndex.value = newTargetIndex;
       }
     })
     .onEnd((event) => {
-      console.log(`🏁 [DRAG] Ended dragging card ${cardIndex} - Route cards will expand (height → normal)`);
+      // console.log(`🏁 [DRAG] Ended dragging card ${cardIndex} - Route cards will expand (height → normal)`);
 
       // Stop auto-scroll when drag ends
       runOnJS(stopAutoScroll)();
@@ -944,7 +944,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
     })
     .onFinalize(() => {
       // Called on cancel, end, or fail - ensure cleanup
-      console.log(`🧹 [DRAG] Finalized (cleanup) for card ${cardIndex}`);
+      // console.log(`🧹 [DRAG] Finalized (cleanup) for card ${cardIndex}`);
       runOnJS(stopAutoScroll)();
       dragAbsoluteY.value = -1;
     });
