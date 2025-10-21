@@ -513,6 +513,7 @@ export function ActivityList({
             currentScrollY={currentScrollY}
             startAutoScroll={startAutoScroll}
             stopAutoScroll={stopAutoScroll}
+            scrollViewRef={scrollViewRef}
           />
         );
       }
@@ -642,6 +643,7 @@ interface DraggableActivityCardProps {
   currentScrollY: Animated.SharedValue<number>; // Current scroll offset
   startAutoScroll: (direction: 'up' | 'down', speed: number) => void; // Start auto-scroll
   stopAutoScroll: () => void; // Stop auto-scroll
+  scrollViewRef: AnimatedRef<Animated.ScrollView>; // Reference to ScrollView for scroll compensation
 }
 
 const DraggableActivityCard = React.memo(function DraggableActivityCard({
@@ -677,6 +679,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
   currentScrollY,
   startAutoScroll,
   stopAutoScroll,
+  scrollViewRef,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -875,11 +878,37 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       originalIndex.value = cardIndex;
       activeDragIndex.value = cardIndex; // Broadcast that this card is being dragged
       targetDropIndex.value = cardIndex; // Initial target is current position
-      
+
       // Capture initial scroll position to compensate for autoscroll during drag
       initialScrollY.value = currentScrollY.value;
       console.log(`🎬 [SCROLL-COMP] Drag started on card ${cardIndex} | Initial scrollY: ${currentScrollY.value.toFixed(1)}px`);
-      
+
+      // SCROLL COMPENSATION: When route cards collapse (height: 0), all items shift up
+      // Calculate how much to scroll up so the dragged card stays under the user's finger
+      // Based on ITEM_HEIGHT = 169px (activity 110px + route ~54px + margins 5px)
+      // Route card total height including margins: ~59px
+      // BUT empirically tested, the actual collapse is closer to ITEM_HEIGHT - activity card height
+      const ROUTE_CARD_WITH_MARGINS = ITEM_HEIGHT - 110; // ~59px from ITEM_HEIGHT calculation
+      const numRouteCardsAbove = Math.max(0, cardIndex); // All cards before this one have route info
+      const compensationOffset = numRouteCardsAbove * ROUTE_CARD_WITH_MARGINS;
+
+      if (compensationOffset > 0) {
+        const targetScrollY = Math.max(0, currentScrollY.value - compensationOffset);
+        console.log(`📐 [SCROLL-COMP] Card ${cardIndex}: Compensating for ${numRouteCardsAbove} route cards above collapsing`);
+        console.log(`   Route card height: ${ROUTE_CARD_WITH_MARGINS}px | Total offset: ${compensationOffset}px`);
+        console.log(`   Scroll: ${currentScrollY.value.toFixed(1)}px → ${targetScrollY.toFixed(1)}px (delta: ${-(compensationOffset).toFixed(1)}px)`);
+
+        // Apply scroll compensation immediately with smooth animation
+        scrollTo(scrollViewRef, 0, targetScrollY, true); // true = animated
+
+        // Update the tracked scroll position
+        currentScrollY.value = targetScrollY;
+
+        // Update initial scroll to reflect the compensation
+        // This ensures future autoscroll calculations remain correct
+        initialScrollY.value = targetScrollY;
+      }
+
       runOnJS(onDragStart)();
     })
     .onUpdate((event) => {
@@ -928,12 +957,28 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       runOnJS(stopAutoScroll)();
       dragAbsoluteY.value = -1;
 
+      // REVERSE SCROLL COMPENSATION: Route cards will expand back to full height
+      // Scroll back down by the same amount we scrolled up at drag start
+      const ROUTE_CARD_WITH_MARGINS = ITEM_HEIGHT - 110;
+      const numRouteCardsAbove = Math.max(0, cardIndex);
+      const reverseCompensationOffset = numRouteCardsAbove * ROUTE_CARD_WITH_MARGINS;
+
+      if (reverseCompensationOffset > 0) {
+        const targetScrollY = currentScrollY.value + reverseCompensationOffset;
+        console.log(`📐 [SCROLL-COMP] REVERSE: Route cards expanding, scrolling back down`);
+        console.log(`   Offset: ${reverseCompensationOffset}px | Scroll: ${currentScrollY.value.toFixed(1)}px → ${targetScrollY.toFixed(1)}px`);
+
+        // Apply reverse compensation with smooth animation
+        scrollTo(scrollViewRef, 0, targetScrollY, true); // true = animated
+        currentScrollY.value = targetScrollY;
+      }
+
       // Calculate the drag distance and check if it exceeds the threshold
       // Use effective drag distance (including scroll compensation) for threshold check
       // This ensures reordering works correctly when autoscroll is involved
       const effectiveDragDistanceForThreshold = Math.abs(effectiveDragDistance);
       const hasExceededThreshold = effectiveDragDistanceForThreshold >= (ITEM_HEIGHT * MOVEMENT_THRESHOLD);
-      
+
       console.log(`   Threshold check: ${effectiveDragDistanceForThreshold.toFixed(1)}px >= ${(ITEM_HEIGHT * MOVEMENT_THRESHOLD).toFixed(1)}px ? ${hasExceededThreshold ? 'YES' : 'NO'}`);
 
       // Only trigger reorder if:
