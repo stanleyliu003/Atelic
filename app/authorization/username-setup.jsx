@@ -2,7 +2,8 @@ import { Colors } from '../../constants/Colors';
 import { Auth, API } from 'aws-amplify';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const searchUsers = /* GraphQL */ `
   query SearchUsers($searchTerm: String!) {
@@ -23,14 +24,29 @@ export default function UsernameSetup() {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [birthdate, setBirthdate] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [gender, setGender] = useState('');
 
   const handleContinue = async () => {
     setError('');
     setIsLoading(true);
 
-    // Validate username format first
+    // Validate all fields first
     if (!username || username.trim().length < 5) {
       setError('Username must be at least 5 characters long.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!gender) {
+      setError('Please select your gender.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!birthdate) {
+      setError('Please select your birthdate.');
       setIsLoading(false);
       return;
     }
@@ -69,9 +85,11 @@ export default function UsernameSetup() {
       // Step 2: Username is available, update the user's preferred_username
       const user = await Auth.currentAuthenticatedUser();
 
-      // Update preferred_username attribute
+      // Update preferred_username, gender, and birthdate attributes
       await Auth.updateUserAttributes(user, {
-        'preferred_username': username.trim()
+        'preferred_username': username.trim(),
+        'gender': gender,
+        'birthdate': birthdate
       });
 
       console.log('Username updated successfully:', username);
@@ -96,47 +114,131 @@ export default function UsernameSetup() {
       style={{ flex: 1, backgroundColor: Colors.WHITE }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.container}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Choose Your Username</Text>
-          <View style={{ marginTop: 40 }}>
-            <Text style={styles.label}>Username</Text>
-            <TextInput
-              style={styles.input}
-              placeholder='Enter Username (5-20 characters)'
-              value={username}
-              onChangeText={(value) => setUsername(value)}
-              autoCapitalize="none"
-              autoCorrect={false}
-              spellCheck={false}
-              autoFocus={true}
-              editable={!isLoading}
-            />
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        style={{ backgroundColor: Colors.WHITE }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.container}>
+          <View style={styles.content}>
+            <Text style={styles.title}>Complete Your Profile</Text>
+            
+            <View style={{ marginTop: 40 }}>
+              <Text style={styles.label}>Username</Text>
+              <TextInput
+                style={styles.input}
+                placeholder='Enter Username (5-20 characters)'
+                value={username}
+                onChangeText={(value) => setUsername(value)}
+                autoCapitalize="none"
+                autoCorrect={false}
+                spellCheck={false}
+                autoFocus={true}
+                editable={!isLoading}
+              />
+            </View>
+
+            {/* Birthdate Field */}
+            <View style={{ marginTop: 20, marginBottom: 5 }}>
+              <Text style={styles.label}>Birthdate</Text>
+              <TouchableOpacity
+                style={[styles.input, { justifyContent: 'center' }]}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={{ color: birthdate ? Colors.PRIMARY : Colors.GRAY, fontFamily: 'outfit' }}>
+                  {birthdate ? birthdate : 'Select Birthdate'}
+                </Text>
+              </TouchableOpacity>
+              {showDatePicker && (
+                <>
+                  <DateTimePicker
+                    value={birthdate
+                      ? new Date(
+                          Number(birthdate.split('-')[0]),
+                          Number(birthdate.split('-')[1]) - 1,
+                          Number(birthdate.split('-')[2])
+                        )
+                      : new Date(2000, 0, 1)
+                    }
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    maximumDate={new Date()}
+                    onChange={(event, selectedDate) => {
+                      if (selectedDate) {
+                        const yyyy = selectedDate.getFullYear();
+                        const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                        const dd = String(selectedDate.getDate()).padStart(2, '0');
+                        setBirthdate(`${yyyy}-${mm}-${dd}`);
+                      }
+                      if (Platform.OS === 'android') {
+                        setShowDatePicker(false);
+                      }
+                    }}
+                  />
+                  {Platform.OS === 'ios' && (
+                    <TouchableOpacity
+                      style={{ marginTop: 10, alignSelf: 'center', padding: 15, backgroundColor: Colors.PRIMARY, borderRadius: 15, borderColor: Colors.PRIMARY }}
+                      onPress={() => setShowDatePicker(false)}
+                    >
+                      <Text style={{ color: Colors.WHITE, fontSize: 18, fontFamily: 'outfit' }}>Done</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+            </View>
+
+            {/* Gender Field */}
+            <View style={{ marginTop: 20, marginBottom: 5 }}>
+              <Text style={styles.label}>Gender</Text>
+              <View style={{ marginTop: 5, alignItems: 'center', justifyContent: 'center' }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
+                  <TouchableOpacity
+                    style={[styles.genderButton, gender === 'male' && styles.genderButtonSelected]}
+                    onPress={() => setGender('male')}
+                  >
+                    <Text style={{ color: gender === 'male' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Male</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.genderButton, gender === 'female' && styles.genderButtonSelected]}
+                    onPress={() => setGender('female')}
+                  >
+                    <Text style={{ color: gender === 'female' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Female</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.genderButton, gender === 'other' && styles.genderButtonSelected]}
+                    onPress={() => setGender('other')}
+                  >
+                    <Text style={{ color: gender === 'other' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Other</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
+            </View>
+
+            {error ? (
+              <Text style={styles.errorText}>{error}</Text>
+            ) : null}
+
+            <TouchableOpacity
+              onPress={handleContinue}
+              disabled={isLoading || username.length < 5 || !gender || !birthdate}
+              style={[
+                styles.button,
+                {
+                  opacity: (username.length >= 5 && gender && birthdate && !isLoading) ? 1 : 0.3
+                }
+              ]}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={Colors.WHITE} />
+              ) : (
+                <Text style={styles.buttonText}>Next</Text>
+              )}
+            </TouchableOpacity>
+
           </View>
-
-          {error ? (
-            <Text style={styles.errorText}>{error}</Text>
-          ) : null}
-
-          <TouchableOpacity
-            onPress={handleContinue}
-            disabled={isLoading || username.length < 5}
-            style={[
-              styles.button,
-              {
-                opacity: (username.length >= 5 && !isLoading) ? 1 : 0.3
-              }
-            ]}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={Colors.WHITE} />
-            ) : (
-              <Text style={styles.buttonText}>Next</Text>
-            )}
-          </TouchableOpacity>
-
         </View>
-      </View>
+      </ScrollView>
 
       {/* Terms and Privacy Policy - Fixed to bottom */}
       <View style={{
@@ -224,5 +326,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: 'outfit-medium',
     fontSize: 17,
+  },
+  genderButton: {
+    flex: 1,
+    padding: 15,
+    borderWidth: 0.5,
+    borderRadius: 15,
+    borderColor: Colors.GRAY,
+    marginRight: 10,
+    backgroundColor: Colors.WHITE,
+    alignItems: 'center',
+  },
+  genderButtonSelected: {
+    backgroundColor: '#F36406',
   },
 });
