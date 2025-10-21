@@ -728,9 +728,9 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
     ({ dragging, target }) => {
       const offset = calculateShiftOffset(cardIndex, dragging, target);
       shiftOffset.value = withSpring(offset, {
-        damping: 20,      // Smooth but responsive
-        stiffness: 180,   // Slightly snappy
-        mass: 0.8,        // Light feel
+        damping: 16,      // Smooth but responsive
+        stiffness: 190,   // Slightly snappy
+        mass: 0.7,        // Light feel
       });
     }
   );
@@ -742,7 +742,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       if (!isBeingDragged) return { direction: 'none' as const, speed: 0, debug: '' };
 
       const EDGE_ZONE = 120;  // 120px from top/bottom triggers scroll (larger for better UX)
-      const MAX_SPEED = 15;  // Maximum scroll speed (px per frame)
+      const MAX_SPEED = 8;  // Maximum scroll speed (px per frame)
       const MIN_SPEED = 2;   // Minimum scroll speed
 
       const dragY = dragAbsoluteY.value;
@@ -758,7 +758,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
         // Apply quadratic easing for gentler acceleration (ratio²)
         // This keeps speed much lower until very close to edge
         const ratio = linearRatio * linearRatio;
-        let speed = Math.max(MIN_SPEED, MAX_SPEED * ratio)*0.65;
+        let speed = Math.max(MIN_SPEED, MAX_SPEED * ratio *0.8);
 
         // Cap speed to drag velocity + small buffer (1.5x) to prevent scrolling away from drag
         const currentDragSpeed = dragVelocity.value;
