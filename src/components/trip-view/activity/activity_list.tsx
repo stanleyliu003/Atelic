@@ -214,6 +214,7 @@ export function ActivityList({
   // Cast to any to handle both regular and animated refs
   const scrollViewRef = (parentScrollViewRef || ownScrollViewRef) as any;
   const scrollViewLayout = useSharedValue({ y: 0, height: 0 });
+  const scrollViewContentSize = useSharedValue({ width: 0, height: 0 }); // Track actual content size
   const currentScrollY = useSharedValue(0);
   const dragAbsoluteY = useSharedValue(-1);
   const autoScrollInterval = React.useRef<number | null>(null);
@@ -260,6 +261,8 @@ export function ActivityList({
     autoScrollDirection.current = direction;
     autoScrollSpeed.current = speed;
 
+    let scrollFrameCount = 0; // Track frames for logging
+
     const scroll = () => {
       const now = Date.now();
       const deltaTime = (now - lastScrollTime.current) / 16.67; // Normalize to 60fps
@@ -269,11 +272,20 @@ export function ActivityList({
       const currentSpeed = autoScrollSpeed.current;
       const currentDirection = autoScrollDirection.current;
 
-      // Calculate content bounds
-      const ITEM_HEIGHT = 169;
-      const contentHeight = currentActivities.length * ITEM_HEIGHT;
+      // Calculate content bounds using actual measured content size
+      // This adapts automatically when route cards collapse during drag (height: 0)
+      const useMeasured = scrollViewContentSize.value.height > 0;
+      const contentHeight = useMeasured
+        ? scrollViewContentSize.value.height
+        : currentActivities.length * 230; // Fallback to estimated height if not measured yet
       const viewHeight = scrollViewLayout.value.height;
       const maxScroll = Math.max(0, contentHeight - viewHeight);
+
+      // Log content height source on first scroll of each auto-scroll session
+      if (scrollFrameCount === 0) {
+        console.log(`📊 [SCROLL-CALC] Using ${useMeasured ? 'MEASURED' : 'ESTIMATED'} height: ${contentHeight.toFixed(1)}px, maxScroll: ${maxScroll.toFixed(1)}px`);
+      }
+      scrollFrameCount++;
 
       const delta = currentSpeed * deltaTime;
       let newOffset = currentDirection === 'up'
@@ -290,8 +302,12 @@ export function ActivityList({
       currentScrollY.value = newOffset;
 
       // Log the boundaries for debugging
-      if (newOffset === 0 || newOffset === maxScroll) {
-        console.log(`🛑 [AUTO-SCROLL] Reached ${newOffset === 0 ? 'top' : 'bottom'} boundary`);
+      if (newOffset === 0 && maxScroll === 0) {
+        console.log(`🛑 [AUTO-SCROLL] Cannot scroll - content fits in view (maxScroll: 0px)`);
+      } else if (newOffset === 0) {
+        console.log(`🛑 [AUTO-SCROLL] Reached top boundary`);
+      } else if (newOffset >= maxScroll) {
+        console.log(`🛑 [AUTO-SCROLL] Reached bottom boundary`);
       }
 
       autoScrollInterval.current = requestAnimationFrame(scroll);
@@ -320,21 +336,27 @@ export function ActivityList({
 
   // ScrollView handlers
   const handleScrollViewLayout = useCallback((event: any) => {
-    const { height } = event.nativeEvent.layout;
+    const { height: layoutHeight } = event.nativeEvent.layout;
 
     // Measure actual screen position using UIManager
     const handle = findNodeHandle(scrollViewRef.current);
     if (handle) {
-      UIManager.measureInWindow(handle, (_x: number, y: number, _width: number, _height: number) => {
-        scrollViewLayout.value = { y, height };
+      UIManager.measureInWindow(handle, (_x: number, y: number, width: number, measuredHeight: number) => {
+        // IMPORTANT: Use layoutHeight (parent's constraint), not measuredHeight (content's natural size)
+        // The parent container clips the ScrollView, so we need to respect that constraint
+        const visibleHeight = layoutHeight;
+        scrollViewLayout.value = { y, height: visibleHeight };
 
-        // Calculate scrollable content
-        const ITEM_HEIGHT = 169;
-        const contentHeight = currentActivities.length * ITEM_HEIGHT;
-        const maxScroll = Math.max(0, contentHeight - height);
+        // Use actual content size if available, otherwise estimate
+        const contentHeight = scrollViewContentSize.value.height > 0
+          ? scrollViewContentSize.value.height
+          : currentActivities.length * 230; // Fallback estimate
+        const maxScroll = Math.max(0, contentHeight - visibleHeight);
 
-        console.log(`📐 [LAYOUT] ScrollView Y: ${y.toFixed(1)}, Height: ${height.toFixed(1)}`);
+        console.log(`📐 [LAYOUT] ScrollView Y: ${y.toFixed(1)}, Width: ${width.toFixed(1)}`);
+        console.log(`📐 [LAYOUT] Layout Height (visible): ${layoutHeight.toFixed(1)}px, Content Height: ${measuredHeight.toFixed(1)}px`);
         console.log(`📏 [LAYOUT] Content: ${contentHeight.toFixed(1)}px, Max scroll: ${maxScroll.toFixed(1)}px, Activities: ${currentActivities.length}`);
+        console.log(`📱 [LAYOUT] Calculated visible cards: ${(visibleHeight / 189).toFixed(2)} cards (assuming 189px per card with route)`);
       });
     }
   }, [currentActivities.length]);
@@ -480,6 +502,15 @@ export function ActivityList({
           onLayout={handleScrollViewLayout}
           onScroll={handleScroll}
           scrollEventThrottle={16}
+          onContentSizeChange={(width, height) => {
+            const avgPerActivity = currentActivities.length > 0 ? height / currentActivities.length : 0;
+            console.log(`📏 [CONTENT-SIZE] Content size changed: ${height.toFixed(1)}px (${currentActivities.length} activities, avg ${avgPerActivity.toFixed(1)}px each)`);
+            console.log(`📏 [CONTENT-SIZE] Current scrollViewLayout height: ${scrollViewLayout.value.height.toFixed(1)}px`);
+            runOnUI(() => {
+              'worklet';
+              scrollViewContentSize.value = { width, height };
+            })();
+          }}
         >
           {renderActivities()}
         </Animated.ScrollView>
@@ -738,7 +769,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
     .enabled(isGripPressed) // Only enable pan gesture when grip is pressed or long press activated
     .minDistance(5) // Reduced threshold since grip is intentional
     .onStart(() => {
-      console.log(`🎬 [DRAG] Started dragging card ${cardIndex}`);
+      console.log(`🎬 [DRAG] Started dragging card ${cardIndex} - Route cards will collapse (height → 0)`);
       isDragging.value = true;
       scale.value = withSpring(1.05, {
         damping: 12,
@@ -778,7 +809,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       }
     })
     .onEnd((event) => {
-      console.log(`🏁 [DRAG] Ended dragging card ${cardIndex}`);
+      console.log(`🏁 [DRAG] Ended dragging card ${cardIndex} - Route cards will expand (height → normal)`);
 
       // Stop auto-scroll when drag ends
       runOnJS(stopAutoScroll)();

@@ -1,6 +1,5 @@
 import { Colors } from '../../../constants/Colors';
-import React, { useEffect, useRef } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RouteLeg } from '../../services/getRoute_graphQL_call';
 import { Activity } from '../../types/activity.types';
 import { ActivityList } from './activity/activity_list';
@@ -54,20 +53,9 @@ export function DaySchedule({
   onGoToWishlist
 }: DayScheduleProps) {
   const selectedCount = selectedActivities.length;
-  const scrollViewRef = useRef<ScrollView>(null);
-  const isRestoringRef = useRef(false);
 
-  // Restore scroll position only when explicitly triggered and for this specific tab
-  useEffect(() => {
-    if (scrollViewRef.current && shouldRestorePosition) {
-      isRestoringRef.current = true;
-      // Only restore if there's a saved position, otherwise start at 0
-      const targetPosition = scrollPosition || 0;
-      scrollViewRef.current.scrollTo({ y: targetPosition, animated: false });
-      // Reset the flag immediately after scrolling
-      isRestoringRef.current = false;
-    }
-  }, [shouldRestorePosition]);
+  // Note: Scroll position tracking removed since ActivityList now handles its own scrolling
+  // scrollPosition, onScrollPositionChange, shouldRestorePosition are kept in props for backward compatibility
 
   const handleOptimizeRoute = () => {
     if (onOptimizeRoute) {
@@ -106,57 +94,42 @@ export function DaySchedule({
         </View>
       </View>
 
-      {/* Scrollable Content */}
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.scrollContainer}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        onScroll={(event) => {
-          // Only update scroll position if we're not currently restoring
-          if (!isRestoringRef.current) {
-            const currentY = event.nativeEvent.contentOffset.y;
-            onScrollPositionChange?.(currentY);
+      {/* Activities List - handles its own scrolling */}
+      <ActivityList
+        activities={activities}
+        selectedActivities={selectedActivities}
+        onActivitySelect={onActivitySelect}
+        onActivityDeselect={onActivityDeselect}
+        onDescriptionCardPress={onDescriptionCardPress}
+        showSelectionIndicator={showSelectionIndicator}
+        variant="selectable"
+        disabled={disabled}
+        emptyStateActionPress={onGoToWishlist}
+        emptyStateActionText="Move Activities from Wishlist"
+        routeLegs={routeLegs}
+        travelMode={travelMode}
+        enableDragDrop={!disabled}
+        onReorder={(newOrder) => {
+          if (onReorder) {
+            onReorder(dayNumber, newOrder);
           }
         }}
-        scrollEventThrottle={16}
-      >
-        {/* Activities List */}
-        <ActivityList
-          activities={activities}
-          selectedActivities={selectedActivities}
-          onActivitySelect={onActivitySelect}
-          onActivityDeselect={onActivityDeselect}
-          onDescriptionCardPress={onDescriptionCardPress}
-          showSelectionIndicator={showSelectionIndicator}
-          variant="selectable"
-          disabled={disabled}
-          emptyStateActionPress={onGoToWishlist}
-          emptyStateActionText="Move Activities from Wishlist"
-          routeLegs={routeLegs}
-          travelMode={travelMode}
-          enableDragDrop={!disabled}
-          onReorder={(newOrder) => {
-            if (onReorder) {
-              onReorder(dayNumber, newOrder);
-            }
-          }}
-          routeLoading={routeLoading}
-          useInlineSelectionLayout={true}
-        />
+        routeLoading={routeLoading}
+        useInlineSelectionLayout={true}
+        scrollable={true}
+      />
 
-        {/* SearchBar - visible after activities */}
-        {onAddPlace && activities.length > 0 && (
-          <View style={{ marginTop: -30 }}>
-            <SearchBar
-              value={searchQuery}
-              onChangeText={onSearchQueryChange || (() => {})}
-              onPress={onAddPlace}
-              placeholder="Add more activities"
-            />
-          </View>
-        )}
-      </ScrollView>
+      {/* SearchBar - visible after activities */}
+      {onAddPlace && activities.length > 0 && (
+        <View style={{ marginTop: -30, paddingHorizontal: 16 }}>
+          <SearchBar
+            value={searchQuery}
+            onChangeText={onSearchQueryChange || (() => {})}
+            onPress={onAddPlace}
+            placeholder="Add more activities"
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -172,12 +145,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 15,
     paddingHorizontal: 5,
-  },
-  scrollContainer: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 20,
   },
   dayInfo: {
     flex: 1,
