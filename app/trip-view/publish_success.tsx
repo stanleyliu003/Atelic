@@ -60,7 +60,9 @@ export default function PublishSuccess() {
             </View>
 
             {/* Action Buttons */}
+            
             <View style={styles.buttonContainer}>
+                {/* Share Trip Button... Commented out temporarily 
                 <TouchableOpacity 
                     style={styles.shareTripButton}
                     onPress={() => {
@@ -74,6 +76,7 @@ export default function PublishSuccess() {
                 >
                     <Text style={styles.shareTripButtonText}>Share Trip</Text>
                 </TouchableOpacity>
+                */}
 
                 <TouchableOpacity 
                     style={styles.viewProfileButton}
@@ -189,6 +192,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: '#F36406',
+        marginTop: -100
     },
     viewProfileButtonText: {
         color: Colors.WHITE,
