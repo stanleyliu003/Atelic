@@ -122,7 +122,7 @@ export default function TripViewMain() {
     const tripIdRef = useRef(tripId);
 
     // Timeout ref for debouncing autosave
-    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    // const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Version ref for immediate access (avoids async state issues)
     const versionRef = useRef<number>(version);
@@ -1153,47 +1153,48 @@ export default function TripViewMain() {
     }, []);
 
     // AppState listener for autosave when app goes to background
-    useEffect(() => {
-        const handleAppStateChange = (nextAppState: string) => {
-            if (nextAppState === 'background') {
-                console.log('[trip-view_main] App going to background - checking autosave eligibility');
+    // COMMENTED OUT - Autosave disabled
+    // useEffect(() => {
+    //     const handleAppStateChange = (nextAppState: string) => {
+    //         if (nextAppState === 'background') {
+    //             console.log('[trip-view_main] App going to background - checking autosave eligibility');
 
-                // Only autosave for owners and editors, NOT viewers
-                if (currentUserRole === 'viewer') {
-                    console.log('[trip-view_main] User is viewer, skipping autosave');
-                    return;
-                }
+    //             // Only autosave for owners and editors, NOT viewers
+    //             if (currentUserRole === 'viewer') {
+    //                 console.log('[trip-view_main] User is viewer, skipping autosave');
+    //                 return;
+    //             }
 
-                console.log('[trip-view_main] User has edit permissions, scheduling autosave');
+    //             console.log('[trip-view_main] User has edit permissions, scheduling autosave');
 
-                // Clear any pending autosave
-                if (saveTimeoutRef.current) {
-                    clearTimeout(saveTimeoutRef.current);
-                }
+    //             // Clear any pending autosave
+    //             if (saveTimeoutRef.current) {
+    //                 clearTimeout(saveTimeoutRef.current);
+    //             }
 
-                // Debounce autosave by 500ms to prevent rapid duplicate saves
-                saveTimeoutRef.current = setTimeout(() => {
-                    // Only autosave if we have a trip with activities or days
-                    if (tripIdRef.current || activities.length > 0 || Object.keys(dayActivities).length > 0) {
-                        console.log('[trip-view_main] Executing debounced autosave');
-                        saveTrip().catch(error => {
-                            console.error('[trip-view_main] Autosave failed on app background:', error);
-                        });
-                    }
-                }, 500);
-            }
-        };
+    //             // Debounce autosave by 500ms to prevent rapid duplicate saves
+    //             saveTimeoutRef.current = setTimeout(() => {
+    //                 // Only autosave if we have a trip with activities or days
+    //                 if (tripIdRef.current || activities.length > 0 || Object.keys(dayActivities).length > 0) {
+    //                     console.log('[trip-view_main] Executing debounced autosave');
+    //                     saveTrip().catch(error => {
+    //                         console.error('[trip-view_main] Autosave failed on app background:', error);
+    //                     });
+    //                 }
+    //             }, 500);
+    //         }
+    //     };
 
-        const subscription = AppState.addEventListener('change', handleAppStateChange);
+    //     const subscription = AppState.addEventListener('change', handleAppStateChange);
 
-        return () => {
-            // Clean up timeout on unmount
-            if (saveTimeoutRef.current) {
-                clearTimeout(saveTimeoutRef.current);
-            }
-            subscription?.remove();
-        };
-    }, [tripId, activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt, currentUserRole]);
+    //     return () => {
+    //         // Clean up timeout on unmount
+    //         if (saveTimeoutRef.current) {
+    //             clearTimeout(saveTimeoutRef.current);
+    //         }
+    //         subscription?.remove();
+    //     };
+    // }, [tripId, activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt, currentUserRole]);
 
     // Real-time subscription for trip updates
     useEffect(() => {
