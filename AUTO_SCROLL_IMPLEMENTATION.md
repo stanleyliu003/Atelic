@@ -1,6 +1,8 @@
 # Auto-Scroll Implementation - COMPLETE ✅
 
-## 🎯 Problem Solved
+## 🎯 Problems Solved
+
+### Problem 1: Auto-scroll blocked during drag
 
 **Issue:** Auto-scroll during drag wasn't working because the active `PanGesture` blocked React Native's `scrollTo()` method.
 
@@ -12,6 +14,52 @@
 **Solution:** 
 - Use Reanimated's `scrollTo()` which runs directly on UI thread
 - Both gesture and scroll operate on same thread → **co-exist perfectly**
+
+### Problem 2: Dragged card doesn't follow finger during autoscroll
+
+**Issue:** When autoscroll occurs, the dragged activity card doesn't move with the scroll offset, causing it to appear to "lag behind" the user's finger.
+
+**Root Cause:**
+- `event.translationY` is relative to where gesture started, NOT adjusted for scroll changes
+- When autoscroll moves content (e.g., 50px down), card position doesn't compensate
+- Result: Card appears to drift away from finger position
+
+**Solution:**
+- Track `initialScrollY` when drag starts
+- Calculate scroll delta: `scrollDelta = currentScrollY - initialScrollY`
+- Apply compensation: `translateY = event.translationY + scrollDelta`
+- This keeps card locked under user's finger even as content scrolls
+
+### Problem 3: Scrolling up from last activity doesn't work properly
+
+**Issue:** When dragging the last activity upward from the bottom of the list, autoscroll compensation breaks.
+
+**Root Cause:**
+- `maxScroll` was calculated as `(contentHeight - SearchBarHeight) - viewHeight`
+- But users can scroll to show the SearchBar, so `currentScrollY` can exceed `maxScroll`
+- When autoscrolling UP, clamping operation `Math.min(maxScroll, newOffset)` creates sudden jumps
+- This breaks the scroll compensation delta calculation
+
+**Solution:**
+- Include SearchBar in `maxScroll` calculation: `maxScroll = contentHeight - viewHeight`
+- SearchBar is scrollable content, not a boundary restriction
+- Now `currentScrollY` will never exceed `maxScroll`, keeping compensation smooth
+
+### Problem 4: Reordering to positions outside initial view doesn't work
+
+**Issue:** When dragging an activity to positions outside the initial viewport (using autoscroll), the reorder operation doesn't happen even though the card visually appears in the correct position.
+
+**Root Cause:**
+- Target index calculation used raw `event.translationY` from gesture
+- Visual position used `event.translationY + scrollDelta` (compensated)
+- Mismatch: Card appears at position for index 1, but system thinks it's at index 4
+- Threshold check also used raw gesture distance, missing effective movement
+
+**Solution:**
+- Calculate effective drag distance: `effectiveDragDistance = event.translationY + scrollDelta`
+- Use effective distance for target index: `positionChange = round(effectiveDragDistance / ITEM_HEIGHT)`
+- Use effective distance for threshold check: `hasExceeded = abs(effectiveDragDistance) >= threshold`
+- Now target index matches visual position, enabling reorders across entire scrollable range
 
 ---
 
@@ -63,6 +111,38 @@ scrollViewRef.current?.scrollTo({ y: newOffset, animated: false });
 runOnUI(performScrollWorklet)(newOffset);
 ```
 
+### 5. **Scroll Compensation - Keeping Card Under Finger**
+```typescript
+// NEW: Track initial scroll position
+const initialScrollY = useSharedValue(0);
+
+// In panGesture.onStart():
+initialScrollY.value = currentScrollY.value;
+
+// In animatedStyle:
+const animatedStyle = useAnimatedStyle(() => {
+  const isBeingDragged = activeDragIndex.value === cardIndex;
+  
+  // Calculate scroll compensation
+  const scrollDelta = isBeingDragged 
+    ? (currentScrollY.value - initialScrollY.value) 
+    : 0;
+
+  return {
+    transform: [
+      { translateX: translateX.value },
+      {
+        translateY: isBeingDragged
+          ? translateY.value - scrollDelta  // ✅ Compensate for autoscroll
+          : shiftOffset.value
+      },
+      { scale: scale.value },
+    ],
+    // ...
+  };
+});
+```
+
 ---
 
 ## 📊 Architecture Flow
@@ -95,6 +175,15 @@ runOnUI(performScrollWorklet)(newOffset);
 │ runOnUI(performScrollWorklet)(newOffset)                    │
 │   └─> scrollTo(scrollViewRef, 0, newOffset, false)         │
 │       ✅ Bypasses gesture blocking!                         │
+│       Updates currentScrollY.value                          │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Position Compensation (UI Thread - useAnimatedStyle)        │
+│ - Calculates scrollDelta = currentScrollY - initialScrollY  │
+│ - Applies: translateY = gestureTranslation - scrollDelta    │
+│ - ✅ Card stays locked under user's finger!                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -132,14 +221,16 @@ AFTER: With Reanimated scrollTo, scroll works during drag!
    - `▶️ [AUTO-SCROLL] STARTED - Direction: up`
    - `✨ [REANIMATED] Using UI-thread scrollTo`
 3. ✅ **ScrollView smoothly scrolls UP** while dragging
-4. ✅ Cards continue shifting to make space
-5. ✅ Release → auto-scroll stops immediately
+4. ✅ **Card stays locked under user's finger** (scroll compensation active)
+5. ✅ Cards continue shifting to make space
+6. ✅ Release → auto-scroll stops immediately
 
 ### **Scenario 2: Drag Card Downward Near Bottom**
 1. ✅ User drags card downward
 2. ✅ Cards shift up to make space
 3. ✅ When finger enters bottom 120px zone:
    - ScrollView scrolls DOWN
+   - **Dragged card moves DOWN with the scroll** (stays under finger)
    - More cards become visible
 4. ✅ User can drop on newly revealed positions
 5. ✅ Release → reorder completes
@@ -238,6 +329,7 @@ Once verified working:
 - ✅ No memory leaks - RAF properly cleaned up
 - ✅ Handles edge cases - short content, rapid changes, gesture cancel
 - ✅ **Works during active gesture** - the key fix!
+- ✅ **Dragged card stays under finger during autoscroll** - scroll compensation active!
 
 ---
 

@@ -9,10 +9,27 @@
  * - Solution: RAF loop calls `runOnUI(performScrollWorklet)` which uses Reanimated's scrollTo
  * - Both gesture and scroll run on UI thread, allowing them to co-exist
  * 
+ * 🔄 SCROLL COMPENSATION:
+ * - When autoscroll occurs, the dragged card's position must compensate for the scroll delta
+ * - Track initialScrollY when drag starts, calculate scrollDelta = currentScrollY - initialScrollY
+ * - Apply: translateY = gestureTranslation + scrollDelta (ADD, not subtract!)
+ * - When scrolling DOWN (scrollY↑), content moves UP → add positive delta to move card DOWN
+ * - When scrolling UP (scrollY↓), content moves DOWN → add negative delta to move card UP
+ * - This keeps the card locked under the user's finger even as content scrolls
+ * - CRITICAL: Target index calculation must use effectiveDragDistance = translationY + scrollDelta
+ * - Otherwise, visual position and reorder logic are out of sync!
+ * 
+ * 📊 MAX SCROLL CALCULATION:
+ * - maxScroll = contentHeight - viewHeight (includes SearchBar at bottom)
+ * - SearchBar is scrollable content, not a boundary restriction
+ * - Previous bug: Excluding SearchBar caused currentScrollY > maxScroll, breaking compensation
+ * - Fix: Include all content in maxScroll to prevent clamping issues
+ * 
  * 📐 ARCHITECTURE:
  * - Edge detection: useAnimatedReaction (UI thread) → detects when drag enters edge zones
  * - Auto-scroll loop: requestAnimationFrame (JS thread) → calculates scroll position
  * - Scroll execution: runOnUI → performScrollWorklet (UI thread) → Reanimated scrollTo
+ * - Position compensation: animatedStyle → add scrollDelta to translateY
  * 
  * ✅ VERIFIED BY TESTS:
  * - Test 1: Manual button scrolling works (no active gesture)
@@ -214,10 +231,6 @@ export function ActivityList({
   const targetDropIndex = useSharedValue<number>(-1);
   const activeDragIndex = useSharedValue<number>(-1);
 
-  // SearchBar height to exclude from auto-scroll range (only when shown)
-  const SEARCH_BAR_HEIGHT = 64; // Approximate height: container padding (20) + search bar (44) + margin
-  const hasSearchBar = onAddPlace && activities.length > 0;
-
   // Auto-scroll infrastructure
   // Use parent ref if provided, otherwise create own ref
   // Using useAnimatedRef for Reanimated's scrollTo compatibility
@@ -255,6 +268,8 @@ export function ActivityList({
 
   // Auto-scroll functions
   const startAutoScroll = useCallback((direction: 'up' | 'down', speed: number) => {
+    console.log(`▶️ [SCROLL-COMP] AUTO-SCROLL ${direction.toUpperCase()} started | Speed: ${speed.toFixed(2)}px/frame | Current scrollY: ${currentScrollY.value.toFixed(1)}px`);
+    
     // Update speed if already running in same direction
     if (autoScrollInterval.current !== null) {
       if (autoScrollDirection.current === direction) {
@@ -292,16 +307,16 @@ export function ActivityList({
         : currentActivities.length * 230; // Fallback to estimated height if not measured yet
       const viewHeight = scrollViewLayout.value.height;
       
-      // Subtract SearchBar height from content to prevent auto-scrolling to it
-      // SearchBar is not draggable, so no need to scroll to it during drag operations
-      const searchBarOffset = hasSearchBar ? SEARCH_BAR_HEIGHT : 0;
-      const draggableContentHeight = contentHeight - searchBarOffset;
-      const maxScroll = Math.max(0, draggableContentHeight - viewHeight);
+      // Include SearchBar in maxScroll calculation
+      // Even though SearchBar is not draggable, users can scroll to it normally,
+      // so currentScrollY can legitimately exceed a "SearchBar-excluded" maxScroll.
+      // This was causing issues when dragging last activity upward from bottom.
+      const maxScroll = Math.max(0, contentHeight - viewHeight);
 
       // Log content height source on first scroll of each auto-scroll session
-      // if (scrollFrameCount === 0) {
-      //   console.log(`📊 [SCROLL-CALC] Using ${useMeasured ? 'MEASURED' : 'ESTIMATED'} height: ${contentHeight.toFixed(1)}px, SearchBar offset: ${searchBarOffset}px, maxScroll: ${maxScroll.toFixed(1)}px`);
-      // }
+      if (scrollFrameCount === 0) {
+        console.log(`📊 [SCROLL-BOUNDS] Content: ${contentHeight.toFixed(1)}px | View: ${viewHeight.toFixed(1)}px | MaxScroll: ${maxScroll.toFixed(1)}px | CurrentScroll: ${currentOffset.toFixed(1)}px | Direction: ${currentDirection}`);
+      }
       scrollFrameCount++;
 
       const delta = currentSpeed * deltaTime;
@@ -311,6 +326,12 @@ export function ActivityList({
 
       // Clamp to valid scroll range
       newOffset = Math.max(0, Math.min(maxScroll, newOffset));
+
+      // Log every 20px of scroll change for debugging
+      const scrollChange = Math.abs(newOffset - currentOffset);
+      if (scrollFrameCount % 10 === 0 || scrollChange > 20) { // Log every 10 frames or big jumps
+        console.log(`🔄 [SCROLL-COMP] Scrolling ${currentDirection} | Old: ${currentOffset.toFixed(1)}px → New: ${newOffset.toFixed(1)}px | Delta: ${(newOffset - currentOffset).toFixed(1)}px`);
+      }
 
       // Use Reanimated's scrollTo on UI thread to bypass gesture blocking
       runOnUI(performScrollWorklet)(newOffset);
@@ -332,17 +353,15 @@ export function ActivityList({
 
     lastScrollTime.current = Date.now();
     scroll();
-  }, [currentActivities.length, performScrollWorklet, hasSearchBar, SEARCH_BAR_HEIGHT]);
+  }, [currentActivities.length, performScrollWorklet]);
 
   const stopAutoScroll = useCallback(() => {
     if (autoScrollInterval.current !== null) {
-      // console.log('⏹️ [AUTO-SCROLL] STOPPED - Called from:', new Error().stack?.split('\n')[2]);
+      console.log(`⏹️ [SCROLL-COMP] AUTO-SCROLL STOPPED | Final scrollY: ${currentScrollY.value.toFixed(1)}px`);
       cancelAnimationFrame(autoScrollInterval.current);
       autoScrollInterval.current = null;
       autoScrollDirection.current = 'none';
       autoScrollSpeed.current = 0;
-    } else {
-      // console.log('⏹️ [AUTO-SCROLL] STOPPED called but already stopped');
     }
   }, []);
 
@@ -369,18 +388,16 @@ export function ActivityList({
           ? scrollViewContentSize.value.height
           : currentActivities.length * 230; // Fallback estimate
         
-        // Subtract SearchBar height to get draggable content area
-        const searchBarOffset = hasSearchBar ? SEARCH_BAR_HEIGHT : 0;
-        const draggableContentHeight = contentHeight - searchBarOffset;
-        const maxScroll = Math.max(0, draggableContentHeight - visibleHeight);
+        // Include SearchBar in maxScroll (it's scrollable content)
+        const maxScroll = Math.max(0, contentHeight - visibleHeight);
 
         // console.log(`📐 [LAYOUT] ScrollView Y: ${y.toFixed(1)}, Width: ${width.toFixed(1)}`);
         // console.log(`📐 [LAYOUT] Layout Height (visible): ${layoutHeight.toFixed(1)}px, Content Height: ${measuredHeight.toFixed(1)}px`);
-        // console.log(`📏 [LAYOUT] Content: ${contentHeight.toFixed(1)}px, SearchBar offset: ${searchBarOffset}px, Draggable: ${draggableContentHeight.toFixed(1)}px, Max scroll: ${maxScroll.toFixed(1)}px, Activities: ${currentActivities.length}`);
+        // console.log(`📏 [LAYOUT] Content: ${contentHeight.toFixed(1)}px, Max scroll: ${maxScroll.toFixed(1)}px, Activities: ${currentActivities.length}`);
         // console.log(`📱 [LAYOUT] Calculated visible cards: ${(visibleHeight / 189).toFixed(2)} cards (assuming 189px per card with route)`);
       });
     }
-  }, [currentActivities.length, hasSearchBar, SEARCH_BAR_HEIGHT]);
+  }, [currentActivities.length]);
 
   const handleScroll = useCallback((event: any) => {
     const newScrollY = event.nativeEvent.contentOffset.y;
@@ -675,6 +692,9 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
   // Track the original position
   const originalIndex = useSharedValue(index);
 
+  // Track scroll offset when drag starts to compensate for autoscroll
+  const initialScrollY = useSharedValue(0);
+
   const ITEM_HEIGHT = 169; // Total height: activity card (110px) + route info card (~54px) + margins (5px)
   const MOVEMENT_THRESHOLD = 0.3; // Card must be dragged at least 30% of ITEM_HEIGHT to trigger reorder (~51px)
 
@@ -846,7 +866,6 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       }
     })
     .onStart(() => {
-      // console.log(`🎬 [DRAG] Started dragging card ${cardIndex} - Route cards will collapse (height → 0)`);
       isDragging.value = true;
       scale.value = withSpring(1.05, {
         damping: 12,
@@ -856,6 +875,11 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       originalIndex.value = cardIndex;
       activeDragIndex.value = cardIndex; // Broadcast that this card is being dragged
       targetDropIndex.value = cardIndex; // Initial target is current position
+      
+      // Capture initial scroll position to compensate for autoscroll during drag
+      initialScrollY.value = currentScrollY.value;
+      console.log(`🎬 [SCROLL-COMP] Drag started on card ${cardIndex} | Initial scrollY: ${currentScrollY.value.toFixed(1)}px`);
+      
       runOnJS(onDragStart)();
     })
     .onUpdate((event) => {
@@ -880,27 +904,37 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
         // console.log('⚠️ [DRAG] event.absoluteY is undefined - edge detection may not work');
       }
 
-      // Calculate target index based on drag distance
-      const dragDistance = event.translationY;
-      const positionChange = Math.round(dragDistance / ITEM_HEIGHT);
+      // Calculate target index based on drag distance INCLUDING scroll compensation
+      // The visual position is event.translationY + scrollDelta, so target calculation must match
+      const scrollDelta = currentScrollY.value - initialScrollY.value;
+      const effectiveDragDistance = event.translationY + scrollDelta;
+      const positionChange = Math.round(effectiveDragDistance / ITEM_HEIGHT);
       const newTargetIndex = Math.max(0, Math.min(totalItems - 1, originalIndex.value + positionChange));
 
       // Broadcast target index to all cards for coordinated shifting
       if (newTargetIndex !== targetDropIndex.value) {
-        // console.log(`🎯 [DRAG] Target index changed: ${targetDropIndex.value} → ${newTargetIndex}`);
+        console.log(`🎯 [DRAG] Target index: ${targetDropIndex.value} → ${newTargetIndex} | Gesture: ${event.translationY.toFixed(1)}px | ScrollDelta: ${scrollDelta.toFixed(1)}px | Effective: ${effectiveDragDistance.toFixed(1)}px | PosChange: ${positionChange}`);
         targetDropIndex.value = newTargetIndex;
       }
     })
     .onEnd((event) => {
-      // console.log(`🏁 [DRAG] Ended dragging card ${cardIndex} - Route cards will expand (height → normal)`);
+      const finalScrollDelta = currentScrollY.value - initialScrollY.value;
+      const effectiveDragDistance = event.translationY + finalScrollDelta;
+      console.log(`🏁 [SCROLL-COMP] Drag ended on card ${cardIndex}`);
+      console.log(`   Gesture: ${event.translationY.toFixed(1)}px | ScrollDelta: ${finalScrollDelta.toFixed(1)}px | Effective: ${effectiveDragDistance.toFixed(1)}px`);
+      console.log(`   Original index: ${originalIndex.value} → Target index: ${targetDropIndex.value} | Will ${targetDropIndex.value !== originalIndex.value ? 'REORDER' : 'stay in place'}`);
 
       // Stop auto-scroll when drag ends
       runOnJS(stopAutoScroll)();
       dragAbsoluteY.value = -1;
 
       // Calculate the drag distance and check if it exceeds the threshold
-      const dragDistance = Math.abs(event.translationY);
-      const hasExceededThreshold = dragDistance >= (ITEM_HEIGHT * MOVEMENT_THRESHOLD);
+      // Use effective drag distance (including scroll compensation) for threshold check
+      // This ensures reordering works correctly when autoscroll is involved
+      const effectiveDragDistanceForThreshold = Math.abs(effectiveDragDistance);
+      const hasExceededThreshold = effectiveDragDistanceForThreshold >= (ITEM_HEIGHT * MOVEMENT_THRESHOLD);
+      
+      console.log(`   Threshold check: ${effectiveDragDistanceForThreshold.toFixed(1)}px >= ${(ITEM_HEIGHT * MOVEMENT_THRESHOLD).toFixed(1)}px ? ${hasExceededThreshold ? 'YES' : 'NO'}`);
 
       // Only trigger reorder if:
       // 1. The target position is different from original position
@@ -952,14 +986,35 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
   const animatedStyle = useAnimatedStyle(() => {
     const isBeingDragged = activeDragIndex.value === cardIndex;
 
+    // Calculate scroll compensation for dragged card
+    // When content scrolls, the card moves with it, but gesture translation doesn't account for this
+    // 
+    // Scroll DOWN (scrollY increases): content moves UP on screen
+    //   - Card's base position moves UP
+    //   - Need to move card DOWN to compensate (add positive delta)
+    // 
+    // Scroll UP (scrollY decreases): content moves DOWN on screen
+    //   - Card's base position moves DOWN
+    //   - Need to move card UP to compensate (add negative delta)
+    //
+    // Formula: translateY = gestureTranslation + scrollDelta
+    const scrollDelta = isBeingDragged ? (currentScrollY.value - initialScrollY.value) : 0;
+
+    // Log compensation calculations (throttled to avoid spam)
+    if (isBeingDragged && Math.abs(scrollDelta) > 0.1) {
+      if (Math.floor(Math.abs(scrollDelta)) % 10 === 0) { // Log every 10px of scroll
+        console.log(`📐 [SCROLL-COMP] Card ${cardIndex} | Gesture: ${translateY.value.toFixed(1)}px | ScrollDelta: ${scrollDelta.toFixed(1)}px | Final: ${(translateY.value + scrollDelta).toFixed(1)}px`);
+      }
+    }
+
+    const finalTranslateY = isBeingDragged
+      ? translateY.value + scrollDelta  // Dragged card: gesture + scroll compensation
+      : shiftOffset.value;              // Other cards: shift to make space
+
     return {
       transform: [
         { translateX: translateX.value },
-        {
-          translateY: isBeingDragged
-            ? translateY.value        // Dragged card: follow finger
-            : shiftOffset.value       // Other cards: shift to make space
-        },
+        { translateY: finalTranslateY },
         { scale: scale.value },
       ],
       zIndex: isBeingDragged ? 9999 : cardIndex,
