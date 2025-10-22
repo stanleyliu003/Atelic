@@ -1110,7 +1110,7 @@ export default function TripViewMain() {
                 // Version conflict detected - another user updated the trip
                 console.error(`[trip-view_main] ⚠️ VERSION CONFLICT - Attempted to save version ${versionRef.current + 1}, but trip was already updated by another user`);
                 console.error(`[trip-view_main] Local version ref: ${versionRef.current}, Local version context: ${version}, Attempted save version: ${versionRef.current + 1}`);
-
+                {/* 
                 Alert.alert(
                     'Trip Updated',
                     `This trip was updated by another user while you were editing. Please reload to see the latest changes.`,
@@ -1125,6 +1125,7 @@ export default function TripViewMain() {
                         }
                     ]
                 );
+                */}
                 return; // Don't throw, handled gracefully
             }
 
