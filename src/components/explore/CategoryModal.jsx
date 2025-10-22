@@ -61,10 +61,13 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
       
       setWishlistActivityIdsInResults(activitiesInWishlist);
       setDayActivityIdsInResults(activitiesInDays);
-      
-      // Auto-select both wishlist and day activities
-      const allSelectedIds = [...new Set([...activitiesInWishlist, ...activitiesInDays])];
-      setSelectedActivityIds(allSelectedIds);
+
+      // Preserve existing manual selections and add auto-selected activities
+      setSelectedActivityIds(prev => {
+        const autoSelectedIds = [...new Set([...activitiesInWishlist, ...activitiesInDays])];
+        // Keep all previous selections and add any new auto-selected ones
+        return [...new Set([...prev, ...autoSelectedIds])];
+      });
     } else if (activities.length === 0) {
       // Reset when activities are cleared
       setWishlistActivityIdsInResults([]);
