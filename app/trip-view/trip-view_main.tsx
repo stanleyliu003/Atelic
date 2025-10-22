@@ -609,22 +609,21 @@ export default function TripViewMain() {
 
         // Only show confirmation dialog if the day has activities
         if (hasActivities) {
-            // Alert.alert(
-            //     'Delete Day',
-            //     `Are you sure you want to delete Day ${dayToDelete}?`,
-            //     [
-            //         {
-            //             text: 'Cancel',
-            //             style: 'cancel'
-            //         },
-            //         {
-            //             text: 'Delete',
-            //             style: 'destructive',
-            //             onPress: performDeletion
-            //         }
-            //     ]
-            // );
-            performDeletion(); // Delete without confirmation
+             Alert.alert(
+                 'Delete Day',
+                 `Are you sure you want to delete Day ${dayToDelete}?`,
+                 [
+                     {
+                         text: 'Cancel',
+                         style: 'cancel'
+                     },
+                     {
+                         text: 'Delete',
+                         style: 'destructive',
+                         onPress: performDeletion
+                     }
+                 ]
+             );
         } else {
             // No activities, delete immediately without confirmation
             performDeletion();
