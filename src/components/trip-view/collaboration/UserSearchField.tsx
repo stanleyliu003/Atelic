@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { API } from 'aws-amplify';
 import { searchUsers } from '../../../graphql/queries';
+import { getAvatarColor } from '../../../utils/avatarColors';
 
 interface UserProfile {
   userID: string;
@@ -150,7 +151,7 @@ export const UserSearchField: React.FC<UserSearchFieldProps> = ({
                   style={styles.resultItem}
                   onPress={() => handleUserSelect(user)}
                 >
-                  <View style={styles.userAvatar}>
+                  <View style={[styles.userAvatar, { backgroundColor: getAvatarColor(user.email) }]}>
                     <Text style={styles.avatarText}>
                       {user.fullName.charAt(0).toUpperCase()}
                     </Text>
@@ -222,12 +223,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
     borderRadius: 8,
-    maxHeight: 200,
+    maxHeight: 350,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.5,
     shadowRadius: 15,
     elevation: 1000,
+    overflow: 'hidden',
   },
   resultItem: {
     flexDirection: 'row',
@@ -235,12 +237,12 @@ const styles = StyleSheet.create({
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+    backgroundColor: '#E9EEF6',
   },
   userAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
