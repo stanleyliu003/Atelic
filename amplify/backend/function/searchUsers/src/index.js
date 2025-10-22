@@ -76,10 +76,11 @@ exports.handler = async (event) => {
         const usernameAttr = user.Attributes.find(attr => attr.Name === 'preferred_username');
         const identitiesAttr = user.Attributes.find(attr => attr.Name === 'identities');
 
-        // Determine if user is from external provider (Google)
-        // Users authenticated via Google OAuth will have an 'identities' attribute
-        // or their Username will start with 'google_'
-        const isExternalProvider = !!identitiesAttr || user.Username.startsWith('google_');
+        // Determine if user is from external provider (Google or Apple)
+        // Users authenticated via OAuth will have an 'identities' attribute
+        // Google users: Username starts with 'google_'
+        // Apple users: Username starts with 'signinwithapple_'
+        const isExternalProvider = !!identitiesAttr || user.Username.startsWith('google_') || user.Username.startsWith('signinwithapple_');
 
         return {
           userID: user.Username,

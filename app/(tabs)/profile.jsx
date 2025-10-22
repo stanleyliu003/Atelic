@@ -41,6 +41,7 @@ export default function Profile() {
       const userName = user.attributes?.preferred_username || '';
       // Use username (not sub) for consistency with collaborator storage
       // For Google OAuth users, username is like 'google_110194548211753772771'
+      // For Apple OAuth users, username is like 'signinwithapple_000664.415e0f3e94404bee9a761c4921ebc4e2.2215'
       // For native users, username is their Cognito UUID
       const userID = user.username;
 
