@@ -609,21 +609,22 @@ export default function TripViewMain() {
 
         // Only show confirmation dialog if the day has activities
         if (hasActivities) {
-            Alert.alert(
-                'Delete Day',
-                `Are you sure you want to delete Day ${dayToDelete}?`,
-                [
-                    {
-                        text: 'Cancel',
-                        style: 'cancel'
-                    },
-                    {
-                        text: 'Delete',
-                        style: 'destructive',
-                        onPress: performDeletion
-                    }
-                ]
-            );
+            // Alert.alert(
+            //     'Delete Day',
+            //     `Are you sure you want to delete Day ${dayToDelete}?`,
+            //     [
+            //         {
+            //             text: 'Cancel',
+            //             style: 'cancel'
+            //         },
+            //         {
+            //             text: 'Delete',
+            //             style: 'destructive',
+            //             onPress: performDeletion
+            //         }
+            //     ]
+            // );
+            performDeletion(); // Delete without confirmation
         } else {
             // No activities, delete immediately without confirmation
             performDeletion();
@@ -790,7 +791,7 @@ export default function TripViewMain() {
             await generateActivitiesForCategory(category.category);
         } catch (error) {
             console.error('[trip-view_main] Error generating category activities:', error);
-            Alert.alert('Error', 'Failed to load activities. Please try again.');
+            // Alert.alert('Error', 'Failed to load activities. Please try again.');
             setShowCategoryModal(false);
         } finally {
             setLoadingCategoryActivities(false);
@@ -839,7 +840,7 @@ export default function TripViewMain() {
             // Get owner's userID from collaborators
             const owner = collaborators.find(c => c.role === 'owner');
             if (!owner) {
-                Alert.alert('Error', 'Unable to reload trip: Owner information missing');
+                // Alert.alert('Error', 'Unable to reload trip: Owner information missing');
                 return;
             }
 
@@ -862,7 +863,7 @@ export default function TripViewMain() {
             }
         } catch (error) {
             console.error('[trip-view_main] ❌ Error reloading trip:', error);
-            Alert.alert('Error', 'Failed to reload trip. Please try again.');
+            // Alert.alert('Error', 'Failed to reload trip. Please try again.');
         }
     };
 
@@ -1032,7 +1033,7 @@ export default function TripViewMain() {
                 const owner = collaborators.find(c => c.role === 'owner');
                 if (!owner) {
                     console.error('[trip-view_main] No owner found in collaborators');
-                    Alert.alert('Error', 'Trip owner information is missing. Cannot save trip.');
+                    // Alert.alert('Error', 'Trip owner information is missing. Cannot save trip.');
                     return;
                 }
                 ownerUserID = owner.userID; // Always use owner's userID as partition key
@@ -1300,7 +1301,7 @@ export default function TripViewMain() {
                 setCollaborators([ownerCollaborator]);
             } catch (error) {
                 console.error('[trip-view_main] Error getting current user for collaborators:', error);
-                Alert.alert('Error', 'Unable to load user information for sharing');
+                // Alert.alert('Error', 'Unable to load user information for sharing');
                 return;
             }
         }
