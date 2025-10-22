@@ -275,8 +275,8 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
                     </View>
                   )}
                 </View>
-
-                {/* Message Section - shown when user is selected */}
+                  
+                {/* Message Section - shown when user is selected 
                 {selectedUser && (
                   <View style={styles.messageSection}>
                     <TouchableOpacity
@@ -309,7 +309,9 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
                       />
                     )}
                   </View>
-                )}
+                )} 
+                Commenting out for now - will implement proper link sharing based on email later
+                */}
 
                 {selectedUser && (
                   <View style={styles.buttonRow}>

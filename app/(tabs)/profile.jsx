@@ -605,7 +605,7 @@ export default function Profile() {
                             }}
                             disabled={isLoadingTrip || deletingTripId === trip.tripId}
                           >
-                            <FontAwesome name="ellipsis-h" size={16} color={Colors.GRAY} />
+                            <FontAwesome6 name="ellipsis" size={24} color={Colors.GRAY} />
                           </TouchableOpacity>
                         )}
                       </View>
