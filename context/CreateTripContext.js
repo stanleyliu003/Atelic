@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, startTransition } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { randomUUID } from 'expo-crypto';
 import { retrieveTripFromCloud, listUserTripsFromCloud } from '../src/services/lambdaService';
@@ -174,65 +174,78 @@ export const CreateTripProvider = ({ children }) => {
     // Restore all trip state from a trip object
     const restoreTripFromObject = (trip, currentUserID = null) => {
         console.log('[CreateTripContext] restoreTripFromObject: incoming tripId:', trip?.tripId);
-        setTripId(trip.tripId);
-        updateActivities(trip.wishlist);
-        setAllDayActivities(trip.days);
-        setAllDayPolylines(trip.days);
-        // Restore city categories from cloud (if provided)
-        if (trip.cityCategories) {
-            console.log('[CreateTripContext] Restoring cityCategories from cloud. Count:', Array.isArray(trip.cityCategories) ? trip.cityCategories.length : 'null');
-            setCityCategories(trip.cityCategories);
-        } else {
-            console.log('[CreateTripContext] No cityCategories on cloud trip. Clearing local cityCategories');
-            setCityCategories(null);
-        }
-        // Restore tripLength if available, otherwise derive from days
-        if (trip.tripLength) {
-            setTripLength(trip.tripLength);
-        } else if (trip.days && trip.days.length > 0) {
-            // Derive tripLength from the number of days if not explicitly stored
-            setTripLength(trip.days.length);
-        }
-        // Restore tripPhotoReference if available (should be an array from backend)
-        if (trip.tripPhotoReference) {
-            // Backend should always return array, but handle safely
-            const photoRefs = Array.isArray(trip.tripPhotoReference)
-                ? trip.tripPhotoReference
-                : [trip.tripPhotoReference];
-            setTripPhotoReference(photoRefs);
-        } else {
-            setTripPhotoReference([]);
-        }
-        // Restore createdAt timestamp
-        if (trip.createdAt) {
-            setCreatedAt(trip.createdAt);
-        }
-        // Restore trip dates
-        if (trip.startDate) {
-            setStartDate(trip.startDate);
-        }
-        if (trip.endDate) {
-            setEndDate(trip.endDate);
-        }
-        // Restore collaboration state
-        setCollaborators(trip.collaborators || []);
-        if (currentUserID) {
-            const userRole = getUserRoleInTrip(trip, currentUserID);
-            setCurrentUserRole(userRole);
-        }
-        // Restore version tracking fields
-        setVersion(trip.version || 1);
-        setUpdatedAt(trip.updatedAt || null);
-        setLastUpdatedBy(trip.lastUpdatedBy || null);
-        // Restore new fields for future features
-        setNotes(trip.notes || null);
-        setDuration(trip.duration || null);
-        setArrivalTime(trip.arrivalTime || null);
-        setPhotos(trip.photos || null);
-        setHotel(trip.hotel || null);
-        setFlight(trip.flight || null);
-        setSavedActivities(trip.savedActivities || null);
-        console.log('[CreateTripContext] Restored trip - createdAt:', trip.createdAt, 'version:', trip.version || 1);
+
+        // Batch all state updates together to minimize re-renders
+        startTransition(() => {
+            setTripId(trip.tripId);
+            updateActivities(trip.wishlist);
+            setAllDayActivities(trip.days);
+            setAllDayPolylines(trip.days);
+
+            // Restore city categories from cloud (if provided)
+            if (trip.cityCategories) {
+                console.log('[CreateTripContext] Restoring cityCategories from cloud. Count:', Array.isArray(trip.cityCategories) ? trip.cityCategories.length : 'null');
+                setCityCategories(trip.cityCategories);
+            } else {
+                console.log('[CreateTripContext] No cityCategories on cloud trip. Clearing local cityCategories');
+                setCityCategories(null);
+            }
+
+            // Restore tripLength if available, otherwise derive from days
+            if (trip.tripLength) {
+                setTripLength(trip.tripLength);
+            } else if (trip.days && trip.days.length > 0) {
+                // Derive tripLength from the number of days if not explicitly stored
+                setTripLength(trip.days.length);
+            }
+
+            // Restore tripPhotoReference if available (should be an array from backend)
+            if (trip.tripPhotoReference) {
+                // Backend should always return array, but handle safely
+                const photoRefs = Array.isArray(trip.tripPhotoReference)
+                    ? trip.tripPhotoReference
+                    : [trip.tripPhotoReference];
+                setTripPhotoReference(photoRefs);
+            } else {
+                setTripPhotoReference([]);
+            }
+
+            // Restore createdAt timestamp
+            if (trip.createdAt) {
+                setCreatedAt(trip.createdAt);
+            }
+
+            // Restore trip dates
+            if (trip.startDate) {
+                setStartDate(trip.startDate);
+            }
+            if (trip.endDate) {
+                setEndDate(trip.endDate);
+            }
+
+            // Restore collaboration state
+            setCollaborators(trip.collaborators || []);
+            if (currentUserID) {
+                const userRole = getUserRoleInTrip(trip, currentUserID);
+                setCurrentUserRole(userRole);
+            }
+
+            // Restore version tracking fields
+            setVersion(trip.version || 1);
+            setUpdatedAt(trip.updatedAt || null);
+            setLastUpdatedBy(trip.lastUpdatedBy || null);
+
+            // Restore new fields for future features
+            setNotes(trip.notes || null);
+            setDuration(trip.duration || null);
+            setArrivalTime(trip.arrivalTime || null);
+            setPhotos(trip.photos || null);
+            setHotel(trip.hotel || null);
+            setFlight(trip.flight || null);
+            setSavedActivities(trip.savedActivities || null);
+
+            console.log('[CreateTripContext] Restored trip - createdAt:', trip.createdAt, 'version:', trip.version || 1);
+        });
     };
 
     const updateActivities = (newActivities) => {
