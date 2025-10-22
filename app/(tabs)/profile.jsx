@@ -2,7 +2,7 @@ import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions } from 'react-native';
+import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl } from 'react-native';
 import { Auth, API } from 'aws-amplify';
 import { useEffect, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
@@ -32,6 +32,7 @@ export default function Profile() {
   const [currentUserID, setCurrentUserID] = useState('');
   const [isLoadingTripData, setIsLoadingTripData] = useState(false);
   const [carouselIndices, setCarouselIndices] = useState({}); // Track current index per trip
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadUserData = useCallback(async () => {
     try {
@@ -269,6 +270,13 @@ export default function Profile() {
     return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=350&photoreference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`;
   };
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    setCarouselIndices({});
+    await loadUserData();
+    setRefreshing(false);
+  }, [loadUserData]);
+
   const handleLogout = async () => {
     try {
       Alert.alert(
@@ -344,7 +352,18 @@ export default function Profile() {
             <Text style={styles.loadingText}>Loading trips...</Text>
           </View>
         ) : (
-          <ScrollView style={styles.tripsScrollView} showsVerticalScrollIndicator={true}>
+          <ScrollView
+            style={styles.tripsScrollView}
+            showsVerticalScrollIndicator={true}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={Colors.PRIMARY}
+                colors={[Colors.PRIMARY]}
+              />
+            }
+          >
             {/* Welcome Back Username - always show when we have the username */}
             {username ? (
               <Text style={styles.welcomeText}>Welcome back, {username}</Text>
