@@ -203,28 +203,6 @@ export default function Login() {
                 }}>Sign up with Google</Text>
             </TouchableOpacity>
 
-            {/* Email Sign Up Button */}
-            <TouchableOpacity
-                style={styles.emailButton}
-                onPress={() => router.push('/authorization/sign-up_index')}
-            >
-                <Feather
-                    name="mail"
-                    size={24}
-                    color={Colors.PRIMARY}
-                    style={{
-                        position: 'absolute',
-                        left: 20
-                    }}
-                />
-                <Text style={{
-                    color: Colors.PRIMARY,
-                    textAlign: 'center',
-                    fontFamily: 'outfit',
-                    fontSize: 16
-                }}>Sign up with email</Text>
-            </TouchableOpacity>
-
             {/* Apple Sign Up Button */}
             <TouchableOpacity
                 style={styles.appleButton}
@@ -245,6 +223,28 @@ export default function Login() {
                     fontFamily: 'outfit',
                     fontSize: 16
                 }}>Sign up with Apple</Text>
+            </TouchableOpacity>
+
+            {/* Email Sign Up Button */}
+            <TouchableOpacity
+                style={styles.emailButton}
+                onPress={() => router.push('/authorization/sign-up_index')}
+            >
+                <Feather
+                    name="mail"
+                    size={24}
+                    color={Colors.PRIMARY}
+                    style={{
+                        position: 'absolute',
+                        left: 20
+                    }}
+                />
+                <Text style={{
+                    color: Colors.PRIMARY,
+                    textAlign: 'center',
+                    fontFamily: 'outfit',
+                    fontSize: 16
+                }}>Sign up with email</Text>
             </TouchableOpacity>
 
             {/* Sign In Link */}
