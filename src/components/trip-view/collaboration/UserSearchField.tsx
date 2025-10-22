@@ -164,7 +164,7 @@ export const UserSearchField: React.FC<UserSearchFieldProps> = ({
               ))
             ) : (
               searchTerm.length >= 2 && !isSearching && (
-                <Text style={styles.noResultsText}>No users found</Text>
+                <Text style={styles.noResultsText}>No Atelic user found</Text>
               )
             )}
           </View>
