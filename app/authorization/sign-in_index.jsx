@@ -215,7 +215,7 @@ export default function SignIn() {
           <Text style={{
             fontFamily:'outfit'
           }}>Password</Text>
-          <TextInput 
+          <TextInput
           secureTextEntry={true}
           style={styles.input}
           placeholder='Enter Password'
@@ -225,6 +225,20 @@ export default function SignIn() {
           autoCorrect={false}
           />
         </View>
+
+          {/* Forgot Password Link */}
+          <TouchableOpacity
+            onPress={() => router.push('/authorization/forgot-password_index')}
+            style={{ marginTop: 10, alignSelf: 'flex-end' }}
+          >
+            <Text style={{
+              fontFamily: 'outfit',
+              color: '#F36406',
+              fontSize: 14
+            }}>
+                Forgot Password?
+            </Text>
+          </TouchableOpacity>
 
           {/* Error Message */}
           {error ? (
@@ -240,7 +254,7 @@ export default function SignIn() {
               padding:20,
               backgroundColor: '#F36406',
               borderRadius:15, //rounded corners
-              marginTop:50,
+              marginTop:40,
               opacity: isLoading ? 0.7 : 1
             }}>
            <Text style = {{
