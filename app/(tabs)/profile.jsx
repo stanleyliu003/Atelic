@@ -2,7 +2,7 @@ import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl } from 'react-native';
+import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking } from 'react-native';
 import { Auth, API } from 'aws-amplify';
 import { useEffect, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
@@ -33,6 +33,7 @@ export default function Profile() {
   const [isLoadingTripData, setIsLoadingTripData] = useState(false);
   const [carouselIndices, setCarouselIndices] = useState({}); // Track current index per trip
   const [refreshing, setRefreshing] = useState(false);
+  const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
 
   const loadUserData = useCallback(async () => {
     try {
@@ -313,6 +314,20 @@ export default function Profile() {
     }
   };
 
+  const handleOpenLink = async (url) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Unable to open this link');
+      }
+    } catch (error) {
+      console.error('[Profile] Error opening link:', error);
+      Alert.alert('Error', 'Failed to open link');
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Profile Header */}
@@ -320,11 +335,10 @@ export default function Profile() {
         <Text style={styles.headerText}>Profile</Text>
         <View style={styles.headerRight}>
           <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
+            style={styles.settingsButton}
+            onPress={() => setIsSettingsModalVisible(true)}
           >
-            <Ionicons name="log-out-outline" size={24} color={Colors.GRAY} />
-            <Text style={styles.logoutText}>Logout</Text>
+            <Ionicons name="settings-outline" size={28} color={Colors.GRAY} />
           </TouchableOpacity>
         </View>
       </View>
@@ -790,6 +804,93 @@ export default function Profile() {
           onCollaboratorsUpdate={handleCollaboratorsUpdate}
         />
       )}
+
+      {/* Settings Modal */}
+      <Modal
+        visible={isSettingsModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsSettingsModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setIsSettingsModalVisible(false)}
+        >
+          <View style={styles.settingsModalSpacer} />
+          <TouchableOpacity
+            style={styles.settingsModal}
+            activeOpacity={1}
+            onPress={() => {}} // Prevent closing when tapping inside modal
+          >
+            {/* Header with close button */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.settingsModalTitle}>Settings</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setIsSettingsModalVisible(false)}
+              >
+                <Ionicons name="close" size={32} color={Colors.GRAY} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Settings Content */}
+            <View style={styles.modalContent}>
+              {/* Privacy Policy */}
+              <TouchableOpacity
+                style={styles.settingsMenuItem}
+                onPress={() => {
+                  setIsSettingsModalVisible(false);
+                  handleOpenLink('https://atelictravel.com/privacy-policy/');
+                }}
+              >
+                <Ionicons name="shield-outline" size={24} color={Colors.PRIMARY} />
+                <Text style={styles.settingsMenuItemText}>Privacy Policy</Text>
+                <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
+              </TouchableOpacity>
+
+              {/* Terms of Service */}
+              <TouchableOpacity
+                style={styles.settingsMenuItem}
+                onPress={() => {
+                  setIsSettingsModalVisible(false);
+                  handleOpenLink('https://atelictravel.com/terms-of-service/');
+                }}
+              >
+                <Ionicons name="document-text-outline" size={24} color={Colors.PRIMARY} />
+                <Text style={styles.settingsMenuItemText}>Terms of Service</Text>
+                <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
+              </TouchableOpacity>
+
+              {/* Help & Support */}
+              <TouchableOpacity
+                style={styles.settingsMenuItem}
+                onPress={() => {
+                  setIsSettingsModalVisible(false);
+                  handleOpenLink('https://atelictravel.com/contact-us/');
+                }}
+              >
+                <Ionicons name="help-circle-outline" size={24} color={Colors.PRIMARY} />
+                <Text style={styles.settingsMenuItemText}>Help & Support</Text>
+                <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
+              </TouchableOpacity>
+
+              {/* Logout */}
+              <TouchableOpacity
+                style={[styles.settingsMenuItem, styles.logoutMenuItem]}
+                onPress={() => {
+                  setIsSettingsModalVisible(false);
+                  handleLogout();
+                }}
+              >
+                <Ionicons name="log-out-outline" size={24} color="#FF4444" />
+                <Text style={[styles.settingsMenuItemText, { color: '#FF4444' }]}>Logout</Text>
+                <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   )
 }
@@ -817,7 +918,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 15,
   },
-  logoutButton: {
+  settingsButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
@@ -832,7 +933,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2.84,
   },
-  logoutText: {
+  settingsText: {
     fontFamily: 'outfit',
     fontSize: 14,
     color: Colors.GRAY,
@@ -1067,5 +1168,48 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
+  },
+  settingsModal: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    flex: 0.5, // Takes up 45% of screen height (increased from 40%)
+    paddingTop: 8,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  settingsModalTitle: {
+    fontFamily: 'outfit-bold',
+    fontSize: 24,
+    color: Colors.PRIMARY,
+  },
+  settingsMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    marginVertical: 4,
+    justifyContent: 'space-between',
+  },
+  settingsMenuItemText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
+    flex: 1,
+    marginLeft: 12,
+    color: Colors.PRIMARY,
+  },
+  logoutMenuItem: {
+    marginTop: 20,
+  },
+  settingsModalSpacer: {
+    flex: 0.55, // Takes up 55% of screen, leaving 45% for modal (decreased from 67%)
   },
 });
