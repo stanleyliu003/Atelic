@@ -326,7 +326,7 @@ export default function SignUp() {
               />
               {Platform.OS === 'ios' && (
                 <TouchableOpacity
-                  style={{ marginTop: 10, alignSelf: 'center', padding: 15, backgroundColor: Colors.PRIMARY, borderRadius: 15, borderColor: Colors.PRIMARY }}
+                  style={{ marginTop: 10, alignSelf: 'center', padding: 15, backgroundColor: '#F36406', borderRadius: 15, borderColor: Colors.PRIMARY }}
                   onPress={() => setShowDatePicker(false)}
                 >
                   <Text style={{ color: Colors.WHITE, fontSize: 18, fontFamily: 'outfit' }}>Done</Text>
@@ -399,7 +399,7 @@ export default function SignUp() {
             disabled={isLoading}
             style ={{
               padding:20,
-              backgroundColor: isLoading ? Colors.GRAY : Colors.PRIMARY,
+              backgroundColor: '#F36406',
               borderRadius:15, //rounded corners
               marginTop:30,
               opacity: isLoading ? 0.7 : 1
@@ -459,14 +459,14 @@ const styles = StyleSheet.create({
   genderButton: {
     flex: 1,
     padding: 15,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderRadius: 15,
-    borderColor: Colors.PRIMARY,
+    borderColor: Colors.GRAY,
     marginRight: 10,
     backgroundColor: Colors.WHITE,
     alignItems: 'center',
   },
   genderButtonSelected: {
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: '#F36406',
   },
 })

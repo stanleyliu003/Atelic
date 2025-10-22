@@ -238,7 +238,7 @@ export default function SignIn() {
             disabled={isLoading}
             style ={{
               padding:20,
-              backgroundColor: isLoading ? Colors.GRAY : Colors.PRIMARY,
+              backgroundColor: '#F36406',
               borderRadius:15, //rounded corners
               marginTop:50,
               opacity: isLoading ? 0.7 : 1

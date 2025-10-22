@@ -171,7 +171,7 @@ export default function ConfirmSignUp() {
           disabled={isLoading}
           style={{
             padding: 20,
-            backgroundColor: isLoading ? Colors.GRAY : Colors.PRIMARY,
+            backgroundColor: '#F36406',
             borderRadius: 15,
             marginTop: 50,
             opacity: isLoading ? 0.7 : 1

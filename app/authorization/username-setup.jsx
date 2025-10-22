@@ -178,7 +178,7 @@ export default function UsernameSetup() {
                   />
                   {Platform.OS === 'ios' && (
                     <TouchableOpacity
-                      style={{ marginTop: 10, alignSelf: 'center', padding: 15, backgroundColor: Colors.PRIMARY, borderRadius: 15, borderColor: Colors.PRIMARY }}
+                      style={{ marginTop: 10, alignSelf: 'center', padding: 15, backgroundColor: '#F36406', borderRadius: 15, borderColor: Colors.PRIMARY }}
                       onPress={() => setShowDatePicker(false)}
                     >
                       <Text style={{ color: Colors.WHITE, fontSize: 18, fontFamily: 'outfit' }}>Done</Text>
