@@ -1,5 +1,6 @@
 import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { AntDesign } from '@expo/vector-icons';
 import { Auth, API } from 'aws-amplify';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -60,21 +61,44 @@ export default function SignIn() {
         user => user.username?.toLowerCase() === username.trim().toLowerCase()
       );
 
-      // If user exists and is from Google OAuth, auto-redirect to Google sign-in
+      // If user exists and is from external OAuth provider, auto-redirect to appropriate sign-in
       if (existingUser && existingUser.isExternalProvider) {
-        console.log('User is Google OAuth user, redirecting to Google sign-in');
-        setError('This account uses Google sign-in. Redirecting...');
-        // Wait a moment for user to see the message
-        setTimeout(async () => {
-          try {
-            await Auth.federatedSignIn({ provider: 'Google' });
-          } catch (googleErr) {
-            console.error('Google sign-in error:', googleErr);
-            setError('This account uses Google sign-in. Please use the "Or Login with" Google button below.');
-            setIsLoading(false);
-          }
-        }, 1000);
-        return;
+        // Check which OAuth provider the user used
+        const identities = existingUser.identities ? JSON.parse(existingUser.identities) : [];
+        const provider = identities.length > 0 ? identities[0].providerName : null;
+
+        if (provider === 'Google') {
+          console.log('User is Google OAuth user, redirecting to Google sign-in');
+          setError('This account uses Google sign-in. Redirecting...');
+          setTimeout(async () => {
+            try {
+              await Auth.federatedSignIn({ provider: 'Google' });
+            } catch (googleErr) {
+              console.error('Google sign-in error:', googleErr);
+              setError('This account uses Google sign-in. Please use the "Or Login with" Google button below.');
+              setIsLoading(false);
+            }
+          }, 1000);
+          return;
+        } else if (provider === 'SignInWithApple') {
+          console.log('User is Apple OAuth user, redirecting to Apple sign-in');
+          setError('This account uses Apple sign-in. Redirecting...');
+          setTimeout(async () => {
+            try {
+              await Auth.federatedSignIn({ provider: 'SignInWithApple' });
+            } catch (appleErr) {
+              console.error('Apple sign-in error:', appleErr);
+              setError('This account uses Apple sign-in. Please use the "Or Login with" Apple button below.');
+              setIsLoading(false);
+            }
+          }, 1000);
+          return;
+        } else {
+          console.log('User is external OAuth user, redirecting to appropriate sign-in');
+          setError('This account uses an external sign-in provider. Please use the appropriate "Or Login with" button below.');
+          setIsLoading(false);
+          return;
+        }
       }
 
       // If username search found a user, get their email for Cognito sign-in
@@ -152,6 +176,18 @@ export default function SignIn() {
     } catch (err) {
       console.error('Google sign-in error:', err);
       setError('Google sign-in failed. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
+  const onAppleSignIn = async () => {
+    setError('');
+    setIsLoading(true);
+    try {
+      await Auth.federatedSignIn({ provider: 'SignInWithApple' });
+    } catch (err) {
+      console.error('Apple sign-in error:', err);
+      setError('Apple sign-in failed. Please try again.');
       setIsLoading(false);
     }
   };
@@ -272,18 +308,31 @@ export default function SignIn() {
             <View style={{ flex: 1, height: 1, backgroundColor: Colors.GRAY }} />
           </View>
 
-          {/* Google Sign In Button */}
-          <View>
+          {/* OAuth Sign In Buttons */}
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 20 }}>
+            {/* Google Sign In Button */}
             <TouchableOpacity
               onPress={onGoogleSignIn}
               disabled={isLoading}
-              style={styles.googleButton}>
+              style={styles.oauthButton}>
               <Image
                 source={require('../../assets/Google_logo.webp')}
                 style={{
                   width: 64,
                   height: 64
                 }}
+              />
+            </TouchableOpacity>
+
+            {/* Apple Sign In Button */}
+            <TouchableOpacity
+              onPress={onAppleSignIn}
+              disabled={isLoading}
+              style={styles.appleButton}>
+              <AntDesign
+                name="apple1"
+                size={64}
+                color={Colors.BLACK}
               />
             </TouchableOpacity>
           </View>
@@ -303,7 +352,24 @@ const styles = StyleSheet.create({
       fontFamily:'outfit',
       marginTop: 5
   },
-  googleButton:{
+  oauthButton:{
+    padding:20,
+    backgroundColor:Colors.WHITE,
+    borderRadius:15,
+    marginTop:40,
+    borderWidth:0.3,
+    borderColor:Colors.GRAY,
+    flexDirection:'row',
+    justifyContent:'center',
+    alignItems:'center',
+    position:'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  appleButton:{
     padding:20,
     backgroundColor:Colors.WHITE,
     borderRadius:15,

@@ -4,7 +4,7 @@ import { Colors } from '../constants/Colors';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, AppState } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, AntDesign } from '@expo/vector-icons';
 
 // Configure Amplify with enhanced settings
 Amplify.configure({
@@ -150,6 +150,14 @@ export default function Login() {
     }
   };
 
+  const handleAppleSignUp = async () => {
+    try {
+      await Auth.federatedSignIn({ provider: 'SignInWithApple' });
+    } catch (err) {
+      console.error('Apple sign-up error:', err);
+    }
+  };
+
   // Show login screen only if user is not authenticated
   return (
     <View>
@@ -191,7 +199,7 @@ export default function Login() {
                     color: Colors.BLACK,
                     textAlign: 'center',
                     fontFamily: 'outfit',
-                    fontSize: 17
+                    fontSize: 16
                 }}>Sign up with Google</Text>
             </TouchableOpacity>
 
@@ -213,13 +221,35 @@ export default function Login() {
                     color: Colors.PRIMARY,
                     textAlign: 'center',
                     fontFamily: 'outfit',
-                    fontSize: 17
+                    fontSize: 16
                 }}>Sign up with email</Text>
+            </TouchableOpacity>
+
+            {/* Apple Sign Up Button */}
+            <TouchableOpacity
+                style={styles.appleButton}
+                onPress={handleAppleSignUp}
+            >
+                <AntDesign
+                    name="apple1"
+                    size={24}
+                    color={Colors.BLACK}
+                    style={{
+                        position: 'absolute',
+                        left: 20
+                    }}
+                />
+                <Text style={{
+                    color: Colors.BLACK,
+                    textAlign: 'center',
+                    fontFamily: 'outfit',
+                    fontSize: 16
+                }}>Sign up with Apple</Text>
             </TouchableOpacity>
 
             {/* Sign In Link */}
             <TouchableOpacity
-                style={{ marginTop: 20, padding: 15 }}
+                style={{ marginTop: 12, padding: 15 }}
                 onPress={() => router.push('/authorization/sign-in_index')}
                 hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             >
@@ -247,7 +277,7 @@ const styles = StyleSheet.create({
        height:'100%',
    },
    googleButton:{
-    padding:10,
+    padding:7.5,
     backgroundColor:Colors.WHITE,
     borderRadius:15,
     marginTop:-30,
@@ -263,8 +293,25 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
    },
+   appleButton:{
+    padding:7.5,
+    backgroundColor:Colors.WHITE,
+    borderRadius:15,
+    marginTop:15,
+    borderWidth:0.3,
+    borderColor:Colors.GRAY,
+    flexDirection:'row',
+    justifyContent:'center',
+    alignItems:'center',
+    position:'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+   },
    emailButton:{
-    padding:10,
+    padding:7.5,
     backgroundColor:Colors.WHITE,
     borderRadius:15,
     marginTop:15,
