@@ -57,13 +57,28 @@ exports.handler = async (event) => {
 
     // Helper function to get user's role in a trip
     const getUserRole = (trip, userId) => {
+      console.log(`[getUserRole] Checking trip ${trip.tripID} for user ${userId}`);
+      console.log(`[getUserRole] Trip owner: ${trip.userID}`);
+
       if (trip.userID === userId) {
+        console.log(`[getUserRole] User is the owner`);
         return 'owner';
       }
 
       if (trip.collaborators && Array.isArray(trip.collaborators)) {
+        console.log(`[getUserRole] Trip has ${trip.collaborators.length} collaborators:`,
+          trip.collaborators.map(c => ({ userID: c.userID, email: c.email, role: c.role })));
+
         const collaborator = trip.collaborators.find(c => c.userID === userId);
-        return collaborator ? collaborator.role : null;
+
+        if (collaborator) {
+          console.log(`[getUserRole] Found user as collaborator with role: ${collaborator.role}`);
+          return collaborator.role;
+        } else {
+          console.log(`[getUserRole] User not found in collaborators array`);
+        }
+      } else {
+        console.log(`[getUserRole] Trip has no collaborators array`);
       }
 
       return null;
@@ -82,9 +97,12 @@ exports.handler = async (event) => {
     }));
 
     // Process collaborated trips - filter to only include trips where user is actually a collaborator
+    console.log(`[Processing] Checking ${collaboratedTripsResult.Items.length} scanned trips for collaborations`);
+
     const collaboratedTripSummaries = collaboratedTripsResult.Items
       .filter(item => {
         const role = getUserRole(item, userID);
+        console.log(`[Filter] Trip ${item.tripID}: role = ${role}`);
         return role !== null && role !== 'owner'; // Exclude if already an owner (covered in owned trips)
       })
       .map(item => ({
@@ -98,10 +116,13 @@ exports.handler = async (event) => {
         userRole: getUserRole(item, userID)
       }));
 
+    console.log(`[Processing] Found ${collaboratedTripSummaries.length} collaborated trips`);
+
     // Combine results
     const allTripSummaries = [...ownedTripSummaries, ...collaboratedTripSummaries];
 
-    console.log('Final trip summaries:', JSON.stringify(allTripSummaries));
+    console.log(`[Final Results] Total trips: ${allTripSummaries.length} (${ownedTripSummaries.length} owned + ${collaboratedTripSummaries.length} collaborated)`);
+    console.log('Final trip summaries:', JSON.stringify(allTripSummaries, null, 2));
     return allTripSummaries;
 
   } catch (error) {

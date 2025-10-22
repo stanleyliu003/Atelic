@@ -143,16 +143,34 @@ function canPerformAction(requesterRole, targetRole, action) {
 async function handleAddCollaborator(trip, args, requesterId, requesterRole, tableName) {
   const { userID, userEmail, fullName, username, role, addedBy } = args;
 
+  console.log('=== ADD COLLABORATOR START ===');
+  console.log('Trip ID:', trip.tripID);
+  console.log('Trip Owner:', trip.userID);
+  console.log('Requester ID:', requesterId);
+  console.log('Requester Role:', requesterRole);
+  console.log('New Collaborator Details:', {
+    userID,
+    userEmail,
+    fullName,
+    username,
+    role,
+    addedBy: addedBy || 'Self'
+  });
+
   // Validate permissions
   if (!canPerformAction(requesterRole, role, 'add')) {
+    console.log('❌ Permission denied - requester role:', requesterRole, 'target role:', role);
     throw new Error('Permission denied: You cannot add collaborators with this role');
   }
+  console.log('✅ Permission check passed');
 
   // Check if user is already a collaborator
   const existingCollaborator = trip.collaborators.find(c => c.email === userEmail);
   if (existingCollaborator) {
+    console.log('❌ User already exists as collaborator:', existingCollaborator);
     throw new Error('User is already a collaborator on this trip');
   }
+  console.log('✅ User is not already a collaborator');
 
   const newCollaborator = {
     email: userEmail,
@@ -165,6 +183,8 @@ async function handleAddCollaborator(trip, args, requesterId, requesterRole, tab
 
   // Add to collaborators array
   const updatedCollaborators = [...trip.collaborators, newCollaborator];
+  console.log('Previous collaborators count:', trip.collaborators.length);
+  console.log('Updated collaborators count:', updatedCollaborators.length);
 
   // Update DynamoDB
   const updateParams = {
@@ -180,7 +200,23 @@ async function handleAddCollaborator(trip, args, requesterId, requesterRole, tab
     ReturnValues: 'ALL_NEW'
   };
 
+  console.log('Updating DynamoDB...');
   const result = await docClient.send(new UpdateCommand(updateParams));
+
+  console.log('✅ Successfully added collaborator to DynamoDB');
+  console.log('Confirmation:', {
+    tripID: result.Attributes.tripID,
+    addedCollaborator: newCollaborator,
+    totalCollaborators: result.Attributes.collaborators.length,
+    allCollaborators: result.Attributes.collaborators.map(c => ({
+      email: c.email,
+      fullName: c.fullName,
+      username: c.username,
+      role: c.role
+    }))
+  });
+  console.log('=== ADD COLLABORATOR END ===');
+
   return convertDynamoItemToTrip(result.Attributes);
 }
 
@@ -188,23 +224,38 @@ async function handleAddCollaborator(trip, args, requesterId, requesterRole, tab
 async function handleRemoveCollaborator(trip, args, requesterId, requesterRole, tableName) {
   const { userEmail } = args;
 
+  console.log('=== REMOVE COLLABORATOR START ===');
+  console.log('Trip ID:', trip.tripID);
+  console.log('Trip Owner:', trip.userID);
+  console.log('Requester ID:', requesterId);
+  console.log('Requester Role:', requesterRole);
+  console.log('Target Email:', userEmail);
+
   // Validate permissions
   if (!canPerformAction(requesterRole, null, 'remove')) {
+    console.log('❌ Permission denied - requester role:', requesterRole);
     throw new Error('Permission denied: Only trip owners can remove collaborators');
   }
+  console.log('✅ Permission check passed');
 
   // Cannot remove the owner
   const targetCollaborator = trip.collaborators.find(c => c.email === userEmail);
   if (!targetCollaborator) {
+    console.log('❌ User not found in collaborators');
     throw new Error('User is not a collaborator on this trip');
   }
 
+  console.log('Target Collaborator:', targetCollaborator);
+
   if (targetCollaborator.role === 'owner') {
+    console.log('❌ Cannot remove owner');
     throw new Error('Cannot remove the trip owner');
   }
 
   // Remove from collaborators array
   const updatedCollaborators = trip.collaborators.filter(c => c.email !== userEmail);
+  console.log('Previous collaborators count:', trip.collaborators.length);
+  console.log('Updated collaborators count:', updatedCollaborators.length);
 
   // Update DynamoDB
   const updateParams = {
@@ -220,7 +271,23 @@ async function handleRemoveCollaborator(trip, args, requesterId, requesterRole, 
     ReturnValues: 'ALL_NEW'
   };
 
+  console.log('Updating DynamoDB...');
   const result = await docClient.send(new UpdateCommand(updateParams));
+
+  console.log('✅ Successfully removed collaborator from DynamoDB');
+  console.log('Confirmation:', {
+    tripID: result.Attributes.tripID,
+    removedCollaborator: targetCollaborator,
+    totalCollaborators: result.Attributes.collaborators.length,
+    remainingCollaborators: result.Attributes.collaborators.map(c => ({
+      email: c.email,
+      fullName: c.fullName,
+      username: c.username,
+      role: c.role
+    }))
+  });
+  console.log('=== REMOVE COLLABORATOR END ===');
+
   return convertDynamoItemToTrip(result.Attributes);
 }
 
@@ -228,24 +295,41 @@ async function handleRemoveCollaborator(trip, args, requesterId, requesterRole, 
 async function handleUpdateCollaboratorRole(trip, args, requesterId, requesterRole, tableName) {
   const { userEmail, role } = args;
 
+  console.log('=== UPDATE COLLABORATOR ROLE START ===');
+  console.log('Trip ID:', trip.tripID);
+  console.log('Trip Owner:', trip.userID);
+  console.log('Requester ID:', requesterId);
+  console.log('Requester Role:', requesterRole);
+  console.log('Target Email:', userEmail);
+  console.log('New Role:', role);
+
   // Validate permissions
   if (!canPerformAction(requesterRole, role, 'updateRole')) {
+    console.log('❌ Permission denied - requester role:', requesterRole);
     throw new Error('Permission denied: Only trip owners can change collaborator roles');
   }
+  console.log('✅ Permission check passed');
 
   // Cannot set role to owner
   if (role === 'owner') {
+    console.log('❌ Cannot set role to owner');
     throw new Error('Cannot change collaborator role to owner. There can only be one trip owner.');
   }
 
   // Find the collaborator
   const collaboratorIndex = trip.collaborators.findIndex(c => c.email === userEmail);
   if (collaboratorIndex === -1) {
+    console.log('❌ User not found in collaborators');
     throw new Error('User is not a collaborator on this trip');
   }
 
+  const oldCollaborator = trip.collaborators[collaboratorIndex];
+  console.log('Found Collaborator:', oldCollaborator);
+  console.log('Old Role:', oldCollaborator.role);
+
   // Cannot change owner role
   if (trip.collaborators[collaboratorIndex].role === 'owner') {
+    console.log('❌ Cannot change owner role');
     throw new Error('Cannot change the role of the trip owner');
   }
 
@@ -270,7 +354,28 @@ async function handleUpdateCollaboratorRole(trip, args, requesterId, requesterRo
     ReturnValues: 'ALL_NEW'
   };
 
+  console.log('Updating DynamoDB...');
   const result = await docClient.send(new UpdateCommand(updateParams));
+
+  console.log('✅ Successfully updated collaborator role in DynamoDB');
+  console.log('Confirmation:', {
+    tripID: result.Attributes.tripID,
+    updatedCollaborator: {
+      email: userEmail,
+      fullName: oldCollaborator.fullName,
+      username: oldCollaborator.username,
+      oldRole: oldCollaborator.role,
+      newRole: role
+    },
+    allCollaborators: result.Attributes.collaborators.map(c => ({
+      email: c.email,
+      fullName: c.fullName,
+      username: c.username,
+      role: c.role
+    }))
+  });
+  console.log('=== UPDATE COLLABORATOR ROLE END ===');
+
   return convertDynamoItemToTrip(result.Attributes);
 }
 

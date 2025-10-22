@@ -1000,7 +1000,8 @@ export default function TripViewMain() {
             let currentUserName;
             let currentUsername;
             const currentUser = await Auth.currentAuthenticatedUser();
-            currentUserID = currentUser.attributes?.sub || currentUser.username;
+            // Use username (not sub) for consistency with collaborator storage
+            currentUserID = currentUser.username;
             currentUserEmail = currentUser.attributes?.email || '';
             currentUserName = currentUser.attributes?.name || '';
             currentUsername = currentUser.attributes?.preferred_username || currentUser.username || currentUserEmail.split('@')[0];
@@ -1266,7 +1267,7 @@ export default function TripViewMain() {
         const getCurrentUser = async () => {
             try {
                 const user = await Auth.currentAuthenticatedUser();
-                const userID = user.attributes?.sub || user.username;
+                const userID = user.username;
                 setCurrentUserID(userID);
             } catch (error) {
                 console.error('[trip-view_main] Error getting current user:', error);

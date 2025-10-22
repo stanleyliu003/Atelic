@@ -38,7 +38,13 @@ export default function Profile() {
       const user = await Auth.currentAuthenticatedUser();
       const name = user.attributes?.name || '';
       const userName = user.attributes?.preferred_username || '';
-      const userID = user.attributes?.sub || user.username;
+      // Use username (not sub) for consistency with collaborator storage
+      // For Google OAuth users, username is like 'google_110194548211753772771'
+      // For native users, username is their Cognito UUID
+      const userID = user.username;
+
+      console.log('[Profile] User loaded:', { userID, name, userName });
+
       setFullName(name);
       setUsername(userName);
       setCurrentUserID(userID);
@@ -144,7 +150,7 @@ export default function Profile() {
     try {
       setIsLoadingTrip(true);
       const user = await Auth.currentAuthenticatedUser();
-      const userID = user.attributes?.sub || user.username;
+      const userID = user.username;
 
       const tripDetails = await retrieveTripFromCloud(userID, tripId);
 
@@ -168,7 +174,7 @@ export default function Profile() {
   const handleDeleteTrip = async (tripId) => {
     try {
       const user = await Auth.currentAuthenticatedUser();
-      const userID = user.attributes?.sub || user.username;
+      const userID = user.username;
 
       // Show confirmation dialog
       Alert.alert(
@@ -222,7 +228,7 @@ export default function Profile() {
       setMenuVisible(null); // Close the menu immediately
 
       const user = await Auth.currentAuthenticatedUser();
-      const userID = user.attributes?.sub || user.username;
+      const userID = user.username;
 
       // Fetch full trip data including collaborators
       const fullTripData = await retrieveTripFromCloud(userID, tripId);
@@ -323,7 +329,7 @@ export default function Profile() {
               style={styles.retryButton}
               onPress={async () => {
                 const user = await Auth.currentAuthenticatedUser();
-                const userID = user.attributes?.sub || user.username;
+                const userID = user.username;
                 await loadUserTrips(userID);
               }}
             >
