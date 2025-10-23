@@ -121,11 +121,11 @@ export default function TripViewMain() {
     // Ref for immediate tripID access (avoids async state update issues)
     const tripIdRef = useRef(tripId);
 
-    // Timeout ref for debouncing autosave
-    // const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
     // Version ref for immediate access (avoids async state issues)
     const versionRef = useRef<number>(version);
+
+    // Autosave interval ref
+    const autosaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // Track screen focus state for subscription management
     const [isScreenFocused, setIsScreenFocused] = useState(true);
@@ -1142,6 +1142,47 @@ export default function TripViewMain() {
     //         subscription?.remove();
     //     };
     // }, [tripId, activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt, currentUserRole]);
+
+    // Autosave with multiple triggers
+    useEffect(() => {
+        // Only autosave for owners (viewers can't edit)
+        if (currentUserRole === 'viewer') {
+            return;
+        }
+
+        // Only autosave if we have trip data
+        if (!tripIdRef.current && activities.length === 0 && Object.keys(dayActivities).length === 0) {
+            return;
+        }
+
+        // Trigger 1: Periodic autosave every 5 minutes
+        autosaveIntervalRef.current = setInterval(() => {
+            console.log('[trip-view_main] Periodic autosave triggered');
+            saveTrip().catch(error => {
+                console.error('[trip-view_main] Autosave failed:', error);
+            });
+        }, 300000); // 5 minutes
+
+        // Trigger 2: App going to background
+        const handleAppStateChange = (nextAppState: string) => {
+            if (nextAppState === 'background') {
+                console.log('[trip-view_main] App backgrounded - autosaving...');
+                saveTrip().catch(error => {
+                    console.error('[trip-view_main] Background autosave failed:', error);
+                });
+            }
+        };
+
+        const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+
+        return () => {
+            // Clean up
+            if (autosaveIntervalRef.current) {
+                clearInterval(autosaveIntervalRef.current);
+            }
+            appStateSubscription?.remove();
+        };
+    }, [tripId, activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt, currentUserRole]);
 
     // Real-time subscription for trip updates
     useEffect(() => {
