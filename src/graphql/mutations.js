@@ -194,8 +194,8 @@ export const addCollaborator = /* GraphQL */ `
   }
 `;
 export const removeCollaborator = /* GraphQL */ `
-  mutation RemoveCollaborator($tripId: String!, $userEmail: String!) {
-    removeCollaborator(tripId: $tripId, userEmail: $userEmail) {
+  mutation RemoveCollaborator($tripId: String!, $username: String!) {
+    removeCollaborator(tripId: $tripId, username: $username) {
       tripId
       days {
         dayNumber
@@ -260,14 +260,10 @@ export const removeCollaborator = /* GraphQL */ `
 export const updateCollaboratorRole = /* GraphQL */ `
   mutation UpdateCollaboratorRole(
     $tripId: String!
-    $userEmail: String!
+    $username: String!
     $role: CollaboratorRole!
   ) {
-    updateCollaboratorRole(
-      tripId: $tripId
-      userEmail: $userEmail
-      role: $role
-    ) {
+    updateCollaboratorRole(tripId: $tripId, username: $username, role: $role) {
       tripId
       days {
         dayNumber

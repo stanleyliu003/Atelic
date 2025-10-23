@@ -222,14 +222,14 @@ async function handleAddCollaborator(trip, args, requesterId, requesterRole, tab
 
 // Remove collaborator handler
 async function handleRemoveCollaborator(trip, args, requesterId, requesterRole, tableName) {
-  const { userEmail } = args;
+  const { username } = args;
 
   console.log('=== REMOVE COLLABORATOR START ===');
   console.log('Trip ID:', trip.tripID);
   console.log('Trip Owner:', trip.userID);
   console.log('Requester ID:', requesterId);
   console.log('Requester Role:', requesterRole);
-  console.log('Target Email:', userEmail);
+  console.log('Target Username:', username);
 
   // Validate permissions
   if (!canPerformAction(requesterRole, null, 'remove')) {
@@ -239,7 +239,7 @@ async function handleRemoveCollaborator(trip, args, requesterId, requesterRole, 
   console.log('✅ Permission check passed');
 
   // Cannot remove the owner
-  const targetCollaborator = trip.collaborators.find(c => c.email === userEmail);
+  const targetCollaborator = trip.collaborators.find(c => c.username === username);
   if (!targetCollaborator) {
     console.log('❌ User not found in collaborators');
     throw new Error('User is not a collaborator on this trip');
@@ -253,7 +253,7 @@ async function handleRemoveCollaborator(trip, args, requesterId, requesterRole, 
   }
 
   // Remove from collaborators array
-  const updatedCollaborators = trip.collaborators.filter(c => c.email !== userEmail);
+  const updatedCollaborators = trip.collaborators.filter(c => c.username !== username);
   console.log('Previous collaborators count:', trip.collaborators.length);
   console.log('Updated collaborators count:', updatedCollaborators.length);
 
@@ -293,14 +293,14 @@ async function handleRemoveCollaborator(trip, args, requesterId, requesterRole, 
 
 // Update collaborator role handler
 async function handleUpdateCollaboratorRole(trip, args, requesterId, requesterRole, tableName) {
-  const { userEmail, role } = args;
+  const { username, role } = args;
 
   console.log('=== UPDATE COLLABORATOR ROLE START ===');
   console.log('Trip ID:', trip.tripID);
   console.log('Trip Owner:', trip.userID);
   console.log('Requester ID:', requesterId);
   console.log('Requester Role:', requesterRole);
-  console.log('Target Email:', userEmail);
+  console.log('Target Username:', username);
   console.log('New Role:', role);
 
   // Validate permissions
@@ -317,7 +317,7 @@ async function handleUpdateCollaboratorRole(trip, args, requesterId, requesterRo
   }
 
   // Find the collaborator
-  const collaboratorIndex = trip.collaborators.findIndex(c => c.email === userEmail);
+  const collaboratorIndex = trip.collaborators.findIndex(c => c.username === username);
   if (collaboratorIndex === -1) {
     console.log('❌ User not found in collaborators');
     throw new Error('User is not a collaborator on this trip');
@@ -361,9 +361,9 @@ async function handleUpdateCollaboratorRole(trip, args, requesterId, requesterRo
   console.log('Confirmation:', {
     tripID: result.Attributes.tripID,
     updatedCollaborator: {
-      email: userEmail,
+      username: username,
       fullName: oldCollaborator.fullName,
-      username: oldCollaborator.username,
+      email: oldCollaborator.email,
       oldRole: oldCollaborator.role,
       newRole: role
     },

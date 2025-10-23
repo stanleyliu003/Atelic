@@ -214,8 +214,8 @@
     createTrip(input: CreateTripInput!): Trip @function(name: "CreateTripStorage-${env}") @auth(rules: [{ allow: public }])
     deleteTrip(userID: String!, tripID: String!): DeleteTripResult @function(name: "deleteTrip-${env}") @auth(rules: [{ allow: public }])
     addCollaborator(tripId: String!, userID: String!, userEmail: String!, fullName: String!, username: String!, role: CollaboratorRole!, addedBy: String): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
-    removeCollaborator(tripId: String!, userEmail: String!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
-    updateCollaboratorRole(tripId: String!, userEmail: String!, role: CollaboratorRole!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
+    removeCollaborator(tripId: String!, username: String!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
+    updateCollaboratorRole(tripId: String!, username: String!, role: CollaboratorRole!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
   }
 
    type Subscription {

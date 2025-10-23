@@ -137,8 +137,8 @@ export const CollaboratorListItem: React.FC<CollaboratorListItemProps> = ({
         {
           text: 'Change',
           onPress: () => {
-            console.log('[CollaboratorListItem] Changing role:', collaborator.email, 'to', newRole);
-            onRoleChange(collaborator.email, newRole);
+            console.log('[CollaboratorListItem] Changing role:', collaborator.username, 'to', newRole);
+            onRoleChange(collaborator.username, newRole);
           }
         }
       ]
@@ -155,8 +155,8 @@ export const CollaboratorListItem: React.FC<CollaboratorListItemProps> = ({
           text: 'Remove',
           style: 'destructive',
           onPress: () => {
-            console.log('[CollaboratorListItem] Removing collaborator:', collaborator.email);
-            onRemove(collaborator.email);
+            console.log('[CollaboratorListItem] Removing collaborator:', collaborator.username);
+            onRemove(collaborator.username);
           }
         }
       ]

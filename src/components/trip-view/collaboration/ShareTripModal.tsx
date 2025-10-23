@@ -134,16 +134,16 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
     return [];
   };
 
-  const handleRoleChange = async (email: string, newRole: CollaboratorRole) => {
+  const handleRoleChange = async (username: string, newRole: CollaboratorRole) => {
     try {
       setIsLoading(true);
-      console.log('[ShareTripModal] Updating collaborator role:', email, 'to', newRole);
+      console.log('[ShareTripModal] Updating collaborator role:', username, 'to', newRole);
 
       const result = await API.graphql({
         query: updateCollaboratorRole,
         variables: {
           tripId,
-          userEmail: email,
+          username: username,
           role: newRole
         }
       }) as any;
@@ -161,16 +161,16 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
     }
   };
 
-  const handleRemoveCollaborator = async (email: string) => {
+  const handleRemoveCollaborator = async (username: string) => {
     try {
       setIsLoading(true);
-      console.log('[ShareTripModal] Removing collaborator:', email);
+      console.log('[ShareTripModal] Removing collaborator:', username);
 
       const result = await API.graphql({
         query: removeCollaborator,
         variables: {
           tripId,
-          userEmail: email
+          username: username
         }
       }) as any;
 
@@ -347,7 +347,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
                   })
                   .map((collaborator) => (
                     <CollaboratorListItem
-                      key={collaborator.email}
+                      key={collaborator.username}
                       collaborator={collaborator}
                       currentUserRole={currentUserRole}
                       onRoleChange={handleRoleChange}
