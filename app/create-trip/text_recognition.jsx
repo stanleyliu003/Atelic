@@ -1,6 +1,5 @@
 import 'react-native-get-random-values';
 import { Colors } from '../../constants/Colors';
-import { API_KEYS } from '../../constants/ApiKeys';
 import { API, graphqlOperation } from 'aws-amplify';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter } from 'expo-router';
@@ -164,7 +163,7 @@ export default function text_recognition() {
                   setCity(data.description);
                 }}
                 query={{
-                  key: API_KEYS.GOOGLE_MAPS,
+                  key: process.env.EXPO_PUBLIC_GOOGLE_MAP_KEY,
                   language: 'en',
                   types: '(cities)',
                 }}

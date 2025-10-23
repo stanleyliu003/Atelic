@@ -1,6 +1,5 @@
 import 'react-native-get-random-values';
 import { Colors } from '../../constants/Colors';
-import { API_KEYS } from '../../constants/ApiKeys';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRouter } from 'expo-router';
@@ -218,7 +217,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
                             fetchCityCategories(data.description); // Don't await - let it run independently
                         }}
                         query={{
-                            key: API_KEYS.GOOGLE_MAPS,
+                            key: process.env.EXPO_PUBLIC_GOOGLE_MAP_KEY,
                             language: 'en',
                             types: '(regions)',
                         }}
