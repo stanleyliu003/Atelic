@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Atelic_Stable",
-    "slug": "Atelic_Stable",
+    "name": "Atelic",
+    "slug": "atelic",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/Atelic_logo.png",
-    
+    "icon": "./assets/Atelic_Logo_Zoom.png",
+
     "userInterfaceStyle": "light",
     "scheme": "atelicstable",
     "splash": {
@@ -23,7 +23,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.Atelic_Stable"
+      "package": "com.anonymous.AtelicStable"
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -7,7 +7,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>Atelic_Stable</string>
+    <string>Atelic</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -45,6 +45,8 @@
     </dict>
     <key>NSFaceIDUsageDescription</key>
     <string>Use Face ID for secure authentication and account access.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Atelic needs your location to display your trip route on the map and help you navigate between destinations.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
