@@ -249,7 +249,7 @@ export default function Login() {
 
             {/* Sign In Link */}
             <TouchableOpacity
-                style={{ marginTop: 12, padding: 15 }}
+                style={{ marginTop: 20, padding: 15 }}
                 onPress={() => router.push('/authorization/sign-in_index')}
                 hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             >
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     padding:7.5,
     backgroundColor:Colors.WHITE,
     borderRadius:15,
-    marginTop:-30,
+    marginTop:-50,
     borderWidth:0.3,
     borderColor:Colors.GRAY,
     flexDirection:'row',

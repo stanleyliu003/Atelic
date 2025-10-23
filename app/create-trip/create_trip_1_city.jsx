@@ -36,6 +36,9 @@ export default function create_trip_1_city({ showBackButton = true }) {
     const [endDate, setEndDate] = useState(null);
     const [isFlexibleDays, setIsFlexibleDays] = useState(false);
     const startDateRef = useRef(null);
+    const [hasSelectedPlace, setHasSelectedPlace] = useState(false);
+    const selectedCityRef = useRef(null);
+    const [searchText, setSearchText] = useState('');
 
 
     // Pan responder for swipe-down gesture to close calendar
@@ -99,10 +102,10 @@ export default function create_trip_1_city({ showBackButton = true }) {
         navigation.setOptions({
             headerShown: false
         })
-        
+
         // Set flag that user is creating a trip
         setIsCreatingTrip(true);
-        
+
         // Ensure the GooglePlacesAutocomplete input is empty
         setTimeout(() => {
             if (googlePlacesRef.current) {
@@ -112,7 +115,11 @@ export default function create_trip_1_city({ showBackButton = true }) {
 
         // Ensure dropdown is closed when component mounts (after reset)
         setIsDropdownOpen(false);
-        
+
+        // Reset place selection state
+        setHasSelectedPlace(false);
+        selectedCityRef.current = null;
+
         // Cleanup when component unmounts
         return () => {
             setIsCreatingTrip(false);
@@ -201,6 +208,8 @@ export default function create_trip_1_city({ showBackButton = true }) {
                         placeholder='Ex: Boston, MA, USA'
                         onPress={async (data) => {
                             setSelectedCity(data.description);
+                            selectedCityRef.current = data.description;
+                            setHasSelectedPlace(true);
                             // Update the text field to show the selected city immediately
                             if (googlePlacesRef.current) {
                                 googlePlacesRef.current.setAddressText(data.description);
@@ -218,6 +227,13 @@ export default function create_trip_1_city({ showBackButton = true }) {
                             autoComplete: 'off',
                             autoCapitalize: 'words',
                             spellCheck: false,
+                            onChangeText: (text) => {
+                                setSearchText(text);
+                                // When user manually edits the text (different from selected city), hide the trip length section
+                                if (text !== selectedCityRef.current) {
+                                    setHasSelectedPlace(false);
+                                }
+                            },
                         }}
                         styles={{
                             container: {
@@ -273,8 +289,15 @@ export default function create_trip_1_city({ showBackButton = true }) {
                     />
                 </View>
 
-                {/* Trip Length Selection - Only show when destination is selected */}
-                {selectedCity && (
+                {/* Instruction text when user has typed but not selected */}
+                {searchText && !hasSelectedPlace && (
+                    <View style={styles.instructionContainer}>
+                        <Text style={styles.instructionText}>Select a destination from dropdown results</Text>
+                    </View>
+                )}
+
+                {/* Trip Length Selection - Only show when a place has been selected from autocomplete */}
+                {selectedCity && hasSelectedPlace && (
                     <View style={styles.tripLengthSection}>
                         <View style={styles.promptSection}>
                             <Text style={styles.promptTitle}>How long is your trip?</Text>
@@ -511,9 +534,9 @@ export default function create_trip_1_city({ showBackButton = true }) {
                         onPress={handleNext}
                         style={[
                             styles.nextButton,
-                            { opacity: (selectedCity && tripLength) ? 1 : 0 }
+                            { opacity: (selectedCity && hasSelectedPlace && tripLength) ? 1 : 0 }
                         ]}
-                        disabled={!selectedCity || !tripLength}
+                        disabled={!selectedCity || !hasSelectedPlace || !tripLength}
                     >
                         <Text style={styles.nextButtonText}>Next</Text>
                     </TouchableOpacity>
@@ -768,5 +791,16 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontFamily: 'outfit-bold',
         fontSize: 18,
+    },
+    instructionContainer: {
+        marginTop: 20,
+        alignItems: 'center',
+        paddingHorizontal: 20,
+    },
+    instructionText: {
+        fontFamily: 'outfit',
+        fontSize: 14,
+        color: '#F36406',
+        textAlign: 'center',
     },
 })
