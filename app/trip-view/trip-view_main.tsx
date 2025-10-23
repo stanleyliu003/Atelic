@@ -127,6 +127,9 @@ export default function TripViewMain() {
     // Autosave interval ref
     const autosaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Track last save time to prevent duplicate rapid-fire saves
+    const lastSaveTimeRef = useRef<number>(0);
+
     // Track screen focus state for subscription management
     const [isScreenFocused, setIsScreenFocused] = useState(true);
 
@@ -978,7 +981,7 @@ export default function TripViewMain() {
                 cityCategories: cleanCityCategories || null, // Save city categories for restoration
             };
 
-            console.log('[trip-view_main] Saving trip with data:', tripData);
+            console.log('[trip-view_main] Saving trip with data:');
 
             // Get current user information
             let currentUserID;
@@ -1166,7 +1169,18 @@ export default function TripViewMain() {
         // Trigger 2: App going to background
         const handleAppStateChange = (nextAppState: string) => {
             if (nextAppState === 'background') {
+                const now = Date.now();
+                const timeSinceLastSave = now - lastSaveTimeRef.current;
+
+                // Prevent duplicate saves within 2 seconds (AppState can fire multiple times)
+                if (timeSinceLastSave < 2000) {
+                    console.log('[trip-view_main] Skipping duplicate background save (too soon)');
+                    return;
+                }
+
                 console.log('[trip-view_main] App backgrounded - autosaving...');
+                lastSaveTimeRef.current = now;
+
                 saveTrip().catch(error => {
                     console.error('[trip-view_main] Background autosave failed:', error);
                 });

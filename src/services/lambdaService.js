@@ -63,7 +63,7 @@ export const listUserTripsFromCloud = async (userID) => {
             }
         });
 
-        console.log('[Lambda Service] Retrieved trip summaries:', result.data.getTripIDs);
+        console.log('[Lambda Service] Retrieved trip summaries');
         return result.data.getTripIDs;
 
     } catch (error) {
@@ -88,7 +88,7 @@ export const retrieveTripFromCloud = async (userID, tripID) => {
             }
         });
 
-        console.log('[Lambda Service] Retrieved trip details:', result.data.getUserTrips);
+        console.log('[Lambda Service] Retrieved trip details:');
         return result.data.getUserTrips;
 
     } catch (error) {
