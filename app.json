@@ -23,7 +23,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.AtelicStable"
+      "package": "com.atelictravel.atelic"
     },
     "web": {
       "favicon": "./assets/favicon.png"
