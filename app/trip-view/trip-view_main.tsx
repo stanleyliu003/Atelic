@@ -127,10 +127,6 @@ export default function TripViewMain() {
     // Version ref for immediate access (avoids async state issues)
     const versionRef = useRef<number>(version);
 
-    // Real-time update notification state
-    const [showUpdateNotification, setShowUpdateNotification] = useState(false);
-    const [remoteUpdatedBy, setRemoteUpdatedBy] = useState<string | null>(null);
-
     // Track screen focus state for subscription management
     const [isScreenFocused, setIsScreenFocused] = useState(true);
 
@@ -834,12 +830,9 @@ export default function TripViewMain() {
     // Handler to reload trip with latest changes from remote
     const handleReloadTrip = async () => {
         try {
-            console.log(`[trip-view_main] 🔄 Reloading trip - Current local version: ${version}`);
-
             // Get owner's userID from collaborators
             const owner = collaborators.find(c => c.role === 'owner');
             if (!owner) {
-                // Alert.alert('Error', 'Unable to reload trip: Owner information missing');
                 return;
             }
 
@@ -847,22 +840,16 @@ export default function TripViewMain() {
             const updatedTrip = await retrieveTripFromCloud(owner.userID, tripId);
 
             if (updatedTrip) {
-                const cloudVersion = updatedTrip.version || 1;
-                console.log(`[trip-view_main] 📥 Retrieved from cloud - Version: ${cloudVersion}, Last updated by: ${updatedTrip.lastUpdatedBy}`);
-                console.log(`[trip-view_main] Version sync: ${versionRef.current} → ${cloudVersion}`);
-
-                // Restore trip data into context (includes version via restoreTripFromObject)
+                // Restore trip data into context
                 restoreTripFromObject(updatedTrip, currentUserID);
 
-                // Immediately sync versionRef to avoid race condition
-                versionRef.current = cloudVersion;
+                // Update version tracking
+                versionRef.current = updatedTrip.version || 1;
 
-                setShowUpdateNotification(false);
-                console.log(`[trip-view_main] ✅ Trip reloaded - Version: ${cloudVersion}, Ref synced: ${versionRef.current}`);
+                console.log('[trip-view_main] Trip reloaded');
             }
         } catch (error) {
-            console.error('[trip-view_main] ❌ Error reloading trip:', error);
-            // Alert.alert('Error', 'Failed to reload trip. Please try again.');
+            console.error('[trip-view_main] Error reloading trip:', error);
         }
     };
 
@@ -1049,37 +1036,33 @@ export default function TripViewMain() {
                 }));
             }
 
-            // Add OWNER's userID, collaborators, and version tracking to trip data
+            // Add OWNER's userID and collaborators to trip data
             // This ensures we always use the owner's userID as the partition key in DynamoDB
-            // Use versionRef.current for immediate access (not stale currentVersion state)
             const nextVersion = versionRef.current + 1;
             const tripDataWithUser = {
                 ...tripData,
                 userID: ownerUserID, // Always use owner's userID, not current user's userID
                 collaborators: collaboratorsToSave,
-                version: nextVersion, // Increment version for optimistic locking
+                version: nextVersion,
                 updatedAt: new Date().toISOString(),
-                lastUpdatedBy: currentUserEmail // Track who made the update
+                lastUpdatedBy: currentUserEmail
             };
 
-            console.log(`[trip-view_main] 💾 Saving trip - Version: ${versionRef.current} → ${nextVersion}`);
-            console.log('[trip-view_main] Updated by:', tripDataWithUser.lastUpdatedBy);
+            console.log('[trip-view_main] Saving trip...');
 
             // Make the API call (now using public auth)
             const result: any = await API.graphql({
                 query: createTrip,
                 variables: { input: tripDataWithUser }
             });
-            console.log('[trip-view_main] Trip saved successfully:', result);
+            console.log('[trip-view_main] Trip saved successfully');
 
-            // Update context version after successful save and immediately sync ref
+            // Update local state after successful save
             if (result.data?.createTrip?.version) {
-                const savedVersion = result.data.createTrip.version;
-                setVersion(savedVersion);
+                setVersion(result.data.createTrip.version);
                 setUpdatedAt(result.data.createTrip.updatedAt);
                 setLastUpdatedBy(result.data.createTrip.lastUpdatedBy);
-                versionRef.current = savedVersion; // Immediate sync to prevent race condition
-                console.log(`[trip-view_main] ✅ Save confirmed - Version: ${savedVersion}, Ref: ${versionRef.current}, Updated by: ${result.data.createTrip.lastUpdatedBy}`);
+                versionRef.current = result.data.createTrip.version;
             }
 
             // ALWAYS update tripId if it wasn't set (prevents duplicate generation on next save)
@@ -1102,45 +1085,7 @@ export default function TripViewMain() {
             }
 
         } catch (error: any) {
-            console.error('[trip-view_main] Error saving trip - Full error:', JSON.stringify(error, null, 2));
-
-            // Check for version conflict error
-            if (error.errors && error.errors.some((err: any) =>
-                err.message && err.message.includes('Version conflict'))) {
-                // Version conflict detected - another user updated the trip
-                console.error(`[trip-view_main] ⚠️ VERSION CONFLICT - Attempted to save version ${versionRef.current + 1}, but trip was already updated by another user`);
-                console.error(`[trip-view_main] Local version ref: ${versionRef.current}, Local version context: ${version}, Attempted save version: ${versionRef.current + 1}`);
-                {/* 
-                Alert.alert(
-                    'Trip Updated',
-                    `This trip was updated by another user while you were editing. Please reload to see the latest changes.`,
-                    [
-                        {
-                            text: 'Reload Now',
-                            onPress: handleReloadTrip
-                        },
-                        {
-                            text: 'Cancel',
-                            style: 'cancel'
-                        }
-                    ]
-                );
-                */}
-                return; // Don't throw, handled gracefully
-            }
-
-            // More detailed error logging
-            if (error.errors) {
-                error.errors.forEach((err: any, index: number) => {
-                    console.error(`[trip-view_main] ❌ Error ${index + 1}/${error.errors.length}:`, {
-                        message: err.message,
-                        errorType: err.errorType,
-                        path: err.path,
-                        data: err.data
-                    });
-                });
-            }
-
+            console.error('[trip-view_main] Error saving trip:', error);
             throw error;
         } finally {
             // Release save lock
@@ -1217,39 +1162,23 @@ export default function TripViewMain() {
             graphqlOperation(onTripUpdated, { tripId })
         ) as any).subscribe({
             next: ({ value }: any) => {
-                console.log('[trip-view_main] Real-time update received', JSON.stringify(value, null, 2));
-
                 const updatedTrip = value?.data?.onTripUpdated;
 
-                // Null check - subscription may fire without data
-                if (!updatedTrip) {
-                    console.log('[trip-view_main] Received subscription event with no data, ignoring');
+                // Ignore if no data or if it's our own update
+                if (!updatedTrip || updatedTrip.lastUpdatedBy === currentUserID) {
                     return;
                 }
 
-                console.log(`[trip-view_main] 🔔 Remote update received - Version: ${updatedTrip.version}, Updated by: ${updatedTrip.lastUpdatedBy}`);
-                console.log(`[trip-view_main] Local version before update - Context: ${version}, Ref: ${versionRef.current}`);
+                console.log('[trip-view_main] Trip updated by another user - reloading...');
 
-                // Don't process our own updates (avoid infinite loop)
-                // Check if update is from current user OR if version hasn't actually changed
-                if (updatedTrip.lastUpdatedBy === currentUserID || updatedTrip.version === versionRef.current) {
-                    console.log(`[trip-view_main] Ignoring update - Same user: ${updatedTrip.lastUpdatedBy === currentUserID}, Same version: ${updatedTrip.version === versionRef.current}`);
-                    return;
-                }
-
-                // Update detected from another collaborator
-                console.log(`[trip-view_main] ✅ Version updated: ${versionRef.current} → ${updatedTrip.version}`);
-
-                // Update context version and immediately sync ref to avoid race condition
+                // Update version tracking
                 setVersion(updatedTrip.version);
                 setUpdatedAt(updatedTrip.updatedAt);
                 setLastUpdatedBy(updatedTrip.lastUpdatedBy);
-                versionRef.current = updatedTrip.version; // Immediate sync
+                versionRef.current = updatedTrip.version;
 
-                setRemoteUpdatedBy(updatedTrip.lastUpdatedBy);
-                setShowUpdateNotification(true);
-
-                console.log(`[trip-view_main] Showing update notification from: ${updatedTrip.lastUpdatedBy}`);
+                // Auto-reload to get latest changes
+                handleReloadTrip();
             },
             error: (error: any) => {
                 console.error('[trip-view_main] Subscription error:', error);
@@ -1348,31 +1277,6 @@ export default function TripViewMain() {
                     handleShareTrip();
                 }}
             />
-
-            {/* Real-time update notification banner */}
-            {showUpdateNotification && remoteUpdatedBy && (
-                <View style={styles.updateBanner}>
-                    <View style={styles.updateContent}>
-                        <Text style={styles.updateText}>
-                            {remoteUpdatedBy} updated this trip
-                        </Text>
-                        <View style={styles.updateActions}>
-                            <TouchableOpacity
-                                style={styles.reloadButton}
-                                onPress={handleReloadTrip}
-                            >
-                                <Text style={styles.reloadButtonText}>Reload</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.dismissButton}
-                                onPress={() => setShowUpdateNotification(false)}
-                            >
-                                <Text style={styles.dismissText}>✕</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            )}
 
             <Animated.View style={[
                 styles.container,
@@ -1785,57 +1689,6 @@ const styles = StyleSheet.create({
     },
     wishlistContent: {
         paddingBottom: 20,
-    },
-    updateBanner: {
-        position: 'absolute',
-        top: 120,
-        left: 20,
-        right: 20,
-        backgroundColor: Colors.PRIMARY,
-        borderRadius: 12,
-        padding: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-        elevation: 8,
-        zIndex: 999,
-    },
-    updateContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    updateText: {
-        color: 'white',
-        fontFamily: 'outfit',
-        fontSize: 15,
-        flex: 1,
-        marginRight: 12,
-    },
-    updateActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    reloadButton: {
-        backgroundColor: 'white',
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 6,
-    },
-    reloadButtonText: {
-        color: Colors.PRIMARY,
-        fontFamily: 'outfit-bold',
-        fontSize: 14,
-    },
-    dismissButton: {
-        padding: 4,
-    },
-    dismissText: {
-        color: 'white',
-        fontSize: 20,
-        fontFamily: 'outfit-bold',
     },
     categoriesSection: {
         marginTop: -10,
