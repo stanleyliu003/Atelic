@@ -1,7 +1,7 @@
 import { Colors } from '../../constants/Colors';
 import { Auth, API } from 'aws-amplify';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -27,6 +27,33 @@ export default function UsernameSetup() {
   const [birthdate, setBirthdate] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [gender, setGender] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [isAppleUser, setIsAppleUser] = useState(false);
+
+  useEffect(() => {
+    // Check if user signed in with Apple
+    const checkUserProvider = async () => {
+      try {
+        const user = await Auth.currentAuthenticatedUser();
+        const attributes = await Auth.userAttributes(user);
+        
+        // Check if user has identities attribute indicating Apple sign-in
+        const identitiesAttr = attributes.find(attr => attr.Name === 'identities');
+        if (identitiesAttr) {
+          const identities = JSON.parse(identitiesAttr.Value);
+          const isApple = identities.some(identity => 
+            identity.providerName === 'SignInWithApple' || 
+            identity.userId?.startsWith('signinwithapple_')
+          );
+          setIsAppleUser(isApple);
+        }
+      } catch (err) {
+        console.error('Error checking user provider:', err);
+      }
+    };
+    
+    checkUserProvider();
+  }, []);
 
   const handleContinue = async () => {
     setError('');
@@ -35,6 +62,12 @@ export default function UsernameSetup() {
     // Validate all fields first
     if (!username || username.trim().length < 5) {
       setError('Username must be at least 5 characters long.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (isAppleUser && (!fullName || fullName.trim().length < 2)) {
+      setError('Please enter your full name.');
       setIsLoading(false);
       return;
     }
@@ -85,12 +118,20 @@ export default function UsernameSetup() {
       // Step 2: Username is available, update the user's preferred_username
       const user = await Auth.currentAuthenticatedUser();
 
-      // Update preferred_username, gender, and birthdate attributes
-      await Auth.updateUserAttributes(user, {
+      // Prepare attributes to update
+      const attributesToUpdate = {
         'preferred_username': username.trim(),
         'gender': gender,
         'birthdate': birthdate
-      });
+      };
+
+      // Add name attribute for Apple users
+      if (isAppleUser && fullName.trim()) {
+        attributesToUpdate['name'] = fullName.trim();
+      }
+
+      // Update user attributes
+      await Auth.updateUserAttributes(user, attributesToUpdate);
 
       console.log('Username updated successfully:', username);
 
@@ -124,7 +165,25 @@ export default function UsernameSetup() {
           <View style={styles.content}>
             <Text style={styles.title}>Complete Your Profile</Text>
             
-            <View style={{ marginTop: 40 }}>
+            {/* Full Name Field - Only for Apple users */}
+            {isAppleUser && (
+              <View style={{ marginTop: 40 }}>
+                <Text style={styles.label}>Full Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder='Enter your full name'
+                  value={fullName}
+                  onChangeText={(value) => setFullName(value)}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  spellCheck={false}
+                  autoFocus={true}
+                  editable={!isLoading}
+                />
+              </View>
+            )}
+
+            <View style={{ marginTop: isAppleUser ? 20 : 40 }}>
               <Text style={styles.label}>Username</Text>
               <TextInput
                 style={styles.input}
@@ -134,7 +193,7 @@ export default function UsernameSetup() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 spellCheck={false}
-                autoFocus={true}
+                autoFocus={!isAppleUser}
                 editable={!isLoading}
               />
             </View>
@@ -221,11 +280,11 @@ export default function UsernameSetup() {
 
             <TouchableOpacity
               onPress={handleContinue}
-              disabled={isLoading || username.length < 5 || !gender || !birthdate}
+              disabled={isLoading || username.length < 5 || !gender || !birthdate || (isAppleUser && !fullName)}
               style={[
                 styles.button,
                 {
-                  opacity: (username.length >= 5 && gender && birthdate && !isLoading) ? 1 : 0.3
+                  opacity: (username.length >= 5 && gender && birthdate && (!isAppleUser || fullName) && !isLoading) ? 1 : 0.3
                 }
               ]}
             >

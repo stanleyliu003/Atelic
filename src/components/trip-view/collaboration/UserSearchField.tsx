@@ -70,10 +70,10 @@ export const UserSearchField: React.FC<UserSearchFieldProps> = ({
       const users = result.data?.searchUsers || [];
       console.log('[UserSearchField] Search results:', users);
 
-      // Filter out users who are already collaborators
-      const existingEmails = existingCollaborators.map(c => c.email.toLowerCase());
+      // Filter out users who are already collaborators (check by username, not email)
+      const existingUsernames = existingCollaborators.map(c => c.username.toLowerCase());
       const filteredUsers = users.filter((user: UserProfile) =>
-        !existingEmails.includes(user.email.toLowerCase())
+        !existingUsernames.includes(user.username.toLowerCase())
       );
 
       setSearchResults(filteredUsers);

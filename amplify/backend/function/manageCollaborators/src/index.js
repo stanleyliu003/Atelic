@@ -164,8 +164,8 @@ async function handleAddCollaborator(trip, args, requesterId, requesterRole, tab
   }
   console.log('✅ Permission check passed');
 
-  // Check if user is already a collaborator
-  const existingCollaborator = trip.collaborators.find(c => c.email === userEmail);
+  // Check if user is already a collaborator (check by username, not email)
+  const existingCollaborator = trip.collaborators.find(c => c.username === username);
   if (existingCollaborator) {
     console.log('❌ User already exists as collaborator:', existingCollaborator);
     throw new Error('User is already a collaborator on this trip');

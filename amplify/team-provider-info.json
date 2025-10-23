@@ -57,7 +57,7 @@
         },
         "manageCollaborators": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/manageCollaborators-47325352646671764452-build.zip"
+          "s3Key": "amplify-builds/manageCollaborators-5633774c435553627149-build.zip"
         },
         "categoryStorage": {},
         "amplifybackend59ccdbf8": {},
