@@ -130,6 +130,9 @@ export default function TripViewMain() {
     // Track last save time to prevent duplicate rapid-fire saves
     const lastSaveTimeRef = useRef<number>(0);
 
+    // Minimum time between autosaves (in milliseconds) - 2 seconds
+    const MIN_AUTOSAVE_INTERVAL = 2000;
+
     // Track screen focus state for subscription management
     const [isScreenFocused, setIsScreenFocused] = useState(true);
 
@@ -1069,6 +1072,11 @@ export default function TripViewMain() {
             // Add OWNER's userID and collaborators to trip data
             // This ensures we always use the owner's userID as the partition key in DynamoDB
             const nextVersion = versionRef.current + 1;
+
+            // IMMEDIATELY update versionRef to prevent race conditions
+            // This prevents concurrent saves from using the same version number
+            versionRef.current = nextVersion;
+
             const tripDataWithUser = {
                 ...tripData,
                 userID: ownerUserID, // Always use owner's userID, not current user's userID
@@ -1092,6 +1100,7 @@ export default function TripViewMain() {
                 setVersion(result.data.createTrip.version);
                 setUpdatedAt(result.data.createTrip.updatedAt);
                 setLastUpdatedBy(result.data.createTrip.lastUpdatedBy);
+                // versionRef already updated above, but sync with server response for safety
                 versionRef.current = result.data.createTrip.version;
             }
 
@@ -1116,6 +1125,11 @@ export default function TripViewMain() {
 
         } catch (error: any) {
             console.error('[trip-view_main] Error saving trip:', error);
+
+            // Rollback version on failure to maintain consistency for retry
+            // Since we optimistically incremented at line 1075, we need to decrement on failure
+            versionRef.current = versionRef.current - 1;
+
             throw error;
         } finally {
             // Release save lock
@@ -1187,10 +1201,26 @@ export default function TripViewMain() {
 
         // Trigger 1: Periodic autosave every 5 minutes
         autosaveIntervalRef.current = setInterval(() => {
+            const now = Date.now();
+            const timeSinceLastSave = now - lastSaveTimeRef.current;
+
+            // Prevent duplicate saves within MIN_AUTOSAVE_INTERVAL
+            if (timeSinceLastSave < MIN_AUTOSAVE_INTERVAL) {
+                console.log('[trip-view_main] Skipping periodic autosave (too soon since last save)');
+                return;
+            }
+
             console.log('[trip-view_main] Periodic autosave triggered');
-            saveTrip().catch(error => {
-                console.error('[trip-view_main] Autosave failed:', error);
-            });
+
+            saveTrip()
+                .then(() => {
+                    // Update timestamp only after successful save
+                    lastSaveTimeRef.current = Date.now();
+                })
+                .catch(error => {
+                    console.error('[trip-view_main] Autosave failed:', error);
+                    // Don't update timestamp on failure, allowing retry
+                });
         }, 300000); // 5 minutes
 
         // Trigger 2: App going to background
@@ -1199,18 +1229,23 @@ export default function TripViewMain() {
                 const now = Date.now();
                 const timeSinceLastSave = now - lastSaveTimeRef.current;
 
-                // Prevent duplicate saves within 2 seconds (AppState can fire multiple times)
-                if (timeSinceLastSave < 2000) {
-                    console.log('[trip-view_main] Skipping duplicate background save (too soon)');
+                // Prevent duplicate saves within MIN_AUTOSAVE_INTERVAL
+                if (timeSinceLastSave < MIN_AUTOSAVE_INTERVAL) {
+                    console.log('[trip-view_main] Skipping background save (too soon since last save)');
                     return;
                 }
 
                 console.log('[trip-view_main] App backgrounded - autosaving...');
-                lastSaveTimeRef.current = now;
 
-                saveTrip().catch(error => {
-                    console.error('[trip-view_main] Background autosave failed:', error);
-                });
+                saveTrip()
+                    .then(() => {
+                        // Update timestamp only after successful save
+                        lastSaveTimeRef.current = Date.now();
+                    })
+                    .catch(error => {
+                        console.error('[trip-view_main] Background autosave failed:', error);
+                        // Don't update timestamp on failure, allowing retry
+                    });
             }
         };
 
@@ -1354,7 +1389,14 @@ export default function TripViewMain() {
                 onShareTrip={async () => {
                     if (!tripId) {
                         // Save trip first if it doesn't exist
-                        await saveTrip();
+                        try {
+                            await saveTrip();
+                            // Update timestamp only after successful save
+                            lastSaveTimeRef.current = Date.now();
+                        } catch (error) {
+                            console.error('[trip-view_main] Save before share failed:', error);
+                            // Still allow sharing even if save failed (trip might exist)
+                        }
                     }
                     handleShareTrip();
                 }}
@@ -1648,7 +1690,14 @@ export default function TripViewMain() {
 
                     // Only save if user has edit permissions (owner or editor)
                     if (currentUserRole !== 'viewer') {
-                        await saveTrip();
+                        try {
+                            await saveTrip();
+                            // Update timestamp only after successful save
+                            lastSaveTimeRef.current = Date.now();
+                        } catch (error) {
+                            console.error('[trip-view_main] Manual save failed:', error);
+                            // Could show an alert to the user here if desired
+                        }
                     } else {
                         console.log('[trip-view_main] Viewer navigating home - skipping save');
                     }

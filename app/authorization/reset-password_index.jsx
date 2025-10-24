@@ -187,6 +187,7 @@ export default function ResetPassword() {
               autoCorrect={false}
               autoComplete="off"
               textContentType="none"
+              passwordRules=""
             />
           </View>
 
@@ -203,6 +204,7 @@ export default function ResetPassword() {
               autoCorrect={false}
               autoComplete="off"
               textContentType="none"
+              passwordRules=""
             />
           </View>
 
