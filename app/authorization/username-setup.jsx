@@ -28,30 +28,32 @@ export default function UsernameSetup() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [gender, setGender] = useState('');
   const [fullName, setFullName] = useState('');
-  const [isAppleUser, setIsAppleUser] = useState(false);
+  const [isExternalProvider, setIsExternalProvider] = useState(false);
 
   useEffect(() => {
-    // Check if user signed in with Apple
+    // Check if user signed in with external provider (Apple or Google)
     const checkUserProvider = async () => {
       try {
         const user = await Auth.currentAuthenticatedUser();
         const attributes = await Auth.userAttributes(user);
-        
-        // Check if user has identities attribute indicating Apple sign-in
+
+        // Check if user has identities attribute indicating external provider sign-in
         const identitiesAttr = attributes.find(attr => attr.Name === 'identities');
         if (identitiesAttr) {
           const identities = JSON.parse(identitiesAttr.Value);
-          const isApple = identities.some(identity => 
-            identity.providerName === 'SignInWithApple' || 
-            identity.userId?.startsWith('signinwithapple_')
+          const isExternal = identities.some(identity =>
+            identity.providerName === 'SignInWithApple' ||
+            identity.providerName === 'Google' ||
+            identity.userId?.startsWith('signinwithapple_') ||
+            identity.userId?.startsWith('google_')
           );
-          setIsAppleUser(isApple);
+          setIsExternalProvider(isExternal);
         }
       } catch (err) {
         console.error('Error checking user provider:', err);
       }
     };
-    
+
     checkUserProvider();
   }, []);
 
@@ -66,7 +68,7 @@ export default function UsernameSetup() {
       return;
     }
 
-    if (isAppleUser && (!fullName || fullName.trim().length < 2)) {
+    if (isExternalProvider && (!fullName || fullName.trim().length < 2)) {
       setError('Please enter your full name.');
       setIsLoading(false);
       return;
@@ -125,8 +127,8 @@ export default function UsernameSetup() {
         'birthdate': birthdate
       };
 
-      // Add name attribute for Apple users
-      if (isAppleUser && fullName.trim()) {
+      // Add name attribute for external provider users (Apple/Google)
+      if (isExternalProvider && fullName.trim()) {
         attributesToUpdate['name'] = fullName.trim();
       }
 
@@ -165,8 +167,8 @@ export default function UsernameSetup() {
           <View style={styles.content}>
             <Text style={styles.title}>Complete Your Profile</Text>
             
-            {/* Full Name Field - Only for Apple users */}
-            {isAppleUser && (
+            {/* Full Name Field - For external provider users (Apple/Google) */}
+            {isExternalProvider && (
               <View style={{ marginTop: 40 }}>
                 <Text style={styles.label}>Full Name</Text>
                 <TextInput
@@ -183,7 +185,7 @@ export default function UsernameSetup() {
               </View>
             )}
 
-            <View style={{ marginTop: isAppleUser ? 20 : 40 }}>
+            <View style={{ marginTop: isExternalProvider ? 20 : 40 }}>
               <Text style={styles.label}>Username</Text>
               <TextInput
                 style={styles.input}
@@ -193,7 +195,7 @@ export default function UsernameSetup() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 spellCheck={false}
-                autoFocus={!isAppleUser}
+                autoFocus={!isExternalProvider}
                 editable={!isLoading}
               />
             </View>
@@ -280,11 +282,11 @@ export default function UsernameSetup() {
 
             <TouchableOpacity
               onPress={handleContinue}
-              disabled={isLoading || username.length < 5 || !gender || !birthdate || (isAppleUser && !fullName)}
+              disabled={isLoading || username.length < 5 || !gender || !birthdate || (isExternalProvider && !fullName)}
               style={[
                 styles.button,
                 {
-                  opacity: (username.length >= 5 && gender && birthdate && (!isAppleUser || fullName) && !isLoading) ? 1 : 0.3
+                  opacity: (username.length >= 5 && gender && birthdate && (!isExternalProvider || fullName) && !isLoading) ? 1 : 0.3
                 }
               ]}
             >

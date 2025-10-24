@@ -80,6 +80,8 @@ exports.handler = async (event) => {
 
   try {
     await docClient.send(new PutCommand(params));
+    console.log('Trip saved successfully to DynamoDB');
+
     // Return a Trip object as required by the GraphQL schema
     return {
       tripId: input.tripId,
@@ -109,9 +111,10 @@ exports.handler = async (event) => {
 
     // Check if it's a conditional check failure (version conflict)
     if (error.name === 'ConditionalCheckFailedException') {
-      throw new Error('Version conflict: Trip was updated by another user. Please reload and try again.');
+      console.error('Version conflict detected - Attempted version:', input.version, 'Expected DB version:', input.version - 1);
+      throw new Error(`Version conflict: Attempted to save version ${input.version} but database has a different version. This usually happens when multiple save requests occur simultaneously. Please try again.`);
     }
 
-    throw new Error('Failed to save trip');
+    throw new Error('Failed to save trip: ' + error.message);
   }
 };

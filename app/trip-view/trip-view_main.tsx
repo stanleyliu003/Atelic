@@ -245,7 +245,31 @@ export default function TripViewMain() {
         deleteDayAndRenumber,
         addActivityToDay,
     } = useDayActivities();
-    
+
+    // Refs to track latest trip data for autosave (avoid stale closures)
+    const latestTripDataRef = useRef({
+        activities,
+        dayActivities,
+        dayPolylines,
+        tripLength,
+        selectedCity,
+        tripPhotoReference,
+        createdAt
+    });
+
+    // Keep latestTripDataRef in sync with the latest values
+    useEffect(() => {
+        latestTripDataRef.current = {
+            activities,
+            dayActivities,
+            dayPolylines,
+            tripLength,
+            selectedCity,
+            tripPhotoReference,
+            createdAt
+        };
+    }, [activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt]);
+
     // Initialize days based on tripLength (only for new trips, not existing ones)
     const [hasInitialized, setHasInitialized] = useState(false);
     useEffect(() => {
@@ -927,15 +951,18 @@ export default function TripViewMain() {
         setIsSaving(true);
 
         try {
+            // Use latest values from ref to avoid stale closures
+            const { activities: latestActivities, dayActivities: latestDayActivities, dayPolylines: latestDayPolylines, selectedCity: latestSelectedCity, tripPhotoReference: latestTripPhotoReference, createdAt: latestCreatedAt } = latestTripDataRef.current;
+
             // Gather days and their activities (sanitize activities for GraphQL input)
-            const days = Object.keys(dayActivities).map(dayNumber => ({
+            const days = Object.keys(latestDayActivities).map(dayNumber => ({
                 dayNumber: Number(dayNumber),
-                activities: dayActivities[dayNumber].activities.map(sanitizeActivity),
-                encodedPolyline: dayPolylines[dayNumber] || null,
+                activities: latestDayActivities[dayNumber].activities.map(sanitizeActivity),
+                encodedPolyline: latestDayPolylines[dayNumber] || null,
             }));
             // Gather wishlist activities (not assigned to any day) and sanitize them
             const dayActivityIds = days.flatMap(day => day.activities.map(a => a.place_id)).filter(Boolean);
-            const wishlist = (activities || [])
+            const wishlist = (latestActivities || [])
                 .filter((activity) => !activity.place_id || !dayActivityIds.includes(activity.place_id))
                 .map(sanitizeActivity);
             // Compose trip data object
@@ -950,7 +977,7 @@ export default function TripViewMain() {
             }
 
             // Preserve original createdAt for existing trips, generate only for new trips
-            let tripCreatedAt = createdAt;
+            let tripCreatedAt = latestCreatedAt;
             if (!tripCreatedAt) {
                 tripCreatedAt = new Date().toISOString();
                 setCreatedAt(tripCreatedAt);
@@ -973,8 +1000,8 @@ export default function TripViewMain() {
                 days,
                 wishlist,
                 tripLength: days.length, // Use tripLength state variable, fallback to days.length
-                selectedCity,
-                tripPhotoReference: tripPhotoReference || '',
+                selectedCity: latestSelectedCity,
+                tripPhotoReference: latestTripPhotoReference || '',
                 createdAt: tripCreatedAt,
                 startDate: startDate || null,
                 endDate: endDate || null,
@@ -1153,8 +1180,8 @@ export default function TripViewMain() {
             return;
         }
 
-        // Only autosave if we have trip data
-        if (!tripIdRef.current && activities.length === 0 && Object.keys(dayActivities).length === 0) {
+        // Only autosave if we have a tripId
+        if (!tripId) {
             return;
         }
 
@@ -1196,7 +1223,7 @@ export default function TripViewMain() {
             }
             appStateSubscription?.remove();
         };
-    }, [tripId, activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt, currentUserRole]);
+    }, [tripId, currentUserRole]); // Only re-create when tripId or role changes
 
     // Real-time subscription for trip updates
     useEffect(() => {
