@@ -3,7 +3,6 @@ import { Auth, API } from 'aws-amplify';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 
 const searchUsers = /* GraphQL */ `
@@ -25,8 +24,8 @@ export default function UsernameSetup() {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [birthdate, setBirthdate] = useState('');
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [age, setAge] = useState('');
+  const [ageError, setAgeError] = useState('');
   const [gender, setGender] = useState('');
   const [fullName, setFullName] = useState('');
   const [isExternalProvider, setIsExternalProvider] = useState(false);
@@ -95,6 +94,7 @@ export default function UsernameSetup() {
 
   const handleContinue = async () => {
     setError('');
+    setAgeError('');
     setIsLoading(true);
 
     // Validate all fields first
@@ -117,8 +117,16 @@ export default function UsernameSetup() {
       return;
     }
 
-    if (!birthdate) {
-      setError('Please select your birthdate.');
+    if (!age) {
+      setAgeError('Please enter your age.');
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate age is a number between 4 and 100
+    const ageNum = parseInt(age);
+    if (isNaN(ageNum) || ageNum < 4 || ageNum > 100) {
+      setAgeError('Age must be a valid number between 4 and 100.');
       setIsLoading(false);
       return;
     }
@@ -156,6 +164,12 @@ export default function UsernameSetup() {
 
       // Step 2: Username is available, update the user's preferred_username
       const user = await Auth.currentAuthenticatedUser();
+
+      // Convert age to birthdate format (YYYY-MM-DD) for Cognito
+      // Cognito requires birthdate to be at least 10 characters
+      const currentYear = new Date().getFullYear();
+      const birthYear = currentYear - ageNum;
+      const birthdate = `${birthYear}-01-01`;
 
       // Prepare attributes to update
       const attributesToUpdate = {
@@ -255,53 +269,22 @@ export default function UsernameSetup() {
               />
             </View>
 
-            {/* Birthdate Field */}
+            {/* Age Field */}
             <View style={{ marginTop: 20, marginBottom: 5 }}>
-              <Text style={styles.label}>Birthdate</Text>
-              <TouchableOpacity
-                style={[styles.input, { justifyContent: 'center' }]}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Text style={{ color: birthdate ? Colors.PRIMARY : Colors.GRAY, fontFamily: 'outfit' }}>
-                  {birthdate ? birthdate : 'Select Birthdate'}
-                </Text>
-              </TouchableOpacity>
-              {showDatePicker && (
-                <>
-                  <DateTimePicker
-                    value={birthdate
-                      ? new Date(
-                          Number(birthdate.split('-')[0]),
-                          Number(birthdate.split('-')[1]) - 1,
-                          Number(birthdate.split('-')[2])
-                        )
-                      : new Date(2000, 0, 1)
-                    }
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    maximumDate={new Date()}
-                    onChange={(event, selectedDate) => {
-                      if (selectedDate) {
-                        const yyyy = selectedDate.getFullYear();
-                        const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                        const dd = String(selectedDate.getDate()).padStart(2, '0');
-                        setBirthdate(`${yyyy}-${mm}-${dd}`);
-                      }
-                      if (Platform.OS === 'android') {
-                        setShowDatePicker(false);
-                      }
-                    }}
-                  />
-                  {Platform.OS === 'ios' && (
-                    <TouchableOpacity
-                      style={{ marginTop: 10, alignSelf: 'center', padding: 15, backgroundColor: '#F36406', borderRadius: 15, borderColor: Colors.PRIMARY }}
-                      onPress={() => setShowDatePicker(false)}
-                    >
-                      <Text style={{ color: Colors.WHITE, fontSize: 18, fontFamily: 'outfit' }}>Done</Text>
-                    </TouchableOpacity>
-                  )}
-                </>
-              )}
+              <Text style={styles.label}>Age</Text>
+              <TextInput
+                style={styles.input}
+                placeholder='Enter your age'
+                value={age}
+                onChangeText={(value) => setAge(value)}
+                keyboardType="number-pad"
+                autoCorrect={false}
+                spellCheck={false}
+                editable={!isLoading}
+              />
+              {ageError ? (
+                <Text style={{ color: 'red', marginTop: 5, fontFamily: 'outfit', fontSize: 14 }}>{ageError}</Text>
+              ) : null}
             </View>
 
             {/* Gender Field */}
@@ -337,11 +320,11 @@ export default function UsernameSetup() {
 
             <TouchableOpacity
               onPress={handleContinue}
-              disabled={isLoading || username.length < 5 || !gender || !birthdate || (isGoogleUser && !fullName)}
+              disabled={isLoading || username.length < 5 || !gender || !age || (isGoogleUser && !fullName)}
               style={[
                 styles.button,
                 {
-                  opacity: (username.length >= 5 && gender && birthdate && (!isGoogleUser || fullName) && !isLoading) ? 1 : 0.3
+                  opacity: (username.length >= 5 && gender && age && (!isGoogleUser || fullName) && !isLoading) ? 1 : 0.3
                 }
               ]}
             >

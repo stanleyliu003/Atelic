@@ -4,7 +4,6 @@ import { Auth, API } from 'aws-amplify';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView, Platform, KeyboardAvoidingView, Linking } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
 const searchUsers = /* GraphQL */ `
   query SearchUsers($searchTerm: String!) {
@@ -32,8 +31,8 @@ export default function SignUp() {
   const [usernameError, setUsernameError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [birthdate, setBirthdate] = useState('');
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [age, setAge] = useState('');
+  const [ageError, setAgeError] = useState('');
   const [gender, setGender] = useState('');
 
    useEffect(()=>{
@@ -47,13 +46,22 @@ export default function SignUp() {
      setError('');
      setUsernameError('');
      setEmailError('');
+     setAgeError('');
      setIsLoading(true);
 
-     if (!email || !username || !password || !fullName || !birthdate || !gender) {
+     if (!email || !username || !password || !fullName || !age || !gender) {
        setError('Please fill out all fields.');
        setIsLoading(false);
        return;
      }
+
+    // Validate age is a number between 4 and 100
+    const ageNum = parseInt(age);
+    if (isNaN(ageNum) || ageNum < 4 || ageNum > 100) {
+      setAgeError('Age must be a valid number between 4 and 100.');
+      setIsLoading(false);
+      return;
+    }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -136,6 +144,12 @@ export default function SignUp() {
      }
 
      try {
+       // Convert age to birthdate format (YYYY-MM-DD) for Cognito
+       // Cognito requires birthdate to be at least 10 characters
+       const currentYear = new Date().getFullYear();
+       const birthYear = currentYear - ageNum;
+       const birthdate = `${birthYear}-01-01`;
+
        const result = await Auth.signUp({
          username: email,
          password,
@@ -274,58 +288,26 @@ export default function SignUp() {
           ) : null}
         </View>
 
-        {/* Enter Birthdate */}
+        {/* Enter Age */}
         <View style={{
           marginTop:20,
           marginBottom:5
         }}>
           <Text style={{
             fontFamily:'outfit'
-          }}>Birthdate</Text>
-          <TouchableOpacity
-            style={[styles.input, { justifyContent: 'center' }]}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text style={{ color: birthdate ? Colors.PRIMARY : Colors.GRAY, fontFamily: 'outfit' }}>
-              {birthdate ? birthdate : 'Select Birthdate'}
-            </Text>
-          </TouchableOpacity>
-          {showDatePicker && (
-            <>
-              <DateTimePicker
-                value={birthdate
-                  ? new Date(
-                      Number(birthdate.split('-')[0]),
-                      Number(birthdate.split('-')[1]) - 1,
-                      Number(birthdate.split('-')[2])
-                    )
-                  : new Date(2000, 0, 1)
-                }
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                maximumDate={new Date()}
-                onChange={(event, selectedDate) => {
-                  if (selectedDate) {
-                    const yyyy = selectedDate.getFullYear();
-                    const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                    const dd = String(selectedDate.getDate()).padStart(2, '0');
-                    setBirthdate(`${yyyy}-${mm}-${dd}`);
-                  }
-                  if (Platform.OS === 'android') {
-                    setShowDatePicker(false);
-                  }
-                }}
-              />
-              {Platform.OS === 'ios' && (
-                <TouchableOpacity
-                  style={{ marginTop: 10, alignSelf: 'center', padding: 15, backgroundColor: '#F36406', borderRadius: 15, borderColor: Colors.PRIMARY }}
-                  onPress={() => setShowDatePicker(false)}
-                >
-                  <Text style={{ color: Colors.WHITE, fontSize: 18, fontFamily: 'outfit' }}>Done</Text>
-                </TouchableOpacity>
-              )}
-            </>
-          )}
+          }}>Age</Text>
+          <TextInput
+            style={styles.input}
+            placeholder='Enter your age (4-100)'
+            value={age}
+            onChangeText={(value)=>setAge(value)}
+            keyboardType="number-pad"
+            autoCorrect={false}
+            spellCheck={false}
+          />
+          {ageError ? (
+            <Text style={{ color: 'red', marginTop: 5, fontFamily: 'outfit', fontSize: 14 }}>{ageError}</Text>
+          ) : null}
         </View>
 
         {/* Select Gender */}

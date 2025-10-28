@@ -127,7 +127,7 @@
         },
         "CreateTripStorage": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/CreateTripStorage-6f334b46434c436c6b53-build.zip"
+          "s3Key": "amplify-builds/CreateTripStorage-2b434c6d4f3778367464-build.zip"
         },
         "GetRoute": {
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
@@ -153,11 +153,11 @@
         },
         "manageCollaborators": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/manageCollaborators-47325352646671764452-build.zip"
+          "s3Key": "amplify-builds/manageCollaborators-46566f5569322f303678-build.zip"
         },
         "searchUsers": {
           "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
-          "s3Key": "amplify-builds/searchUsers-3079386a657a5a7a5731-build.zip"
+          "s3Key": "amplify-builds/searchUsers-35766642504e6d46584e-build.zip"
         },
         "wishlistAnalyzer": {
           "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw",
@@ -186,6 +186,10 @@
           "s3Key": "amplify-builds/searchBarActivities-6a585172503838433462-build.zip",
           "geminiApiKey": "AIzaSyB3fe4GzOxVGu1j4tg5EtU1S86i-ZMRKCw",
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
+        },
+        "deleteAccount": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/deleteAccount-66687363464e47346135-build.zip"
         }
       },
       "api": {
@@ -283,7 +287,11 @@
         "WishListAPI": {},
         "amplifybackend59ccdbf8": {},
         "TripStorage": {},
-        "PlacesAPIActivityStorage": {}
+        "PlacesAPIActivityStorage": {},
+        "deleteAccount": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/deleteAccount-66687363464e47346135-build.zip"
+        }
       },
       "api": {
         "WishListAPI": {},
