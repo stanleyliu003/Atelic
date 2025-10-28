@@ -98,11 +98,22 @@
    categories: [CategoryItem]
  }
 
- type DeleteTripResult {
-   success: Boolean!
-   message: String!
-   deletedTripID: String!
- }
+type DeleteTripResult {
+  success: Boolean!
+  message: String!
+  deletedTripID: String!
+}
+
+type DeleteAccountResult {
+  success: Boolean!
+  message: String!
+  userID: String!
+  deletedTripsCount: Int!
+  cognitoUserDeleted: Boolean!
+  ownedTripsDeleted: Int!
+  sharedTripsRemoved: Int!
+  errors: [String]
+}
 
  type UserProfile {
    userID: String!
@@ -209,14 +220,15 @@
      encodedPolyline: String
    }
 
-  type Mutation {
-    optimizeRoute(activities: [ActivityInput!]!): [Activity] @function(name: "OptimizeRoute-${env}") @auth(rules: [{ allow: public }])
-    createTrip(input: CreateTripInput!): Trip @function(name: "CreateTripStorage-${env}") @auth(rules: [{ allow: public }])
-    deleteTrip(userID: String!, tripID: String!): DeleteTripResult @function(name: "deleteTrip-${env}") @auth(rules: [{ allow: public }])
-    addCollaborator(tripId: String!, userID: String!, userEmail: String!, fullName: String!, username: String!, role: CollaboratorRole!, addedBy: String): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
-    removeCollaborator(tripId: String!, username: String!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
-    updateCollaboratorRole(tripId: String!, username: String!, role: CollaboratorRole!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
-  }
+ type Mutation {
+   optimizeRoute(activities: [ActivityInput!]!): [Activity] @function(name: "OptimizeRoute-${env}") @auth(rules: [{ allow: public }])
+   createTrip(input: CreateTripInput!): Trip @function(name: "CreateTripStorage-${env}") @auth(rules: [{ allow: public }])
+   deleteTrip(userID: String!, tripID: String!): DeleteTripResult @function(name: "deleteTrip-${env}") @auth(rules: [{ allow: public }])
+   deleteUserAccount(userID: String!): DeleteAccountResult @function(name: "deleteAccount-${env}") @auth(rules: [{ allow: public }])
+   addCollaborator(tripId: String!, userID: String!, userEmail: String!, fullName: String!, username: String!, role: CollaboratorRole!, addedBy: String): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
+   removeCollaborator(tripId: String!, username: String!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
+   updateCollaboratorRole(tripId: String!, username: String!, role: CollaboratorRole!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
+ }
 
    type Subscription {
      onTripUpdated(tripId: String!): Trip

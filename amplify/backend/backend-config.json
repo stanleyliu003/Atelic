@@ -158,6 +158,64 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "deleteAccount": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "CreateTripStorage"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "deleteTrip"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "getTripIDs"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "getUserTrips"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "manageCollaborators"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "deleteTrip": {
       "build": true,
       "dependsOn": [
@@ -407,6 +465,22 @@
         {
           "category": "function",
           "resourceName": "GetRoute"
+        }
+      ]
+    },
+    "AMPLIFY_function_deleteAccount_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "deleteAccount"
+        }
+      ]
+    },
+    "AMPLIFY_function_deleteAccount_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "deleteAccount"
         }
       ]
     },

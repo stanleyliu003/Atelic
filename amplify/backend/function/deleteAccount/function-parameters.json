@@ -1,0 +1,53 @@
+{
+  "permissions": {
+    "auth": {
+      "amplifybackend59ccdbf8": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    },
+    "function": {
+      "CreateTripStorage": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ],
+      "deleteTrip": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ],
+      "getTripIDs": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ],
+      "getUserTrips": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ],
+      "manageCollaborators": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    },
+    "storage": {
+      "TripStorage": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    }
+  },
+  "lambdaLayers": []
+}

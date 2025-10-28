@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { useCreateTrip } from '../../context/CreateTripContext';
-import { listUserTripsFromCloud, retrieveTripFromCloud } from '../../src/services/lambdaService';
+import { listUserTripsFromCloud, retrieveTripFromCloud, deleteUserAccountFromCloud } from '../../src/services/lambdaService';
 import { deleteTrip } from '../../src/graphql/customMutations';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import Carousel from 'react-native-reanimated-carousel';
@@ -347,66 +347,81 @@ export default function Profile() {
 
   const handleDeleteAccount = async () => {
     try {
-      // TODO: Check for active subscriptions via StoreKit/RevenueCat
-      // For now, we'll show a warning about subscriptions
+      // Re-authenticate user for security
+      const user = await Auth.currentAuthenticatedUser();
+      const userID = user.username;
 
+      console.log('[Profile] Delete account initiated for user:', userID);
+
+      // Close the modal first
+      setIsDeleteAccountModalVisible(false);
+      setDeleteAccountChecked(false);
+
+      // Show loading state
       Alert.alert(
-        'Manage Your Subscriptions',
-        'Before deleting your account, please make sure to cancel any active subscriptions to avoid future charges. You can manage your subscriptions in the App Store.\n\nWould you like to continue with account deletion?',
-        [
-          {
-            text: 'Manage Subscriptions',
-            onPress: () => {
-              // Open subscription management
-              Linking.openURL('https://apps.apple.com/account/subscriptions');
-            },
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'Continue Deletion',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                // Re-authenticate user for security
-                const user = await Auth.currentAuthenticatedUser();
-
-                // TODO: Implement actual account deletion logic
-                // This should call a Lambda function to mark the account for deletion
-                console.log('[Profile] Delete account initiated for user:', user.username);
-
-                // Close the modal
-                setIsDeleteAccountModalVisible(false);
-                setDeleteAccountChecked(false);
-
-                // Sign out the user
-                await Auth.signOut();
-
-                // Clear user data
-                setFullName('');
-                setUsername('');
-                setUserTrips([]);
-
-                // Navigate to login screen
-                router.replace('/');
-
-                Alert.alert(
-                  'Account Deletion Scheduled',
-                  'Your account has been scheduled for deletion. All your data, including trip plans and personal information, will be permanently deleted after 14 days. You can cancel this action by logging back in within 14 days.'
-                );
-              } catch (error) {
-                console.error('[Profile] Error deleting account:', error);
-                Alert.alert('Error', 'Failed to delete account. Please try again.');
-              }
-            },
-          },
-        ]
+        'Deleting Account',
+        'Please wait while we delete your account and all associated data...',
+        [],
+        { cancelable: false }
       );
+
+      try {
+        // Call the account deletion API
+        const deletionResult = await deleteUserAccountFromCloud(userID);
+        
+        console.log('[Profile] Account deletion result:', deletionResult);
+
+        if (deletionResult.success) {
+          // Sign out the user
+          await Auth.signOut();
+
+          // Clear user data
+          setFullName('');
+          setUsername('');
+          setUserTrips([]);
+          setOwnedTrips([]);
+          setSharedTrips([]);
+
+          // Navigate to login screen
+          router.replace('/');
+
+          // Show success message with detailed breakdown
+          const successMessage = `Your account has been permanently deleted. We removed ${deletionResult.ownedTripsDeleted} owned trip(s) and removed you from ${deletionResult.sharedTripsRemoved} shared trip(s). Thank you for using Atelic.`;
+          
+          Alert.alert(
+            'Account Deleted',
+            successMessage,
+            [{ text: 'OK' }]
+          );
+        } else {
+          throw new Error(deletionResult.message || 'Account deletion failed');
+        }
+      } catch (deletionError) {
+        console.error('[Profile] Account deletion failed:', deletionError);
+        
+        // Show error and allow user to try again
+        Alert.alert(
+          'Deletion Failed',
+          'We encountered an error while deleting your account. Please try again or contact support if the problem persists.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Try Again', 
+              onPress: () => {
+                setIsDeleteAccountModalVisible(true);
+                setDeleteAccountChecked(true);
+              }
+            }
+          ]
+        );
+      }
     } catch (error) {
-      console.error('[Profile] Error in delete account flow:', error);
+      console.error('[Profile] Error in delete account handler:', error);
       Alert.alert('Error', 'Failed to initiate account deletion. Please try again.');
+      
+      // Reset modal state
+      setIsDeleteAccountModalVisible(false);
+      setDeleteAccountChecked(false);
     }
   };
 

@@ -1,6 +1,7 @@
 import { API } from 'aws-amplify';
 import { getTripIDs as getTripIDsQuery } from '../graphql/queries';
 import { getUserTripsDetailed as getUserTripsQuery } from '../graphql/customQueries';
+import { deleteUserAccount as deleteUserAccountMutation } from '../graphql/customMutations';
 
 /**
  * Use API.post to invoke Lambda function with higher timeout than GraphQL
@@ -93,6 +94,30 @@ export const retrieveTripFromCloud = async (userID, tripID) => {
 
     } catch (error) {
         console.error('[Lambda Service] Error retrieving trip details from cloud:', error);
+        throw error;
+    }
+};
+
+/**
+ * Delete user account and all associated data
+ */
+export const deleteUserAccountFromCloud = async (userID) => {
+    try {
+        console.log('[Lambda Service] Initiating account deletion...');
+        console.log('[Lambda Service] UserID:', userID);
+
+        const result = await API.graphql({
+            query: deleteUserAccountMutation,
+            variables: {
+                userID: userID
+            }
+        });
+
+        console.log('[Lambda Service] Account deletion completed:', result.data.deleteUserAccount);
+        return result.data.deleteUserAccount;
+
+    } catch (error) {
+        console.error('[Lambda Service] Error deleting user account:', error);
         throw error;
     }
 };

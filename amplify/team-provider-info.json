@@ -81,6 +81,10 @@
           "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
           "s3Key": "amplify-builds/searchBarActivities-6a585172503838433462-build.zip"
+        },
+        "deleteAccount": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/deleteAccount-64364857587971447179-build.zip"
         }
       },
       "auth": {

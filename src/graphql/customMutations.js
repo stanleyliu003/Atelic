@@ -11,3 +11,19 @@ export const deleteTrip = /* GraphQL */ `
     }
   }
 `;
+
+export const deleteUserAccount = /* GraphQL */ `
+  mutation DeleteUserAccount($userID: String!) {
+    deleteUserAccount(userID: $userID) {
+      success
+      message
+      userID
+      deletedTripsCount
+      cognitoUserDeleted
+      ownedTripsDeleted
+      sharedTripsRemoved
+      errors
+      __typename
+    }
+  }
+`;
