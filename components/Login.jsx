@@ -5,16 +5,40 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, AppState } from 'react-native';
 import { Feather, AntDesign } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 
-// Configure Amplify with enhanced settings
+// Warm up the browser for better performance (recommended by Expo)
+WebBrowser.maybeCompleteAuthSession();
+
+// CRITICAL: This configures Amplify to use expo-web-browser for OAuth
+// This ensures authentication happens in an in-app browser (ASWebAuthenticationSession on iOS)
+// instead of opening Safari browser
+const urlOpener = async (url, redirectUrl) => {
+  try {
+    // On iOS, this will use ASWebAuthenticationSession (in-app browser)
+    // On Android, this will use Chrome Custom Tabs (in-app browser)
+    const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl);
+    return result;
+  } catch (error) {
+    console.error('OAuth WebBrowser error:', error?.message);
+    throw error;
+  }
+};
+
+// Configure Amplify with enhanced settings and expo-web-browser
 Amplify.configure({
   ...awsconfig,
   Analytics: {
     disabled: true,
   },
+  oauth: {
+    ...awsconfig.oauth,
+    // Use expo-web-browser for OAuth flows (in-app browser)
+    urlOpener: urlOpener,
+  },
 });
 
-console.log('Amplify configured')
+console.log('Amplify configured with expo-web-browser');
 
 export default function Login() {
   const router = useRouter();
