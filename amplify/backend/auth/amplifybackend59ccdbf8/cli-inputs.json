@@ -27,6 +27,8 @@
       "birthdate",
       "gender",
       "name",
+      "given_name",
+      "family_name",
       "phone_number",
       "preferred_username",
       "picture",
@@ -38,6 +40,8 @@
       "email",
       "gender",
       "name",
+      "given_name",
+      "family_name",
       "phone_number",
       "preferred_username",
       "picture",
@@ -84,7 +88,7 @@
       "Google",
       "SignInWithApple"
     ],
-    "hostedUIProviderMeta": "[{\"ProviderName\":\"Google\",\"authorize_scopes\":\"openid email profile\",\"AttributeMapping\":{\"email\":\"email\",\"username\":\"sub\"}},{\"ProviderName\":\"SignInWithApple\",\"authorize_scopes\":\"email\",\"AttributeMapping\":{\"email\":\"email\"}}]",
+    "hostedUIProviderMeta": "[{\"ProviderName\":\"Google\",\"authorize_scopes\":\"openid email profile\",\"AttributeMapping\":{\"email\":\"email\",\"username\":\"sub\"}},{\"ProviderName\":\"SignInWithApple\",\"authorize_scopes\":\"email name\",\"AttributeMapping\":{\"email\":\"email\",\"given_name\":\"firstName\",\"family_name\":\"lastName\",\"username\":\"sub\"}}]",
     "authProviders": [],
     "oAuthMetadata": "{\"AllowedOAuthFlows\":[\"code\"],\"AllowedOAuthScopes\":[\"phone\",\"email\",\"openid\",\"profile\",\"aws.cognito.signin.user.admin\"],\"CallbackURLs\":[\"atelicstable://\"],\"LogoutURLs\":[\"atelicstable://\"]}"
   }

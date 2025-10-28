@@ -30,6 +30,8 @@ export default function UsernameSetup() {
   const [gender, setGender] = useState('');
   const [fullName, setFullName] = useState('');
   const [isExternalProvider, setIsExternalProvider] = useState(false);
+  const [isAppleUser, setIsAppleUser] = useState(false);
+  const [isGoogleUser, setIsGoogleUser] = useState(false);
 
   useEffect(() => {
     // Check if user signed in with external provider (Apple or Google)
@@ -38,17 +40,50 @@ export default function UsernameSetup() {
         const user = await Auth.currentAuthenticatedUser();
         const attributes = await Auth.userAttributes(user);
 
+        console.log('User attributes:', attributes); // Debug log to see what's available
+
         // Check if user has identities attribute indicating external provider sign-in
         const identitiesAttr = attributes.find(attr => attr.Name === 'identities');
         if (identitiesAttr) {
           const identities = JSON.parse(identitiesAttr.Value);
-          const isExternal = identities.some(identity =>
+          const isApple = identities.some(identity =>
             identity.providerName === 'SignInWithApple' ||
+            identity.userId?.startsWith('signinwithapple_')
+          );
+          const isGoogle = identities.some(identity =>
             identity.providerName === 'Google' ||
-            identity.userId?.startsWith('signinwithapple_') ||
             identity.userId?.startsWith('google_')
           );
+          const isExternal = isApple || isGoogle;
+          
           setIsExternalProvider(isExternal);
+          setIsAppleUser(isApple);
+          setIsGoogleUser(isGoogle);
+
+          // For external users, check if name is already available
+          if (isExternal) {
+            // Check for both 'name' attribute and separate given_name/family_name attributes
+            const nameAttr = attributes.find(attr => attr.Name === 'name');
+            const givenNameAttr = attributes.find(attr => attr.Name === 'given_name');
+            const familyNameAttr = attributes.find(attr => attr.Name === 'family_name');
+            
+            if (nameAttr && nameAttr.Value) {
+              console.log(`${isApple ? 'Apple' : 'Google'} user name found:`, nameAttr.Value);
+              setFullName(nameAttr.Value);
+            } else if (givenNameAttr && familyNameAttr) {
+              const fullName = `${givenNameAttr.Value} ${familyNameAttr.Value}`.trim();
+              console.log(`${isApple ? 'Apple' : 'Google'} user name constructed from given_name + family_name:`, fullName);
+              setFullName(fullName);
+            } else if (givenNameAttr && givenNameAttr.Value) {
+              console.log(`${isApple ? 'Apple' : 'Google'} user given name only:`, givenNameAttr.Value);
+              setFullName(givenNameAttr.Value);
+            } else {
+              console.log(`${isApple ? 'Apple' : 'Google'} user name not found in attributes`);
+              if (isApple) {
+                console.log('This is expected for existing Apple users due to Apple\'s privacy behavior');
+              }
+            }
+          }
         }
       } catch (err) {
         console.error('Error checking user provider:', err);
@@ -69,7 +104,8 @@ export default function UsernameSetup() {
       return;
     }
 
-    if (isExternalProvider && (!fullName || fullName.trim().length < 2)) {
+    // Validate full name for Google users (Apple users don't need to provide it per Apple guidelines)
+    if (isGoogleUser && (!fullName || fullName.trim().length < 2)) {
       setError('Please enter your full name.');
       setIsLoading(false);
       return;
@@ -128,8 +164,10 @@ export default function UsernameSetup() {
         'birthdate': birthdate
       };
 
-      // Add name attribute for external provider users (Apple/Google)
-      if (isExternalProvider && fullName.trim()) {
+      // Add name attribute for external provider users
+      // Apple users: combine given_name + family_name into name attribute
+      // Google users: use the fullName from user input
+      if ((isAppleUser || isGoogleUser) && fullName.trim()) {
         attributesToUpdate['name'] = fullName.trim();
       }
 
@@ -181,8 +219,8 @@ export default function UsernameSetup() {
             
             <Text style={styles.title}>Complete Your Profile</Text>
             
-            {/* Full Name Field - For external provider users (Apple/Google) */}
-            {isExternalProvider && (
+            {/* Full Name Field - Show for Google users only (Apple users per Apple guidelines) */}
+            {isGoogleUser && (
               <View style={{ marginTop: 40 }}>
                 <Text style={styles.label}>Full Name</Text>
                 <TextInput
@@ -199,7 +237,7 @@ export default function UsernameSetup() {
               </View>
             )}
 
-            <View style={{ marginTop: isExternalProvider ? 20 : 40 }}>
+            <View style={{ marginTop: isGoogleUser ? 20 : 40 }}>
               <Text style={styles.label}>Username</Text>
               <TextInput
                 style={styles.input}
@@ -209,7 +247,7 @@ export default function UsernameSetup() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 spellCheck={false}
-                autoFocus={!isExternalProvider}
+                autoFocus={!isGoogleUser}
                 editable={!isLoading}
               />
             </View>
@@ -296,11 +334,11 @@ export default function UsernameSetup() {
 
             <TouchableOpacity
               onPress={handleContinue}
-              disabled={isLoading || username.length < 5 || !gender || !birthdate || (isExternalProvider && !fullName)}
+              disabled={isLoading || username.length < 5 || !gender || !birthdate || (isGoogleUser && !fullName)}
               style={[
                 styles.button,
                 {
-                  opacity: (username.length >= 5 && gender && birthdate && (!isExternalProvider || fullName) && !isLoading) ? 1 : 0.3
+                  opacity: (username.length >= 5 && gender && birthdate && (!isGoogleUser || fullName) && !isLoading) ? 1 : 0.3
                 }
               ]}
             >
