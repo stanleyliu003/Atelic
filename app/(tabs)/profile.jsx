@@ -2,7 +2,7 @@ import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking } from 'react-native';
+import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking, PanResponder } from 'react-native';
 import { Auth, API } from 'aws-amplify';
 import { useEffect, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
@@ -36,6 +36,21 @@ export default function Profile() {
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
   const [deleteAccountChecked, setDeleteAccountChecked] = useState(false);
+
+  // PanResponder for swipe down to close settings modal
+  const settingsPanResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_, gestureState) => {
+      // Only respond to vertical swipes (down)
+      return Math.abs(gestureState.dy) > 5 && gestureState.dy > 0;
+    },
+    onPanResponderRelease: (_, gestureState) => {
+      // Close modal if swiped down more than 50 pixels
+      if (gestureState.dy > 50) {
+        setIsSettingsModalVisible(false);
+      }
+    },
+  });
 
   const loadUserData = useCallback(async () => {
     try {
@@ -332,32 +347,66 @@ export default function Profile() {
 
   const handleDeleteAccount = async () => {
     try {
-      // TODO: Implement actual account deletion logic
-      // This should call a Lambda function to mark the account for deletion
-      console.log('[Profile] Delete account initiated');
-
-      // Close the modal
-      setIsDeleteAccountModalVisible(false);
-      setDeleteAccountChecked(false);
-
-      // Sign out the user
-      await Auth.signOut();
-
-      // Clear user data
-      setFullName('');
-      setUsername('');
-      setUserTrips([]);
-
-      // Navigate to login screen
-      router.replace('/');
+      // TODO: Check for active subscriptions via StoreKit/RevenueCat
+      // For now, we'll show a warning about subscriptions
 
       Alert.alert(
-        'Account Deletion Scheduled',
-        'Your account has been scheduled for deletion. You have 14 days to cancel this action by logging back in.'
+        'Manage Your Subscriptions',
+        'Before deleting your account, please make sure to cancel any active subscriptions to avoid future charges. You can manage your subscriptions in the App Store.\n\nWould you like to continue with account deletion?',
+        [
+          {
+            text: 'Manage Subscriptions',
+            onPress: () => {
+              // Open subscription management
+              Linking.openURL('https://apps.apple.com/account/subscriptions');
+            },
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Continue Deletion',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                // Re-authenticate user for security
+                const user = await Auth.currentAuthenticatedUser();
+
+                // TODO: Implement actual account deletion logic
+                // This should call a Lambda function to mark the account for deletion
+                console.log('[Profile] Delete account initiated for user:', user.username);
+
+                // Close the modal
+                setIsDeleteAccountModalVisible(false);
+                setDeleteAccountChecked(false);
+
+                // Sign out the user
+                await Auth.signOut();
+
+                // Clear user data
+                setFullName('');
+                setUsername('');
+                setUserTrips([]);
+
+                // Navigate to login screen
+                router.replace('/');
+
+                Alert.alert(
+                  'Account Deletion Scheduled',
+                  'Your account has been scheduled for deletion. All your data, including trip plans and personal information, will be permanently deleted after 14 days. You can cancel this action by logging back in within 14 days.'
+                );
+              } catch (error) {
+                console.error('[Profile] Error deleting account:', error);
+                Alert.alert('Error', 'Failed to delete account. Please try again.');
+              }
+            },
+          },
+        ]
       );
     } catch (error) {
-      console.error('[Profile] Error deleting account:', error);
-      Alert.alert('Error', 'Failed to delete account. Please try again.');
+      console.error('[Profile] Error in delete account flow:', error);
+      Alert.alert('Error', 'Failed to initiate account deletion. Please try again.');
     }
   };
 
@@ -856,6 +905,11 @@ export default function Profile() {
             activeOpacity={1}
             onPress={() => {}} // Prevent closing when tapping inside modal
           >
+            {/* Swipeable Handle */}
+            <View style={styles.settingsModalHandleContainer} {...settingsPanResponder.panHandlers}>
+              <View style={styles.settingsModalHandle} />
+            </View>
+
             {/* Header with close button */}
             <View style={styles.modalHeader}>
               <Text style={styles.settingsModalTitle}>Settings</Text>
@@ -1309,7 +1363,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    flex: 0.5, // Takes up 45% of screen height (increased from 40%)
+    flex: 0.6, // Takes up 45% of screen height (increased from 40%)
     paddingTop: 8,
     elevation: 5,
     shadowColor: '#000',
@@ -1320,9 +1374,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },
+  settingsModalHandleContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  settingsModalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: Colors.GRAY,
+    borderRadius: 2,
+    opacity: 0.3,
+  },
   settingsModalTitle: {
     fontFamily: 'outfit-bold',
-    fontSize: 24,
+    fontSize: 32,
     color: Colors.PRIMARY,
   },
   settingsMenuItem: {
