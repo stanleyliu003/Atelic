@@ -17,7 +17,19 @@ const urlOpener = async (url, redirectUrl) => {
   try {
     // On iOS, this will use ASWebAuthenticationSession (in-app browser)
     // On Android, this will use Chrome Custom Tabs (in-app browser)
-    const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl);
+    const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl, {
+      // Prefer ephemeral session to avoid showing saved password suggestions
+      // This creates a more seamless OAuth experience without autofill popups
+      preferEphemeralSession: true,
+      // Show toolbar at bottom with Done button
+      showInRecents: false,
+    });
+
+    // Dismiss any lingering WebBrowser state
+    if (result.type === 'cancel' || result.type === 'dismiss') {
+      WebBrowser.dismissBrowser();
+    }
+
     return result;
   } catch (error) {
     console.error('OAuth WebBrowser error:', error?.message);
