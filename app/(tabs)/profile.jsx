@@ -34,6 +34,8 @@ export default function Profile() {
   const [carouselIndices, setCarouselIndices] = useState({}); // Track current index per trip
   const [refreshing, setRefreshing] = useState(false);
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
+  const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
+  const [deleteAccountChecked, setDeleteAccountChecked] = useState(false);
 
   const loadUserData = useCallback(async () => {
     try {
@@ -325,6 +327,37 @@ export default function Profile() {
     } catch (error) {
       console.error('[Profile] Error opening link:', error);
       Alert.alert('Error', 'Failed to open link');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      // TODO: Implement actual account deletion logic
+      // This should call a Lambda function to mark the account for deletion
+      console.log('[Profile] Delete account initiated');
+
+      // Close the modal
+      setIsDeleteAccountModalVisible(false);
+      setDeleteAccountChecked(false);
+
+      // Sign out the user
+      await Auth.signOut();
+
+      // Clear user data
+      setFullName('');
+      setUsername('');
+      setUserTrips([]);
+
+      // Navigate to login screen
+      router.replace('/');
+
+      Alert.alert(
+        'Account Deletion Scheduled',
+        'Your account has been scheduled for deletion. You have 14 days to cancel this action by logging back in.'
+      );
+    } catch (error) {
+      console.error('[Profile] Error deleting account:', error);
+      Alert.alert('Error', 'Failed to delete account. Please try again.');
     }
   };
 
@@ -887,7 +920,110 @@ export default function Profile() {
                 <Text style={[styles.settingsMenuItemText, { color: '#FF4444' }]}>Logout</Text>
                 <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
               </TouchableOpacity>
+
+              {/* Delete Account */}
+              <TouchableOpacity
+                style={[styles.settingsMenuItem]}
+                onPress={() => {
+                  setIsSettingsModalVisible(false);
+                  setIsDeleteAccountModalVisible(true);
+                }}
+              >
+                <Ionicons name="trash-outline" size={24} color="#FF4444" />
+                <Text style={[styles.settingsMenuItemText, { color: '#FF4444' }]}>Delete Account</Text>
+                <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
+              </TouchableOpacity>
             </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Delete Account Modal */}
+      <Modal
+        visible={isDeleteAccountModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          setIsDeleteAccountModalVisible(false);
+          setDeleteAccountChecked(false);
+        }}
+      >
+        <TouchableOpacity
+          style={styles.deleteAccountModalOverlay}
+          activeOpacity={1}
+          onPress={() => {
+            setIsDeleteAccountModalVisible(false);
+            setDeleteAccountChecked(false);
+          }}
+        >
+          <TouchableOpacity
+            style={styles.deleteAccountModal}
+            activeOpacity={1}
+            onPress={() => {}} // Prevent closing when tapping inside modal
+          >
+            {/* Header with title and close button */}
+            <View style={styles.deleteAccountHeader}>
+              <Text style={styles.deleteAccountTitle}>Delete account</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => {
+                  setIsDeleteAccountModalVisible(false);
+                  setDeleteAccountChecked(false);
+                }}
+              >
+                <Ionicons name="close" size={32} color={Colors.GRAY} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Content */}
+            <ScrollView style={styles.deleteAccountContent} showsVerticalScrollIndicator={false}>
+              <Text style={styles.deleteAccountWarningText}>
+                Deleting your account will permanently remove your information, trip plans, and other documents associated with your account. After 14 days, this information cannot be restored.
+              </Text>
+
+              <Text style={styles.deleteAccountConfirmText}>
+                Are you sure you want to delete your account?
+              </Text>
+
+              {/* Checkbox */}
+              <TouchableOpacity
+                style={styles.checkboxContainer}
+                onPress={() => setDeleteAccountChecked(!deleteAccountChecked)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, deleteAccountChecked && styles.checkboxChecked]}>
+                  {deleteAccountChecked && (
+                    <Ionicons name="checkmark" size={18} color={Colors.WHITE} />
+                  )}
+                </View>
+                <Text style={styles.checkboxLabel}>
+                  Yes, I want to permanently delete my Atelic account.
+                </Text>
+              </TouchableOpacity>
+
+              {/* Delete My Account Button */}
+              <TouchableOpacity
+                style={[
+                  styles.deleteAccountButton,
+                  !deleteAccountChecked && styles.deleteAccountButtonDisabled
+                ]}
+                onPress={handleDeleteAccount}
+                disabled={!deleteAccountChecked}
+              >
+                <Text style={styles.deleteAccountButtonText}>Delete my account</Text>
+              </TouchableOpacity>
+
+              {/* Cancel Button */}
+              <TouchableOpacity
+                style={styles.cancelDeleteButton}
+                onPress={() => {
+                  setIsDeleteAccountModalVisible(false);
+                  setDeleteAccountChecked(false);
+                }}
+              >
+                <Text style={styles.cancelDeleteButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -1207,9 +1343,128 @@ const styles = StyleSheet.create({
     color: Colors.PRIMARY,
   },
   logoutMenuItem: {
-    marginTop: 20,
+    marginTop: 3,
   },
   settingsModalSpacer: {
     flex: 0.55, // Takes up 55% of screen, leaving 45% for modal (decreased from 67%)
+  },
+  deleteAccountModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  deleteAccountModal: {
+    backgroundColor: Colors.WHITE,
+    borderRadius: 20,
+    width: '100%',
+    maxHeight: '80%',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  deleteAccountHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  deleteAccountTitle: {
+    fontFamily: 'outfit-bold',
+    fontSize: 24,
+    color: Colors.PRIMARY,
+    textAlign: 'center',
+    flex: 1,
+  },
+  deleteAccountContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  deleteAccountWarningText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  deleteAccountConfirmText: {
+    marginTop: 15,
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
+    color: Colors.PRIMARY,
+    marginBottom: 20,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 30,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: Colors.GRAY,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    marginTop: 2,
+  },
+  checkboxChecked: {
+    backgroundColor: Colors.PRIMARY,
+    borderColor: Colors.PRIMARY,
+  },
+  checkboxLabel: {
+    fontFamily: 'outfit',
+    fontSize: 16,
+    color: Colors.PRIMARY,
+    flex: 1,
+    lineHeight: 22,
+  },
+  deleteAccountButton: {
+    backgroundColor: '#FF4444',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  deleteAccountButtonDisabled: {
+    backgroundColor: '#CCCCCC',
+    opacity: 0.6,
+  },
+  deleteAccountButtonText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
+    color: Colors.WHITE,
+  },
+  cancelDeleteButton: {
+    backgroundColor: Colors.WHITE,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  cancelDeleteButtonText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
+    color: Colors.PRIMARY,
   },
 });
