@@ -84,7 +84,7 @@
         },
         "deleteAccount": {
           "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
-          "s3Key": "amplify-builds/deleteAccount-64364857587971447179-build.zip"
+          "s3Key": "amplify-builds/deleteAccount-66687363464e47346135-build.zip"
         }
       },
       "auth": {

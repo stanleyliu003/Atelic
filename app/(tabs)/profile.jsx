@@ -357,13 +357,8 @@ export default function Profile() {
       setIsDeleteAccountModalVisible(false);
       setDeleteAccountChecked(false);
 
-      // Show loading state
-      Alert.alert(
-        'Deleting Account',
-        'Please wait while we delete your account and all associated data...',
-        [],
-        { cancelable: false }
-      );
+      // Navigate to deleting account screen
+      router.push('/authorization/deleting-account');
 
       try {
         // Call the account deletion API
@@ -382,42 +377,31 @@ export default function Profile() {
           setOwnedTrips([]);
           setSharedTrips([]);
 
-          // Navigate to login screen
-          router.replace('/');
+          // Navigate to login screen with flag to show success message
+          router.replace('/?deleted=1');
 
-          // Show success message with detailed breakdown
-          const successMessage = `Your account has been permanently deleted. We removed ${deletionResult.ownedTripsDeleted} owned trip(s) and removed you from ${deletionResult.sharedTripsRemoved} shared trip(s). Thank you for using Atelic.`;
+          // Log detailed breakdown for debugging
+          console.log('[Profile] Account deletion details:', {
+            ownedTripsDeleted: deletionResult.ownedTripsDeleted,
+            sharedTripsRemoved: deletionResult.sharedTripsRemoved,
+            totalTripsAffected: deletionResult.deletedTripsCount,
+            errors: deletionResult.errors
+          });
           
-          Alert.alert(
-            'Account Deleted',
-            successMessage,
-            [{ text: 'OK' }]
-          );
+          // Do not show alert here; login screen will show final notice
         } else {
           throw new Error(deletionResult.message || 'Account deletion failed');
         }
       } catch (deletionError) {
         console.error('[Profile] Account deletion failed:', deletionError);
         
-        // Show error and allow user to try again
-        Alert.alert(
-          'Deletion Failed',
-          'We encountered an error while deleting your account. Please try again or contact support if the problem persists.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { 
-              text: 'Try Again', 
-              onPress: () => {
-                setIsDeleteAccountModalVisible(true);
-                setDeleteAccountChecked(true);
-              }
-            }
-          ]
-        );
+        // On error, return to profile and show modal again
+        setIsDeleteAccountModalVisible(true);
+        setDeleteAccountChecked(true);
+        router.back();
       }
     } catch (error) {
       console.error('[Profile] Error in delete account handler:', error);
-      Alert.alert('Error', 'Failed to initiate account deletion. Please try again.');
       
       // Reset modal state
       setIsDeleteAccountModalVisible(false);
@@ -1047,7 +1031,7 @@ export default function Profile() {
             {/* Content */}
             <ScrollView style={styles.deleteAccountContent} showsVerticalScrollIndicator={false}>
               <Text style={styles.deleteAccountWarningText}>
-                Deleting your account will permanently remove your information, trip plans, and other documents associated with your account. After 14 days, this information cannot be restored.
+                Deleting your account will permanently remove your information, trip plans, and other documents associated with your account. This information cannot be restored.
               </Text>
 
               <Text style={styles.deleteAccountConfirmText}>

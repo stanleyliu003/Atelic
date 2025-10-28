@@ -57,6 +57,7 @@ Amplify.configure({
 export default function Login() {
   const router = useRouter();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [showDeletedNotice, setShowDeletedNotice] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
 
   useEffect(() => {
@@ -90,6 +91,13 @@ export default function Login() {
         }, 1500);
       }
     });
+
+    // Detect deletion success flag in initial URL (deep link) if any
+    Linking.getInitialURL().then((url) => {
+      if (url && url.includes('deleted=1')) {
+        setShowDeletedNotice(true);
+      }
+    }).catch(() => {});
 
     // Initial auth check
     checkAuthenticationState();
@@ -214,6 +222,24 @@ export default function Login() {
             }}
         />
         <View style = {styles.container}>
+          {showDeletedNotice && (
+            <View style={{
+              backgroundColor: '#e8f5e9',
+              borderColor: '#a5d6a7',
+              borderWidth: 1,
+              padding: 12,
+              borderRadius: 8,
+              marginBottom: 16,
+            }}>
+              <Text style={{
+                fontFamily: 'outfit',
+                fontSize: 14,
+                color: '#1b5e20'
+              }}>
+                Your account has been permanently deleted. Thank you for using Atelic.
+              </Text>
+            </View>
+          )}
            <Image
                 source={require('../assets/Atelic_Logo_Updated.png')}
                 

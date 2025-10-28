@@ -14,9 +14,13 @@ Amplify Params - DO NOT EDIT */
 
 const { CognitoIdentityProviderClient, AdminDeleteUserCommand, AdminGetUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
 const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.REGION });
 const lambdaClient = new LambdaClient({ region: process.env.REGION });
+const dynamoClient = new DynamoDBClient({ region: process.env.REGION });
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
@@ -178,10 +182,10 @@ async function handleTripCleanup(userID, userTrips) {
         }
     }
 
-    // Remove user from shared trips using manageCollaborators Lambda
+    // Remove user from shared trips using direct DynamoDB cleanup
     for (const trip of sharedTrips) {
         try {
-            await removeUserFromTrip(trip.tripId, userID);
+            await removeUserFromSharedTripDirect(trip.tripId, userID);
             results.sharedTripsRemoved++;
             console.log(`Successfully removed user from shared trip: ${trip.tripId}`);
         } catch (error) {
@@ -232,46 +236,81 @@ async function deleteOwnedTrip(userID, tripID) {
 }
 
 /**
- * Remove user from a shared trip using manageCollaborators Lambda
+ * Remove user from a shared trip using direct DynamoDB update
+ * This bypasses the permission checks in manageCollaborators for account deletion
  */
-async function removeUserFromTrip(tripId, userID) {
+async function removeUserFromSharedTripDirect(tripId, userID) {
     try {
-        // First, we need to get the user's username to remove them
-        // Since we have userID, we need to find the username from Cognito
+        console.log(`Directly removing user ${userID} from shared trip ${tripId}`);
+        
+        // First, find the trip in DynamoDB
+        const trip = await findTripByIdDirect(tripId);
+        if (!trip) {
+            throw new Error(`Trip ${tripId} not found`);
+        }
+
+        // Get user info to find username
         const userInfo = await getUserInfo(userID);
         const username = userInfo.Username;
 
-        const payload = {
-            fieldName: 'removeCollaborator',
-            arguments: {
-                tripId: tripId,
-                username: username
+        // Filter out the user from collaborators
+        const updatedCollaborators = trip.collaborators.filter(
+            collaborator => collaborator.userID !== userID && collaborator.username !== username
+        );
+
+        console.log(`Removing user ${username} (${userID}) from trip ${tripId}`);
+        console.log(`Collaborators before: ${trip.collaborators.length}, after: ${updatedCollaborators.length}`);
+
+        // Update the trip with the new collaborators list
+        const updateParams = {
+            TableName: process.env.STORAGE_TRIPSTORAGE_NAME,
+            Key: {
+                userID: trip.userID, // Owner's userID
+                tripID: tripId
             },
-            identity: {
-                claims: {
-                    sub: userID // Set the requester as the user being deleted for permission purposes
-                }
+            UpdateExpression: 'SET collaborators = :collaborators, version = :version, updatedAt = :updatedAt, lastUpdatedBy = :lastUpdatedBy',
+            ExpressionAttributeValues: {
+                ':collaborators': updatedCollaborators,
+                ':version': (trip.version || 0) + 1,
+                ':updatedAt': new Date().toISOString(),
+                ':lastUpdatedBy': 'SYSTEM_ACCOUNT_DELETION'
             }
         };
 
-        const invokeParams = {
-            FunctionName: process.env.FUNCTION_MANAGECOLLABORATORS_NAME,
-            Payload: JSON.stringify(payload)
-        };
+        await docClient.send(new UpdateCommand(updateParams));
+        console.log(`Successfully updated trip ${tripId} to remove user ${userID}`);
 
-        const result = await lambdaClient.send(new InvokeCommand(invokeParams));
-        const response = JSON.parse(new TextDecoder().decode(result.Payload));
-        
-        console.log(`removeCollaborator response for ${tripId}:`, response);
-        
-        if (response.errorMessage) {
-            throw new Error(`removeCollaborator failed: ${response.errorMessage}`);
-        }
-
-        return response;
+        return { success: true };
 
     } catch (error) {
-        console.error(`Error removing user from shared trip ${tripId}:`, error);
+        console.error(`Error in removeUserFromSharedTripDirect for trip ${tripId}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Find a trip by ID using DynamoDB scan
+ */
+async function findTripByIdDirect(tripId) {
+    try {
+        const scanParams = {
+            TableName: process.env.STORAGE_TRIPSTORAGE_NAME,
+            FilterExpression: 'tripID = :tripId',
+            ExpressionAttributeValues: {
+                ':tripId': tripId
+            }
+        };
+
+        const result = await docClient.send(new ScanCommand(scanParams));
+        
+        if (!result.Items || result.Items.length === 0) {
+            return null;
+        }
+
+        return result.Items[0];
+
+    } catch (error) {
+        console.error(`Error finding trip ${tripId}:`, error);
         throw error;
     }
 }
