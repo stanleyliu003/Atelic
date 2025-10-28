@@ -3,7 +3,7 @@ import awsconfig from '../src/aws-exports';
 import { Colors } from '../constants/Colors';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, AppState } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, AppState, Linking } from 'react-native';
 import { Feather, AntDesign } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 
@@ -14,6 +14,8 @@ WebBrowser.maybeCompleteAuthSession();
 // This ensures authentication happens in an in-app browser (ASWebAuthenticationSession on iOS)
 // instead of opening Safari browser
 const urlOpener = async (url, redirectUrl) => {
+  console.log('🌐 urlOpener called with:', { url, redirectUrl });
+
   try {
     // On iOS, this will use ASWebAuthenticationSession (in-app browser)
     // On Android, this will use Chrome Custom Tabs (in-app browser)
@@ -25,14 +27,21 @@ const urlOpener = async (url, redirectUrl) => {
       showInRecents: false,
     });
 
-    // Dismiss any lingering WebBrowser state
-    if (result.type === 'cancel' || result.type === 'dismiss') {
+    console.log('🌐 WebBrowser result:', result);
+
+    // If successful, the result should contain the callback URL with auth code
+    if (result.type === 'success' && result.url) {
+      console.log('✅ OAuth success! Callback URL:', result.url);
+      // Amplify will process this URL automatically through the Linking listener
+      Linking.openURL(result.url);
+    } else if (result.type === 'cancel' || result.type === 'dismiss') {
+      console.log('❌ OAuth cancelled by user');
       WebBrowser.dismissBrowser();
     }
 
     return result;
   } catch (error) {
-    console.error('OAuth WebBrowser error:', error?.message);
+    console.error('💥 OAuth WebBrowser error:', error?.message);
     throw error;
   }
 };
@@ -62,7 +71,12 @@ export default function Login() {
       console.log('Auth event:', event);
       switch (event) {
         case 'signIn':
-          console.log('User signed in successfully');
+          console.log('User signed in successfully via OAuth');
+          // OAuth sign-in completed, check auth state and redirect
+          checkAuthenticationState();
+          break;
+        case 'signIn_failure':
+          console.log('OAuth sign-in failed:', data);
           break;
         case 'signOut':
           console.log('User signed out');
@@ -75,14 +89,37 @@ export default function Login() {
           console.log('Token refresh failed, redirecting to login');
           setIsCheckingAuth(false);
           break;
+        case 'customOAuthState':
+          console.log('Custom OAuth state:', data);
+          break;
       }
+    });
+
+    // Set up URL event listener to handle OAuth redirects
+    const urlListener = Linking.addEventListener('url', ({ url }) => {
+      console.log('🔗 Deep link received:', url);
+      // Amplify will automatically process this, but we'll check auth state after
+      setTimeout(() => {
+        console.log('Checking auth after deep link...');
+        checkAuthenticationState();
+      }, 1500);
     });
 
     // Set up app state listener for when app comes back to foreground
     const appStateListener = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
         console.log('📱 App became active, checking auth state...');
-        checkAuthenticationState();
+        // Small delay to allow OAuth to complete processing
+        setTimeout(() => {
+          checkAuthenticationState();
+        }, 1500);
+      }
+    });
+
+    // Check if app was opened with a URL (for OAuth callback)
+    Linking.getInitialURL().then(url => {
+      if (url) {
+        console.log('🔗 App opened with URL:', url);
       }
     });
 
@@ -92,6 +129,7 @@ export default function Login() {
     // Cleanup listeners
     return () => {
       authListener();
+      urlListener.remove();
       appStateListener?.remove();
     };
   }, []);
@@ -180,7 +218,13 @@ export default function Login() {
 
   const handleGoogleSignUp = async () => {
     try {
+      console.log('Starting Google OAuth flow...');
       await Auth.federatedSignIn({ provider: 'Google' });
+      console.log('Google OAuth flow completed/cancelled');
+      // After OAuth completes, check authentication state
+      setTimeout(() => {
+        checkAuthenticationState();
+      }, 1000);
     } catch (err) {
       console.error('Google sign-up error:', err);
     }
@@ -188,7 +232,13 @@ export default function Login() {
 
   const handleAppleSignUp = async () => {
     try {
+      console.log('Starting Apple OAuth flow...');
       await Auth.federatedSignIn({ provider: 'SignInWithApple' });
+      console.log('Apple OAuth flow completed/cancelled');
+      // After OAuth completes, check authentication state
+      setTimeout(() => {
+        checkAuthenticationState();
+      }, 1000);
     } catch (err) {
       console.error('Apple sign-up error:', err);
     }

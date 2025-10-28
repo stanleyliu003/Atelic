@@ -172,7 +172,29 @@ export default function SignIn() {
     setError('');
     setIsLoading(true);
     try {
+      console.log('Starting Google OAuth sign-in flow...');
       await Auth.federatedSignIn({ provider: 'Google' });
+      console.log('Google OAuth flow completed/cancelled');
+      // Check if user is now authenticated after a short delay
+      setTimeout(async () => {
+        try {
+          const user = await Auth.currentAuthenticatedUser();
+          if (user) {
+            console.log('User authenticated after OAuth, redirecting...');
+            const preferredUsername = user?.attributes?.preferred_username;
+            if (!preferredUsername) {
+              router.replace('/authorization/username-setup');
+            } else {
+              router.replace('(tabs)/create_new_trip');
+            }
+          } else {
+            setIsLoading(false);
+          }
+        } catch (err) {
+          console.log('User not authenticated after OAuth');
+          setIsLoading(false);
+        }
+      }, 1000);
     } catch (err) {
       console.error('Google sign-in error:', err);
       setError('Google sign-in failed. Please try again.');
@@ -184,7 +206,29 @@ export default function SignIn() {
     setError('');
     setIsLoading(true);
     try {
+      console.log('Starting Apple OAuth sign-in flow...');
       await Auth.federatedSignIn({ provider: 'SignInWithApple' });
+      console.log('Apple OAuth flow completed/cancelled');
+      // Check if user is now authenticated after a short delay
+      setTimeout(async () => {
+        try {
+          const user = await Auth.currentAuthenticatedUser();
+          if (user) {
+            console.log('User authenticated after OAuth, redirecting...');
+            const preferredUsername = user?.attributes?.preferred_username;
+            if (!preferredUsername) {
+              router.replace('/authorization/username-setup');
+            } else {
+              router.replace('(tabs)/create_new_trip');
+            }
+          } else {
+            setIsLoading(false);
+          }
+        } catch (err) {
+          console.log('User not authenticated after OAuth');
+          setIsLoading(false);
+        }
+      }, 1000);
     } catch (err) {
       console.error('Apple sign-in error:', err);
       setError('Apple sign-in failed. Please try again.');

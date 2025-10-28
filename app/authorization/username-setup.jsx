@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 
 const searchUsers = /* GraphQL */ `
   query SearchUsers($searchTerm: String!) {
@@ -165,6 +166,19 @@ export default function UsernameSetup() {
       >
         <View style={styles.container}>
           <View style={styles.content}>
+            {/* Back Button */}
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={async () => {
+                try {
+                  await Auth.signOut();
+                } catch (e) {}
+                router.replace('/');
+              }}
+            >
+              <Ionicons name="arrow-back" size={40} color="black" />
+            </TouchableOpacity>
+            
             <Text style={styles.title}>Complete Your Profile</Text>
             
             {/* Full Name Field - For external provider users (Apple/Google) */}
@@ -347,6 +361,13 @@ const styles = StyleSheet.create({
   },
   content: {
     width: '100%',
+  },
+  backButton: {
+    position: 'absolute',
+    top: -75,
+    left: 0,
+    zIndex: 1,
+    padding: 5,
   },
   title: {
     fontFamily: 'outfit-bold',
