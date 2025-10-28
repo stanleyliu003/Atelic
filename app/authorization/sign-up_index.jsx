@@ -65,8 +65,6 @@ export default function SignUp() {
 
     // Check if email is already taken
     try {
-      console.log('Checking email availability for:', email.trim());
-
       const emailResult = await API.graphql({
         query: searchUsers,
         variables: { searchTerm: email.trim() }
@@ -89,8 +87,6 @@ export default function SignUp() {
         setIsLoading(false);
         return;
       }
-
-      console.log('Email is available, checking username...');
     } catch (emailCheckErr) {
       console.error('Email check failed:', emailCheckErr);
       setError('Unable to verify email availability. Please try again.');
@@ -108,8 +104,6 @@ export default function SignUp() {
 
     // Check if username is already taken
     try {
-      console.log('Checking username availability for:', username.trim());
-
       const result = await API.graphql({
         query: searchUsers,
         variables: { searchTerm: username.trim() }
@@ -127,8 +121,6 @@ export default function SignUp() {
         setIsLoading(false);
         return;
       }
-
-      console.log('Username is available, proceeding with sign up...');
     } catch (usernameCheckErr) {
       console.error('Username check failed:', usernameCheckErr);
       setError('Unable to verify username availability. Please try again.');

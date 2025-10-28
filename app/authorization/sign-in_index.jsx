@@ -47,8 +47,6 @@ export default function SignIn() {
 
     // Check if the username is associated with a Google OAuth account
     try {
-      console.log('Checking if username is associated with Google account:', username.trim());
-      
       const usernameResult = await API.graphql({
         query: searchUsers,
         variables: { searchTerm: username.trim() }
@@ -68,7 +66,6 @@ export default function SignIn() {
         const provider = identities.length > 0 ? identities[0].providerName : null;
 
         if (provider === 'Google') {
-          console.log('User is Google OAuth user, redirecting to Google sign-in');
           setError('This account uses Google sign-in. Redirecting...');
           setTimeout(async () => {
             try {
@@ -81,7 +78,6 @@ export default function SignIn() {
           }, 1000);
           return;
         } else if (provider === 'SignInWithApple') {
-          console.log('User is Apple OAuth user, redirecting to Apple sign-in');
           setError('This account uses Apple sign-in. Redirecting...');
           setTimeout(async () => {
             try {
@@ -94,7 +90,6 @@ export default function SignIn() {
           }, 1000);
           return;
         } else {
-          console.log('User is external OAuth user, redirecting to appropriate sign-in');
           setError('This account uses an external sign-in provider. Please use the appropriate "Or Login with" button below.');
           setIsLoading(false);
           return;
@@ -104,7 +99,6 @@ export default function SignIn() {
       // If username search found a user, get their email for Cognito sign-in
       // (Cognito uses email as the username for internal users)
       if (existingUser && !existingUser.isExternalProvider) {
-        console.log('Found internal user, using email for sign-in:', existingUser.email);
         // Proceed with normal email/password sign-in using the user's email
         try {
           const user = await Auth.signIn(existingUser.email, password);
@@ -172,15 +166,12 @@ export default function SignIn() {
     setError('');
     setIsLoading(true);
     try {
-      console.log('Starting Google OAuth sign-in flow...');
       await Auth.federatedSignIn({ provider: 'Google' });
-      console.log('Google OAuth flow completed/cancelled');
       // Check if user is now authenticated after a short delay
       setTimeout(async () => {
         try {
           const user = await Auth.currentAuthenticatedUser();
           if (user) {
-            console.log('User authenticated after OAuth, redirecting...');
             const preferredUsername = user?.attributes?.preferred_username;
             if (!preferredUsername) {
               router.replace('/authorization/username-setup');
@@ -191,7 +182,6 @@ export default function SignIn() {
             setIsLoading(false);
           }
         } catch (err) {
-          console.log('User not authenticated after OAuth');
           setIsLoading(false);
         }
       }, 1000);
@@ -206,15 +196,12 @@ export default function SignIn() {
     setError('');
     setIsLoading(true);
     try {
-      console.log('Starting Apple OAuth sign-in flow...');
       await Auth.federatedSignIn({ provider: 'SignInWithApple' });
-      console.log('Apple OAuth flow completed/cancelled');
       // Check if user is now authenticated after a short delay
       setTimeout(async () => {
         try {
           const user = await Auth.currentAuthenticatedUser();
           if (user) {
-            console.log('User authenticated after OAuth, redirecting...');
             const preferredUsername = user?.attributes?.preferred_username;
             if (!preferredUsername) {
               router.replace('/authorization/username-setup');
@@ -225,7 +212,6 @@ export default function SignIn() {
             setIsLoading(false);
           }
         } catch (err) {
-          console.log('User not authenticated after OAuth');
           setIsLoading(false);
         }
       }, 1000);
