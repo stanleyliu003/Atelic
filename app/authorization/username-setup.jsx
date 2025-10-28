@@ -169,6 +169,9 @@ export default function UsernameSetup() {
       // Google users: use the fullName from user input
       if ((isAppleUser || isGoogleUser) && fullName.trim()) {
         attributesToUpdate['name'] = fullName.trim();
+      } else {
+        // Fallback: use username as fullName if no fullName is available
+        attributesToUpdate['name'] = username.trim();
       }
 
       // Update user attributes
