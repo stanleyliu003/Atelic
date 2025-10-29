@@ -26,6 +26,7 @@ export default function UsernameSetup() {
   const [isLoading, setIsLoading] = useState(false);
   const [age, setAge] = useState('');
   const [ageError, setAgeError] = useState('');
+  const [ageTouched, setAgeTouched] = useState(false);
   const [gender, setGender] = useState('');
   const [fullName, setFullName] = useState('');
   const [isExternalProvider, setIsExternalProvider] = useState(false);
@@ -91,6 +92,31 @@ export default function UsernameSetup() {
 
     checkUserProvider();
   }, []);
+
+  const validateAge = (ageValue) => {
+    if (!ageValue) {
+      setAgeError('');
+      return;
+    }
+    const ageNum = parseInt(ageValue);
+    if (isNaN(ageNum) || ageNum < 4 || ageNum > 100) {
+      setAgeError('Age must be a valid number between 4 and 100.');
+    } else {
+      setAgeError('');
+    }
+  };
+
+  const handleAgeChange = (value) => {
+    setAge(value);
+    if (ageTouched) {
+      validateAge(value);
+    }
+  };
+
+  const handleAgeBlur = () => {
+    setAgeTouched(true);
+    validateAge(age);
+  };
 
   const handleContinue = async () => {
     setError('');
@@ -267,6 +293,11 @@ export default function UsernameSetup() {
                 autoFocus={!isGoogleUser}
                 editable={!isLoading}
               />
+              {username.length > 0 && (username.length < 5 || username.length > 20) && (
+                <Text style={{ color: 'red', marginTop: 5, fontFamily: 'outfit', fontSize: 14 }}>
+                  Username must be between 5-20 characters
+                </Text>
+              )}
             </View>
 
             {/* Age Field */}
@@ -276,7 +307,8 @@ export default function UsernameSetup() {
                 style={styles.input}
                 placeholder='Enter your age'
                 value={age}
-                onChangeText={(value) => setAge(value)}
+                onChangeText={handleAgeChange}
+                onBlur={handleAgeBlur}
                 keyboardType="number-pad"
                 autoCorrect={false}
                 spellCheck={false}
