@@ -14,16 +14,24 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "AtelicStable",
-      "deploymentTarget": "15.0"
+      "deploymentTarget": "15.0",
+      "config": {
+        "googleMapsApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.atelictravel.atelic"
+      "package": "com.atelictravel.atelic",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
