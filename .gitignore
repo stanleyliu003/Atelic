@@ -30,6 +30,12 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+.env.production
+.env.development
+
+# Security documentation with sensitive data
+SECURITY_FIXES_REQUIRED.md
 
 # typescript
 *.tsbuildinfo

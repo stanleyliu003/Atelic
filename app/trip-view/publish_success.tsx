@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
+import { GOOGLE_PLACES_API_KEY } from '../../src/constants/api';
 
 export default function PublishSuccess() {
     const router = useRouter();
@@ -30,7 +31,6 @@ export default function PublishSuccess() {
     };
 
     const getImageUrl = (photoReference: string) => {
-        const { GOOGLE_PLACES_API_KEY } = require('../../src/constants/api');
         return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`;
     };
 

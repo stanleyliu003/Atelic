@@ -12,6 +12,7 @@ import { listUserTripsFromCloud, retrieveTripFromCloud, deleteUserAccountFromClo
 import { deleteTrip } from '../../src/graphql/customMutations';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import Carousel from 'react-native-reanimated-carousel';
+import { GOOGLE_PLACES_API_KEY } from '../../src/constants/api';
 
 export default function Profile() {
   const { restoreTripFromObject, setSelectedCity } = useCreateTrip();
@@ -285,7 +286,6 @@ export default function Profile() {
   };
 
   const getImageUrl = (photoReference) => {
-    const { GOOGLE_PLACES_API_KEY } = require('../../src/constants/api');
     return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=350&photoreference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`;
   };
 
