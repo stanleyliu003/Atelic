@@ -117,6 +117,7 @@ export default function TripViewMain() {
 
     // Save-in-progress lock to prevent concurrent saves and duplicate tripID generation
     const [isSaving, setIsSaving] = useState(false);
+    const isSavingRef = useRef(false);
 
     // Ref for immediate tripID access (avoids async state update issues)
     const tripIdRef = useRef(tripId);
@@ -969,12 +970,13 @@ export default function TripViewMain() {
 
     // Serialize trip data for saving
     const saveTrip = async () => {
-        // Check if save is already in progress
-        if (isSaving) {
+        // Check if save is already in progress using ref for immediate access
+        if (isSavingRef.current) {
             console.log('[trip-view_main] Save already in progress, skipping duplicate save');
             return;
         }
 
+        isSavingRef.current = true;
         setIsSaving(true);
 
         try {
@@ -1142,7 +1144,8 @@ export default function TripViewMain() {
 
             throw error;
         } finally {
-            // Release save lock
+            // Release save lock (both state and ref)
+            isSavingRef.current = false;
             setIsSaving(false);
         }
     };
@@ -1201,43 +1204,38 @@ export default function TripViewMain() {
     useEffect(() => {
         // Only autosave for owners and editors (viewers can't edit)
         if (currentUserRole === 'viewer') {
+            console.log('[trip-view_main] Autosave disabled - user is viewer');
             return;
         }
 
         // Only autosave if we have a tripId
         if (!tripId) {
+            console.log('[trip-view_main] Autosave disabled - no tripId yet');
             return;
         }
 
-        // Helper function to check if save should proceed
-        const shouldProceedWithSave = (): boolean => {
+        console.log('[trip-view_main] Autosave enabled for tripId:', tripId);
+
+        // Trigger 1: Periodic autosave every 5 minutes
+        autosaveIntervalRef.current = setInterval(() => {
             const now = Date.now();
             const timeSinceLastSave = now - lastSaveTimeRef.current;
 
             // Prevent saves during reload from subscription
             if (isReloadingRef.current) {
-                console.log('[trip-view_main] Skipping autosave (reloading from subscription)');
-                return false;
+                console.log('[trip-view_main] Skipping periodic autosave (reloading)');
+                return;
+            }
+
+            // Check if already saving using ref
+            if (isSavingRef.current) {
+                console.log('[trip-view_main] Skipping periodic autosave (save in progress)');
+                return;
             }
 
             // Prevent duplicate saves within MIN_AUTOSAVE_INTERVAL
             if (timeSinceLastSave < MIN_AUTOSAVE_INTERVAL) {
-                console.log('[trip-view_main] Skipping autosave (too soon since last save)');
-                return false;
-            }
-
-            // Check if already saving
-            if (isSaving) {
-                console.log('[trip-view_main] Skipping autosave (save already in progress)');
-                return false;
-            }
-
-            return true;
-        };
-
-        // Trigger 1: Periodic autosave every 5 minutes
-        autosaveIntervalRef.current = setInterval(() => {
-            if (!shouldProceedWithSave()) {
+                console.log('[trip-view_main] Skipping periodic autosave (too soon)');
                 return;
             }
 
@@ -1252,31 +1250,51 @@ export default function TripViewMain() {
                 });
         }, 300000); // 5 minutes
 
-        // Trigger 2: App going to background (with debounce)
-        let backgroundSaveTimeout: NodeJS.Timeout | null = null;
+        // Trigger 2: App going inactive (before background suspension)
+        let inactiveSaveTimeout: NodeJS.Timeout | null = null;
         const handleAppStateChange = (nextAppState: string) => {
-            if (nextAppState === 'background') {
-                // Clear any pending background save
-                if (backgroundSaveTimeout) {
-                    clearTimeout(backgroundSaveTimeout);
+            console.log('[trip-view_main] AppState changed to:', nextAppState);
+
+            // Trigger on 'inactive' to save before full suspension
+            if (nextAppState === 'inactive') {
+                // Clear any pending save
+                if (inactiveSaveTimeout) {
+                    clearTimeout(inactiveSaveTimeout);
                 }
 
-                // Debounce background saves by 1 second to handle rapid transitions
-                backgroundSaveTimeout = setTimeout(() => {
-                    if (!shouldProceedWithSave()) {
+                // Save immediately when going inactive
+                inactiveSaveTimeout = setTimeout(() => {
+                    const now = Date.now();
+                    const timeSinceLastSave = now - lastSaveTimeRef.current;
+
+                    console.log('[trip-view_main] Inactive save check - isSavingRef:', isSavingRef.current, 'isReloadingRef:', isReloadingRef.current, 'timeSinceLastSave:', timeSinceLastSave);
+
+                    if (isReloadingRef.current) {
+                        console.log('[trip-view_main] Skipping inactive save (reloading)');
                         return;
                     }
 
-                    console.log('[trip-view_main] App backgrounded - autosaving...');
+                    if (isSavingRef.current) {
+                        console.log('[trip-view_main] Skipping inactive save (save in progress)');
+                        return;
+                    }
+
+                    if (timeSinceLastSave < MIN_AUTOSAVE_INTERVAL) {
+                        console.log('[trip-view_main] Skipping inactive save (too soon, last save was', timeSinceLastSave, 'ms ago)');
+                        return;
+                    }
+
+                    console.log('[trip-view_main] App going inactive - autosaving immediately...');
 
                     saveTrip()
                         .then(() => {
                             lastSaveTimeRef.current = Date.now();
+                            console.log('[trip-view_main] Inactive autosave completed successfully');
                         })
                         .catch(error => {
-                            console.error('[trip-view_main] Background autosave failed:', error);
+                            console.error('[trip-view_main] Inactive autosave failed:', error);
                         });
-                }, 1000);
+                }, 0);
             }
         };
 
@@ -1290,12 +1308,12 @@ export default function TripViewMain() {
             if (saveDebounceTimeoutRef.current) {
                 clearTimeout(saveDebounceTimeoutRef.current);
             }
-            if (backgroundSaveTimeout) {
-                clearTimeout(backgroundSaveTimeout);
+            if (inactiveSaveTimeout) {
+                clearTimeout(inactiveSaveTimeout);
             }
             appStateSubscription?.remove();
         };
-    }, [tripId, currentUserRole, isSaving]); // Add isSaving to dependencies
+    }, [tripId, currentUserRole]); // Don't include isSaving - use refs instead
 
     // Real-time subscription for trip updates
     useEffect(() => {
