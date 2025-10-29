@@ -130,8 +130,14 @@ export default function TripViewMain() {
     // Track last save time to prevent duplicate rapid-fire saves
     const lastSaveTimeRef = useRef<number>(0);
 
-    // Minimum time between autosaves (in milliseconds) - 2 seconds
-    const MIN_AUTOSAVE_INTERVAL = 2000;
+    // Minimum time between autosaves (in milliseconds) - 5 seconds
+    const MIN_AUTOSAVE_INTERVAL = 5000;
+
+    // Debounce timeout for state-change-triggered saves
+    const saveDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Track if currently reloading from subscription to prevent autosave
+    const isReloadingRef = useRef(false);
 
     // Track screen focus state for subscription management
     const [isScreenFocused, setIsScreenFocused] = useState(true);
@@ -796,14 +802,14 @@ export default function TripViewMain() {
 
     // ===== CATEGORY FLOW HANDLERS =====
 
-    // Debug log: city categories and UI conditions
-    useEffect(() => {
-        console.log('[trip-view_main] cityCategories updated:', Array.isArray(cityCategories) ? cityCategories.length : cityCategories);
-        if (Array.isArray(cityCategories)) {
-            console.log('[trip-view_main] cityCategories sample:', cityCategories[0]);
-        }
-        console.log('[trip-view_main] selectedCity:', selectedCity);
-    }, [cityCategories, selectedCity]);
+    // Debug log: city categories and UI conditions (REMOVED - causing excessive re-renders)
+    // useEffect(() => {
+    //     console.log('[trip-view_main] cityCategories updated:', Array.isArray(cityCategories) ? cityCategories.length : cityCategories);
+    //     if (Array.isArray(cityCategories)) {
+    //         console.log('[trip-view_main] cityCategories sample:', cityCategories[0]);
+    //     }
+    //     console.log('[trip-view_main] selectedCity:', selectedCity);
+    // }, [cityCategories, selectedCity]);
 
     // Handler for category card press
     const handleCategoryPress = async (category: any) => {
@@ -868,9 +874,13 @@ export default function TripViewMain() {
     // Handler to reload trip with latest changes from remote
     const handleReloadTrip = async () => {
         try {
+            // Set reloading flag to prevent autosave during reload
+            isReloadingRef.current = true;
+
             // Get owner's userID from collaborators
             const owner = collaborators.find(c => c.role === 'owner');
             if (!owner) {
+                isReloadingRef.current = false;
                 return;
             }
 
@@ -886,8 +896,14 @@ export default function TripViewMain() {
 
                 console.log('[trip-view_main] Trip reloaded');
             }
+
+            // Clear reloading flag after a delay to allow state to settle
+            setTimeout(() => {
+                isReloadingRef.current = false;
+            }, 2000);
         } catch (error) {
             console.error('[trip-view_main] Error reloading trip:', error);
+            isReloadingRef.current = false;
         }
     };
 
@@ -993,8 +1009,6 @@ export default function TripViewMain() {
                 tripCreatedAt = new Date().toISOString();
                 setCreatedAt(tripCreatedAt);
                 console.log('[trip-view_main] Generated new createdAt:', tripCreatedAt);
-            } else {
-                console.log('[trip-view_main] Using existing createdAt:', tripCreatedAt);
             }
 
             // Sanitize cityCategories to only include allowed fields per GraphQL input
@@ -1019,8 +1033,6 @@ export default function TripViewMain() {
                 cityCategories: cleanCityCategories || null, // Save city categories for restoration
             };
 
-            console.log('[trip-view_main] Saving trip with data:');
-
             // Get current user information
             let currentUserID;
             let currentUserEmail;
@@ -1032,7 +1044,6 @@ export default function TripViewMain() {
             currentUserEmail = currentUser.attributes?.email || '';
             currentUserName = currentUser.attributes?.name || '';
             currentUsername = currentUser.attributes?.preferred_username || currentUser.username || currentUserEmail.split('@')[0];
-            console.log('[trip-view_main] Current user ID:', currentUserID);
 
             // Handle collaborators and determine the owner's userID
             let collaboratorsToSave;
@@ -1043,7 +1054,6 @@ export default function TripViewMain() {
 
             if (isBrandNewTrip) {
                 // NEW TRIP: Current user becomes owner
-                console.log('[trip-view_main] Brand new trip - initializing owner as sole collaborator');
                 ownerUserID = currentUserID;
                 collaboratorsToSave = [{
                     email: currentUserEmail,
@@ -1055,13 +1065,11 @@ export default function TripViewMain() {
                 }];
             } else {
                 // EXISTING TRIP: Preserve ALL collaborators
-                console.log('[trip-view_main] Existing trip - preserving all collaborators:', collaborators.length);
 
                 // Find the owner's userID
                 const owner = collaborators.find(c => c.role === 'owner');
                 if (!owner) {
                     console.error('[trip-view_main] No owner found in collaborators');
-                    // Alert.alert('Error', 'Trip owner information is missing. Cannot save trip.');
                     return;
                 }
                 ownerUserID = owner.userID; // Always use owner's userID as partition key
@@ -1094,14 +1102,11 @@ export default function TripViewMain() {
                 lastUpdatedBy: currentUserEmail
             };
 
-            console.log('[trip-view_main] Saving trip...');
-
             // Make the API call (now using public auth)
             const result: any = await API.graphql({
                 query: createTrip,
                 variables: { input: tripDataWithUser }
             });
-            console.log('[trip-view_main] Trip saved successfully');
 
             // Update local state after successful save
             if (result.data?.createTrip?.version) {
@@ -1125,10 +1130,7 @@ export default function TripViewMain() {
             // Update local collaborators state after successful save
             // For new trips OR if collaborators were somehow lost
             if (isBrandNewTrip || collaborators.length === 0) {
-                console.log('[trip-view_main] Updating local collaborators state');
                 setCollaborators(collaboratorsToSave);
-            } else {
-                console.log('[trip-view_main] Collaborators already set, skipping update');
             }
 
         } catch (error: any) {
@@ -1197,7 +1199,7 @@ export default function TripViewMain() {
 
     // Autosave with multiple triggers
     useEffect(() => {
-        // Only autosave for owners (viewers can't edit)
+        // Only autosave for owners and editors (viewers can't edit)
         if (currentUserRole === 'viewer') {
             return;
         }
@@ -1207,14 +1209,35 @@ export default function TripViewMain() {
             return;
         }
 
-        // Trigger 1: Periodic autosave every 5 minutes
-        autosaveIntervalRef.current = setInterval(() => {
+        // Helper function to check if save should proceed
+        const shouldProceedWithSave = (): boolean => {
             const now = Date.now();
             const timeSinceLastSave = now - lastSaveTimeRef.current;
 
+            // Prevent saves during reload from subscription
+            if (isReloadingRef.current) {
+                console.log('[trip-view_main] Skipping autosave (reloading from subscription)');
+                return false;
+            }
+
             // Prevent duplicate saves within MIN_AUTOSAVE_INTERVAL
             if (timeSinceLastSave < MIN_AUTOSAVE_INTERVAL) {
-                console.log('[trip-view_main] Skipping periodic autosave (too soon since last save)');
+                console.log('[trip-view_main] Skipping autosave (too soon since last save)');
+                return false;
+            }
+
+            // Check if already saving
+            if (isSaving) {
+                console.log('[trip-view_main] Skipping autosave (save already in progress)');
+                return false;
+            }
+
+            return true;
+        };
+
+        // Trigger 1: Periodic autosave every 5 minutes
+        autosaveIntervalRef.current = setInterval(() => {
+            if (!shouldProceedWithSave()) {
                 return;
             }
 
@@ -1222,38 +1245,38 @@ export default function TripViewMain() {
 
             saveTrip()
                 .then(() => {
-                    // Update timestamp only after successful save
                     lastSaveTimeRef.current = Date.now();
                 })
                 .catch(error => {
                     console.error('[trip-view_main] Autosave failed:', error);
-                    // Don't update timestamp on failure, allowing retry
                 });
         }, 300000); // 5 minutes
 
-        // Trigger 2: App going to background
+        // Trigger 2: App going to background (with debounce)
+        let backgroundSaveTimeout: NodeJS.Timeout | null = null;
         const handleAppStateChange = (nextAppState: string) => {
             if (nextAppState === 'background') {
-                const now = Date.now();
-                const timeSinceLastSave = now - lastSaveTimeRef.current;
-
-                // Prevent duplicate saves within MIN_AUTOSAVE_INTERVAL
-                if (timeSinceLastSave < MIN_AUTOSAVE_INTERVAL) {
-                    console.log('[trip-view_main] Skipping background save (too soon since last save)');
-                    return;
+                // Clear any pending background save
+                if (backgroundSaveTimeout) {
+                    clearTimeout(backgroundSaveTimeout);
                 }
 
-                console.log('[trip-view_main] App backgrounded - autosaving...');
+                // Debounce background saves by 1 second to handle rapid transitions
+                backgroundSaveTimeout = setTimeout(() => {
+                    if (!shouldProceedWithSave()) {
+                        return;
+                    }
 
-                saveTrip()
-                    .then(() => {
-                        // Update timestamp only after successful save
-                        lastSaveTimeRef.current = Date.now();
-                    })
-                    .catch(error => {
-                        console.error('[trip-view_main] Background autosave failed:', error);
-                        // Don't update timestamp on failure, allowing retry
-                    });
+                    console.log('[trip-view_main] App backgrounded - autosaving...');
+
+                    saveTrip()
+                        .then(() => {
+                            lastSaveTimeRef.current = Date.now();
+                        })
+                        .catch(error => {
+                            console.error('[trip-view_main] Background autosave failed:', error);
+                        });
+                }, 1000);
             }
         };
 
@@ -1264,9 +1287,15 @@ export default function TripViewMain() {
             if (autosaveIntervalRef.current) {
                 clearInterval(autosaveIntervalRef.current);
             }
+            if (saveDebounceTimeoutRef.current) {
+                clearTimeout(saveDebounceTimeoutRef.current);
+            }
+            if (backgroundSaveTimeout) {
+                clearTimeout(backgroundSaveTimeout);
+            }
             appStateSubscription?.remove();
         };
-    }, [tripId, currentUserRole]); // Only re-create when tripId or role changes
+    }, [tripId, currentUserRole, isSaving]); // Add isSaving to dependencies
 
     // Real-time subscription for trip updates
     useEffect(() => {
