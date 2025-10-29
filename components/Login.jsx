@@ -2,7 +2,7 @@ import { Amplify, Auth, Hub } from 'aws-amplify';
 import awsconfig from '../src/aws-exports';
 import { Colors } from '../constants/Colors';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, AppState, Linking } from 'react-native';
 import { Feather, AntDesign } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
@@ -58,7 +58,7 @@ export default function Login() {
   const router = useRouter();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showDeletedNotice, setShowDeletedNotice] = useState(false);
-  const [isNavigating, setIsNavigating] = useState(false);
+  const isNavigatingRef = useRef(false);
 
   useEffect(() => {
     // Set up authentication event listeners
@@ -112,7 +112,7 @@ export default function Login() {
 
   const checkAuthenticationState = async () => {
     // Prevent multiple simultaneous navigation attempts
-    if (isNavigating) {
+    if (isNavigatingRef.current) {
       return;
     }
 
@@ -121,6 +121,11 @@ export default function Login() {
       const user = await Auth.currentAuthenticatedUser({
         bypassCache: false // Use cached tokens for better performance
       });
+
+      // Check again after async operation in case another call started
+      if (isNavigatingRef.current) {
+        return;
+      }
 
       // Get current session to check token expiry
       const session = await Auth.currentSession();
@@ -137,13 +142,13 @@ export default function Login() {
       const preferredUsername = user?.attributes?.preferred_username;
 
       if (!preferredUsername) {
-        setIsNavigating(true);
+        isNavigatingRef.current = true;
         router.replace('/authorization/username-setup');
         return;
       }
 
       // User is authenticated and has username, redirect to main app
-      setIsNavigating(true);
+      isNavigatingRef.current = true;
       router.replace('(tabs)/create_new_trip');
 
     } catch (error) {
@@ -153,8 +158,12 @@ export default function Login() {
           // Force a token refresh attempt
           await Auth.currentSession();
           await Auth.currentAuthenticatedUser({ bypassCache: true });
-          setIsNavigating(true);
-          router.replace('(tabs)/create_new_trip');
+
+          // Check navigation flag again
+          if (!isNavigatingRef.current) {
+            isNavigatingRef.current = true;
+            router.replace('(tabs)/create_new_trip');
+          }
           return;
         } catch (refreshError) {
           console.error('Token refresh failed:', refreshError.message);
@@ -191,10 +200,8 @@ export default function Login() {
   const handleGoogleSignUp = async () => {
     try {
       await Auth.federatedSignIn({ provider: 'Google' });
-      // After OAuth completes, check authentication state
-      setTimeout(() => {
-        checkAuthenticationState();
-      }, 1000);
+      // The Hub listener, URL listener, and AppState listener will handle navigation
+      // No need to manually call checkAuthenticationState here
     } catch (err) {
       console.error('Google sign-up error:', err);
     }
@@ -203,10 +210,8 @@ export default function Login() {
   const handleAppleSignUp = async () => {
     try {
       await Auth.federatedSignIn({ provider: 'SignInWithApple' });
-      // After OAuth completes, check authentication state
-      setTimeout(() => {
-        checkAuthenticationState();
-      }, 1000);
+      // The Hub listener, URL listener, and AppState listener will handle navigation
+      // No need to manually call checkAuthenticationState here
     } catch (err) {
       console.error('Apple sign-up error:', err);
     }
