@@ -26,6 +26,7 @@ interface DayScheduleProps {
   onReorder?: (dayNumber: number, newOrder: Activity[]) => void; // New prop for reordering activities
   routeLoading?: boolean; // Loading state for route recalculation
   onGoToWishlist?: () => void; // Navigate to wishlist callback
+  currentUserRole?: string; // User's role in the trip (owner, editor, viewer)
 }
 
 export function DaySchedule({
@@ -49,7 +50,8 @@ export function DaySchedule({
   travelMode,
   onReorder,
   routeLoading = false,
-  onGoToWishlist
+  onGoToWishlist,
+  currentUserRole
 }: DayScheduleProps) {
   const selectedCount = selectedActivities.length;
 
@@ -107,7 +109,7 @@ export function DaySchedule({
         emptyStateActionText="Move Activities from Wishlist"
         routeLegs={routeLegs}
         travelMode={travelMode}
-        enableDragDrop={!disabled}
+        enableDragDrop={!disabled && currentUserRole !== 'viewer'}
         onReorder={(newOrder) => {
           if (onReorder) {
             onReorder(dayNumber, newOrder);

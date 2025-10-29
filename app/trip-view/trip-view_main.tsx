@@ -1604,6 +1604,7 @@ export default function TripViewMain() {
                                     onReorder={currentUserRole !== 'viewer' ? handleDayActivityReorder : undefined}
                                     routeLoading={routeLoading}
                                     onGoToWishlist={() => handleTabChange('wishlist')}
+                                    currentUserRole={currentUserRole}
                                 />
                             );
                         })()}
