@@ -351,6 +351,14 @@ export default function TripViewMain() {
         }
     };
 
+    // Get all activities from the entire trip (wishlist + all days)
+    const getAllActivitiesFromTrip = () => {
+        const wishlistActivities = activities || [];
+        const allDayActivities = Object.values(dayActivities || {})
+            .flatMap(dayObj => Array.isArray((dayObj as any).activities) ? (dayObj as any).activities : []);
+        return [...wishlistActivities, ...allDayActivities];
+    };
+
     // Get activities for the current tab
     const getActivitiesForTab = (tab: TabType) => {
         if (tab === 'wishlist') {
@@ -1386,6 +1394,7 @@ export default function TripViewMain() {
                 selectedMarker={selectedMarker}
                 currentHeightState={currentHeightState}
                 heightStates={heightStates}
+                allActivities={getAllActivitiesFromTrip()}
                 onShareTrip={async () => {
                     if (!tripId) {
                         // Save trip first if it doesn't exist

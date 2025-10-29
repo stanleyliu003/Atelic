@@ -18,6 +18,7 @@ interface MapViewProps {
   heightStates?: number[]; // Array of height percentages [MIN_HEIGHT, DEFAULT_HEIGHT, MAX_HEIGHT]
   // Collaboration props
   onShareTrip?: () => void;
+  allActivities?: Activity[]; // All activities from the trip (wishlist + all days)
 }
 
 // Custom numbered marker component with selection state
@@ -56,7 +57,8 @@ export function TripMapView({
   selectedMarker = null, // Add selected marker prop
   currentHeightState = 1, // Default to middle state
   heightStates = [0.30, 0.65, 0.90], // Default height states
-  onShareTrip
+  onShareTrip,
+  allActivities = []
 }: MapViewProps) {
   const mapRef = useRef<MapView>(null);
 
@@ -93,6 +95,21 @@ export function TripMapView({
   // Calculate the region to show all markers with proper bounds
   const getRegionForActivities = (): Region => {
     if (dynamicMarkers.length === 0) {
+      // If no activities on current tab, find first activity with coordinates from all activities
+      const firstActivityWithCoords = allActivities.find(
+        (activity: Activity) => activity.lat != null && activity.lng != null
+      );
+
+      if (firstActivityWithCoords) {
+        return {
+          latitude: firstActivityWithCoords.lat!,
+          longitude: firstActivityWithCoords.lng!,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        };
+      }
+
+      // Default to Philadelphia only if no activities exist at all
       return {
         latitude: 39.95,
         longitude: -75.16,
@@ -196,7 +213,7 @@ export function TripMapView({
   // Center the map on the first marker, or a default location if no markers exist
   const initialRegion: Region = useMemo(() => {
     return getInitialRegion();
-  }, [activeTab, dynamicMarkers, currentHeightState]);
+  }, [activeTab, dynamicMarkers, currentHeightState, allActivities]);
 
   // Animate to show all activities when activities, activeTab, or height state changes
   useEffect(() => {
