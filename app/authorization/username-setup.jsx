@@ -214,7 +214,7 @@ export default function UsernameSetup() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ paddingTop: 60, paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
         style={{ backgroundColor: Colors.WHITE }}
         showsVerticalScrollIndicator={false}
@@ -223,7 +223,7 @@ export default function UsernameSetup() {
           <View style={styles.content}>
             {/* Back Button */}
             <TouchableOpacity
-              style={styles.backButton}
+              style={{ padding: 5, marginBottom: 20, alignSelf: 'flex-start' }}
               onPress={async () => {
                 try {
                   await Auth.signOut();
@@ -233,9 +233,9 @@ export default function UsernameSetup() {
             >
               <Ionicons name="arrow-back" size={40} color="black" />
             </TouchableOpacity>
-            
+
             <Text style={styles.title}>Complete Your Profile</Text>
-            
+
             {/* Full Name Field - Show for Google users only (Apple users per Apple guidelines) */}
             {isGoogleUser && (
               <View style={{ marginTop: 40 }}>
@@ -291,7 +291,7 @@ export default function UsernameSetup() {
             <View style={{ marginTop: 20, marginBottom: 5 }}>
               <Text style={styles.label}>Gender</Text>
               <View style={{ marginTop: 5, alignItems: 'center', justifyContent: 'center' }}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
                   <TouchableOpacity
                     style={[styles.genderButton, gender === 'male' && styles.genderButtonSelected]}
                     onPress={() => setGender('male')}
@@ -310,7 +310,7 @@ export default function UsernameSetup() {
                   >
                     <Text style={{ color: gender === 'other' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Other</Text>
                   </TouchableOpacity>
-                </ScrollView>
+                </View>
               </View>
             </View>
 
@@ -335,43 +335,35 @@ export default function UsernameSetup() {
               )}
             </TouchableOpacity>
 
+            {/* Terms and Privacy Policy - Inside ScrollView */}
+            <View style={{ marginTop: 40, paddingHorizontal: 0 }}>
+              <Text style={{
+                fontFamily: 'outfit',
+                fontSize: 12,
+                color: Colors.GRAY,
+                textAlign: 'center',
+                lineHeight: 20
+              }}>
+                By continuing you agree to Atelic's{' '}
+                <Text
+                  style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+                  onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
+                >
+                  Terms of Service
+                </Text>
+                {' '}and acknowledge you've read our{' '}
+                <Text
+                  style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+                  onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
+                >
+                  Privacy Policy
+                </Text>
+              </Text>
+            </View>
+
           </View>
         </View>
       </ScrollView>
-
-      {/* Terms and Privacy Policy - Fixed to bottom */}
-      <View style={{
-        position: 'absolute',
-        bottom: 20,
-        left: 0,
-        right: 0,
-        paddingHorizontal: 25,
-        paddingBottom: 20,
-        backgroundColor: Colors.WHITE
-      }}>
-        <Text style={{
-          fontFamily: 'outfit',
-          fontSize: 12,
-          color: Colors.GRAY,
-          textAlign: 'center',
-          lineHeight: 20
-        }}>
-          By continuing you agree to Atelic's{' '}
-          <Text 
-            style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-            onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
-          >
-            Terms of Service
-          </Text>
-          {' '}and acknowledge you've read our{' '}
-          <Text 
-            style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-            onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
-          >
-            Privacy Policy
-          </Text>
-        </Text>
-      </View>
     </KeyboardAvoidingView>
   );
 }
