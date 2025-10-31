@@ -2,7 +2,7 @@
   "expo": {
     "name": "Atelic",
     "slug": "atelic",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/Atelic_Logo_Zoom.png",
 
@@ -17,6 +17,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "AtelicStable",
       "deploymentTarget": "15.0",
+      "buildNumber": "28",
       "config": {
         "googleMapsApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
       }
