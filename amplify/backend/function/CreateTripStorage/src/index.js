@@ -1,8 +1,10 @@
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
+const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
+const lambdaClient = new LambdaClient();
 
 exports.handler = async (event) => {
   console.log('Received event:', JSON.stringify(event));
@@ -82,6 +84,56 @@ exports.handler = async (event) => {
     await docClient.send(new PutCommand(params));
     console.log('Trip saved successfully to DynamoDB');
 
+    // Fire-and-forget updates to UserProfiles
+    try {
+      console.log('Calling updateUserProfile Lambda for trip creation...');
+      const owner = (input.collaborators || []).find(c => c.role === 'owner');
+      const nonOwnerCollaborators = (input.collaborators || []).filter(c => c.role !== 'owner');
+      const combinedActivities = [
+        ...(input.wishlist || []),
+        ...((input.days || []).flatMap(d => d.activities || []))
+      ];
+
+      if (owner && owner.username) {
+        console.log('Invoking updateUserProfile for owner:', owner.username, 'action=ADD_OWNED_TRIP');
+        await updateOwnerProfile(owner.username, {
+          tripId: input.tripId,
+          selectedCity: input.selectedCity,
+          tripPhotoReference: normalizedPhotoRefs,
+          startDate: input.startDate || null,
+          endDate: input.endDate || null,
+          tripLength: input.tripLength || null,
+          activities: combinedActivities,
+          collaborators: input.collaborators || []
+        });
+      }
+
+      if (nonOwnerCollaborators.length > 0) {
+        await Promise.all(
+          nonOwnerCollaborators
+            .filter(c => !!c.username)
+            .map(collab =>
+              (async () => {
+                console.log('Invoking updateUserProfile for collaborator:', collab.username, 'action=ADD_SHARED_TRIP', 'role=', collab.role);
+              updateCollaboratorProfile(collab.username, {
+                tripId: input.tripId,
+                selectedCity: input.selectedCity,
+                tripPhotoReference: normalizedPhotoRefs,
+                startDate: input.startDate || null,
+                endDate: input.endDate || null,
+                tripLength: input.tripLength || null,
+                role: collab.role,
+                ownerUsername: owner?.username || ''
+              });
+              })()
+            )
+        );
+      }
+    } catch (invokeErr) {
+      console.error('Failed to invoke updateUserProfile Lambda(s):', invokeErr);
+      // Do not fail trip creation due to profile update issues
+    }
+
     // Return a Trip object as required by the GraphQL schema
     return {
       tripId: input.tripId,
@@ -118,3 +170,33 @@ exports.handler = async (event) => {
     throw new Error('Failed to save trip: ' + error.message);
   }
 };
+
+async function updateOwnerProfile(username, tripData) {
+  const payload = {
+    username,
+    action: 'ADD_OWNED_TRIP',
+    tripData
+  };
+
+  console.log('updateOwnerProfile payload:', JSON.stringify(payload));
+  await lambdaClient.send(new InvokeCommand({
+    FunctionName: process.env.FUNCTION_UPDATEUSERPROFILE_NAME,
+    InvocationType: 'Event',
+    Payload: Buffer.from(JSON.stringify(payload))
+  }));
+}
+
+async function updateCollaboratorProfile(username, tripData) {
+  const payload = {
+    username,
+    action: 'ADD_SHARED_TRIP',
+    tripData
+  };
+
+  console.log('updateCollaboratorProfile payload:', JSON.stringify(payload));
+  await lambdaClient.send(new InvokeCommand({
+    FunctionName: process.env.FUNCTION_UPDATEUSERPROFILE_NAME,
+    InvocationType: 'Event',
+    Payload: Buffer.from(JSON.stringify(payload))
+  }));
+}

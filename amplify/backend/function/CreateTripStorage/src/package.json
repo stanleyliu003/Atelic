@@ -9,7 +9,8 @@
     "body-parser": "^1.19.1",
     "express": "^4.17.2",
     "@aws-sdk/client-dynamodb": "^3.188.0",
-    "@aws-sdk/lib-dynamodb": "^3.188.0"
+    "@aws-sdk/lib-dynamodb": "^3.188.0",
+    "@aws-sdk/client-lambda": "^3.188.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.92",

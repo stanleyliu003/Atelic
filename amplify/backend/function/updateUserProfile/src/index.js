@@ -27,52 +27,73 @@ exports.handler = async (event) => {
   }
 
   try {
+    let result;
     switch (action) {
       case 'ADD_OWNED_TRIP':
-        return await addOwnedTrip(username, tripData);
+        result = await addOwnedTrip(username, tripData);
+        break;
 
       case 'REMOVE_OWNED_TRIP':
-        return await removeOwnedTrip(username, tripData.tripId);
+        result = await removeOwnedTrip(username, tripData.tripId);
+        break;
 
       case 'UPDATE_OWNED_TRIP':
-        return await updateOwnedTrip(username, tripData);
+        result = await updateOwnedTrip(username, tripData);
+        break;
 
       case 'ADD_SHARED_TRIP':
-        return await addSharedTrip(username, tripData);
+        result = await addSharedTrip(username, tripData);
+        break;
 
       case 'REMOVE_SHARED_TRIP':
-        return await removeSharedTrip(username, tripData.tripId);
+        result = await removeSharedTrip(username, tripData.tripId);
+        break;
 
       case 'UPDATE_LAST_ACTIVE':
-        return await updateLastActive(username);
+        result = await updateLastActive(username);
+        break;
 
       case 'UPDATE_DEMOGRAPHICS':
-        return await updateDemographics(username, tripData);
+        result = await updateDemographics(username, tripData);
+        break;
 
       case 'UPDATE_PROFILE_INFO':
-        return await updateProfileInfo(username, tripData);
+        result = await updateProfileInfo(username, tripData);
+        break;
 
       case 'UPDATE_PREFERENCES':
-        return await updatePreferences(username, tripData);
+        result = await updatePreferences(username, tripData);
+        break;
 
       case 'UPDATE_LOGIN':
-        return await updateLogin(username, tripData);
+        result = await updateLogin(username, tripData);
+        break;
 
       case 'UPDATE_SUBSCRIPTION':
-        return await updateSubscription(username, tripData);
+        result = await updateSubscription(username, tripData);
+        break;
 
       case 'ADD_FRIEND':
-        return await addFriend(username, tripData);
+        result = await addFriend(username, tripData);
+        break;
 
       case 'REMOVE_FRIEND':
-        return await removeFriend(username, tripData);
+        result = await removeFriend(username, tripData);
+        break;
 
       case 'UPDATE_SOCIAL_COUNTS':
-        return await updateSocialCounts(username, tripData);
+        result = await updateSocialCounts(username, tripData);
+        break;
 
       default:
         throw new Error(`Unknown action: ${action}`);
     }
+    console.log('updateUserProfile COMPLETED:', JSON.stringify({
+      username,
+      action,
+      output: result
+    }));
+    return result;
   } catch (error) {
     console.error('Error updating profile:', error);
     throw error;
@@ -193,6 +214,11 @@ async function persistTravelInsights(username, insights) {
       ':now': new Date().toISOString()
     },
     ReturnValues: 'ALL_NEW'
+  }));
+  console.log('Persisted travel insights:', JSON.stringify({
+    username,
+    insights,
+    updatedAt: result.Attributes?.updatedAt
   }));
   return result.Attributes;
 }
