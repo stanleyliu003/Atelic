@@ -153,8 +153,8 @@ type DeleteAccountResult {
    avgCollaboratorsPerTrip: Float!
 
    # Travel insights
-   mostVisitedCities: AWSJSON
-   totalDaysTraveled: Int!
+  mostVisitedCities: AWSJSON
+  totalTripDuration: Int!
    avgTripDuration: Float!
    lastTripDate: String
    nextTripDate: String
@@ -167,14 +167,10 @@ type DeleteAccountResult {
    # Profile information
    bio: String
    profilePhotoUrl: String
-   location: String
-   website: String
    socialLinks: AWSJSON
 
    # Usage stats
    accountCreatedAt: String!
-   lastLoginAt: String
-   loginCount: Int!
    appVersion: String
    deviceType: String
 

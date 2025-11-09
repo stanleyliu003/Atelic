@@ -7,7 +7,7 @@
 Amplify Params - DO NOT EDIT */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, UpdateCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, UpdateCommand, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
@@ -27,6 +27,11 @@ exports.handler = async (event) => {
   }
 
   try {
+    // Ensure profile exists with baseline fields for trip-related mutations
+    if (action === 'ADD_OWNED_TRIP' || action === 'ADD_SHARED_TRIP') {
+      await ensureProfileInitialized(username, tripData);
+    }
+
     let result;
     switch (action) {
       case 'ADD_OWNED_TRIP':
@@ -112,7 +117,7 @@ function computeTravelInsights(profile) {
   let totalTripsCompleted = 0;
   let totalTripsUpcoming = 0;
   let totalTripsInProgress = 0;
-  let totalDaysTraveled = 0;
+  let totalTripDuration = 0;
   let tripsWithLength = 0;
   const cityCounts = {};
   let lastTripDate = null; // latest past endDate
@@ -126,7 +131,7 @@ function computeTravelInsights(profile) {
 
     const tripLength = Number(trip?.tripLength);
     if (!Number.isNaN(tripLength) && tripLength > 0) {
-      totalDaysTraveled += tripLength;
+      totalTripDuration += tripLength;
       tripsWithLength += 1;
     }
 
@@ -170,14 +175,14 @@ function computeTravelInsights(profile) {
     }
   }
 
-  const avgTripDuration = tripsWithLength > 0 ? totalDaysTraveled / tripsWithLength : 0;
+  const avgTripDuration = tripsWithLength > 0 ? totalTripDuration / tripsWithLength : 0;
 
   return {
     totalTripsCompleted,
     totalTripsUpcoming,
     totalTripsInProgress,
     mostVisitedCities: cityCounts,
-    totalDaysTraveled,
+    totalTripDuration,
     avgTripDuration,
     lastTripDate: lastTripDate || null,
     nextTripDate: nextTripDate || null
@@ -196,7 +201,7 @@ async function persistTravelInsights(username, insights) {
           totalTripsUpcoming = :upcoming,
           totalTripsInProgress = :inprogress,
           mostVisitedCities = :cities,
-          totalDaysTraveled = :days,
+          totalTripDuration = :days,
           avgTripDuration = :avgDuration,
           lastTripDate = :lastTrip,
           nextTripDate = :nextTrip,
@@ -207,7 +212,7 @@ async function persistTravelInsights(username, insights) {
       ':upcoming': insights.totalTripsUpcoming,
       ':inprogress': insights.totalTripsInProgress,
       ':cities': insights.mostVisitedCities,
-      ':days': insights.totalDaysTraveled,
+      ':days': insights.totalTripDuration,
       ':avgDuration': insights.avgTripDuration,
       ':lastTrip': insights.lastTripDate,
       ':nextTrip': insights.nextTripDate,
@@ -224,6 +229,124 @@ async function persistTravelInsights(username, insights) {
 }
 
 /**
+ * Ensure a baseline profile exists with identity fields before applying updates.
+ * Attempts to derive identity from tripData.collaborators (owner or matching username)
+ * or from explicit fields in tripData (userID, email, fullName).
+ */
+async function ensureProfileInitialized(username, tripData) {
+  const getResult = await docClient.send(new GetCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username }
+  }));
+  if (getResult.Item) return; // Already exists
+
+  const now = new Date().toISOString();
+
+  // Try to find identity in collaborators array
+  let derivedUserID = tripData?.userID || null;
+  let derivedEmail = tripData?.email || null;
+  let derivedFullName = tripData?.fullName || null;
+
+  if ((!derivedUserID || !derivedEmail || !derivedFullName) && Array.isArray(tripData?.collaborators)) {
+    const fromCollaborators =
+      tripData.collaborators.find(c => c?.username === username) ||
+      tripData.collaborators.find(c => c?.role === 'owner');
+    if (fromCollaborators) {
+      derivedUserID = derivedUserID || fromCollaborators.userID || null;
+      derivedEmail = derivedEmail || fromCollaborators.email || null;
+      derivedFullName = derivedFullName || fromCollaborators.fullName || null;
+    }
+  }
+
+  const newProfile = {
+    // Basic info
+    username,
+    userID: derivedUserID || username,
+    email: derivedEmail || '',
+    fullName: derivedFullName || '',
+    age: null,
+    gender: null,
+    createdAt: now,
+
+    // Trip metrics
+    ownedTripsCount: 0,
+    ownedTrips: [],
+    sharedTripsCount: 0,
+    sharedTrips: [],
+    totalTripsCompleted: 0,
+    totalTripsUpcoming: 0,
+    totalTripsInProgress: 0,
+
+    // Activity metrics
+    activitiesPerTrip: {},
+    totalActivitiesOwned: 0,
+    avgActivitiesPerTrip: 0,
+
+    // Collaborator metrics
+    collaboratorsPerTrip: {},
+    totalCollaboratorsAcrossTrips: 0,
+    avgCollaboratorsPerTrip: 0,
+
+    // Travel insights
+    mostVisitedCities: {},
+    totalTripDuration: 0,
+    avgTripDuration: 0,
+    lastTripDate: null,
+    nextTripDate: null,
+
+    // Social features
+    followersCount: 0,
+    followingCount: 0,
+    friends: [],
+
+    // Profile information
+    bio: null,
+    profilePhotoUrl: null,
+    socialLinks: {},
+
+    // Usage stats
+    accountCreatedAt: now,
+    appVersion: null,
+    deviceType: null,
+
+    // Subscription info
+    subscriptionTier: 'free',
+    subscriptionStartDate: null,
+    subscriptionEndDate: null,
+    subscriptionStatus: 'active',
+    trialEndsAt: null,
+
+    // System fields
+    lastActiveAt: now,
+    accountStatus: 'active',
+    preferences: {
+      notifications: true,
+      theme: 'light',
+      language: 'en',
+      defaultCurrency: 'USD',
+      preferredTravelMode: 'driving',
+      distanceUnit: 'miles',
+      timeFormat: '12h',
+      dateFormat: 'MM/DD/YYYY',
+      profileVisibility: 'public',
+      allowCollaborationRequests: true,
+      shareActivityHistory: true
+    },
+    updatedAt: now,
+    version: 1
+  };
+
+  await docClient.send(new PutCommand({
+    TableName: USER_PROFILES_TABLE,
+    Item: newProfile
+  }));
+  console.log('Initialized baseline profile for user:', username, 'with identity:', {
+    userID: newProfile.userID,
+    email: newProfile.email,
+    fullName: newProfile.fullName
+  });
+}
+/**
  * Add an owned trip to the user's profile
  */
 async function addOwnedTrip(username, tripData) {
@@ -238,6 +361,7 @@ async function addOwnedTrip(username, tripData) {
     collaborators
   } = tripData;
 
+  const nowIso = new Date().toISOString();
   const tripSummary = {
     tripId,
     selectedCity,
@@ -245,8 +369,8 @@ async function addOwnedTrip(username, tripData) {
     startDate,
     endDate,
     tripLength,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdAt: nowIso,
+    updatedAt: nowIso
   };
 
   const activityCount = activities?.length || 0;
@@ -254,38 +378,97 @@ async function addOwnedTrip(username, tripData) {
   const viewersCount = collaborators?.filter(c => c.role === 'viewer').length || 0;
   const editorsCount = collaborators?.filter(c => c.role === 'editor').length || 0;
 
-  const result = await docClient.send(new UpdateCommand({
+  // Check whether trip already exists in ownedTrips to avoid duplicates
+  const getResult = await docClient.send(new GetCommand({
     TableName: USER_PROFILES_TABLE,
-    Key: { username },
-    UpdateExpression: `
-      SET ownedTripsCount = if_not_exists(ownedTripsCount, :zero) + :one,
-          ownedTrips = list_append(if_not_exists(ownedTrips, :emptyList), :trip),
-          activitiesPerTrip.#tripId = :activityCount,
-          totalActivitiesOwned = if_not_exists(totalActivitiesOwned, :zero) + :activityCount,
-          collaboratorsPerTrip.#tripId = :collaboratorData,
-          totalCollaboratorsAcrossTrips = if_not_exists(totalCollaboratorsAcrossTrips, :zero) + :collaboratorCount,
-          updatedAt = :now,
-          version = if_not_exists(version, :zero) + :one
-    `,
-    ExpressionAttributeNames: {
-      '#tripId': tripId
-    },
-    ExpressionAttributeValues: {
-      ':zero': 0,
-      ':one': 1,
-      ':emptyList': [],
-      ':trip': [tripSummary],
-      ':activityCount': activityCount,
-      ':collaboratorCount': collaboratorCount,
-      ':collaboratorData': {
-        total: collaboratorCount,
-        viewers: viewersCount,
-        editors: editorsCount
-      },
-      ':now': new Date().toISOString()
-    },
-    ReturnValues: 'ALL_NEW'
+    Key: { username }
   }));
+  const profile = getResult.Item || {};
+  const existingIndex = Array.isArray(profile.ownedTrips)
+    ? profile.ownedTrips.findIndex(t => t?.tripId === tripId)
+    : -1;
+
+  let result;
+  if (existingIndex !== -1) {
+    // Update in-place and adjust totals by delta (no count increment, no list append)
+    const prevActivityCount = (profile.activitiesPerTrip && profile.activitiesPerTrip[tripId]) || 0;
+    const prevCollaboratorTotal = (profile.collaboratorsPerTrip && profile.collaboratorsPerTrip[tripId] && profile.collaboratorsPerTrip[tripId].total) || 0;
+    const deltaActivity = activityCount - prevActivityCount;
+    const deltaCollaborator = collaboratorCount - prevCollaboratorTotal;
+
+    result = await docClient.send(new UpdateCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: { username },
+      UpdateExpression: `
+        SET ownedTrips[${existingIndex}].selectedCity = :city,
+            ownedTrips[${existingIndex}].tripPhotoReference = :photos,
+            ownedTrips[${existingIndex}].startDate = :startDate,
+            ownedTrips[${existingIndex}].endDate = :endDate,
+            ownedTrips[${existingIndex}].tripLength = :tripLength,
+            ownedTrips[${existingIndex}].updatedAt = :now,
+            activitiesPerTrip.#tripId = :activityCount,
+            collaboratorsPerTrip.#tripId = :collaboratorData,
+            totalActivitiesOwned = if_not_exists(totalActivitiesOwned, :zero) + :deltaActivity,
+            totalCollaboratorsAcrossTrips = if_not_exists(totalCollaboratorsAcrossTrips, :zero) + :deltaCollaborator,
+            updatedAt = :now
+      `,
+      ExpressionAttributeNames: {
+        '#tripId': tripId
+      },
+      ExpressionAttributeValues: {
+        ':city': selectedCity,
+        ':photos': tripPhotoReference || [],
+        ':startDate': startDate,
+        ':endDate': endDate,
+        ':tripLength': tripLength,
+        ':activityCount': activityCount,
+        ':collaboratorData': {
+          total: collaboratorCount,
+          viewers: viewersCount,
+          editors: editorsCount
+        },
+        ':zero': 0,
+        ':deltaActivity': deltaActivity,
+        ':deltaCollaborator': deltaCollaborator,
+        ':now': nowIso
+      },
+      ReturnValues: 'ALL_NEW'
+    }));
+  } else {
+    // Append new trip and increment counts
+    result = await docClient.send(new UpdateCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: { username },
+      UpdateExpression: `
+        SET ownedTripsCount = if_not_exists(ownedTripsCount, :zero) + :one,
+            ownedTrips = list_append(if_not_exists(ownedTrips, :emptyList), :trip),
+            activitiesPerTrip.#tripId = :activityCount,
+            totalActivitiesOwned = if_not_exists(totalActivitiesOwned, :zero) + :activityCount,
+            collaboratorsPerTrip.#tripId = :collaboratorData,
+            totalCollaboratorsAcrossTrips = if_not_exists(totalCollaboratorsAcrossTrips, :zero) + :collaboratorCount,
+            updatedAt = :now,
+            version = if_not_exists(version, :zero) + :one
+      `,
+      ExpressionAttributeNames: {
+        '#tripId': tripId
+      },
+      ExpressionAttributeValues: {
+        ':zero': 0,
+        ':one': 1,
+        ':emptyList': [],
+        ':trip': [tripSummary],
+        ':activityCount': activityCount,
+        ':collaboratorCount': collaboratorCount,
+        ':collaboratorData': {
+          total: collaboratorCount,
+          viewers: viewersCount,
+          editors: editorsCount
+        },
+        ':now': nowIso
+      },
+      ReturnValues: 'ALL_NEW'
+    }));
+  }
 
   // Recalculate aggregates and travel insights
   let updated = result.Attributes;
@@ -586,7 +769,7 @@ async function updateDemographics(username, data) {
  * Update profile information (bio, photo, location, website, social links)
  */
 async function updateProfileInfo(username, data) {
-  const { bio, profilePhotoUrl, location, website, socialLinks } = data;
+  const { bio, profilePhotoUrl, socialLinks } = data;
 
   const updateParts = [];
   const expressionAttributeValues = {
@@ -603,16 +786,6 @@ async function updateProfileInfo(username, data) {
     expressionAttributeValues[':photo'] = profilePhotoUrl;
   }
 
-  if (location !== undefined) {
-    updateParts.push('#location = :location');
-    expressionAttributeValues[':location'] = location;
-  }
-
-  if (website !== undefined) {
-    updateParts.push('website = :website');
-    expressionAttributeValues[':website'] = website;
-  }
-
   if (socialLinks !== undefined) {
     updateParts.push('socialLinks = :socialLinks');
     expressionAttributeValues[':socialLinks'] = socialLinks;
@@ -624,13 +797,10 @@ async function updateProfileInfo(username, data) {
 
   updateParts.push('updatedAt = :now');
 
-  const expressionAttributeNames = location !== undefined ? { '#location': 'location' } : undefined;
-
   const result = await docClient.send(new UpdateCommand({
     TableName: USER_PROFILES_TABLE,
     Key: { username },
     UpdateExpression: `SET ${updateParts.join(', ')}`,
-    ExpressionAttributeNames: expressionAttributeNames,
     ExpressionAttributeValues: expressionAttributeValues,
     ReturnValues: 'ALL_NEW'
   }));
@@ -680,15 +850,11 @@ async function updateLogin(username, data) {
   const { appVersion, deviceType } = data;
 
   const updateParts = [
-    'loginCount = if_not_exists(loginCount, :zero) + :one',
-    'lastLoginAt = :now',
     'lastActiveAt = :now',
     'updatedAt = :now'
   ];
 
   const expressionAttributeValues = {
-    ':zero': 0,
-    ':one': 1,
     ':now': new Date().toISOString()
   };
 

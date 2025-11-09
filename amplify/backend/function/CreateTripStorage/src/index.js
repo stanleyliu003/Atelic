@@ -123,7 +123,11 @@ exports.handler = async (event) => {
                 endDate: input.endDate || null,
                 tripLength: input.tripLength || null,
                 role: collab.role,
-                ownerUsername: owner?.username || ''
+                  ownerUsername: owner?.username || '',
+                  // Pass identity to allow baseline initialization
+                  userID: collab.userID,
+                  email: collab.email,
+                  fullName: collab.fullName
               });
               })()
             )

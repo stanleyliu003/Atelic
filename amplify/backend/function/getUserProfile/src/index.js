@@ -105,7 +105,7 @@ async function createInitialProfile(username, userID) {
 
     // Travel insights
     mostVisitedCities: {},
-    totalDaysTraveled: 0,
+    totalTripDuration: 0,
     avgTripDuration: 0,
     lastTripDate: null,
     nextTripDate: null,
@@ -118,14 +118,10 @@ async function createInitialProfile(username, userID) {
     // Profile information
     bio: null,
     profilePhotoUrl: null,
-    location: null,
-    website: null,
     socialLinks: {},
 
     // Usage stats
     accountCreatedAt: now,
-    lastLoginAt: now,
-    loginCount: 1,
     appVersion: null,
     deviceType: null,
 
