@@ -1,4 +1,5 @@
 /* Amplify Params - DO NOT EDIT
+	AUTH_AMPLIFYBACKEND59CCDBF8_USERPOOLID
 	ENV
 	REGION
 	STORAGE_USERPROFILESSTORAGE_ARN
@@ -8,11 +9,14 @@ Amplify Params - DO NOT EDIT */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, UpdateCommand, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
+const { CognitoIdentityProviderClient, AdminGetUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
+const cognitoClient = new CognitoIdentityProviderClient();
 
 const USER_PROFILES_TABLE = process.env.STORAGE_USERPROFILESSTORAGE_NAME;
+const USER_POOL_ID = process.env.AUTH_AMPLIFYBACKEND59CCDBF8_USERPOOLID;
 
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
@@ -246,6 +250,8 @@ async function ensureProfileInitialized(username, tripData) {
   let derivedUserID = tripData?.userID || null;
   let derivedEmail = tripData?.email || null;
   let derivedFullName = tripData?.fullName || null;
+  let derivedGender = null;
+  let derivedAge = null;
 
   if ((!derivedUserID || !derivedEmail || !derivedFullName) && Array.isArray(tripData?.collaborators)) {
     const fromCollaborators =
@@ -255,7 +261,34 @@ async function ensureProfileInitialized(username, tripData) {
       derivedUserID = derivedUserID || fromCollaborators.userID || null;
       derivedEmail = derivedEmail || fromCollaborators.email || null;
       derivedFullName = derivedFullName || fromCollaborators.fullName || null;
+      derivedGender = fromCollaborators.gender || null;
     }
+  }
+
+  // Fallback: try to enrich from Cognito if user pool id is available
+  try {
+    if (USER_POOL_ID && (derivedUserID || username)) {
+      const cognitoUser = await cognitoClient.send(new AdminGetUserCommand({
+        UserPoolId: USER_POOL_ID,
+        Username: derivedUserID || username
+      }));
+      const attrs = cognitoUser?.UserAttributes || [];
+      const getAttr = (name) => attrs.find(a => a.Name === name)?.Value;
+      derivedEmail = derivedEmail || getAttr('email') || null;
+      derivedFullName = derivedFullName || getAttr('name') || null;
+      derivedGender = derivedGender || getAttr('gender') || null;
+      const birthdateStr = getAttr('birthdate'); // YYYY-MM-DD
+      if (birthdateStr && derivedAge == null) {
+        derivedAge = computeAgeFromBirthdate(birthdateStr);
+      }
+      // Also consider preferred_username as canonical username if present
+      const preferred = getAttr('preferred_username');
+      if (preferred) {
+        username = preferred;
+      }
+    }
+  } catch (e) {
+    console.warn('Warning: Failed to enrich baseline profile from Cognito:', e?.message || e);
   }
 
   const newProfile = {
@@ -264,8 +297,8 @@ async function ensureProfileInitialized(username, tripData) {
     userID: derivedUserID || username,
     email: derivedEmail || '',
     fullName: derivedFullName || '',
-    age: null,
-    gender: null,
+    age: derivedAge,
+    gender: derivedGender,
     createdAt: now,
 
     // Trip metrics
@@ -343,8 +376,27 @@ async function ensureProfileInitialized(username, tripData) {
   console.log('Initialized baseline profile for user:', username, 'with identity:', {
     userID: newProfile.userID,
     email: newProfile.email,
-    fullName: newProfile.fullName
+    fullName: newProfile.fullName,
+    age: newProfile.age,
+    gender: newProfile.gender
   });
+}
+
+function computeAgeFromBirthdate(birthdate) {
+  try {
+    const [year, month, day] = birthdate.split('-').map(n => parseInt(n, 10));
+    if (!year || !month || !day) return null;
+    const today = new Date();
+    let age = today.getFullYear() - year;
+    const hasNotHadBirthdayThisYear =
+      today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day);
+    if (hasNotHadBirthdayThisYear) {
+      age -= 1;
+    }
+    return age;
+  } catch {
+    return null;
+  }
 }
 /**
  * Add an owned trip to the user's profile

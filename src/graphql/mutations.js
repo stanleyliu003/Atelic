@@ -505,7 +505,7 @@ export const updateUserProfile = /* GraphQL */ `
       totalCollaboratorsAcrossTrips
       avgCollaboratorsPerTrip
       mostVisitedCities
-      totalDaysTraveled
+      totalTripDuration
       avgTripDuration
       lastTripDate
       nextTripDate
@@ -514,12 +514,8 @@ export const updateUserProfile = /* GraphQL */ `
       friends
       bio
       profilePhotoUrl
-      location
-      website
       socialLinks
       accountCreatedAt
-      lastLoginAt
-      loginCount
       appVersion
       deviceType
       subscriptionTier

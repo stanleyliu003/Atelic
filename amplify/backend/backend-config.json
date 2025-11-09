@@ -315,6 +315,13 @@
       "dependsOn": [
         {
           "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        },
+        {
+          "attributes": [
             "Name",
             "Arn",
             "StreamArn"
@@ -413,6 +420,13 @@
     "updateUserProfile": {
       "build": true,
       "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        },
         {
           "attributes": [
             "Name",

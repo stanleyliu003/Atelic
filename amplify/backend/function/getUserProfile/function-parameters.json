@@ -1,5 +1,10 @@
 {
   "permissions": {
+    "auth": {
+      "amplifybackend59ccdbf8": [
+        "read"
+      ]
+    },
     "storage": {
       "UserProfilesStorage": [
         "read"

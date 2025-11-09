@@ -1,4 +1,5 @@
 /* Amplify Params - DO NOT EDIT
+	AUTH_AMPLIFYBACKEND59CCDBF8_USERPOOLID
 	ENV
 	REGION
 	STORAGE_USERPROFILESSTORAGE_ARN
@@ -8,11 +9,14 @@ Amplify Params - DO NOT EDIT */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, QueryCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
+const { CognitoIdentityProviderClient, AdminGetUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
+const cognitoClient = new CognitoIdentityProviderClient();
 
 const USER_PROFILES_TABLE = process.env.STORAGE_USERPROFILESSTORAGE_NAME;
+const USER_POOL_ID = process.env.AUTH_AMPLIFYBACKEND59CCDBF8_USERPOOLID;
 
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
@@ -74,14 +78,41 @@ async function createInitialProfile(username, userID) {
 
   const now = new Date().toISOString();
 
+  // Attempt to enrich from Cognito (email, fullName, preferred_username, birthdate -> age, gender)
+  let email = '';
+  let fullName = '';
+  let preferredUsername = username;
+  let age = null;
+  let gender = null;
+  try {
+    if (USER_POOL_ID && (userID || username)) {
+      const cognitoUser = await cognitoClient.send(new AdminGetUserCommand({
+        UserPoolId: USER_POOL_ID,
+        Username: userID || username
+      }));
+      const attrs = cognitoUser?.UserAttributes || [];
+      const getAttr = (name) => attrs.find(a => a.Name === name)?.Value;
+      email = getAttr('email') || '';
+      fullName = getAttr('name') || '';
+      preferredUsername = getAttr('preferred_username') || preferredUsername;
+      gender = getAttr('gender') || null;
+      const birthdateStr = getAttr('birthdate'); // format: YYYY-MM-DD
+      if (birthdateStr) {
+        age = computeAgeFromBirthdate(birthdateStr);
+      }
+    }
+  } catch (e) {
+    console.warn('Warning: Failed to enrich initial profile from Cognito:', e?.message || e);
+  }
+
   const newProfile = {
     // Basic info
-    username: username || userID,
+    username: preferredUsername || username || userID,
     userID: userID || username,
-    email: '',
-    fullName: '',
-    age: null,
-    gender: null,
+    email,
+    fullName,
+    age,
+    gender,
     createdAt: now,
 
     // Trip metrics
@@ -159,4 +190,21 @@ async function createInitialProfile(username, userID) {
 
   console.log('Created new profile:', newProfile);
   return newProfile;
+}
+
+function computeAgeFromBirthdate(birthdate) {
+  try {
+    const [year, month, day] = birthdate.split('-').map(n => parseInt(n, 10));
+    if (!year || !month || !day) return null;
+    const today = new Date();
+    let age = today.getFullYear() - year;
+    const hasNotHadBirthdayThisYear =
+      today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day);
+    if (hasNotHadBirthdayThisYear) {
+      age -= 1;
+    }
+    return age;
+  } catch {
+    return null;
+  }
 }
