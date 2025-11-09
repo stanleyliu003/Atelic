@@ -16,8 +16,28 @@
         "delete"
       ]
     },
+    "function": {
+      "getUserProfile": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ],
+      "updateUserProfile": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    },
     "storage": {
       "TripStorage": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ],
+      "UserProfilesStorage": [
         "create",
         "read",
         "update",

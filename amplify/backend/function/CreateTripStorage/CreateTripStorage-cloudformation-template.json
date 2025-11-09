@@ -43,6 +43,26 @@
     "authamplifybackend59ccdbf8UserPoolId": {
       "Type": "String",
       "Default": "authamplifybackend59ccdbf8UserPoolId"
+    },
+    "functiongetUserProfileName": {
+      "Type": "String",
+      "Default": "functiongetUserProfileName"
+    },
+    "functionupdateUserProfileName": {
+      "Type": "String",
+      "Default": "functionupdateUserProfileName"
+    },
+    "storageUserProfilesStorageName": {
+      "Type": "String",
+      "Default": "storageUserProfilesStorageName"
+    },
+    "storageUserProfilesStorageArn": {
+      "Type": "String",
+      "Default": "storageUserProfilesStorageArn"
+    },
+    "storageUserProfilesStorageStreamArn": {
+      "Type": "String",
+      "Default": "storageUserProfilesStorageStreamArn"
     }
   },
   "Conditions": {
@@ -144,6 +164,21 @@
             },
             "AUTH_AMPLIFYBACKEND59CCDBF8_USERPOOLID": {
               "Ref": "authamplifybackend59ccdbf8UserPoolId"
+            },
+            "FUNCTION_GETUSERPROFILE_NAME": {
+              "Ref": "functiongetUserProfileName"
+            },
+            "FUNCTION_UPDATEUSERPROFILE_NAME": {
+              "Ref": "functionupdateUserProfileName"
+            },
+            "STORAGE_USERPROFILESSTORAGE_NAME": {
+              "Ref": "storageUserProfilesStorageName"
+            },
+            "STORAGE_USERPROFILESSTORAGE_ARN": {
+              "Ref": "storageUserProfilesStorageArn"
+            },
+            "STORAGE_USERPROFILESSTORAGE_STREAMARN": {
+              "Ref": "storageUserProfilesStorageStreamArn"
             }
           }
         },
@@ -461,6 +496,76 @@
             {
               "Effect": "Allow",
               "Action": [
+                "lambda:Create*",
+                "lambda:Put*",
+                "lambda:Add*",
+                "lambda:Get*",
+                "lambda:List*",
+                "lambda:Invoke*",
+                "lambda:Update*",
+                "lambda:Delete*",
+                "lambda:Remove*"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:lambda:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":function:",
+                      {
+                        "Ref": "functiongetUserProfileName"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "lambda:Create*",
+                "lambda:Put*",
+                "lambda:Add*",
+                "lambda:Get*",
+                "lambda:List*",
+                "lambda:Invoke*",
+                "lambda:Update*",
+                "lambda:Delete*",
+                "lambda:Remove*"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:lambda:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":function:",
+                      {
+                        "Ref": "functionupdateUserProfileName"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
                 "dynamodb:Put*",
                 "dynamodb:Create*",
                 "dynamodb:BatchWriteItem",
@@ -488,6 +593,43 @@
                     [
                       {
                         "Ref": "storageTripStorageArn"
+                      },
+                      "index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:Put*",
+                "dynamodb:Create*",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PartiQLInsert",
+                "dynamodb:Get*",
+                "dynamodb:BatchGetItem",
+                "dynamodb:List*",
+                "dynamodb:Describe*",
+                "dynamodb:Scan",
+                "dynamodb:Query",
+                "dynamodb:PartiQLSelect",
+                "dynamodb:Update*",
+                "dynamodb:RestoreTable*",
+                "dynamodb:PartiQLUpdate",
+                "dynamodb:Delete*",
+                "dynamodb:PartiQLDelete"
+              ],
+              "Resource": [
+                {
+                  "Ref": "storageUserProfilesStorageArn"
+                },
+                {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      {
+                        "Ref": "storageUserProfilesStorageArn"
                       },
                       "index/*"
                     ]
