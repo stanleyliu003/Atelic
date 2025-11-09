@@ -366,3 +366,93 @@ export const listWishlistAnalyses = /* GraphQL */ `
     }
   }
 `;
+export const getUserProfile = /* GraphQL */ `
+  query GetUserProfile($username: String, $userID: String) {
+    getUserProfile(username: $username, userID: $userID) {
+      username
+      userID
+      email
+      fullName
+      age
+      gender
+      createdAt
+      ownedTripsCount
+      ownedTrips {
+        tripId
+        selectedCity
+        tripPhotoReference
+        startDate
+        endDate
+        tripLength
+        createdAt
+        updatedAt
+        __typename
+      }
+      sharedTripsCount
+      sharedTrips {
+        tripId
+        selectedCity
+        tripPhotoReference
+        startDate
+        endDate
+        tripLength
+        role
+        ownerUsername
+        createdAt
+        updatedAt
+        __typename
+      }
+      totalTripsCompleted
+      totalTripsUpcoming
+      totalTripsInProgress
+      activitiesPerTrip
+      totalActivitiesOwned
+      avgActivitiesPerTrip
+      collaboratorsPerTrip
+      totalCollaboratorsAcrossTrips
+      avgCollaboratorsPerTrip
+      mostVisitedCities
+      totalDaysTraveled
+      avgTripDuration
+      lastTripDate
+      nextTripDate
+      followersCount
+      followingCount
+      friends
+      bio
+      profilePhotoUrl
+      location
+      website
+      socialLinks
+      accountCreatedAt
+      lastLoginAt
+      loginCount
+      appVersion
+      deviceType
+      subscriptionTier
+      subscriptionStartDate
+      subscriptionEndDate
+      subscriptionStatus
+      trialEndsAt
+      lastActiveAt
+      accountStatus
+      preferences {
+        notifications
+        theme
+        language
+        defaultCurrency
+        preferredTravelMode
+        distanceUnit
+        timeFormat
+        dateFormat
+        profileVisibility
+        allowCollaborationRequests
+        shareActivityHistory
+        __typename
+      }
+      updatedAt
+      version
+      __typename
+    }
+  }
+`;

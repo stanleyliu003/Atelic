@@ -451,3 +451,101 @@ export const deleteWishlistAnalysis = /* GraphQL */ `
     }
   }
 `;
+export const updateUserProfile = /* GraphQL */ `
+  mutation UpdateUserProfile(
+    $username: String!
+    $action: String!
+    $tripData: AWSJSON
+  ) {
+    updateUserProfile(
+      username: $username
+      action: $action
+      tripData: $tripData
+    ) {
+      username
+      userID
+      email
+      fullName
+      age
+      gender
+      createdAt
+      ownedTripsCount
+      ownedTrips {
+        tripId
+        selectedCity
+        tripPhotoReference
+        startDate
+        endDate
+        tripLength
+        createdAt
+        updatedAt
+        __typename
+      }
+      sharedTripsCount
+      sharedTrips {
+        tripId
+        selectedCity
+        tripPhotoReference
+        startDate
+        endDate
+        tripLength
+        role
+        ownerUsername
+        createdAt
+        updatedAt
+        __typename
+      }
+      totalTripsCompleted
+      totalTripsUpcoming
+      totalTripsInProgress
+      activitiesPerTrip
+      totalActivitiesOwned
+      avgActivitiesPerTrip
+      collaboratorsPerTrip
+      totalCollaboratorsAcrossTrips
+      avgCollaboratorsPerTrip
+      mostVisitedCities
+      totalDaysTraveled
+      avgTripDuration
+      lastTripDate
+      nextTripDate
+      followersCount
+      followingCount
+      friends
+      bio
+      profilePhotoUrl
+      location
+      website
+      socialLinks
+      accountCreatedAt
+      lastLoginAt
+      loginCount
+      appVersion
+      deviceType
+      subscriptionTier
+      subscriptionStartDate
+      subscriptionEndDate
+      subscriptionStatus
+      trialEndsAt
+      lastActiveAt
+      accountStatus
+      preferences {
+        notifications
+        theme
+        language
+        defaultCurrency
+        preferredTravelMode
+        distanceUnit
+        timeFormat
+        dateFormat
+        profileVisibility
+        allowCollaborationRequests
+        shareActivityHistory
+        __typename
+      }
+      updatedAt
+      version
+      __typename
+    }
+  }
+`;

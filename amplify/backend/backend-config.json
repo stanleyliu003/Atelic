@@ -627,6 +627,22 @@
         }
       ]
     },
+    "AMPLIFY_function_getUserProfile_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getUserProfile"
+        }
+      ]
+    },
+    "AMPLIFY_function_getUserProfile_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getUserProfile"
+        }
+      ]
+    },
     "AMPLIFY_function_getUserTrips_deploymentBucketName": {
       "usedBy": [
         {
@@ -728,6 +744,22 @@
         {
           "category": "function",
           "resourceName": "searchUsers"
+        }
+      ]
+    },
+    "AMPLIFY_function_updateUserProfile_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "updateUserProfile"
+        }
+      ]
+    },
+    "AMPLIFY_function_updateUserProfile_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "updateUserProfile"
         }
       ]
     },
