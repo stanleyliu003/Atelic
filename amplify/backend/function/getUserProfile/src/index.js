@@ -72,32 +72,87 @@ exports.handler = async (event) => {
 async function createInitialProfile(username, userID) {
   console.log('Creating initial profile for:', { username, userID });
 
+  const now = new Date().toISOString();
+
   const newProfile = {
-    username: username || userID, // Fallback to userID if username not provided
-    userID: userID || username, // Fallback to username if userID not provided
+    // Basic info
+    username: username || userID,
+    userID: userID || username,
     email: '',
     fullName: '',
     age: null,
     gender: null,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
+
+    // Trip metrics
     ownedTripsCount: 0,
     ownedTrips: [],
     sharedTripsCount: 0,
     sharedTrips: [],
+    totalTripsCompleted: 0,
+    totalTripsUpcoming: 0,
+    totalTripsInProgress: 0,
+
+    // Activity metrics
     activitiesPerTrip: {},
     totalActivitiesOwned: 0,
     avgActivitiesPerTrip: 0,
+
+    // Collaborator metrics
     collaboratorsPerTrip: {},
     totalCollaboratorsAcrossTrips: 0,
     avgCollaboratorsPerTrip: 0,
-    lastActiveAt: new Date().toISOString(),
+
+    // Travel insights
+    mostVisitedCities: {},
+    totalDaysTraveled: 0,
+    avgTripDuration: 0,
+    lastTripDate: null,
+    nextTripDate: null,
+
+    // Social features
+    followersCount: 0,
+    followingCount: 0,
+    friends: [],
+
+    // Profile information
+    bio: null,
+    profilePhotoUrl: null,
+    location: null,
+    website: null,
+    socialLinks: {},
+
+    // Usage stats
+    accountCreatedAt: now,
+    lastLoginAt: now,
+    loginCount: 1,
+    appVersion: null,
+    deviceType: null,
+
+    // Subscription info
+    subscriptionTier: 'free',
+    subscriptionStartDate: now,
+    subscriptionEndDate: null,
+    subscriptionStatus: 'active',
+    trialEndsAt: null,
+
+    // System fields
+    lastActiveAt: now,
     accountStatus: 'active',
     preferences: {
       notifications: true,
       theme: 'light',
-      language: 'en'
+      language: 'en',
+      defaultCurrency: 'USD',
+      preferredTravelMode: 'driving',
+      distanceUnit: 'miles',
+      timeFormat: '12h',
+      dateFormat: 'MM/DD/YYYY',
+      profileVisibility: 'public',
+      allowCollaborationRequests: true,
+      shareActivityHistory: true
     },
-    updatedAt: new Date().toISOString(),
+    updatedAt: now,
     version: 1
   };
 

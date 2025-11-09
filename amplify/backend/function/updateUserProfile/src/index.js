@@ -49,6 +49,27 @@ exports.handler = async (event) => {
       case 'UPDATE_DEMOGRAPHICS':
         return await updateDemographics(username, tripData);
 
+      case 'UPDATE_PROFILE_INFO':
+        return await updateProfileInfo(username, tripData);
+
+      case 'UPDATE_PREFERENCES':
+        return await updatePreferences(username, tripData);
+
+      case 'UPDATE_LOGIN':
+        return await updateLogin(username, tripData);
+
+      case 'UPDATE_SUBSCRIPTION':
+        return await updateSubscription(username, tripData);
+
+      case 'ADD_FRIEND':
+        return await addFriend(username, tripData);
+
+      case 'REMOVE_FRIEND':
+        return await removeFriend(username, tripData);
+
+      case 'UPDATE_SOCIAL_COUNTS':
+        return await updateSocialCounts(username, tripData);
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }
@@ -57,6 +78,124 @@ exports.handler = async (event) => {
     throw error;
   }
 };
+
+/**
+ * Helper: compute travel insights across owned + shared trips
+ */
+function computeTravelInsights(profile) {
+  const now = new Date();
+  const ownedTrips = Array.isArray(profile.ownedTrips) ? profile.ownedTrips : [];
+  const sharedTrips = Array.isArray(profile.sharedTrips) ? profile.sharedTrips : [];
+  const allTrips = [...ownedTrips, ...sharedTrips];
+
+  let totalTripsCompleted = 0;
+  let totalTripsUpcoming = 0;
+  let totalTripsInProgress = 0;
+  let totalDaysTraveled = 0;
+  let tripsWithLength = 0;
+  const cityCounts = {};
+  let lastTripDate = null; // latest past endDate
+  let nextTripDate = null; // earliest future startDate
+
+  for (const trip of allTrips) {
+    const city = trip?.selectedCity;
+    if (city) {
+      cityCounts[city] = (cityCounts[city] || 0) + 1;
+    }
+
+    const tripLength = Number(trip?.tripLength);
+    if (!Number.isNaN(tripLength) && tripLength > 0) {
+      totalDaysTraveled += tripLength;
+      tripsWithLength += 1;
+    }
+
+    const start = trip?.startDate ? new Date(trip.startDate) : null;
+    const end = trip?.endDate ? new Date(trip.endDate) : null;
+
+    if (start && end) {
+      if (end < now) {
+        totalTripsCompleted += 1;
+        // last trip date is the max past endDate
+        if (!lastTripDate || end > new Date(lastTripDate)) {
+          lastTripDate = trip.endDate;
+        }
+      } else if (start > now) {
+        totalTripsUpcoming += 1;
+        // next trip date is the min future startDate
+        if (!nextTripDate || start < new Date(nextTripDate)) {
+          nextTripDate = trip.startDate;
+        }
+      } else {
+        totalTripsInProgress += 1;
+      }
+    } else if (start && !end) {
+      // If only start is present, treat future or in-progress relative to today
+      if (start > now) {
+        totalTripsUpcoming += 1;
+        if (!nextTripDate || start < new Date(nextTripDate)) {
+          nextTripDate = trip.startDate;
+        }
+      } else {
+        totalTripsInProgress += 1;
+      }
+    } else if (!start && end) {
+      // If only end is present, treat as completed if before now
+      if (end < now) {
+        totalTripsCompleted += 1;
+        if (!lastTripDate || end > new Date(lastTripDate)) {
+          lastTripDate = trip.endDate;
+        }
+      }
+    }
+  }
+
+  const avgTripDuration = tripsWithLength > 0 ? totalDaysTraveled / tripsWithLength : 0;
+
+  return {
+    totalTripsCompleted,
+    totalTripsUpcoming,
+    totalTripsInProgress,
+    mostVisitedCities: cityCounts,
+    totalDaysTraveled,
+    avgTripDuration,
+    lastTripDate: lastTripDate || null,
+    nextTripDate: nextTripDate || null
+  };
+}
+
+/**
+ * Helper: persist travel insights back to the profile
+ */
+async function persistTravelInsights(username, insights) {
+  const result = await docClient.send(new UpdateCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username },
+    UpdateExpression: `
+      SET totalTripsCompleted = :completed,
+          totalTripsUpcoming = :upcoming,
+          totalTripsInProgress = :inprogress,
+          mostVisitedCities = :cities,
+          totalDaysTraveled = :days,
+          avgTripDuration = :avgDuration,
+          lastTripDate = :lastTrip,
+          nextTripDate = :nextTrip,
+          updatedAt = :now
+    `,
+    ExpressionAttributeValues: {
+      ':completed': insights.totalTripsCompleted,
+      ':upcoming': insights.totalTripsUpcoming,
+      ':inprogress': insights.totalTripsInProgress,
+      ':cities': insights.mostVisitedCities,
+      ':days': insights.totalDaysTraveled,
+      ':avgDuration': insights.avgTripDuration,
+      ':lastTrip': insights.lastTripDate,
+      ':nextTrip': insights.nextTripDate,
+      ':now': new Date().toISOString()
+    },
+    ReturnValues: 'ALL_NEW'
+  }));
+  return result.Attributes;
+}
 
 /**
  * Add an owned trip to the user's profile
@@ -122,12 +261,17 @@ async function addOwnedTrip(username, tripData) {
     ReturnValues: 'ALL_NEW'
   }));
 
-  // Recalculate averages
-  const updated = result.Attributes;
+  // Recalculate aggregates and travel insights
+  let updated = result.Attributes;
   if (updated.ownedTripsCount > 0) {
     updated.avgActivitiesPerTrip = updated.totalActivitiesOwned / updated.ownedTripsCount;
     updated.avgCollaboratorsPerTrip = updated.totalCollaboratorsAcrossTrips / updated.ownedTripsCount;
+  } else {
+    updated.avgActivitiesPerTrip = 0;
+    updated.avgCollaboratorsPerTrip = 0;
   }
+  const insights = computeTravelInsights(updated);
+  updated = await persistTravelInsights(username, insights);
 
   console.log('Added owned trip, updated profile:', updated);
   return updated;
@@ -184,7 +328,7 @@ async function removeOwnedTrip(username, tripId) {
   }));
 
   // Recalculate averages
-  const updated = result.Attributes;
+  let updated = result.Attributes;
   if (updated.ownedTripsCount > 0) {
     updated.avgActivitiesPerTrip = updated.totalActivitiesOwned / updated.ownedTripsCount;
     updated.avgCollaboratorsPerTrip = updated.totalCollaboratorsAcrossTrips / updated.ownedTripsCount;
@@ -192,6 +336,9 @@ async function removeOwnedTrip(username, tripId) {
     updated.avgActivitiesPerTrip = 0;
     updated.avgCollaboratorsPerTrip = 0;
   }
+
+  const insights = computeTravelInsights(updated);
+  updated = await persistTravelInsights(username, insights);
 
   console.log('Removed owned trip, updated profile:', updated);
   return updated;
@@ -244,8 +391,12 @@ async function updateOwnedTrip(username, tripData) {
     ReturnValues: 'ALL_NEW'
   }));
 
-  console.log('Updated owned trip, updated profile:', result.Attributes);
-  return result.Attributes;
+  let updated = result.Attributes;
+  const insights = computeTravelInsights(updated);
+  updated = await persistTravelInsights(username, insights);
+
+  console.log('Updated owned trip, updated profile:', updated);
+  return updated;
 }
 
 /**
@@ -294,8 +445,12 @@ async function addSharedTrip(username, tripData) {
     ReturnValues: 'ALL_NEW'
   }));
 
-  console.log('Added shared trip, updated profile:', result.Attributes);
-  return result.Attributes;
+  let updated = result.Attributes;
+  const insights = computeTravelInsights(updated);
+  updated = await persistTravelInsights(username, insights);
+
+  console.log('Added shared trip, updated profile:', updated);
+  return updated;
 }
 
 /**
@@ -335,8 +490,12 @@ async function removeSharedTrip(username, tripId) {
     ReturnValues: 'ALL_NEW'
   }));
 
-  console.log('Removed shared trip, updated profile:', result.Attributes);
-  return result.Attributes;
+  let updated = result.Attributes;
+  const insights = computeTravelInsights(updated);
+  updated = await persistTravelInsights(username, insights);
+
+  console.log('Removed shared trip, updated profile:', updated);
+  return updated;
 }
 
 /**
@@ -394,5 +553,302 @@ async function updateDemographics(username, data) {
   }));
 
   console.log('Updated demographics, updated profile:', result.Attributes);
+  return result.Attributes;
+}
+
+/**
+ * Update profile information (bio, photo, location, website, social links)
+ */
+async function updateProfileInfo(username, data) {
+  const { bio, profilePhotoUrl, location, website, socialLinks } = data;
+
+  const updateParts = [];
+  const expressionAttributeValues = {
+    ':now': new Date().toISOString()
+  };
+
+  if (bio !== undefined) {
+    updateParts.push('bio = :bio');
+    expressionAttributeValues[':bio'] = bio;
+  }
+
+  if (profilePhotoUrl !== undefined) {
+    updateParts.push('profilePhotoUrl = :photo');
+    expressionAttributeValues[':photo'] = profilePhotoUrl;
+  }
+
+  if (location !== undefined) {
+    updateParts.push('#location = :location');
+    expressionAttributeValues[':location'] = location;
+  }
+
+  if (website !== undefined) {
+    updateParts.push('website = :website');
+    expressionAttributeValues[':website'] = website;
+  }
+
+  if (socialLinks !== undefined) {
+    updateParts.push('socialLinks = :socialLinks');
+    expressionAttributeValues[':socialLinks'] = socialLinks;
+  }
+
+  if (updateParts.length === 0) {
+    throw new Error('At least one profile field must be provided');
+  }
+
+  updateParts.push('updatedAt = :now');
+
+  const expressionAttributeNames = location !== undefined ? { '#location': 'location' } : undefined;
+
+  const result = await docClient.send(new UpdateCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username },
+    UpdateExpression: `SET ${updateParts.join(', ')}`,
+    ExpressionAttributeNames: expressionAttributeNames,
+    ExpressionAttributeValues: expressionAttributeValues,
+    ReturnValues: 'ALL_NEW'
+  }));
+
+  console.log('Updated profile info:', result.Attributes);
+  return result.Attributes;
+}
+
+/**
+ * Update user preferences
+ */
+async function updatePreferences(username, data) {
+  const { preferences } = data;
+
+  if (!preferences || Object.keys(preferences).length === 0) {
+    throw new Error('Preferences object must be provided');
+  }
+
+  // Get current preferences first
+  const getResult = await docClient.send(new GetCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username }
+  }));
+
+  const currentPreferences = getResult.Item?.preferences || {};
+  const updatedPreferences = { ...currentPreferences, ...preferences };
+
+  const result = await docClient.send(new UpdateCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username },
+    UpdateExpression: 'SET preferences = :preferences, updatedAt = :now',
+    ExpressionAttributeValues: {
+      ':preferences': updatedPreferences,
+      ':now': new Date().toISOString()
+    },
+    ReturnValues: 'ALL_NEW'
+  }));
+
+  console.log('Updated preferences:', result.Attributes);
+  return result.Attributes;
+}
+
+/**
+ * Update login tracking (loginCount, lastLoginAt, appVersion, deviceType)
+ */
+async function updateLogin(username, data) {
+  const { appVersion, deviceType } = data;
+
+  const updateParts = [
+    'loginCount = if_not_exists(loginCount, :zero) + :one',
+    'lastLoginAt = :now',
+    'lastActiveAt = :now',
+    'updatedAt = :now'
+  ];
+
+  const expressionAttributeValues = {
+    ':zero': 0,
+    ':one': 1,
+    ':now': new Date().toISOString()
+  };
+
+  if (appVersion) {
+    updateParts.push('appVersion = :appVersion');
+    expressionAttributeValues[':appVersion'] = appVersion;
+  }
+
+  if (deviceType) {
+    updateParts.push('deviceType = :deviceType');
+    expressionAttributeValues[':deviceType'] = deviceType;
+  }
+
+  const result = await docClient.send(new UpdateCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username },
+    UpdateExpression: `SET ${updateParts.join(', ')}`,
+    ExpressionAttributeValues: expressionAttributeValues,
+    ReturnValues: 'ALL_NEW'
+  }));
+
+  console.log('Updated login info:', result.Attributes);
+  return result.Attributes;
+}
+
+/**
+ * Update subscription information
+ */
+async function updateSubscription(username, data) {
+  const { subscriptionTier, subscriptionStartDate, subscriptionEndDate, subscriptionStatus, trialEndsAt } = data;
+
+  const updateParts = [];
+  const expressionAttributeValues = {
+    ':now': new Date().toISOString()
+  };
+
+  if (subscriptionTier !== undefined) {
+    updateParts.push('subscriptionTier = :tier');
+    expressionAttributeValues[':tier'] = subscriptionTier;
+  }
+
+  if (subscriptionStartDate !== undefined) {
+    updateParts.push('subscriptionStartDate = :startDate');
+    expressionAttributeValues[':startDate'] = subscriptionStartDate;
+  }
+
+  if (subscriptionEndDate !== undefined) {
+    updateParts.push('subscriptionEndDate = :endDate');
+    expressionAttributeValues[':endDate'] = subscriptionEndDate;
+  }
+
+  if (subscriptionStatus !== undefined) {
+    updateParts.push('subscriptionStatus = :status');
+    expressionAttributeValues[':status'] = subscriptionStatus;
+  }
+
+  if (trialEndsAt !== undefined) {
+    updateParts.push('trialEndsAt = :trialEnds');
+    expressionAttributeValues[':trialEnds'] = trialEndsAt;
+  }
+
+  if (updateParts.length === 0) {
+    throw new Error('At least one subscription field must be provided');
+  }
+
+  updateParts.push('updatedAt = :now');
+
+  const result = await docClient.send(new UpdateCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username },
+    UpdateExpression: `SET ${updateParts.join(', ')}`,
+    ExpressionAttributeValues: expressionAttributeValues,
+    ReturnValues: 'ALL_NEW'
+  }));
+
+  console.log('Updated subscription:', result.Attributes);
+  return result.Attributes;
+}
+
+/**
+ * Add a friend to the user's friends list
+ */
+async function addFriend(username, data) {
+  const { friendUsername } = data;
+
+  if (!friendUsername) {
+    throw new Error('friendUsername is required');
+  }
+
+  const result = await docClient.send(new UpdateCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username },
+    UpdateExpression: `
+      SET friends = list_append(if_not_exists(friends, :emptyList), :friend),
+          updatedAt = :now
+    `,
+    ExpressionAttributeValues: {
+      ':emptyList': [],
+      ':friend': [friendUsername],
+      ':now': new Date().toISOString()
+    },
+    ReturnValues: 'ALL_NEW'
+  }));
+
+  console.log('Added friend:', result.Attributes);
+  return result.Attributes;
+}
+
+/**
+ * Remove a friend from the user's friends list
+ */
+async function removeFriend(username, data) {
+  const { friendUsername } = data;
+
+  if (!friendUsername) {
+    throw new Error('friendUsername is required');
+  }
+
+  // Get current profile to find friend index
+  const getResult = await docClient.send(new GetCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username }
+  }));
+
+  const profile = getResult.Item;
+  if (!profile) {
+    throw new Error(`Profile not found for username: ${username}`);
+  }
+
+  const friendIndex = profile.friends?.indexOf(friendUsername);
+  if (friendIndex === -1 || friendIndex === undefined) {
+    throw new Error(`Friend ${friendUsername} not found in friends list`);
+  }
+
+  const result = await docClient.send(new UpdateCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username },
+    UpdateExpression: `
+      REMOVE friends[${friendIndex}]
+      SET updatedAt = :now
+    `,
+    ExpressionAttributeValues: {
+      ':now': new Date().toISOString()
+    },
+    ReturnValues: 'ALL_NEW'
+  }));
+
+  console.log('Removed friend:', result.Attributes);
+  return result.Attributes;
+}
+
+/**
+ * Update social counts (followersCount, followingCount)
+ */
+async function updateSocialCounts(username, data) {
+  const { followersCount, followingCount } = data;
+
+  const updateParts = [];
+  const expressionAttributeValues = {
+    ':now': new Date().toISOString()
+  };
+
+  if (followersCount !== undefined) {
+    updateParts.push('followersCount = :followersCount');
+    expressionAttributeValues[':followersCount'] = followersCount;
+  }
+
+  if (followingCount !== undefined) {
+    updateParts.push('followingCount = :followingCount');
+    expressionAttributeValues[':followingCount'] = followingCount;
+  }
+
+  if (updateParts.length === 0) {
+    throw new Error('At least one social count must be provided');
+  }
+
+  updateParts.push('updatedAt = :now');
+
+  const result = await docClient.send(new UpdateCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username },
+    UpdateExpression: `SET ${updateParts.join(', ')}`,
+    ExpressionAttributeValues: expressionAttributeValues,
+    ReturnValues: 'ALL_NEW'
+  }));
+
+  console.log('Updated social counts:', result.Attributes);
   return result.Attributes;
 }

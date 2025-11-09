@@ -132,16 +132,60 @@ type DeleteAccountResult {
    age: Int
    gender: String
    createdAt: String!
+
+   # Trip metrics
    ownedTripsCount: Int!
    ownedTrips: [TripSummaryWithMetrics!]!
    sharedTripsCount: Int!
    sharedTrips: [SharedTripSummary!]!
+   totalTripsCompleted: Int!
+   totalTripsUpcoming: Int!
+   totalTripsInProgress: Int!
+
+   # Activity metrics
    activitiesPerTrip: AWSJSON
    totalActivitiesOwned: Int!
    avgActivitiesPerTrip: Float!
+
+   # Collaborator metrics
    collaboratorsPerTrip: AWSJSON
    totalCollaboratorsAcrossTrips: Int!
    avgCollaboratorsPerTrip: Float!
+
+   # Travel insights
+   mostVisitedCities: AWSJSON
+   totalDaysTraveled: Int!
+   avgTripDuration: Float!
+   lastTripDate: String
+   nextTripDate: String
+
+   # Social features
+   followersCount: Int!
+   followingCount: Int!
+   friends: [String!]!
+
+   # Profile information
+   bio: String
+   profilePhotoUrl: String
+   location: String
+   website: String
+   socialLinks: AWSJSON
+
+   # Usage stats
+   accountCreatedAt: String!
+   lastLoginAt: String
+   loginCount: Int!
+   appVersion: String
+   deviceType: String
+
+   # Subscription info
+   subscriptionTier: String!
+   subscriptionStartDate: String
+   subscriptionEndDate: String
+   subscriptionStatus: String!
+   trialEndsAt: String
+
+   # System fields
    lastActiveAt: String!
    accountStatus: String!
    preferences: UserPreferences
@@ -177,6 +221,14 @@ type DeleteAccountResult {
    notifications: Boolean
    theme: String
    language: String
+   defaultCurrency: String
+   preferredTravelMode: String
+   distanceUnit: String
+   timeFormat: String
+   dateFormat: String
+   profileVisibility: String
+   allowCollaborationRequests: Boolean
+   shareActivityHistory: Boolean
  }
 
  type CategoryActivitiesResult {
