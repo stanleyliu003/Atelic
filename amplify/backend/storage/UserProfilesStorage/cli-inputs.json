@@ -1,0 +1,18 @@
+{
+  "resourceName": "UserProfilesStorage",
+  "tableName": "UserProfiles",
+  "partitionKey": {
+    "fieldName": "username",
+    "fieldType": "string"
+  },
+  "gsi": [
+    {
+      "name": "userID-index",
+      "partitionKey": {
+        "fieldName": "userID",
+        "fieldType": "string"
+      }
+    }
+  ],
+  "triggerFunctions": []
+}

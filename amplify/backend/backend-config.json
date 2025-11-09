@@ -710,6 +710,10 @@
       "providerPlugin": "awscloudformation",
       "service": "DynamoDB"
     },
+    "UserProfilesStorage": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    },
     "categoryStorage": {
       "providerPlugin": "awscloudformation",
       "service": "DynamoDB"

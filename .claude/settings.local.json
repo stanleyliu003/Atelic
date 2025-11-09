@@ -8,7 +8,9 @@
       "Bash(amplify push:*)",
       "Bash(cat:*)",
       "Bash(git log:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(amplify env:*)",
+      "Bash(amplify status:*)"
     ],
     "deny": [],
     "ask": [],
