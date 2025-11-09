@@ -6,7 +6,9 @@
       "Bash(npm uninstall:*)",
       "Bash(npx tsc:*)",
       "Bash(amplify push:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git log:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": [],
