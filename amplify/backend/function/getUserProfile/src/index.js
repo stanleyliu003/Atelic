@@ -77,6 +77,8 @@ async function createInitialProfile(username, userID) {
     userID: userID || username, // Fallback to username if userID not provided
     email: '',
     fullName: '',
+    age: null,
+    gender: null,
     createdAt: new Date().toISOString(),
     ownedTripsCount: 0,
     ownedTrips: [],

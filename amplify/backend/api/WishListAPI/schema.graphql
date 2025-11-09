@@ -124,6 +124,61 @@ type DeleteAccountResult {
    identities: String
  }
 
+ type UserProfileStorage {
+   username: String!
+   userID: String!
+   email: String!
+   fullName: String!
+   age: Int
+   gender: String
+   createdAt: String!
+   ownedTripsCount: Int!
+   ownedTrips: [TripSummaryWithMetrics!]!
+   sharedTripsCount: Int!
+   sharedTrips: [SharedTripSummary!]!
+   activitiesPerTrip: AWSJSON
+   totalActivitiesOwned: Int!
+   avgActivitiesPerTrip: Float!
+   collaboratorsPerTrip: AWSJSON
+   totalCollaboratorsAcrossTrips: Int!
+   avgCollaboratorsPerTrip: Float!
+   lastActiveAt: String!
+   accountStatus: String!
+   preferences: UserPreferences
+   updatedAt: String!
+   version: Int!
+ }
+
+ type TripSummaryWithMetrics {
+   tripId: String!
+   selectedCity: String
+   tripPhotoReference: [String]
+   startDate: String
+   endDate: String
+   tripLength: Int
+   createdAt: String!
+   updatedAt: String!
+ }
+
+ type SharedTripSummary {
+   tripId: String!
+   selectedCity: String
+   tripPhotoReference: [String]
+   startDate: String
+   endDate: String
+   tripLength: Int
+   role: CollaboratorRole!
+   ownerUsername: String!
+   createdAt: String!
+   updatedAt: String!
+ }
+
+ type UserPreferences {
+   notifications: Boolean
+   theme: String
+   language: String
+ }
+
  type CategoryActivitiesResult {
    activities: [Activity!]!
    category: String!
@@ -156,6 +211,7 @@ type DeleteAccountResult {
    getTripIDs(userID: String!): [TripSummary] @function(name: "getTripIDs-${env}") @auth(rules: [{ allow: public }])
    getUserTrips(userID: String!, tripID: String!): Trip @function(name: "getUserTrips-${env}") @auth(rules: [{ allow: public }])
    searchUsers(searchTerm: String!): [UserProfile] @function(name: "searchUsers-${env}") @auth(rules: [{ allow: public }])
+   getUserProfile(username: String, userID: String): UserProfileStorage @function(name: "getUserProfile-${env}") @auth(rules: [{ allow: private }])
  }
 
    input WaypointInput {
@@ -228,6 +284,7 @@ type DeleteAccountResult {
    addCollaborator(tripId: String!, userID: String!, userEmail: String!, fullName: String!, username: String!, role: CollaboratorRole!, addedBy: String): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
    removeCollaborator(tripId: String!, username: String!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
    updateCollaboratorRole(tripId: String!, username: String!, role: CollaboratorRole!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
+   updateUserProfile(username: String!, action: String!, tripData: AWSJSON): UserProfileStorage @function(name: "updateUserProfile-${env}") @auth(rules: [{ allow: private }])
  }
 
    type Subscription {

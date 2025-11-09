@@ -46,6 +46,9 @@ exports.handler = async (event) => {
       case 'UPDATE_LAST_ACTIVE':
         return await updateLastActive(username);
 
+      case 'UPDATE_DEMOGRAPHICS':
+        return await updateDemographics(username, tripData);
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }
@@ -351,5 +354,45 @@ async function updateLastActive(username) {
   }));
 
   console.log('Updated last active, updated profile:', result.Attributes);
+  return result.Attributes;
+}
+
+/**
+ * Update the user's demographic information (age and gender)
+ */
+async function updateDemographics(username, data) {
+  const { age, gender } = data;
+
+  if (age === undefined && gender === undefined) {
+    throw new Error('At least one of age or gender must be provided');
+  }
+
+  // Build dynamic update expression
+  const updateParts = [];
+  const expressionAttributeValues = {
+    ':now': new Date().toISOString()
+  };
+
+  if (age !== undefined) {
+    updateParts.push('age = :age');
+    expressionAttributeValues[':age'] = age;
+  }
+
+  if (gender !== undefined) {
+    updateParts.push('gender = :gender');
+    expressionAttributeValues[':gender'] = gender;
+  }
+
+  updateParts.push('updatedAt = :now');
+
+  const result = await docClient.send(new UpdateCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username },
+    UpdateExpression: `SET ${updateParts.join(', ')}`,
+    ExpressionAttributeValues: expressionAttributeValues,
+    ReturnValues: 'ALL_NEW'
+  }));
+
+  console.log('Updated demographics, updated profile:', result.Attributes);
   return result.Attributes;
 }
