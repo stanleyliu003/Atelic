@@ -131,7 +131,6 @@ type DeleteAccountResult {
    fullName: String!
    age: Int
    gender: String
-   createdAt: String!
 
    # Trip metrics
    ownedTripsCount: Int!

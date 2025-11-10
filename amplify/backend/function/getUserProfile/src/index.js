@@ -113,7 +113,6 @@ async function createInitialProfile(username, userID) {
     fullName,
     age,
     gender,
-    createdAt: now,
 
     // Trip metrics
     ownedTripsCount: 0,

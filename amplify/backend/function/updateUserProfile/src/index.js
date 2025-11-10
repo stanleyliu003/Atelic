@@ -368,7 +368,6 @@ async function ensureProfileInitialized(username, tripData, identityUserId) {
     fullName: derivedFullName || '',
     age: derivedAge,
     gender: derivedGender,
-    createdAt: now,
 
     // Trip metrics
     ownedTripsCount: 0,
