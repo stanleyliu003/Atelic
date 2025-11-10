@@ -742,6 +742,22 @@
         }
       ]
     },
+    "AMPLIFY_function_migrateUserProfiles_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "migrateUserProfiles"
+        }
+      ]
+    },
+    "AMPLIFY_function_migrateUserProfiles_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "migrateUserProfiles"
+        }
+      ]
+    },
     "AMPLIFY_function_searchAutocomplete_deploymentBucketName": {
       "usedBy": [
         {

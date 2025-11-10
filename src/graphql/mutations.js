@@ -468,7 +468,6 @@ export const updateUserProfile = /* GraphQL */ `
       fullName
       age
       gender
-      createdAt
       ownedTripsCount
       ownedTrips {
         tripId
@@ -518,6 +517,8 @@ export const updateUserProfile = /* GraphQL */ `
       accountCreatedAt
       appVersion
       deviceType
+      modelName
+      osVersion
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate

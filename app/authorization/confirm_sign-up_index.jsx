@@ -4,12 +4,26 @@ import { Auth, API } from 'aws-amplify';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
-import * as Application from 'expo-application';
-import * as Device from 'expo-device';
+import DeviceInfo from 'react-native-device-info';
 
 const updateUserProfileMutation = /* GraphQL */ `
   mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
     updateUserProfile(username: $username, action: $action, tripData: $tripData) {
+      __typename
+    }
+  }
+`;
+
+const getUserProfileQuery = /* GraphQL */ `
+  query GetUserProfile($username: String) {
+    getUserProfile(username: $username) {
+      username
+      accountCreatedAt
+      lastActiveAt
+      appVersion
+      deviceType
+      modelName
+      osVersion
       __typename
     }
   }
@@ -53,10 +67,10 @@ export default function ConfirmSignUp() {
           const current = await Auth.currentAuthenticatedUser();
           const attrs = await Auth.userAttributes(current);
           const prefUsername = attrs.find(a => a.Name === 'preferred_username')?.Value || current.username;
-          const appVersion = Application.nativeApplicationVersion || Application.applicationVersion || null;
-          const osName = Device.osName || null;       // maps to deviceType
-          const osVersion = Device.osVersion || null;
-          const modelName = Device.modelName || null;
+          const appVersion = DeviceInfo.getVersion() || null;
+          const osName = DeviceInfo.getSystemName() || null;       // maps to deviceType
+          const osVersion = DeviceInfo.getSystemVersion() || null;
+          const modelName = DeviceInfo.getModel() || null;
           await API.graphql({
             query: updateUserProfileMutation,
             variables: {
@@ -72,6 +86,16 @@ export default function ConfirmSignUp() {
             },
             authMode: 'AMAZON_COGNITO_USER_POOLS'
           });
+          // Best-effort read after write (authorized via Query @auth)
+          try {
+            await API.graphql({
+              query: getUserProfileQuery,
+              variables: { username: prefUsername },
+              authMode: 'AMAZON_COGNITO_USER_POOLS'
+            });
+          } catch (readErr) {
+            console.warn('[ConfirmSignUp] getUserProfile read-after-write failed:', readErr?.errors || readErr?.message || readErr);
+          }
         } catch (e) {
           console.warn('[ConfirmSignUp] Failed to set accountCreatedAt:', e?.errors || e?.message || e);
         }

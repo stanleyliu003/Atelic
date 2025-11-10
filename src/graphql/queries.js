@@ -375,7 +375,6 @@ export const getUserProfile = /* GraphQL */ `
       fullName
       age
       gender
-      createdAt
       ownedTripsCount
       ownedTrips {
         tripId
@@ -425,6 +424,8 @@ export const getUserProfile = /* GraphQL */ `
       accountCreatedAt
       appVersion
       deviceType
+      modelName
+      osVersion
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate
