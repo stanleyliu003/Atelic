@@ -446,7 +446,6 @@ export const getUserProfile = /* GraphQL */ `
         shareActivityHistory
         __typename
       }
-      updatedAt
       version
       __typename
     }

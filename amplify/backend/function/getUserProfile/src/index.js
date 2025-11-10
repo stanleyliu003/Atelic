@@ -179,7 +179,6 @@ async function createInitialProfile(username, userID) {
       allowCollaborationRequests: true,
       shareActivityHistory: true
     },
-    updatedAt: now,
     version: 1
   };
 

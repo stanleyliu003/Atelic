@@ -1,9 +1,19 @@
 import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Auth } from 'aws-amplify';
+import { Auth, API } from 'aws-amplify';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
+
+const updateUserProfileMutation = /* GraphQL */ `
+  mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
+    updateUserProfile(username: $username, action: $action, tripData: $tripData) {
+      username
+      accountCreatedAt
+      lastActiveAt
+    }
+  }
+`;
 
 export default function ConfirmSignUp() {
   const navigation = useNavigation();
@@ -38,6 +48,22 @@ export default function ConfirmSignUp() {
       // Auto sign in after confirmation
       try {
         await Auth.signIn(email, password);
+        // After successful sign-in, set accountCreatedAt once (no overwrite)
+        try {
+          const current = await Auth.currentAuthenticatedUser();
+          const attrs = await Auth.userAttributes(current);
+          const prefUsername = attrs.find(a => a.Name === 'preferred_username')?.Value || current.username;
+          await API.graphql({
+            query: updateUserProfileMutation,
+            variables: {
+              username: prefUsername,
+              action: 'SET_ACCOUNT_CREATED_AT',
+              tripData: JSON.stringify({ createdAt: new Date().toISOString() })
+            }
+          });
+        } catch (e) {
+          console.warn('[ConfirmSignUp] Failed to set accountCreatedAt:', e?.errors || e?.message || e);
+        }
         router.replace('(tabs)/create_new_trip');
       } catch (signInErr) {
         setError('Account confirmed, but sign in failed: ' + (signInErr.message || 'Please try again.'));

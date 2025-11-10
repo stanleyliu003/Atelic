@@ -5,6 +5,16 @@ import { useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+const updateUserProfileMutation = /* GraphQL */ `
+  mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
+    updateUserProfile(username: $username, action: $action, tripData: $tripData) {
+      username
+      accountCreatedAt
+      lastActiveAt
+    }
+  }
+`;
+
 const searchUsers = /* GraphQL */ `
   query SearchUsers($searchTerm: String!) {
     searchUsers(searchTerm: $searchTerm) {
@@ -218,6 +228,23 @@ export default function UsernameSetup() {
       await Auth.updateUserAttributes(user, attributesToUpdate);
 
       console.log('Username updated successfully:', username);
+
+      // Set accountCreatedAt once (no overwrite) in UserProfiles
+      try {
+        const current = await Auth.currentAuthenticatedUser();
+        const prefUsernameAttr = (await Auth.userAttributes(current)).find(a => a.Name === 'preferred_username');
+        const prefUsername = prefUsernameAttr?.Value || username.trim();
+        await API.graphql({
+          query: updateUserProfileMutation,
+          variables: {
+            username: prefUsername,
+            action: 'SET_ACCOUNT_CREATED_AT',
+            tripData: { createdAt: new Date().toISOString() }
+          }
+        });
+      } catch (e) {
+        console.warn('[UsernameSetup] Failed to set accountCreatedAt:', e?.errors || e?.message || e);
+      }
 
       // Redirect to main app
       router.replace('(tabs)/create_new_trip');

@@ -1,5 +1,5 @@
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, PutCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
 const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
 
 const client = new DynamoDBClient();
@@ -37,6 +37,20 @@ exports.handler = async (event) => {
   }
 
   // Compose the item to store
+  const nowIso = new Date().toISOString();
+  let existingCreatedAt = null;
+  try {
+    const existing = await docClient.send(new GetCommand({
+      TableName: process.env.STORAGE_TRIPSTORAGE_NAME,
+      Key: { userID: userId, tripID: input.tripId }
+    }));
+    if (existing?.Item) {
+      existingCreatedAt = existing.Item.createdAt || existing.Item.updatedAt || null;
+    }
+  } catch (e) {
+    console.warn('Warning: failed to fetch existing trip for createdAt preservation:', e?.message || e);
+  }
+  const computedCreatedAt = existingCreatedAt || input.createdAt || nowIso;
   const item = {
     userID: userId,
     tripID: input.tripId,
@@ -45,12 +59,12 @@ exports.handler = async (event) => {
     selectedCity: input.selectedCity,
     wishlist: input.wishlist,
     tripPhotoReference: normalizedPhotoRefs,
-    createdAt: input.createdAt,
+    createdAt: computedCreatedAt,
     startDate: input.startDate || null,
     endDate: input.endDate || null,
     collaborators: input.collaborators || [],
     version: input.version || 1,
-    updatedAt: input.updatedAt || new Date().toISOString(),
+    updatedAt: input.updatedAt || nowIso,
     lastUpdatedBy: input.lastUpdatedBy || 'unknown',
     // Persist cityCategories if provided
     cityCategories: Array.isArray(input.cityCategories) ? input.cityCategories : [],
@@ -103,6 +117,8 @@ exports.handler = async (event) => {
           startDate: input.startDate || null,
           endDate: input.endDate || null,
           tripLength: input.tripLength || null,
+          createdAt: computedCreatedAt,
+          version: input.version || 1,
           activities: combinedActivities,
           collaborators: input.collaborators || []
         });
@@ -124,6 +140,8 @@ exports.handler = async (event) => {
                 tripLength: input.tripLength || null,
                 role: collab.role,
                   ownerUsername: owner?.username || '',
+                  createdAt: computedCreatedAt,
+                  version: input.version || 1,
                   // Pass identity to allow baseline initialization
                   userID: collab.userID,
                   email: collab.email,

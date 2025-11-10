@@ -24,7 +24,18 @@ const USER_POOL_ID = process.env.AUTH_AMPLIFYBACKEND59CCDBF8_USERPOOLID;
 exports.handler = async (event) => {
   console.log('updateUserProfile event:', JSON.stringify(event));
 
-  const { username, action, tripData } = event;
+  // Support both direct Lambda invoke payloads and AppSync resolver events
+  const args = event?.arguments || event;
+  const { username, action } = args;
+  let tripData = args?.tripData;
+  // Parse AWSJSON (string) into object if needed
+  if (typeof tripData === 'string') {
+    try {
+      tripData = JSON.parse(tripData);
+    } catch {
+      // leave as-is if not valid JSON; downstream paths handle undefined safely
+    }
+  }
 
   if (!username || !action) {
     throw new Error('username and action are required');
@@ -32,7 +43,7 @@ exports.handler = async (event) => {
 
   try {
     // Ensure profile exists with baseline fields for trip-related mutations
-    if (action === 'ADD_OWNED_TRIP' || action === 'ADD_SHARED_TRIP') {
+    if (action === 'ADD_OWNED_TRIP' || action === 'ADD_SHARED_TRIP' || action === 'SET_ACCOUNT_CREATED_AT') {
       await ensureProfileInitialized(username, tripData);
     }
 
@@ -80,6 +91,10 @@ exports.handler = async (event) => {
 
       case 'UPDATE_SUBSCRIPTION':
         result = await updateSubscription(username, tripData);
+        break;
+
+      case 'SET_ACCOUNT_CREATED_AT':
+        result = await setAccountCreatedAt(username, tripData);
         break;
 
       case 'ADD_FRIEND':
@@ -196,7 +211,7 @@ function computeTravelInsights(profile) {
 /**
  * Helper: persist travel insights back to the profile
  */
-async function persistTravelInsights(username, insights) {
+async function persistTravelInsights(username, insights, averages) {
   const result = await docClient.send(new UpdateCommand({
     TableName: USER_PROFILES_TABLE,
     Key: { username },
@@ -207,9 +222,11 @@ async function persistTravelInsights(username, insights) {
           mostVisitedCities = :cities,
           totalTripDuration = :days,
           avgTripDuration = :avgDuration,
+          avgActivitiesPerTrip = :avgActivitiesPerTrip,
+          avgCollaboratorsPerTrip = :avgCollaboratorsPerTrip,
           lastTripDate = :lastTrip,
           nextTripDate = :nextTrip,
-          updatedAt = :now
+          lastActiveAt = :now
     `,
     ExpressionAttributeValues: {
       ':completed': insights.totalTripsCompleted,
@@ -218,6 +235,8 @@ async function persistTravelInsights(username, insights) {
       ':cities': insights.mostVisitedCities,
       ':days': insights.totalTripDuration,
       ':avgDuration': insights.avgTripDuration,
+      ':avgActivitiesPerTrip': averages?.avgActivitiesPerTrip ?? 0,
+      ':avgCollaboratorsPerTrip': averages?.avgCollaboratorsPerTrip ?? 0,
       ':lastTrip': insights.lastTripDate,
       ':nextTrip': insights.nextTripDate,
       ':now': new Date().toISOString()
@@ -227,7 +246,8 @@ async function persistTravelInsights(username, insights) {
   console.log('Persisted travel insights:', JSON.stringify({
     username,
     insights,
-    updatedAt: result.Attributes?.updatedAt
+    averages,
+    lastActiveAt: result.Attributes?.lastActiveAt
   }));
   return result.Attributes;
 }
@@ -365,7 +385,7 @@ async function ensureProfileInitialized(username, tripData) {
       allowCollaborationRequests: true,
       shareActivityHistory: true
     },
-    updatedAt: now,
+    // lastActiveAt already set above; remove old updatedAt
     version: 1
   };
 
@@ -421,7 +441,7 @@ async function addOwnedTrip(username, tripData) {
     startDate,
     endDate,
     tripLength,
-    createdAt: nowIso,
+    createdAt: tripData?.createdAt || nowIso,
     updatedAt: nowIso
   };
 
@@ -462,7 +482,7 @@ async function addOwnedTrip(username, tripData) {
             collaboratorsPerTrip.#tripId = :collaboratorData,
             totalActivitiesOwned = if_not_exists(totalActivitiesOwned, :zero) + :deltaActivity,
             totalCollaboratorsAcrossTrips = if_not_exists(totalCollaboratorsAcrossTrips, :zero) + :deltaCollaborator,
-            updatedAt = :now
+            lastActiveAt = :now
       `,
       ExpressionAttributeNames: {
         '#tripId': tripId
@@ -498,7 +518,7 @@ async function addOwnedTrip(username, tripData) {
             totalActivitiesOwned = if_not_exists(totalActivitiesOwned, :zero) + :activityCount,
             collaboratorsPerTrip.#tripId = :collaboratorData,
             totalCollaboratorsAcrossTrips = if_not_exists(totalCollaboratorsAcrossTrips, :zero) + :collaboratorCount,
-            updatedAt = :now,
+            lastActiveAt = :now,
             version = if_not_exists(version, :zero) + :one
       `,
       ExpressionAttributeNames: {
@@ -532,7 +552,10 @@ async function addOwnedTrip(username, tripData) {
     updated.avgCollaboratorsPerTrip = 0;
   }
   const insights = computeTravelInsights(updated);
-  updated = await persistTravelInsights(username, insights);
+  updated = await persistTravelInsights(username, insights, {
+    avgActivitiesPerTrip: updated.avgActivitiesPerTrip,
+    avgCollaboratorsPerTrip: updated.avgCollaboratorsPerTrip
+  });
 
   console.log('Added owned trip, updated profile:', updated);
   return updated;
@@ -574,7 +597,7 @@ async function removeOwnedTrip(username, tripId) {
       SET ownedTripsCount = ownedTripsCount - :one,
           totalActivitiesOwned = totalActivitiesOwned - :activityCount,
           totalCollaboratorsAcrossTrips = totalCollaboratorsAcrossTrips - :collaboratorCount,
-          updatedAt = :now
+          lastActiveAt = :now
     `,
     ExpressionAttributeNames: {
       '#tripId': tripId
@@ -599,7 +622,10 @@ async function removeOwnedTrip(username, tripId) {
   }
 
   const insights = computeTravelInsights(updated);
-  updated = await persistTravelInsights(username, insights);
+  updated = await persistTravelInsights(username, insights, {
+    avgActivitiesPerTrip: updated.avgActivitiesPerTrip,
+    avgCollaboratorsPerTrip: updated.avgCollaboratorsPerTrip
+  });
 
   console.log('Removed owned trip, updated profile:', updated);
   return updated;
@@ -639,7 +665,7 @@ async function updateOwnedTrip(username, tripData) {
           ownedTrips[${tripIndex}].endDate = :endDate,
           ownedTrips[${tripIndex}].tripLength = :tripLength,
           ownedTrips[${tripIndex}].updatedAt = :now,
-          updatedAt = :now
+          lastActiveAt = :now
     `,
     ExpressionAttributeValues: {
       ':city': selectedCity,
@@ -654,7 +680,10 @@ async function updateOwnedTrip(username, tripData) {
 
   let updated = result.Attributes;
   const insights = computeTravelInsights(updated);
-  updated = await persistTravelInsights(username, insights);
+  updated = await persistTravelInsights(username, insights, {
+    avgActivitiesPerTrip: updated.avgActivitiesPerTrip,
+    avgCollaboratorsPerTrip: updated.avgCollaboratorsPerTrip
+  });
 
   console.log('Updated owned trip, updated profile:', updated);
   return updated;
@@ -694,7 +723,7 @@ async function addSharedTrip(username, tripData) {
     UpdateExpression: `
       SET sharedTripsCount = if_not_exists(sharedTripsCount, :zero) + :one,
           sharedTrips = list_append(if_not_exists(sharedTrips, :emptyList), :trip),
-          updatedAt = :now
+          lastActiveAt = :now
     `,
     ExpressionAttributeValues: {
       ':zero': 0,
@@ -708,7 +737,10 @@ async function addSharedTrip(username, tripData) {
 
   let updated = result.Attributes;
   const insights = computeTravelInsights(updated);
-  updated = await persistTravelInsights(username, insights);
+  updated = await persistTravelInsights(username, insights, {
+    avgActivitiesPerTrip: updated.avgActivitiesPerTrip,
+    avgCollaboratorsPerTrip: updated.avgCollaboratorsPerTrip
+  });
 
   console.log('Added shared trip, updated profile:', updated);
   return updated;
@@ -742,7 +774,7 @@ async function removeSharedTrip(username, tripId) {
     UpdateExpression: `
       REMOVE sharedTrips[${tripIndex}]
       SET sharedTripsCount = sharedTripsCount - :one,
-          updatedAt = :now
+          lastActiveAt = :now
     `,
     ExpressionAttributeValues: {
       ':one': 1,
@@ -753,7 +785,10 @@ async function removeSharedTrip(username, tripId) {
 
   let updated = result.Attributes;
   const insights = computeTravelInsights(updated);
-  updated = await persistTravelInsights(username, insights);
+  updated = await persistTravelInsights(username, insights, {
+    avgActivitiesPerTrip: updated.avgActivitiesPerTrip,
+    avgCollaboratorsPerTrip: updated.avgCollaboratorsPerTrip
+  });
 
   console.log('Removed shared trip, updated profile:', updated);
   return updated;
@@ -803,7 +838,7 @@ async function updateDemographics(username, data) {
     expressionAttributeValues[':gender'] = gender;
   }
 
-  updateParts.push('updatedAt = :now');
+  updateParts.push('lastActiveAt = :now');
 
   const result = await docClient.send(new UpdateCommand({
     TableName: USER_PROFILES_TABLE,
@@ -847,7 +882,7 @@ async function updateProfileInfo(username, data) {
     throw new Error('At least one profile field must be provided');
   }
 
-  updateParts.push('updatedAt = :now');
+  updateParts.push('lastActiveAt = :now');
 
   const result = await docClient.send(new UpdateCommand({
     TableName: USER_PROFILES_TABLE,
@@ -883,7 +918,7 @@ async function updatePreferences(username, data) {
   const result = await docClient.send(new UpdateCommand({
     TableName: USER_PROFILES_TABLE,
     Key: { username },
-    UpdateExpression: 'SET preferences = :preferences, updatedAt = :now',
+    UpdateExpression: 'SET preferences = :preferences, lastActiveAt = :now',
     ExpressionAttributeValues: {
       ':preferences': updatedPreferences,
       ':now': new Date().toISOString()
@@ -903,7 +938,7 @@ async function updateLogin(username, data) {
 
   const updateParts = [
     'lastActiveAt = :now',
-    'updatedAt = :now'
+    'lastActiveAt = :now'
   ];
 
   const expressionAttributeValues = {
@@ -972,7 +1007,7 @@ async function updateSubscription(username, data) {
     throw new Error('At least one subscription field must be provided');
   }
 
-  updateParts.push('updatedAt = :now');
+  updateParts.push('lastActiveAt = :now');
 
   const result = await docClient.send(new UpdateCommand({
     TableName: USER_PROFILES_TABLE,
@@ -983,6 +1018,29 @@ async function updateSubscription(username, data) {
   }));
 
   console.log('Updated subscription:', result.Attributes);
+  return result.Attributes;
+}
+
+/**
+ * Set accountCreatedAt once (no overwrite) – can be called from signup flows
+ */
+async function setAccountCreatedAt(username, data) {
+  const createdAt = data?.createdAt || new Date().toISOString();
+
+  const result = await docClient.send(new UpdateCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username },
+    UpdateExpression: `
+      SET accountCreatedAt = if_not_exists(accountCreatedAt, :createdAt),
+          lastActiveAt = if_not_exists(lastActiveAt, :createdAt)
+    `,
+    ExpressionAttributeValues: {
+      ':createdAt': createdAt
+    },
+    ReturnValues: 'ALL_NEW'
+  }));
+
+  console.log('Set accountCreatedAt (no overwrite):', { username, accountCreatedAt: result.Attributes?.accountCreatedAt });
   return result.Attributes;
 }
 
@@ -1001,7 +1059,7 @@ async function addFriend(username, data) {
     Key: { username },
     UpdateExpression: `
       SET friends = list_append(if_not_exists(friends, :emptyList), :friend),
-          updatedAt = :now
+          lastActiveAt = :now
     `,
     ExpressionAttributeValues: {
       ':emptyList': [],
@@ -1046,7 +1104,7 @@ async function removeFriend(username, data) {
     Key: { username },
     UpdateExpression: `
       REMOVE friends[${friendIndex}]
-      SET updatedAt = :now
+      SET lastActiveAt = :now
     `,
     ExpressionAttributeValues: {
       ':now': new Date().toISOString()
@@ -1083,7 +1141,7 @@ async function updateSocialCounts(username, data) {
     throw new Error('At least one social count must be provided');
   }
 
-  updateParts.push('updatedAt = :now');
+  updateParts.push('lastActiveAt = :now');
 
   const result = await docClient.send(new UpdateCommand({
     TableName: USER_PROFILES_TABLE,

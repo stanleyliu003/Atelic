@@ -182,10 +182,9 @@ type DeleteAccountResult {
    trialEndsAt: String
 
    # System fields
-   lastActiveAt: String!
-   accountStatus: String!
-   preferences: UserPreferences
-   updatedAt: String!
+  lastActiveAt: String!
+  accountStatus: String!
+  preferences: UserPreferences
    version: Int!
  }
 
