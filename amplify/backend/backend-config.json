@@ -228,12 +228,28 @@
         },
         {
           "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "updateUserProfile"
+        },
+        {
+          "attributes": [
             "Name",
             "Arn",
             "StreamArn"
           ],
           "category": "storage",
           "resourceName": "TripStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
         }
       ],
       "providerPlugin": "awscloudformation",

@@ -36,15 +36,17 @@ exports.handler = async (event) => {
       // leave as-is if not valid JSON; downstream paths handle undefined safely
     }
   }
+  // Capture caller identity from AppSync (if present)
+  const callerIdentityUserId = event?.identity?.username || event?.identity?.sub || null;
 
-  if (!username || !action) {
+  if ((!username && action !== 'DELETE_ACCOUNT') || !action) {
     throw new Error('username and action are required');
   }
 
   try {
     // Ensure profile exists with baseline fields for trip-related mutations
     if (action === 'ADD_OWNED_TRIP' || action === 'ADD_SHARED_TRIP' || action === 'SET_ACCOUNT_CREATED_AT') {
-      await ensureProfileInitialized(username, tripData);
+      await ensureProfileInitialized(username, tripData, callerIdentityUserId);
     }
 
     let result;
@@ -95,6 +97,10 @@ exports.handler = async (event) => {
 
       case 'SET_ACCOUNT_CREATED_AT':
         result = await setAccountCreatedAt(username, tripData);
+        break;
+
+      case 'DELETE_ACCOUNT':
+        result = await deleteAccountProfile(username, tripData, callerIdentityUserId);
         break;
 
       case 'ADD_FRIEND':
@@ -209,6 +215,49 @@ function computeTravelInsights(profile) {
 }
 
 /**
+ * Delete the user's profile from UserProfilesStorage
+ */
+async function deleteAccountProfile(username, data, identityUserId) {
+  // Resolve username if not provided
+  let resolvedUsername = username;
+  if (!resolvedUsername) {
+    const userId = data?.userID || identityUserId;
+    if (!userId) {
+      throw new Error('DELETE_ACCOUNT requires username or userID');
+    }
+    // Lookup by GSI userID-index
+    const { QueryCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
+    const queryRes = await docClient.send(new QueryCommand({
+      TableName: USER_PROFILES_TABLE,
+      IndexName: 'userID-index',
+      KeyConditionExpression: 'userID = :uid',
+      ExpressionAttributeValues: { ':uid': userId },
+      Limit: 1
+    }));
+    const item = queryRes.Items?.[0];
+    if (!item?.username) {
+      // Nothing to delete
+      return { success: true, message: 'Profile not found' };
+    }
+    resolvedUsername = item.username;
+    await docClient.send(new DeleteCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: { username: resolvedUsername }
+    }));
+    console.log('Deleted profile by userID lookup:', { userId, username: resolvedUsername });
+    return { success: true, username: resolvedUsername };
+  } else {
+    const { DeleteCommand } = require('@aws-sdk/lib-dynamodb');
+    await docClient.send(new DeleteCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: { username: resolvedUsername }
+    }));
+    console.log('Deleted profile by username:', { username: resolvedUsername });
+    return { success: true, username: resolvedUsername };
+  }
+}
+
+/**
  * Helper: persist travel insights back to the profile
  */
 async function persistTravelInsights(username, insights, averages) {
@@ -257,7 +306,7 @@ async function persistTravelInsights(username, insights, averages) {
  * Attempts to derive identity from tripData.collaborators (owner or matching username)
  * or from explicit fields in tripData (userID, email, fullName).
  */
-async function ensureProfileInitialized(username, tripData) {
+async function ensureProfileInitialized(username, tripData, identityUserId) {
   const getResult = await docClient.send(new GetCommand({
     TableName: USER_PROFILES_TABLE,
     Key: { username }
@@ -267,7 +316,7 @@ async function ensureProfileInitialized(username, tripData) {
   const now = new Date().toISOString();
 
   // Try to find identity in collaborators array
-  let derivedUserID = tripData?.userID || null;
+  let derivedUserID = tripData?.userID || identityUserId || null;
   let derivedEmail = tripData?.email || null;
   let derivedFullName = tripData?.fullName || null;
   let derivedGender = null;
@@ -1027,21 +1076,35 @@ async function updateSubscription(username, data) {
 async function setAccountCreatedAt(username, data) {
   const createdAt = data?.createdAt || new Date().toISOString();
 
-  const result = await docClient.send(new UpdateCommand({
-    TableName: USER_PROFILES_TABLE,
-    Key: { username },
-    UpdateExpression: `
-      SET accountCreatedAt = if_not_exists(accountCreatedAt, :createdAt),
-          lastActiveAt = if_not_exists(lastActiveAt, :createdAt)
-    `,
-    ExpressionAttributeValues: {
-      ':createdAt': createdAt
-    },
-    ReturnValues: 'ALL_NEW'
-  }));
-
-  console.log('Set accountCreatedAt (no overwrite):', { username, accountCreatedAt: result.Attributes?.accountCreatedAt });
-  return result.Attributes;
+  try {
+    const result = await docClient.send(new UpdateCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: { username },
+      UpdateExpression: `
+        SET accountCreatedAt = if_not_exists(accountCreatedAt, :createdAt),
+            lastActiveAt = if_not_exists(lastActiveAt, :createdAt)
+      `,
+      ConditionExpression: 'attribute_not_exists(accountCreatedAt) AND (attribute_not_exists(version) OR version = :v1)',
+      ExpressionAttributeValues: {
+        ':createdAt': createdAt,
+        ':v1': 1
+      },
+      ReturnValues: 'ALL_NEW'
+    }));
+    console.log('Set accountCreatedAt (first-time only):', { username, accountCreatedAt: result.Attributes?.accountCreatedAt });
+    return result.Attributes;
+  } catch (err) {
+    if (err?.name === 'ConditionalCheckFailedException') {
+      // accountCreatedAt already set or version > 1 – do not modify, return current item
+      const getResult = await docClient.send(new GetCommand({
+        TableName: USER_PROFILES_TABLE,
+        Key: { username }
+      }));
+      console.log('Skipped setting accountCreatedAt (already set or version > 1)', { username });
+      return getResult.Item;
+    }
+    throw err;
+  }
 }
 
 /**

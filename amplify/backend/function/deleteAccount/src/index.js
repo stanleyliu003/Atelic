@@ -6,16 +6,20 @@
 	FUNCTION_GETTRIPIDS_NAME
 	FUNCTION_GETUSERTRIPS_NAME
 	FUNCTION_MANAGECOLLABORATORS_NAME
+	FUNCTION_UPDATEUSERPROFILE_NAME
 	REGION
 	STORAGE_TRIPSTORAGE_ARN
 	STORAGE_TRIPSTORAGE_NAME
 	STORAGE_TRIPSTORAGE_STREAMARN
+	STORAGE_USERPROFILESSTORAGE_ARN
+	STORAGE_USERPROFILESSTORAGE_NAME
+	STORAGE_USERPROFILESSTORAGE_STREAMARN
 Amplify Params - DO NOT EDIT */
 
 const { CognitoIdentityProviderClient, AdminDeleteUserCommand, AdminGetUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
 const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, ScanCommand, UpdateCommand, QueryCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
 
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.REGION });
 const lambdaClient = new LambdaClient({ region: process.env.REGION });
@@ -84,9 +88,45 @@ exports.handler = async (event) => {
         }
 
         // Step 5: Clean up any remaining user data
-        // Note: Additional cleanup could include:
-        // - Delete user profile data
-        // - Clean up any other user-related data
+        // 5a. Delete the user's profile via updateUserProfile Lambda (async, best-effort)
+        try {
+            const payload = {
+                action: 'DELETE_ACCOUNT',
+                tripData: { userID }
+            };
+            await lambdaClient.send(new InvokeCommand({
+                FunctionName: process.env.FUNCTION_UPDATEUSERPROFILE_NAME,
+                InvocationType: 'Event',
+                Payload: Buffer.from(JSON.stringify(payload))
+            }));
+            console.log('Invoked updateUserProfile to delete account profile (async).');
+        } catch (e) {
+            console.warn('Warning: Failed to invoke updateUserProfile for account deletion:', e?.message || e);
+        }
+
+        // 5b. Directly delete the user profile from UserProfilesStorage (authoritative cleanup)
+        try {
+            // Lookup by GSI userID-index
+            const queryRes = await docClient.send(new QueryCommand({
+                TableName: process.env.STORAGE_USERPROFILESSTORAGE_NAME,
+                IndexName: 'userID-index',
+                KeyConditionExpression: 'userID = :uid',
+                ExpressionAttributeValues: { ':uid': userID },
+                Limit: 1
+            }));
+            const profileItem = queryRes.Items?.[0];
+            if (profileItem?.username) {
+                await docClient.send(new DeleteCommand({
+                    TableName: process.env.STORAGE_USERPROFILESSTORAGE_NAME,
+                    Key: { username: profileItem.username }
+                }));
+                console.log(`Deleted UserProfiles record for username: ${profileItem.username}`);
+            } else {
+                console.log('No UserProfiles record found to delete.');
+            }
+        } catch (e) {
+            console.warn('Warning: Failed direct UserProfiles deletion:', e?.message || e);
+        }
 
         const result = {
             success: true,

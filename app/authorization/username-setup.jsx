@@ -234,13 +234,15 @@ export default function UsernameSetup() {
         const current = await Auth.currentAuthenticatedUser();
         const prefUsernameAttr = (await Auth.userAttributes(current)).find(a => a.Name === 'preferred_username');
         const prefUsername = prefUsernameAttr?.Value || username.trim();
+        const cognitoUserId = current.username;
         await API.graphql({
           query: updateUserProfileMutation,
           variables: {
             username: prefUsername,
             action: 'SET_ACCOUNT_CREATED_AT',
-            tripData: { createdAt: new Date().toISOString() }
-          }
+            tripData: JSON.stringify({ createdAt: new Date().toISOString(), userID: cognitoUserId })
+          },
+          authMode: 'AMAZON_COGNITO_USER_POOLS'
         });
       } catch (e) {
         console.warn('[UsernameSetup] Failed to set accountCreatedAt:', e?.errors || e?.message || e);

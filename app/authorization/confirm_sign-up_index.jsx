@@ -8,9 +8,7 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from 'reac
 const updateUserProfileMutation = /* GraphQL */ `
   mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
     updateUserProfile(username: $username, action: $action, tripData: $tripData) {
-      username
-      accountCreatedAt
-      lastActiveAt
+      __typename
     }
   }
 `;
@@ -59,7 +57,8 @@ export default function ConfirmSignUp() {
               username: prefUsername,
               action: 'SET_ACCOUNT_CREATED_AT',
               tripData: JSON.stringify({ createdAt: new Date().toISOString() })
-            }
+            },
+            authMode: 'AMAZON_COGNITO_USER_POOLS'
           });
         } catch (e) {
           console.warn('[ConfirmSignUp] Failed to set accountCreatedAt:', e?.errors || e?.message || e);
