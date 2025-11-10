@@ -409,6 +409,8 @@ async function ensureProfileInitialized(username, tripData, identityUserId) {
     accountCreatedAt: now,
     appVersion: null,
     deviceType: null,
+    modelName: null,
+    osVersion: null,
 
     // Subscription info
     subscriptionTier: 'free',
@@ -979,19 +981,18 @@ async function updatePreferences(username, data) {
 }
 
 /**
- * Update login tracking (loginCount, lastLoginAt, appVersion, deviceType)
+ * Update login tracking (timestamps + optional appVersion/deviceType/modelName/osVersion)
  */
 async function updateLogin(username, data) {
-  const { appVersion, deviceType } = data;
+  const { appVersion, deviceType, modelName, osVersion } = data || {};
 
-  const updateParts = [
-    'lastActiveAt = :now',
-    'lastActiveAt = :now'
-  ];
+  const updateParts = [];
 
   const expressionAttributeValues = {
     ':now': new Date().toISOString()
   };
+
+  updateParts.push('lastActiveAt = :now');
 
   if (appVersion) {
     updateParts.push('appVersion = :appVersion');
@@ -1001,6 +1002,16 @@ async function updateLogin(username, data) {
   if (deviceType) {
     updateParts.push('deviceType = :deviceType');
     expressionAttributeValues[':deviceType'] = deviceType;
+  }
+
+  if (modelName) {
+    updateParts.push('modelName = :modelName');
+    expressionAttributeValues[':modelName'] = modelName;
+  }
+
+  if (osVersion) {
+    updateParts.push('osVersion = :osVersion');
+    expressionAttributeValues[':osVersion'] = osVersion;
   }
 
   const result = await docClient.send(new UpdateCommand({
@@ -1074,6 +1085,8 @@ async function updateSubscription(username, data) {
  */
 async function setAccountCreatedAt(username, data) {
   const createdAt = data?.createdAt || new Date().toISOString();
+  const { appVersion, deviceType, modelName, osVersion } = data || {};
+  let current;
 
   try {
     const result = await docClient.send(new UpdateCommand({
@@ -1090,20 +1103,56 @@ async function setAccountCreatedAt(username, data) {
       },
       ReturnValues: 'ALL_NEW'
     }));
-    console.log('Set accountCreatedAt (first-time only):', { username, accountCreatedAt: result.Attributes?.accountCreatedAt });
-    return result.Attributes;
+    current = result.Attributes;
+    console.log('Set accountCreatedAt (first-time only):', { username, accountCreatedAt: current?.accountCreatedAt });
   } catch (err) {
     if (err?.name === 'ConditionalCheckFailedException') {
-      // accountCreatedAt already set or version > 1 – do not modify, return current item
+      // accountCreatedAt already set or version > 1 – fetch current item
       const getResult = await docClient.send(new GetCommand({
         TableName: USER_PROFILES_TABLE,
         Key: { username }
       }));
+      current = getResult.Item;
       console.log('Skipped setting accountCreatedAt (already set or version > 1)', { username });
-      return getResult.Item;
+    } else {
+      throw err;
     }
-    throw err;
   }
+
+  // Optionally set device/app fields if provided
+  const setDeviceParts = [];
+  const values = { ':now': new Date().toISOString() };
+
+  if (appVersion) {
+    setDeviceParts.push('appVersion = :appVersion');
+    values[':appVersion'] = appVersion;
+  }
+  if (deviceType) {
+    setDeviceParts.push('deviceType = :deviceType');
+    values[':deviceType'] = deviceType;
+  }
+  if (modelName) {
+    setDeviceParts.push('modelName = :modelName');
+    values[':modelName'] = modelName;
+  }
+  if (osVersion) {
+    setDeviceParts.push('osVersion = :osVersion');
+    values[':osVersion'] = osVersion;
+  }
+
+  if (setDeviceParts.length > 0) {
+    setDeviceParts.push('lastActiveAt = :now');
+    const update = await docClient.send(new UpdateCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: { username },
+      UpdateExpression: `SET ${setDeviceParts.join(', ')}`,
+      ExpressionAttributeValues: values,
+      ReturnValues: 'ALL_NEW'
+    }));
+    return update.Attributes;
+  }
+
+  return current;
 }
 
 /**

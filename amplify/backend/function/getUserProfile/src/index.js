@@ -154,6 +154,8 @@ async function createInitialProfile(username, userID) {
     accountCreatedAt: now,
     appVersion: null,
     deviceType: null,
+    modelName: null,
+    osVersion: null,
 
     // Subscription info
     subscriptionTier: 'free',

@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "function": {
+      "CreateTripStorage": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ],
+      "getUserProfile": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ],
+      "updateUserProfile": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    },
+    "storage": {
+      "UserProfilesStorage": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    }
+  },
+  "lambdaLayers": []
+}

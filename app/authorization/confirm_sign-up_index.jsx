@@ -4,6 +4,8 @@ import { Auth, API } from 'aws-amplify';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
+import * as Application from 'expo-application';
+import * as Device from 'expo-device';
 
 const updateUserProfileMutation = /* GraphQL */ `
   mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
@@ -51,12 +53,22 @@ export default function ConfirmSignUp() {
           const current = await Auth.currentAuthenticatedUser();
           const attrs = await Auth.userAttributes(current);
           const prefUsername = attrs.find(a => a.Name === 'preferred_username')?.Value || current.username;
+          const appVersion = Application.nativeApplicationVersion || Application.applicationVersion || null;
+          const osName = Device.osName || null;       // maps to deviceType
+          const osVersion = Device.osVersion || null;
+          const modelName = Device.modelName || null;
           await API.graphql({
             query: updateUserProfileMutation,
             variables: {
               username: prefUsername,
               action: 'SET_ACCOUNT_CREATED_AT',
-              tripData: JSON.stringify({ createdAt: new Date().toISOString() })
+              tripData: JSON.stringify({
+                createdAt: new Date().toISOString(),
+                appVersion,
+                deviceType: osName,
+                modelName,
+                osVersion
+              })
             },
             authMode: 'AMAZON_COGNITO_USER_POOLS'
           });

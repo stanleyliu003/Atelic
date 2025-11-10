@@ -172,6 +172,8 @@ type DeleteAccountResult {
    accountCreatedAt: String!
    appVersion: String
    deviceType: String
+   modelName: String
+   osVersion: String
 
    # Subscription info
    subscriptionTier: String!

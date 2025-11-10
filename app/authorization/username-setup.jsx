@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Application from 'expo-application';
+import * as Device from 'expo-device';
 
 const updateUserProfileMutation = /* GraphQL */ `
   mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
@@ -235,12 +237,23 @@ export default function UsernameSetup() {
         const prefUsernameAttr = (await Auth.userAttributes(current)).find(a => a.Name === 'preferred_username');
         const prefUsername = prefUsernameAttr?.Value || username.trim();
         const cognitoUserId = current.username;
+        const appVersion = Application.nativeApplicationVersion || Application.applicationVersion || null;
+        const osName = Device.osName || null;       // maps to deviceType
+        const osVersion = Device.osVersion || null;
+        const modelName = Device.modelName || null;
         await API.graphql({
           query: updateUserProfileMutation,
           variables: {
             username: prefUsername,
             action: 'SET_ACCOUNT_CREATED_AT',
-            tripData: JSON.stringify({ createdAt: new Date().toISOString(), userID: cognitoUserId })
+            tripData: JSON.stringify({
+              createdAt: new Date().toISOString(),
+              userID: cognitoUserId,
+              appVersion,
+              deviceType: osName,
+              modelName,
+              osVersion
+            })
           },
           authMode: 'AMAZON_COGNITO_USER_POOLS'
         });
