@@ -1,4 +1,4 @@
-import { Amplify, Auth, Hub } from 'aws-amplify';
+import { Amplify, Auth, Hub, API } from 'aws-amplify';
 import awsconfig from '../src/aws-exports';
 import { Colors } from '../constants/Colors';
 import { useRouter } from 'expo-router';
@@ -6,9 +6,18 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, AppState, Linking } from 'react-native';
 import { Feather, AntDesign } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
+import DeviceInfo from 'react-native-device-info';
 
 // Warm up the browser for better performance (recommended by Expo)
 WebBrowser.maybeCompleteAuthSession();
+
+const updateUserProfileMutation = /* GraphQL */ `
+  mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
+    updateUserProfile(username: $username, action: $action, tripData: $tripData) {
+      __typename
+    }
+  }
+`;
 
 // CRITICAL: This configures Amplify to use expo-web-browser for OAuth
 // This ensures authentication happens in an in-app browser (ASWebAuthenticationSession on iOS)
@@ -145,6 +154,34 @@ export default function Login() {
         isNavigatingRef.current = true;
         router.replace('/authorization/username-setup');
         return;
+      }
+
+      // Update device info for all users (both old and new)
+      // This ensures backward compatibility: old users without device info will get it populated
+      try {
+        const appVersion = DeviceInfo.getVersion() || null;
+        const osName = DeviceInfo.getSystemName() || null;       // maps to deviceType
+        const osVersion = DeviceInfo.getSystemVersion() || null;
+        const modelName = DeviceInfo.getModel() || null;
+
+        await API.graphql({
+          query: updateUserProfileMutation,
+          variables: {
+            username: preferredUsername,
+            action: 'UPDATE_LOGIN',
+            tripData: JSON.stringify({
+              appVersion,
+              deviceType: osName,
+              modelName,
+              osVersion
+            })
+          },
+          authMode: 'AMAZON_COGNITO_USER_POOLS'
+        });
+        console.log('[Login] Updated device info for user:', preferredUsername);
+      } catch (e) {
+        // Don't block login if device info update fails
+        console.warn('[Login] Failed to update device info:', e?.errors || e?.message || e);
       }
 
       // User is authenticated and has username, redirect to main app

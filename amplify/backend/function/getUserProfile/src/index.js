@@ -105,14 +105,16 @@ async function createInitialProfile(username, userID) {
     console.warn('Warning: Failed to enrich initial profile from Cognito:', e?.message || e);
   }
 
+  // For version 1 profiles (new users), ensure all key fields from Cognito are saved
+  // This ensures backward compatibility - old users who never had these fields will have them populated
   const newProfile = {
-    // Basic info
+    // Basic info - IMPORTANT: These are saved for version 1 users to ensure backward compatibility
     username: preferredUsername || username || userID,
     userID: userID || username,
-    email,
-    fullName,
-    age,
-    gender,
+    email: email || '',  // Saved from Cognito for version 1 users
+    fullName: fullName || '',  // Saved from Cognito for version 1 users
+    age: age,  // Computed from birthdate in Cognito for version 1 users
+    gender: gender,  // Saved from Cognito for version 1 users
 
     // Trip metrics
     ownedTripsCount: 0,
@@ -152,6 +154,8 @@ async function createInitialProfile(username, userID) {
 
     // Usage stats
     accountCreatedAt: now,
+    // Device info fields below will be populated by username-setup via SET_ACCOUNT_CREATED_AT
+    // or can be set during subsequent UPDATE_LOGIN calls
     appVersion: null,
     deviceType: null,
     modelName: null,
@@ -180,6 +184,7 @@ async function createInitialProfile(username, userID) {
       allowCollaborationRequests: true,
       shareActivityHistory: true
     },
+    // Version 1 indicates this is a new user profile with all fields properly initialized
     version: 1
   };
 

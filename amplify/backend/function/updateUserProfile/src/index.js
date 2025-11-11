@@ -982,18 +982,235 @@ async function updatePreferences(username, data) {
 
 /**
  * Update login tracking (timestamps + optional appVersion/deviceType/modelName/osVersion)
+ * IMPORTANT: Ensures baseline fields (email, fullName, userID, age, gender) are populated from Cognito
+ * Handles both:
+ * 1. First-time profile creation (profile doesn't exist yet)
+ * 2. Existing profiles with missing baseline fields (backward compatibility)
  */
 async function updateLogin(username, data) {
   const { appVersion, deviceType, modelName, osVersion } = data || {};
+  const now = new Date().toISOString();
 
+  // Check if profile exists
+  const getResult = await docClient.send(new GetCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username }
+  }));
+
+  const profile = getResult.Item;
+
+  // If profile doesn't exist, create it with complete baseline fields from Cognito
+  if (!profile) {
+    console.log('Profile does not exist, creating with Cognito data for:', username);
+
+    // Fetch user data from Cognito
+    let email = '';
+    let fullName = '';
+    let userID = username;
+    let age = null;
+    let gender = null;
+
+    if (USER_POOL_ID) {
+      try {
+        // Cognito AdminGetUser accepts: preferred_username, email, phone_number, or sub
+        const cognitoUser = await cognitoClient.send(new AdminGetUserCommand({
+          UserPoolId: USER_POOL_ID,
+          Username: username  // preferred_username from Login.jsx
+        }));
+        const attrs = cognitoUser?.UserAttributes || [];
+        const getAttr = (name) => attrs.find(a => a.Name === name)?.Value;
+
+        email = getAttr('email') || '';
+        fullName = getAttr('name') || '';
+        userID = getAttr('sub') || username;
+        gender = getAttr('gender') || null;
+
+        const birthdateStr = getAttr('birthdate'); // YYYY-MM-DD
+        if (birthdateStr) {
+          age = computeAgeFromBirthdate(birthdateStr);
+        }
+
+        console.log('✅ [UPDATE_LOGIN] Fetched Cognito data for NEW profile:', {
+          username,
+          email,
+          fullName,
+          userID,
+          age,
+          gender,
+          hasEmail: !!email,
+          hasFullName: !!fullName
+        });
+      } catch (e) {
+        console.error('❌ [UPDATE_LOGIN] Failed to fetch Cognito data:', {
+          username,
+          errorMessage: e?.message,
+          errorCode: e?.code,
+          errorName: e?.name
+        });
+      }
+    }
+
+    // Create complete profile with baseline fields + device info
+    const newProfile = {
+      // Basic info from Cognito
+      username,
+      userID,
+      email,
+      fullName,
+      age,
+      gender,
+
+      // Device info from Login.jsx
+      appVersion: appVersion || null,
+      deviceType: deviceType || null,
+      modelName: modelName || null,
+      osVersion: osVersion || null,
+
+      // Trip metrics (initialized)
+      ownedTripsCount: 0,
+      ownedTrips: [],
+      sharedTripsCount: 0,
+      sharedTrips: [],
+      totalTripsCompleted: 0,
+      totalTripsUpcoming: 0,
+      totalTripsInProgress: 0,
+
+      // Activity metrics
+      activitiesPerTrip: {},
+      totalActivitiesOwned: 0,
+      avgActivitiesPerTrip: 0,
+
+      // Collaborator metrics
+      collaboratorsPerTrip: {},
+      totalCollaboratorsAcrossTrips: 0,
+      avgCollaboratorsPerTrip: 0,
+
+      // Travel insights
+      mostVisitedCities: {},
+      totalTripDuration: 0,
+      avgTripDuration: 0,
+      lastTripDate: null,
+      nextTripDate: null,
+
+      // Social features
+      followersCount: 0,
+      followingCount: 0,
+      friends: [],
+
+      // Profile information
+      bio: null,
+      profilePhotoUrl: null,
+      socialLinks: {},
+
+      // Usage stats
+      accountCreatedAt: now,
+
+      // Subscription info
+      subscriptionTier: 'free',
+      subscriptionStartDate: null,
+      subscriptionEndDate: null,
+      subscriptionStatus: 'active',
+      trialEndsAt: null,
+
+      // System fields
+      lastActiveAt: now,
+      accountStatus: 'active',
+      preferences: {
+        notifications: true,
+        theme: 'light',
+        language: 'en',
+        defaultCurrency: 'USD',
+        preferredTravelMode: 'driving',
+        distanceUnit: 'miles',
+        timeFormat: '12h',
+        dateFormat: 'MM/DD/YYYY',
+        profileVisibility: 'public',
+        allowCollaborationRequests: true,
+        shareActivityHistory: true
+      },
+      version: 1
+    };
+
+    await docClient.send(new PutCommand({
+      TableName: USER_PROFILES_TABLE,
+      Item: newProfile
+    }));
+
+    console.log('Created new profile with complete baseline data for:', username);
+    return newProfile;
+  }
+
+  // Profile exists - update login info and backfill missing baseline fields
   const updateParts = [];
-
   const expressionAttributeValues = {
-    ':now': new Date().toISOString()
+    ':now': now
   };
 
   updateParts.push('lastActiveAt = :now');
 
+  // Backfill missing baseline fields from Cognito (for existing incomplete profiles)
+  const needsEnrichment = !profile.email || !profile.fullName || !profile.userID;
+
+  if (needsEnrichment && USER_POOL_ID) {
+    try {
+      const cognitoUser = await cognitoClient.send(new AdminGetUserCommand({
+        UserPoolId: USER_POOL_ID,
+        Username: profile?.userID || username
+      }));
+      const attrs = cognitoUser?.UserAttributes || [];
+      const getAttr = (name) => attrs.find(a => a.Name === name)?.Value;
+
+      // Only set if missing
+      if (!profile.email) {
+        const email = getAttr('email');
+        if (email) {
+          updateParts.push('email = if_not_exists(email, :email)');
+          expressionAttributeValues[':email'] = email;
+        }
+      }
+
+      if (!profile.fullName) {
+        const fullName = getAttr('name');
+        if (fullName) {
+          updateParts.push('fullName = if_not_exists(fullName, :fullName)');
+          expressionAttributeValues[':fullName'] = fullName;
+        }
+      }
+
+      if (!profile.userID) {
+        const sub = getAttr('sub');
+        if (sub) {
+          updateParts.push('userID = if_not_exists(userID, :userID)');
+          expressionAttributeValues[':userID'] = sub;
+        }
+      }
+
+      if (!profile.age) {
+        const birthdateStr = getAttr('birthdate'); // YYYY-MM-DD
+        if (birthdateStr) {
+          const age = computeAgeFromBirthdate(birthdateStr);
+          if (age) {
+            updateParts.push('age = if_not_exists(age, :age)');
+            expressionAttributeValues[':age'] = age;
+          }
+        }
+      }
+
+      if (!profile.gender) {
+        const gender = getAttr('gender');
+        if (gender) {
+          updateParts.push('gender = if_not_exists(gender, :gender)');
+          expressionAttributeValues[':gender'] = gender;
+        }
+      }
+
+      console.log('Backfilled missing baseline fields from Cognito for:', username);
+    } catch (e) {
+      console.warn('Warning: Failed to backfill baseline fields from Cognito:', e?.message || e);
+    }
+  }
+
+  // Update device info (always)
   if (appVersion) {
     updateParts.push('appVersion = :appVersion');
     expressionAttributeValues[':appVersion'] = appVersion;
@@ -1022,7 +1239,7 @@ async function updateLogin(username, data) {
     ReturnValues: 'ALL_NEW'
   }));
 
-  console.log('Updated login info:', result.Attributes);
+  console.log('Updated login info for:', username);
   return result.Attributes;
 }
 
