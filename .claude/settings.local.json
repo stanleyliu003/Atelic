@@ -10,7 +10,15 @@
       "Bash(git log:*)",
       "Bash(git rm:*)",
       "Bash(amplify env:*)",
-      "Bash(amplify status:*)"
+      "Bash(amplify status:*)",
+      "Read(//Users/stanleycliu/.aws/**)",
+      "Read(//Users/stanleycliu/Library/**)",
+      "Bash(curl:*)",
+      "Bash(sudo installer:*)",
+      "Bash(brew install:*)",
+      "Bash(/opt/homebrew/bin/aws --version)",
+      "Bash(/opt/homebrew/bin/aws:*)",
+      "Bash(export AWS_PROFILE=Amplify_Dev)"
     ],
     "deny": [],
     "ask": [],
