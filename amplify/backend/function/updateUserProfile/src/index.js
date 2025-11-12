@@ -986,24 +986,37 @@ async function updatePreferences(username, data) {
  * Handles both:
  * 1. First-time profile creation (profile doesn't exist yet)
  * 2. Existing profiles with missing baseline fields (backward compatibility)
+ *
+ * @param {string} username - The actual Cognito username (sub) used for fetching Cognito data
+ * @param {object} data - Contains device info + preferredUsername for DynamoDB partition key
  */
 async function updateLogin(username, data) {
-  const { appVersion, deviceType, modelName, osVersion } = data || {};
+  const { appVersion, deviceType, modelName, osVersion, preferredUsername } = data || {};
   const now = new Date().toISOString();
 
-  // Check if profile exists
+  // Use preferredUsername as the partition key for DynamoDB operations
+  // Use username (actual Cognito username/sub) for Cognito API calls
+  const partitionKey = preferredUsername || username;
+
+  console.log('[UPDATE_LOGIN] Starting with:', {
+    cognitoUsername: username,
+    partitionKey: partitionKey,
+    hasPreferredUsername: !!preferredUsername
+  });
+
+  // Check if profile exists (using preferredUsername as partition key)
   const getResult = await docClient.send(new GetCommand({
     TableName: USER_PROFILES_TABLE,
-    Key: { username }
+    Key: { username: partitionKey }
   }));
 
   const profile = getResult.Item;
 
   // If profile doesn't exist, create it with complete baseline fields from Cognito
   if (!profile) {
-    console.log('Profile does not exist, creating with Cognito data for:', username);
+    console.log('Profile does not exist, creating with Cognito data. PartitionKey:', partitionKey, 'CognitoUsername:', username);
 
-    // Fetch user data from Cognito
+    // Fetch user data from Cognito using the actual Cognito username
     let email = '';
     let fullName = '';
     let userID = username;
@@ -1012,10 +1025,10 @@ async function updateLogin(username, data) {
 
     if (USER_POOL_ID) {
       try {
-        // Cognito AdminGetUser accepts: preferred_username, email, phone_number, or sub
+        // Use the actual Cognito username (sub) for AdminGetUserCommand
         const cognitoUser = await cognitoClient.send(new AdminGetUserCommand({
           UserPoolId: USER_POOL_ID,
-          Username: username  // preferred_username from Login.jsx
+          Username: username  // This is the actual Cognito username (sub), NOT preferred_username
         }));
         const attrs = cognitoUser?.UserAttributes || [];
         const getAttr = (name) => attrs.find(a => a.Name === name)?.Value;
@@ -1031,7 +1044,8 @@ async function updateLogin(username, data) {
         }
 
         console.log('✅ [UPDATE_LOGIN] Fetched Cognito data for NEW profile:', {
-          username,
+          partitionKey,
+          cognitoUsername: username,
           email,
           fullName,
           userID,
@@ -1042,7 +1056,8 @@ async function updateLogin(username, data) {
         });
       } catch (e) {
         console.error('❌ [UPDATE_LOGIN] Failed to fetch Cognito data:', {
-          username,
+          cognitoUsername: username,
+          partitionKey,
           errorMessage: e?.message,
           errorCode: e?.code,
           errorName: e?.name
@@ -1051,10 +1066,11 @@ async function updateLogin(username, data) {
     }
 
     // Create complete profile with baseline fields + device info
+    // Use preferredUsername as the partition key
     const newProfile = {
       // Basic info from Cognito
-      username,
-      userID,
+      username: partitionKey,  // Partition key = preferredUsername
+      userID,                   // Cognito sub
       email,
       fullName,
       age,
@@ -1136,7 +1152,7 @@ async function updateLogin(username, data) {
       Item: newProfile
     }));
 
-    console.log('Created new profile with complete baseline data for:', username);
+    console.log('Created new profile with complete baseline data. PartitionKey:', partitionKey);
     return newProfile;
   }
 
@@ -1153,9 +1169,19 @@ async function updateLogin(username, data) {
 
   if (needsEnrichment && USER_POOL_ID) {
     try {
+      // Use the actual Cognito username for fetching from Cognito
+      // If profile.userID exists, use it; otherwise use the username parameter (which is the actual Cognito username)
+      const cognitoUsername = profile?.userID || username;
+
+      console.log('[UPDATE_LOGIN] Backfilling for existing profile:', {
+        partitionKey,
+        cognitoUsername,
+        needsEnrichment
+      });
+
       const cognitoUser = await cognitoClient.send(new AdminGetUserCommand({
         UserPoolId: USER_POOL_ID,
-        Username: profile?.userID || username
+        Username: cognitoUsername
       }));
       const attrs = cognitoUser?.UserAttributes || [];
       const getAttr = (name) => attrs.find(a => a.Name === name)?.Value;
@@ -1204,9 +1230,13 @@ async function updateLogin(username, data) {
         }
       }
 
-      console.log('Backfilled missing baseline fields from Cognito for:', username);
+      console.log('✅ [UPDATE_LOGIN] Backfilled missing baseline fields from Cognito for partitionKey:', partitionKey);
     } catch (e) {
-      console.warn('Warning: Failed to backfill baseline fields from Cognito:', e?.message || e);
+      console.warn('⚠️ [UPDATE_LOGIN] Failed to backfill baseline fields from Cognito:', {
+        partitionKey,
+        errorMessage: e?.message,
+        errorName: e?.name
+      });
     }
   }
 
@@ -1231,15 +1261,16 @@ async function updateLogin(username, data) {
     expressionAttributeValues[':osVersion'] = osVersion;
   }
 
+  // Use partitionKey (preferredUsername) for DynamoDB update
   const result = await docClient.send(new UpdateCommand({
     TableName: USER_PROFILES_TABLE,
-    Key: { username },
+    Key: { username: partitionKey },
     UpdateExpression: `SET ${updateParts.join(', ')}`,
     ExpressionAttributeValues: expressionAttributeValues,
     ReturnValues: 'ALL_NEW'
   }));
 
-  console.log('Updated login info for:', username);
+  console.log('✅ [UPDATE_LOGIN] Updated login info for partitionKey:', partitionKey);
   return result.Attributes;
 }
 

@@ -164,21 +164,26 @@ export default function Login() {
         const osVersion = DeviceInfo.getSystemVersion() || null;
         const modelName = DeviceInfo.getModel() || null;
 
+        // CRITICAL: Pass the actual Cognito username (user.username = sub/userID)
+        // NOT the preferred_username, so AdminGetUserCommand can fetch Cognito data
+        const actualUsername = user.username; // This is the Cognito Username (sub)
+
         await API.graphql({
           query: updateUserProfileMutation,
           variables: {
-            username: preferredUsername,
+            username: actualUsername, // Use actual Cognito username for API calls
             action: 'UPDATE_LOGIN',
             tripData: JSON.stringify({
               appVersion,
               deviceType: osName,
               modelName,
-              osVersion
+              osVersion,
+              preferredUsername: preferredUsername // Also pass for reference
             })
           },
           authMode: 'AMAZON_COGNITO_USER_POOLS'
         });
-        console.log('[Login] Updated device info for user:', preferredUsername);
+        console.log('[Login] Updated device info for user:', preferredUsername, 'userID:', actualUsername);
       } catch (e) {
         // Don't block login if device info update fails
         console.warn('[Login] Failed to update device info:', e?.errors || e?.message || e);
