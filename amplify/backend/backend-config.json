@@ -271,6 +271,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "exportUserDataAnalytics": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "generateCategoryActivities": {
       "build": true,
       "dependsOn": [
@@ -619,6 +635,22 @@
         {
           "category": "function",
           "resourceName": "deleteTrip"
+        }
+      ]
+    },
+    "AMPLIFY_function_exportUserAnalytics_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "exportUserAnalytics"
+        }
+      ]
+    },
+    "AMPLIFY_function_exportUserAnalytics_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "exportUserAnalytics"
         }
       ]
     },

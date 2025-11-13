@@ -1,0 +1,15 @@
+{
+  "name": "exportuserdataanalytics",
+  "version": "2.0.0",
+  "description": "Export User Analytics to S3 for Athena/QuickSight",
+  "main": "index.js",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.423.0",
+    "@aws-sdk/client-s3": "^3.423.0",
+    "@aws-sdk/util-dynamodb": "^3.423.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.92"
+  }
+}
