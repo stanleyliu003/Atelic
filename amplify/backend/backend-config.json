@@ -397,43 +397,6 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
-    "migrateUserProfiles": {
-      "build": true,
-      "dependsOn": [
-        {
-          "attributes": [
-            "Name"
-          ],
-          "category": "function",
-          "resourceName": "CreateTripStorage"
-        },
-        {
-          "attributes": [
-            "Name"
-          ],
-          "category": "function",
-          "resourceName": "getUserProfile"
-        },
-        {
-          "attributes": [
-            "Name"
-          ],
-          "category": "function",
-          "resourceName": "updateUserProfile"
-        },
-        {
-          "attributes": [
-            "Name",
-            "Arn",
-            "StreamArn"
-          ],
-          "category": "storage",
-          "resourceName": "UserProfilesStorage"
-        }
-      ],
-      "providerPlugin": "awscloudformation",
-      "service": "Lambda"
-    },
     "searchAutocomplete": {
       "build": true,
       "dependsOn": [],
@@ -771,22 +734,6 @@
         {
           "category": "function",
           "resourceName": "manageCollaborators"
-        }
-      ]
-    },
-    "AMPLIFY_function_migrateUserProfiles_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "migrateUserProfiles"
-        }
-      ]
-    },
-    "AMPLIFY_function_migrateUserProfiles_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "migrateUserProfiles"
         }
       ]
     },
