@@ -194,7 +194,7 @@ export default function Login() {
 
       // User is authenticated and has username, redirect to main app
       isNavigatingRef.current = true;
-      router.replace('(tabs)/create_new_trip');
+      router.replace('(tabs)/profile');
 
     } catch (error) {
       // Check if this is a token refresh failure
@@ -207,7 +207,7 @@ export default function Login() {
           // Check navigation flag again
           if (!isNavigatingRef.current) {
             isNavigatingRef.current = true;
-            router.replace('(tabs)/create_new_trip');
+            router.replace('(tabs)/profile');
           }
           return;
         } catch (refreshError) {
