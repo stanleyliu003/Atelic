@@ -617,6 +617,22 @@
         }
       ]
     },
+    "AMPLIFY_function_exportUserDataAnalytics_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "exportUserDataAnalytics"
+        }
+      ]
+    },
+    "AMPLIFY_function_exportUserDataAnalytics_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "exportUserDataAnalytics"
+        }
+      ]
+    },
     "AMPLIFY_function_generateCategoryActivities_deploymentBucketName": {
       "usedBy": [
         {

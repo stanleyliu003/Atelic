@@ -58,6 +58,14 @@ export type AmplifyDependentResourcesAttributes = {
       "Name": "string",
       "Region": "string"
     },
+    "exportUserDataAnalytics": {
+      "Arn": "string",
+      "CloudWatchEventRule": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
     "generateCategoryActivities": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
@@ -94,13 +102,6 @@ export type AmplifyDependentResourcesAttributes = {
       "Region": "string"
     },
     "manageCollaborators": {
-      "Arn": "string",
-      "LambdaExecutionRole": "string",
-      "LambdaExecutionRoleArn": "string",
-      "Name": "string",
-      "Region": "string"
-    },
-    "migrateUserProfiles": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",
