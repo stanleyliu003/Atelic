@@ -3,13 +3,16 @@ import awsconfig from '../src/aws-exports';
 import { Colors } from '../constants/Colors';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState, useRef } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, AppState, Linking } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, AppState, Linking, Dimensions, SafeAreaView } from 'react-native';
 import { Feather, AntDesign } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import DeviceInfo from 'react-native-device-info';
 
 // Warm up the browser for better performance (recommended by Expo)
 WebBrowser.maybeCompleteAuthSession();
+
+// Get screen dimensions for responsive layout
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const updateUserProfileMutation = /* GraphQL */ `
   mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
@@ -261,14 +264,13 @@ export default function Login() {
 
   // Show login screen only if user is not authenticated
   return (
-    <View>
-        <Image source = {require('../assets/images/multiethnic-friends-having-fun-walking-on-city-street---group-1.webp')}
-            style={{
-                width:'100%',
-                height:500
-            }}
-        />
-        <View style = {styles.container}>
+    <View style={styles.outerContainer}>
+      <Image
+        source={require('../assets/images/multiethnic-friends-having-fun-walking-on-city-street---group-1.webp')}
+        style={styles.headerImage}
+      />
+      <SafeAreaView edges={['bottom']} style={styles.safeAreaBottom}>
+        <View style={styles.container}>
           {showDeletedNotice && (
             <View style={{
               backgroundColor: '#e8f5e9',
@@ -287,165 +289,189 @@ export default function Login() {
               </Text>
             </View>
           )}
-           <Image
-                source={require('../assets/Atelic_Logo_Updated.png')}
-                
-                style={{
-                    width: 325,
-                    height: 150,
-                    alignSelf: 'center',
-                    marginTop: -20,
-                    marginBottom: 50,
-                    resizeMode: 'contain'
-                }}
-           />
+          <Image
+            source={require('../assets/Atelic_Logo_Updated.png')}
+            style={styles.logo}
+          />
 
-           {/* Google Sign Up Button */}
-           <TouchableOpacity
-                style={styles.googleButton}
-                onPress={handleGoogleSignUp}
-           >
-                <Image
-                    source={require('../assets/Google_logo.webp')}
-                    style={{
-                        width: 24,
-                        height: 24,
-                        position: 'absolute',
-                        left: 20
-                    }}
-                />
-                <Text style={{
-                    color: Colors.BLACK,
-                    textAlign: 'center',
-                    fontFamily: 'outfit',
-                    fontSize: 16
-                }}>Sign up with Google</Text>
-            </TouchableOpacity>
+          {/* Google Sign Up Button */}
+          <TouchableOpacity
+            style={styles.googleButton}
+            onPress={handleGoogleSignUp}
+          >
+            <Image
+              source={require('../assets/Google_logo.webp')}
+              style={{
+                width: 24,
+                height: 24,
+                position: 'absolute',
+                left: 20
+              }}
+            />
+            <Text style={{
+              color: Colors.BLACK,
+              textAlign: 'center',
+              fontFamily: 'outfit',
+              fontSize: 16
+            }}>Sign up with Google</Text>
+          </TouchableOpacity>
 
-            {/* Apple Sign Up Button */}
-            <TouchableOpacity
-                style={styles.appleButton}
-                onPress={handleAppleSignUp}
-            >
-                <AntDesign
-                    name="apple1"
-                    size={24}
-                    color={Colors.BLACK}
-                    style={{
-                        position: 'absolute',
-                        left: 20
-                    }}
-                />
-                <Text style={{
-                    color: Colors.BLACK,
-                    textAlign: 'center',
-                    fontFamily: 'outfit',
-                    fontSize: 16
-                }}>Sign up with Apple</Text>
-            </TouchableOpacity>
+          {/* Apple Sign Up Button */}
+          <TouchableOpacity
+            style={styles.appleButton}
+            onPress={handleAppleSignUp}
+          >
+            <AntDesign
+              name="apple1"
+              size={24}
+              color={Colors.BLACK}
+              style={{
+                position: 'absolute',
+                left: 20
+              }}
+            />
+            <Text style={{
+              color: Colors.BLACK,
+              textAlign: 'center',
+              fontFamily: 'outfit',
+              fontSize: 16
+            }}>Sign up with Apple</Text>
+          </TouchableOpacity>
 
-            {/* Email Sign Up Button */}
-            <TouchableOpacity
-                style={styles.emailButton}
-                onPress={() => router.push('/authorization/sign-up_index')}
-            >
-                <Feather
-                    name="mail"
-                    size={24}
-                    color={Colors.PRIMARY}
-                    style={{
-                        position: 'absolute',
-                        left: 20
-                    }}
-                />
-                <Text style={{
-                    color: Colors.PRIMARY,
-                    textAlign: 'center',
-                    fontFamily: 'outfit',
-                    fontSize: 16
-                }}>Sign up with email</Text>
-            </TouchableOpacity>
+          {/* Email Sign Up Button */}
+          <TouchableOpacity
+            style={styles.emailButton}
+            onPress={() => router.push('/authorization/sign-up_index')}
+          >
+            <Feather
+              name="mail"
+              size={24}
+              color={Colors.PRIMARY}
+              style={{
+                position: 'absolute',
+                left: 20
+              }}
+            />
+            <Text style={{
+              color: Colors.PRIMARY,
+              textAlign: 'center',
+              fontFamily: 'outfit',
+              fontSize: 16
+            }}>Sign up with email</Text>
+          </TouchableOpacity>
 
-            {/* Sign In Link */}
-            <TouchableOpacity
-                style={{ marginTop: 20, padding: 15 }}
-                onPress={() => router.push('/authorization/sign-in_index')}
-                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            >
-                <Text style={{
-                    fontFamily: 'outfit',
-                    fontSize: 15,
-                    textAlign: 'center',
-                    color: Colors.GRAY
-                }}>
-                    Already have an account? <Text style={{ color: Colors.PRIMARY, fontFamily: 'outfit-bold' }}>Sign in</Text>
-                </Text>
-            </TouchableOpacity>
+          {/* Sign In Link */}
+          <TouchableOpacity
+            style={styles.signInLink}
+            onPress={() => router.push('/authorization/sign-in_index')}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          >
+            <Text style={styles.signInText}>
+              Already have an account? <Text style={styles.signInTextBold}>Sign in</Text>
+            </Text>
+          </TouchableOpacity>
         </View>
-   </View>
+      </SafeAreaView>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-   container:{
-       backgroundColor:Colors.WHITE,
-       marginTop:-20,
-       borderTopRightRadius:30,
-       borderTopLeftRadius:30,
-       padding:15,
-       height:'100%',
+   outerContainer: {
+       flex: 1,
+       backgroundColor: Colors.WHITE,
    },
-   googleButton:{
-    padding:7.5,
-    backgroundColor:Colors.WHITE,
-    borderRadius:15,
-    marginTop:-50,
-    borderWidth:0.3,
-    borderColor:Colors.GRAY,
-    flexDirection:'row',
-    justifyContent:'center',
-    alignItems:'center',
-    position:'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+   headerImage: {
+       width: '100%',
+       height: SCREEN_HEIGHT * 0.5, // 50% of screen height to fill top better
+       resizeMode: 'cover',
    },
-   appleButton:{
-    padding:7.5,
-    backgroundColor:Colors.WHITE,
-    borderRadius:15,
-    marginTop:15,
-    borderWidth:0.3,
-    borderColor:Colors.GRAY,
-    flexDirection:'row',
-    justifyContent:'center',
-    alignItems:'center',
-    position:'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+   safeAreaBottom: {
+       backgroundColor: Colors.WHITE,
    },
-   emailButton:{
-    padding:7.5,
-    backgroundColor:Colors.WHITE,
-    borderRadius:15,
-    marginTop:15,
-    borderWidth:0.3,
-    borderColor:Colors.GRAY,
-    flexDirection:'row',
-    justifyContent:'center',
-    alignItems:'center',
-    position:'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-   }
+   container: {
+       backgroundColor: Colors.WHITE,
+       marginTop: -20,
+       borderTopRightRadius: 30,
+       borderTopLeftRadius: 30,
+       paddingHorizontal: 20,
+       paddingTop: 20,
+       paddingBottom: 20, // SafeAreaView handles bottom padding now
+       minHeight: SCREEN_HEIGHT * 0.6, // Ensures enough space for content
+   },
+   logo: {
+       width: 330,
+       height: 150,
+       alignSelf: 'center',
+       marginTop: -20,
+       marginBottom: 15, // Reduced from 50 for better spacing
+       resizeMode: 'contain',
+   },
+   googleButton: {
+       padding: 7.5,
+       backgroundColor: Colors.WHITE,
+       borderRadius: 15,
+       borderWidth: 0.3,
+       borderColor: Colors.GRAY,
+       flexDirection: 'row',
+       justifyContent: 'center',
+       alignItems: 'center',
+       position: 'relative',
+       shadowColor: '#000',
+       shadowOffset: { width: 0, height: 2 },
+       shadowOpacity: 0.1,
+       shadowRadius: 4,
+       elevation: 2,
+   },
+   appleButton: {
+       padding: 7.5,
+       backgroundColor: Colors.WHITE,
+       borderRadius: 15,
+       marginTop: 15,
+       borderWidth: 0.3,
+       borderColor: Colors.GRAY,
+       flexDirection: 'row',
+       justifyContent: 'center',
+       alignItems: 'center',
+       position: 'relative',
+       shadowColor: '#000',
+       shadowOffset: { width: 0, height: 2 },
+       shadowOpacity: 0.1,
+       shadowRadius: 4,
+       elevation: 2,
+   },
+   emailButton: {
+       padding: 7.5,
+       backgroundColor: Colors.WHITE,
+       borderRadius: 15,
+       marginTop: 15,
+       borderWidth: 0.3,
+       borderColor: Colors.GRAY,
+       flexDirection: 'row',
+       justifyContent: 'center',
+       alignItems: 'center',
+       position: 'relative',
+       shadowColor: '#000',
+       shadowOffset: { width: 0, height: 2 },
+       shadowOpacity: 0.1,
+       shadowRadius: 4,
+       elevation: 2,
+   },
+   signInLink: {
+       marginTop: 20,
+       marginBottom: 10, // Added bottom margin for extra space
+       padding: 15,
+   },
+   signInText: {
+       fontFamily: 'outfit',
+       fontSize: 16,
+       textAlign: 'center',
+       color: Colors.GRAY,
+   },
+   signInTextBold: {
+       color: Colors.PRIMARY,
+       fontFamily: 'outfit-bold',
+   },
 })
 //one misspelling can deter the colors. caps vs no caps primary.
 
