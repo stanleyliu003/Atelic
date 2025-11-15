@@ -262,10 +262,10 @@ export const CreateTripProvider = ({ children }) => {
         setActivities(newActivities);
     };
 
-    const removeActivities = (activityIds) => {
+    const removeActivities = (activityInstanceIds) => {
         setActivities(prevActivities => 
             prevActivities.filter(activity => 
-                !activity.place_id || !activityIds.includes(activity.place_id)
+                !activity.instanceId || !activityInstanceIds.includes(activity.instanceId)
             )
         );
     };

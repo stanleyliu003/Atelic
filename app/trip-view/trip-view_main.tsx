@@ -370,14 +370,14 @@ export default function TripViewMain() {
     // Get activities for the current tab
     const getActivitiesForTab = (tab: TabType) => {
         if (tab === 'wishlist') {
-            // Filter out activities that are already in days
-            const dayActivityIds = Object.values(dayActivities || {})
+            // Filter out activities that are already in days (by instanceId)
+            const dayActivityInstanceIds = Object.values(dayActivities || {})
                 .flatMap(dayObj => Array.isArray((dayObj as any).activities) ? (dayObj as any).activities : [])
-                .map((activity: Activity) => activity.place_id)
+                .map((activity: Activity) => activity.instanceId)
                 .filter(Boolean);
 
             return (activities || []).filter((activity: Activity) =>
-                !activity.place_id || !dayActivityIds.includes(activity.place_id)
+                !activity.instanceId || !dayActivityInstanceIds.includes(activity.instanceId)
             );
         } else {
             // Extract day number from tab (e.g., 'day2' -> 2)
@@ -1010,9 +1010,9 @@ export default function TripViewMain() {
                 encodedPolyline: latestDayPolylines[dayNumber] || null,
             }));
             // Gather wishlist activities (not assigned to any day) and sanitize them
-            const dayActivityIds = days.flatMap(day => day.activities.map(a => a.place_id)).filter(Boolean);
+            const dayActivityInstanceIds = days.flatMap(day => day.activities.map(a => a.instanceId)).filter(Boolean);
             const wishlist = (latestActivities || [])
-                .filter((activity) => !activity.place_id || !dayActivityIds.includes(activity.place_id))
+                .filter((activity) => !activity.instanceId || !dayActivityInstanceIds.includes(activity.instanceId))
                 .map(sanitizeActivity);
             // Compose trip data object
             // Generate tripId if it doesn't exist (first time save)
