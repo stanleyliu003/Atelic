@@ -27,6 +27,7 @@ interface DayScheduleProps {
   routeLoading?: boolean; // Loading state for route recalculation
   onGoToWishlist?: () => void; // Navigate to wishlist callback
   currentUserRole?: string; // User's role in the trip (owner, editor, viewer)
+  onDuplicate?: (activity: Activity, targetDayNumber?: number) => void; // Callback for duplicating an activity
 }
 
 export function DaySchedule({
@@ -51,7 +52,8 @@ export function DaySchedule({
   onReorder,
   routeLoading = false,
   onGoToWishlist,
-  currentUserRole
+  currentUserRole,
+  onDuplicate
 }: DayScheduleProps) {
   const selectedCount = selectedActivities.length;
 
@@ -121,6 +123,7 @@ export function DaySchedule({
         onAddPlace={onAddPlace}
         searchQuery={searchQuery}
         onSearchQueryChange={onSearchQueryChange}
+        onDuplicate={onDuplicate ? (activity) => onDuplicate(activity, dayNumber) : undefined}
       />
     </View>
   );

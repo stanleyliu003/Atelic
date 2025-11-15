@@ -7,36 +7,36 @@ export function useActivitySelection() {
     isSelectionMode: false,
   });
 
-  const toggleActivitySelection = useCallback((activityId: string) => {
+  const toggleActivitySelection = useCallback((activityInstanceId: string) => {
     setSelectionState(prev => {
-      const isSelected = prev.selectedActivities.includes(activityId);
-      
+      const isSelected = prev.selectedActivities.includes(activityInstanceId);
+
       const newSelectedActivities = isSelected
-        ? prev.selectedActivities.filter(id => id !== activityId)
-        : [...prev.selectedActivities, activityId];
-      
+        ? prev.selectedActivities.filter(id => id !== activityInstanceId)
+        : [...prev.selectedActivities, activityInstanceId];
+
       const newState = {
         ...prev,
         selectedActivities: newSelectedActivities,
         isSelectionMode: newSelectedActivities.length > 0,
       };
-      
+
       return newState;
     });
   }, []);
 
-  const selectActivity = useCallback((activityId: string) => {
+  const selectActivity = useCallback((activityInstanceId: string) => {
     setSelectionState(prev => ({
       ...prev,
-      selectedActivities: [...prev.selectedActivities, activityId],
+      selectedActivities: [...prev.selectedActivities, activityInstanceId],
       isSelectionMode: true,
     }));
   }, []);
 
-  const deselectActivity = useCallback((activityId: string) => {
+  const deselectActivity = useCallback((activityInstanceId: string) => {
     setSelectionState(prev => ({
       ...prev,
-      selectedActivities: prev.selectedActivities.filter(id => id !== activityId),
+      selectedActivities: prev.selectedActivities.filter(id => id !== activityInstanceId),
       isSelectionMode: prev.selectedActivities.length > 1,
     }));
   }, []);
@@ -58,12 +58,12 @@ export function useActivitySelection() {
 
   const getSelectedActivities = useCallback((allActivities: Activity[]) => {
     return (allActivities || []).filter(activity =>
-      activity.place_id && selectionState.selectedActivities.includes(activity.place_id)
+      activity.instanceId && selectionState.selectedActivities.includes(activity.instanceId)
     );
   }, [selectionState.selectedActivities]);
 
-  const isActivitySelected = useCallback((activityId: string) => {
-    return selectionState.selectedActivities.includes(activityId);
+  const isActivitySelected = useCallback((activityInstanceId: string) => {
+    return selectionState.selectedActivities.includes(activityInstanceId);
   }, [selectionState.selectedActivities]);
 
   const getSelectedCount = useCallback(() => {

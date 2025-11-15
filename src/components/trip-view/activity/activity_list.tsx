@@ -194,6 +194,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   onAddPlace?: () => void; // Search bar trigger
   searchQuery?: string; // Search query value
   onSearchQueryChange?: (text: string) => void; // Search query change handler
+  onDuplicate?: (activity: Activity, targetDayNumber?: number) => void; // Callback for duplicating an activity
 }
 
 export function ActivityList({
@@ -221,7 +222,8 @@ export function ActivityList({
   parentScrollViewRef,
   onAddPlace,
   searchQuery = '',
-  onSearchQueryChange
+  onSearchQueryChange,
+  onDuplicate
 }: EnhancedActivityListProps) {
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
@@ -491,6 +493,7 @@ export function ActivityList({
         hideRouteInfo,
         duplicateActivityIndicator: isInWishlist,
         useInlineSelectionLayout,
+        onDuplicate: onDuplicate ? () => onDuplicate(activity) : undefined,
       };
 
       if (enableDragDrop && scrollable) {

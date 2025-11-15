@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { randomUUID } from 'expo-crypto';
 import { retrieveTripFromCloud, listUserTripsFromCloud } from '../src/services/lambdaService';
 import { generateCategoryActivities as generateCategoryActivitiesGraphQL } from '../src/services/generateCategoryActivities';
+import { ensureActivitiesHaveInstanceIds } from '../src/utils/activityInstanceId';
 
 // Define the shape of our context data
 const CreateTripContext = createContext();
@@ -175,12 +176,21 @@ export const CreateTripProvider = ({ children }) => {
     const restoreTripFromObject = (trip, currentUserID = null) => {
         console.log('[CreateTripContext] restoreTripFromObject: incoming tripId:', trip?.tripId);
 
+        // Ensure backward compatibility - add instanceIds to activities without them
+        const wishlistWithInstanceIds = ensureActivitiesHaveInstanceIds(trip.wishlist || []);
+        const daysWithInstanceIds = (trip.days || []).map(day => ({
+            ...day,
+            activities: ensureActivitiesHaveInstanceIds(day.activities || [])
+        }));
+
+        console.log('[CreateTripContext] Ensured instanceIds for', wishlistWithInstanceIds.length, 'wishlist activities and', daysWithInstanceIds.length, 'days');
+
         // Batch all state updates together to minimize re-renders
         startTransition(() => {
             setTripId(trip.tripId);
-            updateActivities(trip.wishlist);
-            setAllDayActivities(trip.days);
-            setAllDayPolylines(trip.days);
+            updateActivities(wishlistWithInstanceIds);
+            setAllDayActivities(daysWithInstanceIds);
+            setAllDayPolylines(daysWithInstanceIds);
 
             // Restore city categories from cloud (if provided)
             if (trip.cityCategories) {

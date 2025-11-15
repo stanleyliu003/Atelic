@@ -1,5 +1,6 @@
 import { API, graphqlOperation } from 'aws-amplify';
 import { Activity } from '../types/activity.types';
+import { randomUUID } from 'expo-crypto';
 
 interface GenerateCategoryActivitiesResponse {
   activities: Activity[];
@@ -63,7 +64,24 @@ export async function generateCategoryActivities(
 
     console.log('[generateCategoryActivities] GraphQL response:', result?.data?.generateCategoryActivities);
 
-    return result?.data?.generateCategoryActivities ?? null;
+    const responseData = result?.data?.generateCategoryActivities;
+
+    if (responseData && responseData.activities) {
+      // Add instanceId to each generated activity
+      const activitiesWithInstanceIds = responseData.activities.map((activity: Activity) => ({
+        ...activity,
+        instanceId: randomUUID()
+      }));
+
+      console.log('[generateCategoryActivities] Added instanceIds to', activitiesWithInstanceIds.length, 'activities');
+
+      return {
+        activities: activitiesWithInstanceIds,
+        category: responseData.category
+      };
+    }
+
+    return responseData ?? null;
   } catch (error) {
     console.error('[generateCategoryActivities] GraphQL error:', error);
     throw error;

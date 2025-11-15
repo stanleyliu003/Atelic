@@ -9,6 +9,7 @@ interface WishlistActivitiesProps {
   onDescriptionCardPress?: (activity: Activity) => void;
   showSelectionIndicator?: boolean;
   wishlistActivities?: Activity[]; // Activities already in the wishlist for "On list" tag
+  onDuplicate?: (activity: Activity, targetDayNumber?: number) => void; // Callback for duplicating an activity
 }
 
 export function WishlistActivities({
@@ -18,7 +19,8 @@ export function WishlistActivities({
   onActivityDeselect,
   onDescriptionCardPress,
   showSelectionIndicator = false,
-  wishlistActivities
+  wishlistActivities,
+  onDuplicate
 }: WishlistActivitiesProps) {
   return (
     <ActivityList
@@ -32,6 +34,7 @@ export function WishlistActivities({
       hideRouteInfo={true}
       wishlistActivities={wishlistActivities}
       useInlineSelectionLayout={true}
+      onDuplicate={onDuplicate}
     />
   );
 }

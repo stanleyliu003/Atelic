@@ -2,6 +2,7 @@ import { API } from 'aws-amplify';
 import { getTripIDs as getTripIDsQuery } from '../graphql/queries';
 import { getUserTripsDetailed as getUserTripsQuery } from '../graphql/customQueries';
 import { deleteUserAccount as deleteUserAccountMutation } from '../graphql/customMutations';
+import { randomUUID } from 'expo-crypto';
 
 /**
  * Use API.post to invoke Lambda function with higher timeout than GraphQL
@@ -31,11 +32,19 @@ export const analyzeWishlistDirect = async (wishlistText, selectedCity) => {
         console.log(`[Lambda Service] Lambda REST API call completed in ${duration}ms`);
         console.log('[Lambda Service] Response:', result);
 
+        // Add instanceId to each activity returned from Lambda
+        const activitiesWithInstanceIds = (result.wishlist_activities || []).map(activity => ({
+            ...activity,
+            instanceId: randomUUID()  // Generate unique ID for each new activity
+        }));
+
+        console.log('[Lambda Service] Added instanceIds to', activitiesWithInstanceIds.length, 'activities');
+
         // Return the activities in the same format as GraphQL
         return {
             data: {
                 analyzeWishlist: {
-                    wishlist_activities: result.wishlist_activities || []
+                    wishlist_activities: activitiesWithInstanceIds
                 }
             }
         };

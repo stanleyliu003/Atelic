@@ -23,6 +23,7 @@ import { API, Auth, graphqlOperation } from 'aws-amplify';
 import { createTrip } from '../../src/graphql/mutations';
 import { retrieveTripFromCloud } from '../../src/services/lambdaService';
 import Entypo from '@expo/vector-icons/Entypo';
+import { duplicateActivity } from '../../src/utils/activityInstanceId';
 
 // GraphQL subscription for real-time trip updates
 const onTripUpdated = /* GraphQL */ `
@@ -387,16 +388,35 @@ export default function TripViewMain() {
 
     // Function to add activities back to the wishlist
     const addActivitiesToWishlist = (newActivities: Activity[]) => {
-        // Combine existing activities with new ones, removing duplicates by place_id
+        // Combine existing activities with new ones, removing duplicates by instanceId
         const combinedActivities = [...(activities || []), ...newActivities];
         const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
-            if (!activity.place_id) return true; // Keep activities without place_id
-            // Keep only the first occurrence of each place_id
-            return arr.findIndex(a => a.place_id === activity.place_id) === index;
+            // Use instanceId for deduplication (allows duplicate places with different instanceIds)
+            if (!activity.instanceId) return true; // Keep activities without instanceId (backward compat)
+            // Keep only the first occurrence of each instanceId
+            return arr.findIndex(a => a.instanceId === activity.instanceId) === index;
         });
 
         updateActivities(deduplicatedActivities);
     };
+
+    // Handler for duplicating an activity
+    const handleDuplicateActivity = useCallback((activity: Activity, targetDayNumber?: number) => {
+        console.log('[trip-view_main] Duplicating activity:', activity.name);
+
+        // Create duplicate with new instanceId but same place_id
+        const duplicatedActivity = duplicateActivity(activity);
+
+        if (targetDayNumber !== undefined && targetDayNumber !== null) {
+            // Add duplicate to specific day
+            addActivityToDay(duplicatedActivity, targetDayNumber);
+            console.log('[trip-view_main] Activity duplicated to day', targetDayNumber, 'with instanceId:', duplicatedActivity.instanceId);
+        } else {
+            // Add duplicate to wishlist
+            updateActivities(prev => [...prev, duplicatedActivity]);
+            console.log('[trip-view_main] Activity duplicated to wishlist with instanceId:', duplicatedActivity.instanceId);
+        }
+    }, [addActivityToDay, updateActivities]);
 
     // Remove local state and handlers for transfer modal and related logic
     // Use the custom hook for all transfer modal and activity transfer logic
@@ -598,11 +618,11 @@ export default function TripViewMain() {
             if (deletedDayActivities.length > 0) {
                 const combinedActivities = [...(activities || []), ...deletedDayActivities];
 
-                // Remove duplicates based on place_id
+                // Remove duplicates based on instanceId
                 const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
-                    if (!activity.place_id) return true; // Keep activities without place_id
-                    // Keep only the first occurrence of each place_id
-                    return arr.findIndex(a => a.place_id === activity.place_id) === index;
+                    if (!activity.instanceId) return true; // Keep activities without instanceId (backward compat)
+                    // Keep only the first occurrence of each instanceId
+                    return arr.findIndex(a => a.instanceId === activity.instanceId) === index;
                 });
 
                 updateActivities(deduplicatedActivities);
@@ -1578,6 +1598,7 @@ export default function TripViewMain() {
                                                         onActivityDeselect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
                                                         onDescriptionCardPress={handleActivityDescriptionCardSelect}
                                                         showSelectionIndicator={isSelectionMode && currentUserRole !== 'viewer'}
+                                                        onDuplicate={currentUserRole !== 'viewer' ? handleDuplicateActivity : undefined}
                                                     />
                                                 </View>
                                             ))}
@@ -1662,6 +1683,7 @@ export default function TripViewMain() {
                                     routeLoading={routeLoading}
                                     onGoToWishlist={() => handleTabChange('wishlist')}
                                     currentUserRole={currentUserRole}
+                                    onDuplicate={currentUserRole !== 'viewer' ? handleDuplicateActivity : undefined}
                                 />
                             );
                         })()}

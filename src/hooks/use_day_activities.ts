@@ -19,23 +19,23 @@ export function useDayActivities() {
     }));
   }, [setDayActivities]);
 
-  const removeActivityFromDay = useCallback((activityId: string, dayNumber: number) => {
+  const removeActivityFromDay = useCallback((activityInstanceId: string, dayNumber: number) => {
     setDayActivities((prev: any) => ({
       ...prev,
       [dayNumber]: {
         ...prev[dayNumber],
-        activities: (prev[dayNumber]?.activities || []).filter((activity: Activity) => activity.place_id !== activityId),
+        activities: (prev[dayNumber]?.activities || []).filter((activity: Activity) => activity.instanceId !== activityInstanceId),
       },
     }));
   }, [setDayActivities]);
 
-  const removeActivitiesFromAllDays = useCallback((activityIds: string[]) => {
+  const removeActivitiesFromAllDays = useCallback((activityInstanceIds: string[]) => {
     setDayActivities((prev: any) => {
       const newDayActivities: { [dayNumber: number]: DayWithPolyline } = {};
       Object.entries(prev).forEach(([day, dayObj]: any) => {
         newDayActivities[Number(day)] = {
           ...dayObj,
-          activities: dayObj.activities.filter((act: Activity) => !act.place_id || !activityIds.includes(act.place_id)),
+          activities: dayObj.activities.filter((act: Activity) => !act.instanceId || !activityInstanceIds.includes(act.instanceId)),
         };
       });
       return newDayActivities;
@@ -44,12 +44,12 @@ export function useDayActivities() {
 
   const transferActivitiesToDay = useCallback((activities: Activity[], dayNumber: number) => {
     setDayActivities((prev: any) => {
-      const transferIds = activities.map(a => a.place_id).filter(Boolean);
+      const transferIds = activities.map(a => a.instanceId).filter(Boolean);
       const newDayActivities: { [dayNumber: number]: DayWithPolyline } = {};
       Object.entries(prev).forEach(([day, dayObj]: any) => {
         newDayActivities[Number(day)] = {
           ...dayObj,
-          activities: dayObj.activities.filter((act: Activity) => !transferIds.includes(act.place_id)),
+          activities: dayObj.activities.filter((act: Activity) => !transferIds.includes(act.instanceId)),
         };
       });
       newDayActivities[dayNumber] = {
@@ -63,19 +63,19 @@ export function useDayActivities() {
     });
   }, [setDayActivities]);
 
-  const transferActivitiesToWishlist = useCallback((activityIds: string[], dayNumber: number) => {
+  const transferActivitiesToWishlist = useCallback((activityInstanceIds: string[], dayNumber: number) => {
     setDayActivities((prev: any) => {
       const dayObj = prev[dayNumber] || { dayNumber, activities: [] };
       const newDayActivities = {
         ...prev,
         [dayNumber]: {
           ...dayObj,
-          activities: dayObj.activities.filter((activity: Activity) => !activity.place_id || !activityIds.includes(activity.place_id)),
+          activities: dayObj.activities.filter((activity: Activity) => !activity.instanceId || !activityInstanceIds.includes(activity.instanceId)),
         },
       };
       return newDayActivities;
     });
-    const transferredActivities = dayActivities[dayNumber]?.activities.filter((activity: Activity) => activity.place_id && activityIds.includes(activity.place_id)) || [];
+    const transferredActivities = dayActivities[dayNumber]?.activities.filter((activity: Activity) => activity.instanceId && activityInstanceIds.includes(activity.instanceId)) || [];
     return transferredActivities;
   }, [setDayActivities, dayActivities]);
 
