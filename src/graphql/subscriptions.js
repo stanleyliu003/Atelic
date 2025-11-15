@@ -11,6 +11,7 @@ export const onTripUpdated = /* GraphQL */ `
         __typename
       }
       wishlist {
+        instanceId
         name
         city
         lat
@@ -76,6 +77,7 @@ export const onCreateWishlistAnalysis = /* GraphQL */ `
       analysis
       status
       activities {
+        instanceId
         name
         city
         lat
@@ -112,6 +114,7 @@ export const onUpdateWishlistAnalysis = /* GraphQL */ `
       analysis
       status
       activities {
+        instanceId
         name
         city
         lat
@@ -148,6 +151,7 @@ export const onDeleteWishlistAnalysis = /* GraphQL */ `
       analysis
       status
       activities {
+        instanceId
         name
         city
         lat
