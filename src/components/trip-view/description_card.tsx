@@ -457,18 +457,15 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
         <View style={styles.bottomSpacing} />
       </ScrollView>
 
-      {/* Fixed Duplicate Button at Bottom */}
+      {/* Fixed Duplicate Button at Bottom Right */}
       {onDuplicate && (
-        <View style={styles.duplicateButtonContainer}>
-          <TouchableOpacity
-            style={styles.duplicateButton}
-            onPress={handleDuplicate}
-            activeOpacity={0.7}
-          >
-            <Feather name="copy" size={24} color={Colors.PRIMARY} />
-            <Text style={styles.duplicateButtonText}>Duplicate Activity</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.duplicateButton}
+          onPress={handleDuplicate}
+          activeOpacity={0.7}
+        >
+          <Feather name="copy" size={22} color={Colors.PRIMARY} />
+        </TouchableOpacity>
       )}
     </GestureHandlerRootView>
   );
@@ -793,37 +790,22 @@ const styles = StyleSheet.create({
     color: Colors.GRAY,
     textDecorationLine: 'underline',
   },
-  duplicateButtonContainer: {
+  duplicateButton: {
     position: 'absolute',
     bottom: 0,
-    left: 0,
-    right: 0,
+    right: 20,
+    width: 50,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Colors.WHITE,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    borderRadius: 33,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 5,
-  },
-  duplicateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F3F4F6',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-  },
-  duplicateButtonText: {
-    fontFamily: 'outfit-bold',
-    fontSize: 16,
-    color: Colors.PRIMARY,
-    marginLeft: 10,
   },
 });
