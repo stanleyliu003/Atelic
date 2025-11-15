@@ -408,15 +408,69 @@ export default function TripViewMain() {
         const duplicatedActivity = duplicateActivity(activity);
 
         if (targetDayNumber !== undefined && targetDayNumber !== null) {
-            // Add duplicate to specific day
-            addActivityToDay(duplicatedActivity, targetDayNumber);
-            console.log('[trip-view_main] Activity duplicated to day', targetDayNumber, 'with instanceId:', duplicatedActivity.instanceId);
+            // Duplicate within a specific day – insert directly after the original
+            const currentDayActivities = getDayActivities(targetDayNumber) || [];
+
+            // Find original activity index (prefer instanceId, fall back to place_id + name)
+            const originalIndex = currentDayActivities.findIndex(a => {
+                if (activity.instanceId && a.instanceId) {
+                    return a.instanceId === activity.instanceId;
+                }
+                if (activity.place_id && a.place_id) {
+                    return a.place_id === activity.place_id && a.name === activity.name;
+                }
+                return false;
+            });
+
+            let newOrder: Activity[];
+            if (originalIndex >= 0) {
+                newOrder = [
+                    ...currentDayActivities.slice(0, originalIndex + 1),
+                    duplicatedActivity,
+                    ...currentDayActivities.slice(originalIndex + 1),
+                ];
+            } else {
+                // Fallback: append to end if we can't find the original
+                newOrder = [...currentDayActivities, duplicatedActivity];
+            }
+
+            reorderDayActivities(targetDayNumber, newOrder);
+            console.log(
+                '[trip-view_main] Activity duplicated to day',
+                targetDayNumber,
+                'at index',
+                originalIndex >= 0 ? originalIndex + 1 : newOrder.length - 1,
+                'with instanceId:',
+                duplicatedActivity.instanceId
+            );
         } else {
-            // Add duplicate to wishlist
-            updateActivities(prev => [...prev, duplicatedActivity]);
-            console.log('[trip-view_main] Activity duplicated to wishlist with instanceId:', duplicatedActivity.instanceId);
+            // Duplicate within wishlist – insert directly after the original
+            updateActivities((prev: Activity[]) => {
+                const prevActivities = Array.isArray(prev) ? prev : [];
+
+                const originalIndex = prevActivities.findIndex(a => {
+                    if (activity.instanceId && a.instanceId) {
+                        return a.instanceId === activity.instanceId;
+                    }
+                    if (activity.place_id && a.place_id) {
+                        return a.place_id === activity.place_id && a.name === activity.name;
+                    }
+                    return false;
+                });
+
+                const nextActivities = [...prevActivities];
+                if (originalIndex >= 0) {
+                    nextActivities.splice(originalIndex + 1, 0, duplicatedActivity);
+                } else {
+                    // Fallback: append to end if original isn't found
+                    nextActivities.push(duplicatedActivity);
+                }
+
+                return nextActivities;
+            });
+            console.log('[trip-view_main] Activity duplicated in wishlist with instanceId:', duplicatedActivity.instanceId);
         }
-    }, [addActivityToDay, updateActivities]);
+    }, [getDayActivities, reorderDayActivities, updateActivities]);
 
     // Remove local state and handlers for transfer modal and related logic
     // Use the custom hook for all transfer modal and activity transfer logic
@@ -545,14 +599,11 @@ export default function TripViewMain() {
                 setRouteLoading(false);
                 return;
             }
-            // 3. Reorder the full activity objects using the new order from optimizeRoute
-            let reorderedFull = reordered.map(optAct => {
-                if (optAct.place_id) {
-                    return currentActivities.find(a => a.place_id === optAct.place_id) || optAct;
-                }
-                // fallback to name if no place_id
-                return currentActivities.find(a => a.name === optAct.name) || optAct;
-            });
+            // 3. Use the optimized activities array directly.
+            //    IMPORTANT: This preserves duplicate stops of the same place
+            //    (each with its own instanceId), avoiding key collisions.
+            let reorderedFull = reordered;
+
             // 4. For any activity missing rating or photo_reference, fetch latest details
             reorderedFull = await Promise.all(reorderedFull.map(async (act) => {
                 if (act.place_id && (act.rating == null || !act.photo_reference)) {
