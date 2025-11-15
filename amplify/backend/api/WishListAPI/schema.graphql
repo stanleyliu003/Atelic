@@ -8,6 +8,7 @@
    }
 
   type Activity {
+    instanceId: String  # Unique identifier for each activity instance (allows duplicates of same place)
     name: String!
     city: String
     lat: Float
@@ -342,6 +343,7 @@ type DeleteAccountResult {
    }
 
    input ActivityInput {
+     instanceId: String  # Unique identifier for each activity instance (allows duplicates of same place)
      place_id: String!
      name: String!
      city: String

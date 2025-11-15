@@ -29,6 +29,7 @@ export type PlaceReview = {
 
 // Define a type for our activity data for better type safety
 export type Activity = {
+  instanceId?: string; // Unique identifier for each activity instance (allows duplicates of same place)
   name: string;
   city?: string;
   lat: number | null;
@@ -56,7 +57,7 @@ export type TabType = 'wishlist' | `day${number}`;
 
 // Types for activity selection and management
 export type ActivitySelectionState = {
-  selectedActivities: string[]; // Array of place_ids
+  selectedActivities: string[]; // Array of instanceIds (not place_ids, to support duplicates)
   isSelectionMode: boolean;
 };
 
