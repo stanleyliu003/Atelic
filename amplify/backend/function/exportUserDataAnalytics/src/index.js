@@ -18,10 +18,13 @@ const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const dynamoClient = new DynamoDBClient({ region: process.env.REGION });
 const s3Client = new S3Client({ region: process.env.REGION });
 
-// Use Amplify-injected environment variable for table name
+// Use Amplify-injected environment variables
 const TABLE_NAME = process.env.STORAGE_USERPROFILESSTORAGE_NAME;
+const ENV = process.env.ENV || 'dev';
+
+// Write per-environment CSVs into a shared analytics bucket
 const S3_BUCKET = 'atelic-analytics';
-const S3_KEY = 'user-profiles/user_analytics.csv';
+const S3_KEY = `user-profiles/${ENV}/user_analytics.csv`;
 
 // Fields to export (matching your Athena schema)
 const FIELDS = [
@@ -49,7 +52,7 @@ const FIELDS = [
  */
 exports.handler = async (event) => {
   console.log('Starting user analytics export...');
-  console.log(`Environment: ${process.env.ENV}`);
+  console.log(`Environment: ${ENV}`);
   console.log(`Table Name: ${TABLE_NAME}`);
 
   try {

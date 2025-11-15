@@ -22,7 +22,8 @@
       "Bash(zip:*)",
       "Bash(aws lambda list-functions:*)",
       "Bash(aws lambda invoke:*)",
-      "Bash(node test_date_formatting.js)"
+      "Bash(node test_date_formatting.js)",
+      "Read(//private/tmp/**)"
     ],
     "deny": [],
     "ask": [],
