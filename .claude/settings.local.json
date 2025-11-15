@@ -23,7 +23,8 @@
       "Bash(aws lambda list-functions:*)",
       "Bash(aws lambda invoke:*)",
       "Bash(node test_date_formatting.js)",
-      "Read(//private/tmp/**)"
+      "Read(//private/tmp/**)",
+      "Read(//tmp/**)"
     ],
     "deny": [],
     "ask": [],
