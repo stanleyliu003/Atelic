@@ -439,12 +439,12 @@ export function ActivityList({
   }
 
   const handleActivityPress = (activity: Activity) => {
-    if (variant === 'selectable' && activity.place_id) {
-      const isSelected = selectedActivities.includes(activity.place_id);
+    if (variant === 'selectable' && activity.instanceId) {
+      const isSelected = selectedActivities.includes(activity.instanceId);
       if (isSelected && onActivityDeselect) {
-        onActivityDeselect(activity.place_id);
+        onActivityDeselect(activity.instanceId);
       } else if (!isSelected && onActivitySelect) {
-        onActivitySelect(activity.place_id);
+        onActivitySelect(activity.instanceId);
       }
     } else if (onActivityPress) {
       onActivityPress(activity);
@@ -462,7 +462,7 @@ export function ActivityList({
   // Render activities with conditional wrapper based on drag & drop requirement
   const renderActivities = () => {
     return currentActivities.map((activity: Activity, index: number) => {
-      const isSelected = activity.place_id ? selectedActivities.includes(activity.place_id) : false;
+      const isSelected = activity.instanceId ? selectedActivities.includes(activity.instanceId) : false;
       const isLastActivity = index === currentActivities.length - 1;
       const routeLeg = routeLegs[index];
       const nextActivityDistance = routeLeg?.distance;
@@ -471,12 +471,12 @@ export function ActivityList({
 
       // Check if this activity is already in the wishlist
       const isInWishlist = wishlistActivities.some(
-        (wishlistActivity) => wishlistActivity.place_id === activity.place_id
+        (wishlistActivity) => wishlistActivity.instanceId === activity.instanceId
       );
 
       // Common props for both draggable and regular cards
       const commonProps = {
-        key: `activity-${index}-${activity.place_id || 'no-place-id'}`,
+        key: `activity-${index}-${activity.instanceId || activity.place_id || 'no-id'}`,
         activity,
         isSelected,
         onPress: handleActivityPress,

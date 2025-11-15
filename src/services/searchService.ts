@@ -1,5 +1,6 @@
 import { API, graphqlOperation } from 'aws-amplify';
 import { Activity } from '../types/activity.types';
+import { randomUUID } from 'expo-crypto';
 
 interface SearchAutocompleteResponse {
   suggestions: string[];
@@ -147,7 +148,16 @@ export async function searchActivities(
 
     console.log('[searchActivities] GraphQL response:', result?.data?.searchActivities);
 
-    return result?.data?.searchActivities ?? { activities: [], query: searchQuery };
+    // Add instanceId to all activities for duplicate support
+    const response = result?.data?.searchActivities ?? { activities: [], query: searchQuery };
+    if (response.activities && response.activities.length > 0) {
+      response.activities = response.activities.map((activity: Activity) => ({
+        ...activity,
+        instanceId: randomUUID()
+      }));
+    }
+
+    return response;
   } catch (error) {
     console.error('[searchActivities] GraphQL error:', error);
     throw error;

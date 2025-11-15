@@ -1,4 +1,3 @@
-import React from 'react';
 import { Activity } from '../../../types/activity.types';
 import { ActivityList } from './activity_list';
 
@@ -7,15 +6,21 @@ interface WishlistActivitiesProps {
   selectedActivities?: string[];
   onActivitySelect?: (activityId: string) => void;
   onActivityDeselect?: (activityId: string) => void;
+  onDescriptionCardPress?: (activity: Activity) => void;
   showSelectionIndicator?: boolean;
+  wishlistActivities?: Activity[]; // Activities already in the wishlist for "On list" tag
+  onDuplicate?: (activity: Activity, targetDayNumber?: number) => void; // Callback for duplicating an activity
 }
 
-export function WishlistActivities({ 
+export function WishlistActivities({
   activities,
   selectedActivities,
   onActivitySelect,
   onActivityDeselect,
-  showSelectionIndicator = false
+  onDescriptionCardPress,
+  showSelectionIndicator = false,
+  wishlistActivities,
+  onDuplicate
 }: WishlistActivitiesProps) {
   return (
     <ActivityList
@@ -23,10 +28,13 @@ export function WishlistActivities({
       selectedActivities={selectedActivities}
       onActivitySelect={onActivitySelect}
       onActivityDeselect={onActivityDeselect}
+      onDescriptionCardPress={onDescriptionCardPress}
       showSelectionIndicator={showSelectionIndicator}
       variant="selectable"
-      emptyStateTitle="No activities found"
-      emptyStateSubtitle="Please go back and add some destinations"
+      hideRouteInfo={true}
+      wishlistActivities={wishlistActivities}
+      useInlineSelectionLayout={true}
+      onDuplicate={onDuplicate}
     />
   );
 }

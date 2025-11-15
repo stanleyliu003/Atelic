@@ -47,18 +47,18 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
   // Auto-select activities that are in wishlist or day tabs when activities change
   useEffect(() => {
     if (activities.length > 0) {
-      // Track activities in wishlist
+      // Track activities in wishlist (match by place_id, store instanceId)
       const wishlistPlaceIds = wishlistActivities.map(a => a.place_id).filter(Boolean);
       const activitiesInWishlist = activities
         .filter(activity => activity.place_id && wishlistPlaceIds.includes(activity.place_id))
-        .map(activity => activity.place_id);
-      
-      // Track activities in day tabs
+        .map(activity => activity.instanceId);
+
+      // Track activities in day tabs (match by place_id, store instanceId)
       const dayPlaceIds = dayActivities.map(a => a.place_id).filter(Boolean);
       const activitiesInDays = activities
         .filter(activity => activity.place_id && dayPlaceIds.includes(activity.place_id))
-        .map(activity => activity.place_id);
-      
+        .map(activity => activity.instanceId);
+
       setWishlistActivityIdsInResults(activitiesInWishlist);
       setDayActivityIdsInResults(activitiesInDays);
 
@@ -94,23 +94,23 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
 
   // Handle save button press
   const handleSave = () => {
-    // Get newly selected activities (not in wishlist or days)
+    // Get newly selected activities (not in wishlist or days) - use instanceId for matching
     const newlySelectedActivities = activities.filter((activity) =>
-      activity.place_id && 
-      selectedActivityIds.includes(activity.place_id) &&
-      !wishlistActivityIdsInResults.includes(activity.place_id) &&
-      !dayActivityIdsInResults.includes(activity.place_id)
+      activity.instanceId &&
+      selectedActivityIds.includes(activity.instanceId) &&
+      !wishlistActivityIdsInResults.includes(activity.instanceId) &&
+      !dayActivityIdsInResults.includes(activity.instanceId)
     );
-    
+
     // Get deselected wishlist activities (were in wishlist but now deselected)
     // Only allow deselection if NOT in day tabs
     const deselectedWishlistActivityIds = wishlistActivityIdsInResults.filter(
       (activityId) => !selectedActivityIds.includes(activityId) && !dayActivityIdsInResults.includes(activityId)
     );
-    
+
     // Call onSave with both additions and removals
     onSave(newlySelectedActivities, deselectedWishlistActivityIds);
-    
+
     // Reset selection
     setSelectedActivityIds([]);
     setWishlistActivityIdsInResults([]);

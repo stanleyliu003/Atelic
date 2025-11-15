@@ -3,6 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import Feather from '@expo/vector-icons/Feather';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Image } from 'react-native';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -15,6 +16,7 @@ interface ActivityDetailViewProps {
   onClose: () => void;
   variant?: 'trip' | 'wishlist';
   showDragIndicator?: boolean;
+  onDuplicate?: (activity: Activity) => void;
 }
 
 const formatNumber = (num: number) => {
@@ -82,9 +84,16 @@ const renderStars = (rating: number) => {
   return stars;
 };
 
-export function ActivityDetailView({ activity, onClose, variant = 'trip', showDragIndicator = true }: ActivityDetailViewProps) {
+export function ActivityDetailView({ activity, onClose, variant = 'trip', showDragIndicator = true, onDuplicate }: ActivityDetailViewProps) {
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
+
+  const handleDuplicate = () => {
+    if (onDuplicate) {
+      onDuplicate(activity);
+      onClose(); // Close the detail view after duplicating
+    }
+  };
 
   // Swipe down gesture to close
   const swipeGesture = Gesture.Pan()
@@ -447,6 +456,20 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
         )}
         <View style={styles.bottomSpacing} />
       </ScrollView>
+
+      {/* Fixed Duplicate Button at Bottom */}
+      {onDuplicate && (
+        <View style={styles.duplicateButtonContainer}>
+          <TouchableOpacity
+            style={styles.duplicateButton}
+            onPress={handleDuplicate}
+            activeOpacity={0.7}
+          >
+            <Feather name="copy" size={24} color={Colors.PRIMARY} />
+            <Text style={styles.duplicateButtonText}>Duplicate Activity</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </GestureHandlerRootView>
   );
 }
@@ -769,5 +792,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.GRAY,
     textDecorationLine: 'underline',
+  },
+  duplicateButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: Colors.WHITE,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  duplicateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  duplicateButtonText: {
+    fontFamily: 'outfit-bold',
+    fontSize: 16,
+    color: Colors.PRIMARY,
+    marginLeft: 10,
   },
 });

@@ -1513,6 +1513,7 @@ export default function TripViewMain() {
                         activity={selectedActivityForDetail}
                         onClose={handleCloseActivityDetail}
                         showDragIndicator={false}
+                        onDuplicate={(activity) => handleDuplicateActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
                     />
                 ) : (
                     <>

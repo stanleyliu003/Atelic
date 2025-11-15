@@ -185,11 +185,11 @@ export const AutocompleteModal = ({
       if (result && result.activities) {
         setSearchResults(result.activities);
 
-        // Auto-select activities that are already in wishlist
+        // Auto-select activities that are already in wishlist (match by place_id, store instanceId)
         const wishlistPlaceIds = wishlistActivities.map(a => a.place_id).filter(Boolean);
         const activitiesInWishlist = result.activities
           .filter(activity => activity.place_id && wishlistPlaceIds.includes(activity.place_id))
-          .map(activity => activity.place_id);
+          .map(activity => activity.instanceId);
 
         setWishlistActivityIdsInResults(activitiesInWishlist);
         setSelectedActivityIds(activitiesInWishlist);
@@ -225,12 +225,12 @@ export const AutocompleteModal = ({
       if (result && result.activities) {
         setSearchResults(result.activities);
         
-        // Auto-select activities that are already in wishlist
+        // Auto-select activities that are already in wishlist (match by place_id, store instanceId)
         const wishlistPlaceIds = wishlistActivities.map(a => a.place_id).filter(Boolean);
         const activitiesInWishlist = result.activities
           .filter(activity => activity.place_id && wishlistPlaceIds.includes(activity.place_id))
-          .map(activity => activity.place_id);
-        
+          .map(activity => activity.instanceId);
+
         setWishlistActivityIdsInResults(activitiesInWishlist);
         setSelectedActivityIds(activitiesInWishlist);
       } else {
@@ -260,18 +260,18 @@ export const AutocompleteModal = ({
   
   // Handle save selected activities
   const handleSaveActivities = () => {
-    // Get newly selected activities (not in wishlist)
+    // Get newly selected activities (not in wishlist) - use instanceId for matching
     const newlySelectedActivities = searchResults.filter((activity) =>
-      activity.place_id && 
-      selectedActivityIds.includes(activity.place_id) &&
-      !wishlistActivityIdsInResults.includes(activity.place_id)
+      activity.instanceId &&
+      selectedActivityIds.includes(activity.instanceId) &&
+      !wishlistActivityIdsInResults.includes(activity.instanceId)
     );
-    
+
     // Get deselected wishlist activities (were in wishlist but now deselected)
     const deselectedWishlistActivityIds = wishlistActivityIdsInResults.filter(
       (activityId) => !selectedActivityIds.includes(activityId)
     );
-    
+
     // Call onSaveActivities with both additions and removals
     onSaveActivities(newlySelectedActivities, deselectedWishlistActivityIds);
 
