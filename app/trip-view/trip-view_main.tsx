@@ -313,7 +313,7 @@ export default function TripViewMain() {
                         currentDayNumber = parseInt(activeTab.replace('day', ''));
                     }
                     const activityIds = selectedActivitiesList
-                        .map(a => a.place_id)
+                        .map(a => a.instanceId)
                         .filter((id): id is string => typeof id === 'string');
 
                     const transferredActivities = transferActivitiesToWishlist(activityIds, currentDayNumber);
