@@ -19,7 +19,10 @@
       "Bash(/opt/homebrew/bin/aws --version)",
       "Bash(/opt/homebrew/bin/aws:*)",
       "Bash(export AWS_PROFILE=Amplify_Dev)",
-      "Bash(zip:*)"
+      "Bash(zip:*)",
+      "Bash(aws lambda list-functions:*)",
+      "Bash(aws lambda invoke:*)",
+      "Bash(node test_date_formatting.js)"
     ],
     "deny": [],
     "ask": [],

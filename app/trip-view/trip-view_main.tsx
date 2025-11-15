@@ -1473,7 +1473,7 @@ export default function TripViewMain() {
                 </View>
 
                 {!showActivityDetail && (
-                    <TabBar 
+                    <TabBar
                         activeTab={activeTab}
                         onTabChange={handleTabChange}
                         dayCount={getDayCount()}
@@ -1482,6 +1482,7 @@ export default function TripViewMain() {
                         shouldScrollToActive={shouldScrollToActive}
                         tabLabels={tabLabels}
                         currentUserRole={currentUserRole}
+                        startDate={startDate}
                     />
                 )}
 

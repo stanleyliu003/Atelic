@@ -2,6 +2,7 @@ import { Colors } from '../../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useRef } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { formatDayTab } from '../../utils/dateFormatting';
 
 type TabType = 'wishlist' | `day${number}`;
 
@@ -14,9 +15,10 @@ interface TabBarProps {
   shouldScrollToActive?: boolean;
   tabLabels?: TabType[];
   currentUserRole?: 'owner' | 'editor' | 'viewer';
+  startDate?: string | null;
 }
 
-export function TabBar({ activeTab, onTabChange, dayCount, onAddDay, onDeleteDay, shouldScrollToActive = false, tabLabels, currentUserRole }: TabBarProps) {
+export function TabBar({ activeTab, onTabChange, dayCount, onAddDay, onDeleteDay, shouldScrollToActive = false, tabLabels, currentUserRole, startDate }: TabBarProps) {
   const scrollViewRef = useRef<ScrollView>(null);
   
   // Generate tab order: use tabLabels if provided, otherwise default
@@ -57,7 +59,12 @@ export function TabBar({ activeTab, onTabChange, dayCount, onAddDay, onDeleteDay
             onPress={() => onTabChange(tab)}
           >
             <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-              {tab === 'wishlist' ? 'WishList' : `Day ${tab.replace('day', '')}`}
+              {tab === 'wishlist'
+                ? 'WishList'
+                : startDate
+                  ? formatDayTab(startDate, parseInt(tab.replace('day', '')))
+                  : `Day ${tab.replace('day', '')}`
+              }
             </Text>
           </TouchableOpacity>
         ))}
