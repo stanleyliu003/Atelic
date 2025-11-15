@@ -69,9 +69,6 @@ export const AutocompleteModal = ({
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [showDescriptionCard, setShowDescriptionCard] = useState(false);
 
-  // Track which activities from search results are already in wishlist
-  const [wishlistActivityIdsInResults, setWishlistActivityIdsInResults] = useState([]);
-
   // Handle close modal
   const handleCloseModal = () => {
     console.log('[AutocompleteModal] Close button pressed');
@@ -86,7 +83,6 @@ export const AutocompleteModal = ({
     setShowingResults(false);
     setSearchResults([]);
     setSelectedActivityIds([]);
-    setWishlistActivityIdsInResults([]);
     console.log('[AutocompleteModal] Calling onClose');
     onClose();
   };
@@ -184,19 +180,8 @@ export const AutocompleteModal = ({
 
       if (result && result.activities) {
         setSearchResults(result.activities);
-
-        // Auto-select activities that are already in wishlist (match by place_id, store instanceId)
-        const wishlistPlaceIds = wishlistActivities.map(a => a.place_id).filter(Boolean);
-        const activitiesInWishlist = result.activities
-          .filter(activity => activity.place_id && wishlistPlaceIds.includes(activity.place_id))
-          .map(activity => activity.instanceId);
-
-        setWishlistActivityIdsInResults(activitiesInWishlist);
-        setSelectedActivityIds(activitiesInWishlist);
       } else {
         setSearchResults([]);
-        setWishlistActivityIdsInResults([]);
-        setSelectedActivityIds([]);
       }
     } catch (error) {
       console.error('[AutocompleteModal] Error searching activities:', error);
@@ -224,19 +209,8 @@ export const AutocompleteModal = ({
 
       if (result && result.activities) {
         setSearchResults(result.activities);
-        
-        // Auto-select activities that are already in wishlist (match by place_id, store instanceId)
-        const wishlistPlaceIds = wishlistActivities.map(a => a.place_id).filter(Boolean);
-        const activitiesInWishlist = result.activities
-          .filter(activity => activity.place_id && wishlistPlaceIds.includes(activity.place_id))
-          .map(activity => activity.instanceId);
-
-        setWishlistActivityIdsInResults(activitiesInWishlist);
-        setSelectedActivityIds(activitiesInWishlist);
       } else {
         setSearchResults([]);
-        setWishlistActivityIdsInResults([]);
-        setSelectedActivityIds([]);
       }
     } catch (error) {
       console.error('[AutocompleteModal] Search error:', error);
@@ -260,24 +234,16 @@ export const AutocompleteModal = ({
   
   // Handle save selected activities
   const handleSaveActivities = () => {
-    // Get newly selected activities (not in wishlist) - use instanceId for matching
+    // Get all selected activities from current search results
     const newlySelectedActivities = searchResults.filter((activity) =>
-      activity.instanceId &&
-      selectedActivityIds.includes(activity.instanceId) &&
-      !wishlistActivityIdsInResults.includes(activity.instanceId)
+      activity.instanceId && selectedActivityIds.includes(activity.instanceId)
     );
 
-    // Get deselected wishlist activities (were in wishlist but now deselected)
-    const deselectedWishlistActivityIds = wishlistActivityIdsInResults.filter(
-      (activityId) => !selectedActivityIds.includes(activityId)
-    );
-
-    // Call onSaveActivities with both additions and removals
-    onSaveActivities(newlySelectedActivities, deselectedWishlistActivityIds);
+    // Call onSaveActivities with additions only (no removals via search)
+    onSaveActivities(newlySelectedActivities, []);
 
     // Reset state
     setSelectedActivityIds([]);
-    setWishlistActivityIdsInResults([]);
     setShowingResults(false);
     setSearchResults([]);
     setLocalQuery('');
@@ -316,18 +282,6 @@ export const AutocompleteModal = ({
       if (result && result.activities) {
         // Append new activities to existing search results
         setSearchResults(prev => [...prev, ...result.activities]);
-        
-        // Auto-select any new activities that are in wishlist
-        const wishlistPlaceIds = wishlistActivities.map(a => a.place_id).filter(Boolean);
-        const newActivitiesInWishlist = result.activities
-          .filter(activity => activity.place_id && wishlistPlaceIds.includes(activity.place_id))
-          .map(activity => activity.place_id);
-        
-        // Add to wishlist tracking and selection
-        if (newActivitiesInWishlist.length > 0) {
-          setWishlistActivityIdsInResults(prev => [...prev, ...newActivitiesInWishlist]);
-          setSelectedActivityIds(prev => [...prev, ...newActivitiesInWishlist]);
-        }
       }
     } catch (error) {
       console.error('[AutocompleteModal] Error generating more results:', error);
@@ -540,22 +494,16 @@ export const AutocompleteModal = ({
             )}
           </ScrollView>
 
-          {/* Save Button - Show when there are any changes (additions or removals) */}
-          {showingResults && (() => {
-            const hasNewSelections = selectedActivityIds.some(id => !wishlistActivityIdsInResults.includes(id));
-            const hasDeselections = wishlistActivityIdsInResults.some(id => !selectedActivityIds.includes(id));
-            const hasChanges = hasNewSelections || hasDeselections;
-            
-            return hasChanges && (
-              <View style={styles.footer}>
-                <TouchableOpacity style={styles.saveButton} onPress={handleSaveActivities} activeOpacity={0.8}>
-                  <Text style={styles.saveButtonText}>
-                    Save to {getTabDisplayName(activeTab)}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            );
-          })()}
+          {/* Save Button - Show when there is at least one selected activity */}
+          {showingResults && selectedActivityIds.length > 0 && (
+            <View style={styles.footer}>
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveActivities} activeOpacity={0.8}>
+                <Text style={styles.saveButtonText}>
+                  Save to {getTabDisplayName(activeTab)}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </GestureHandlerRootView>
       </View>
 
