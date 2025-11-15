@@ -78,7 +78,7 @@ export function TripMapView({
     return activities
       .filter((activity: Activity) => activity.lat != null && activity.lng != null)
       .map((activity: Activity, idx: number) => ({
-        key: activity.place_id || `${activity.lat},${activity.lng},${idx}`,
+        key: activity.instanceId || activity.place_id || `${activity.lat},${activity.lng},${idx}`,
         coordinate: {
           latitude: activity.lat!,
           longitude: activity.lng!,
@@ -86,8 +86,8 @@ export function TripMapView({
         title: activity.name,
         index: idx + 1, // 1-based index for display
         color: markerColor,
-        isSelected: activity.place_id ? selectedActivities.includes(activity.place_id) : false,
-        isMarkerSelected: activity.place_id === selectedMarker,
+        isSelected: activity.instanceId ? selectedActivities.includes(activity.instanceId) : false,
+        isMarkerSelected: activity.instanceId === selectedMarker,
         activity: activity, // Include full activity object for callback
       }));
   }, [activities, markerColor, selectedActivities, selectedMarker]);
@@ -226,7 +226,7 @@ export function TripMapView({
   // Updated useEffect for selected marker zoom
   useEffect(() => {
     if (mapRef.current && selectedMarker) {
-      const selectedMarkerData = dynamicMarkers.find(marker => marker.activity.place_id === selectedMarker);
+      const selectedMarkerData = dynamicMarkers.find(marker => marker.activity.instanceId === selectedMarker);
       if (selectedMarkerData) {
         if (currentHeightState === 1) {
           // Use the previous working logic for currentHeightState === 1
