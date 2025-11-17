@@ -56,6 +56,37 @@ const getFreshPhotoReference = async (placeId) => {
     });
 };
 
+// Helper to attach a fresh photo_reference for each activity without caching it
+async function attachFreshPhotoReferences(activities = []) {
+    if (!Array.isArray(activities) || activities.length === 0) {
+        return activities;
+    }
+
+    const updatedActivities = await Promise.all(
+        activities.map(async (activity) => {
+            try {
+                if (!activity || !activity.place_id) {
+                    return activity;
+                }
+
+                const photo_reference = await getFreshPhotoReference(activity.place_id);
+                return {
+                    ...activity,
+                    photo_reference,
+                };
+            } catch (err) {
+                console.error(
+                    `Failed to attach fresh photo_reference for place_id ${activity?.place_id}:`,
+                    err
+                );
+                return activity;
+            }
+        })
+    );
+
+    return updatedActivities;
+}
+
 // Address detection regex - detects if query looks like a street address
 const ADDRESS_REGEX = /\d+[A-Z]?[-#]?\s+[\w\s]+(?:street|st|avenue|ave|road|rd|drive|dr|boulevard|blvd|lane|ln|way|place|pl|court|ct|circle|cir|parkway|pkwy|terrace|ter|alley|plaza|square|sq|highway|hwy|route|rt|row|crescent|cres)/i;
 
@@ -116,8 +147,9 @@ exports.handler = async (event) => {
             cachedResult = await getCachedData('activities', cacheKey);
             if (cachedResult && cachedResult.activities) {
                 console.log(`Returning cached search results for: ${searchQuery}`);
+                const limitedActivities = cachedResult.activities.slice(0, 4);
                 return {
-                    activities: cachedResult.activities.slice(0, 4),
+                    activities: await attachFreshPhotoReferences(limitedActivities),
                     query: searchQuery
                 };
             }
@@ -165,7 +197,7 @@ async function handleAddressQuery(searchQuery, selectedCity, existingActivityNam
             if (cachedResult && cachedResult.activities) {
                 console.log(`Returning cached address result for: ${searchQuery}`);
                 return {
-                    activities: cachedResult.activities,
+                    activities: await attachFreshPhotoReferences(cachedResult.activities),
                     query: searchQuery
                 };
             }
@@ -272,10 +304,12 @@ async function handleAddressQuery(searchQuery, selectedCity, existingActivityNam
             }, SEARCH_ACTIVITIES_TTL);
         }
 
-        console.log(`Returning ${deduplicatedActivities.length} activity for address query`);
+        const activitiesWithPhotos = await attachFreshPhotoReferences(deduplicatedActivities);
+
+        console.log(`Returning ${activitiesWithPhotos.length} activity for address query`);
 
         return {
-            activities: deduplicatedActivities,
+            activities: activitiesWithPhotos,
             query: searchQuery
         };
 
@@ -474,9 +508,12 @@ async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActiv
         // Also deduplicate identical place_ids within the current results (prevents same place appearing twice)
         deduplicatedActivities = deduplicateByPlaceId(deduplicatedActivities);
 
+        // Attach a fresh photo_reference for every activity before returning (do NOT cache photo_reference)
+        const activitiesWithPhotos = await attachFreshPhotoReferences(deduplicatedActivities);
+
         // Cache the result only for initial requests (WITHOUT photo_reference per Google guidelines)
         if (existingActivityNames.length === 0 && existingActivityPlaceIds.length === 0) {
-            const activitiesToCache = deduplicatedActivities.map(activity => {
+            const activitiesToCache = activitiesWithPhotos.map(activity => {
                 const activityCopy = { ...activity };
                 delete activityCopy.photo_reference; // Don't cache photo_reference
                 return activityCopy;
@@ -489,10 +526,10 @@ async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActiv
             }, SEARCH_ACTIVITIES_TTL);
         }
 
-        console.log(`Returning ${deduplicatedActivities.length} activities for general search (after deduplication)`);
+        console.log(`Returning ${activitiesWithPhotos.length} activities for general search (after deduplication)`);
 
         return {
-            activities: deduplicatedActivities,
+            activities: activitiesWithPhotos,
             query: searchQuery
         };
 
