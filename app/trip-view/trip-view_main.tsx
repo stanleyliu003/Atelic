@@ -1785,6 +1785,9 @@ export default function TripViewMain() {
                     )
                 ]}
                 activeTab={activeTab}
+                // In trip view, selecting an activity should immediately add it to the active tab
+                // and close the modal, without requiring a separate "Save to..." button.
+                selectionMode="single"
             />
 
             {/* CategoryModal for browsing activities by category */}

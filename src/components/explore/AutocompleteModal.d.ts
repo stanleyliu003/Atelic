@@ -13,6 +13,12 @@ interface AutocompleteModalProps {
   onSaveActivities: (selectedActivities: Activity[], deselectedWishlistActivityIds?: string[]) => void;
   wishlistActivities?: Activity[];
   activeTab?: string;
+  /**
+   * Controls how activities are selected from search results:
+   * - 'multi' (default): user selects multiple items then taps "Save to ..."
+   * - 'single': tapping an activity immediately saves it and closes the modal
+   */
+  selectionMode?: 'multi' | 'single';
 }
 
 export const AutocompleteModal: FC<AutocompleteModalProps>;

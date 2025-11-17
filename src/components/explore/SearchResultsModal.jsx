@@ -24,15 +24,44 @@ import { WishlistActivities } from '../trip-view/wishlist_activities';
  * @param {string} query - Search query that was used
  * @param {Activity[]} activities - Array of activity objects to display
  * @param {boolean} loadingMore - Whether more activities are being generated (for button loading state)
- * @param {function} onSave - Callback when "Save to Wishlist" is clicked (receives array of selected activities)
+ * @param {function} onSave - Callback when activities are saved/selected
  * @param {function} onClose - Callback to close modal
  * @param {function} onGenerateMore - Callback when "More [query]" button is clicked
+ * @param {'multi' | 'single'} selectionMode - 'multi' (default) shows save button, 'single' saves immediately on tap
  */
-export const SearchResultsModal = ({ visible, query, activities, loadingMore = false, onSave, onClose, onGenerateMore }) => {
+export const SearchResultsModal = ({
+  visible,
+  query,
+  activities,
+  loadingMore = false,
+  onSave,
+  onClose,
+  onGenerateMore,
+  selectionMode = 'multi',
+}) => {
   const [selectedActivityIds, setSelectedActivityIds] = useState([]);
 
   // Toggle activity selection
   const handleActivityToggle = (activityId) => {
+    // Single-select mode: immediately save the tapped activity and close modal
+    if (selectionMode === 'single') {
+      if (!activities || activities.length === 0) {
+        return;
+      }
+
+      const selectedActivity =
+        activities.find((activity) => activity.instanceId === activityId) ||
+        activities.find((activity) => activity.place_id === activityId);
+
+      if (selectedActivity && onSave) {
+        onSave([selectedActivity]);
+      }
+
+      handleClose();
+      return;
+    }
+
+    // Multi-select mode: toggle selection
     setSelectedActivityIds((prev) => {
       if (prev.includes(activityId)) {
         return prev.filter((id) => id !== activityId);
@@ -143,8 +172,8 @@ export const SearchResultsModal = ({ visible, query, activities, loadingMore = f
             )}
           </ScrollView>
 
-          {/* Save Button - Only show when activities are selected */}
-          {selectedActivityIds.length > 0 && (
+          {/* Save Button - Only show when activities are selected (multi-select mode only) */}
+          {selectionMode === 'multi' && selectedActivityIds.length > 0 && (
             <View style={styles.footer}>
               <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.8}>
                 <Ionicons name="checkmark-circle" size={24} color={Colors.WHITE} />

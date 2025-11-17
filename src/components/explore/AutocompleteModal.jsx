@@ -36,6 +36,7 @@ import { ActivityDetailView } from '../trip-view/description_card';
  * @param {function} onSaveActivities - Callback to save selected activities
  * @param {Activity[]} wishlistActivities - Activities already in the wishlist for "On list" tag
  * @param {string} activeTab - Current active tab (e.g., 'wishlist', 'day1', 'day2')
+ * @param {'multi' | 'single'} selectionMode - 'multi' (default) shows "Save to ..." button, 'single' saves immediately on tap
  */
 export const AutocompleteModal = ({
   visible,
@@ -49,6 +50,7 @@ export const AutocompleteModal = ({
   onSaveActivities,
   wishlistActivities = [],
   activeTab = 'wishlist',
+  selectionMode = 'multi',
 }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -223,6 +225,28 @@ export const AutocompleteModal = ({
   
   // Handle activity selection
   const handleActivityToggle = (activityId) => {
+    // Single-select mode: immediately save the tapped activity and close modal
+    if (selectionMode === 'single') {
+      if (!searchResults || searchResults.length === 0) {
+        return;
+      }
+
+      // Activities from search use instanceId for selection; fall back to place_id if needed
+      const selectedActivity =
+        searchResults.find((activity) => activity.instanceId === activityId) ||
+        searchResults.find((activity) => activity.place_id === activityId);
+
+      if (selectedActivity && onSaveActivities) {
+        // Save a single activity to the active tab
+        onSaveActivities([selectedActivity], []);
+      }
+
+      // Close modal and reset state
+      handleCloseModal();
+      return;
+    }
+
+    // Multi-select mode: toggle selection state
     setSelectedActivityIds((prev) => {
       if (prev.includes(activityId)) {
         return prev.filter((id) => id !== activityId);
@@ -494,8 +518,8 @@ export const AutocompleteModal = ({
             )}
           </ScrollView>
 
-          {/* Save Button - Show when there is at least one selected activity */}
-          {showingResults && selectedActivityIds.length > 0 && (
+          {/* Save Button - Show when there is at least one selected activity (multi-select mode only) */}
+          {selectionMode === 'multi' && showingResults && selectedActivityIds.length > 0 && (
             <View style={styles.footer}>
               <TouchableOpacity style={styles.saveButton} onPress={handleSaveActivities} activeOpacity={0.8}>
                 <Text style={styles.saveButtonText}>
