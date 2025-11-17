@@ -90,8 +90,20 @@ exports.handler = async (event) => {
             cachedResult = await getCachedData('activities', cacheKey);
             if (cachedResult && cachedResult.activities) {
                 console.log(`Returning cached activities for category: ${category}`);
+
+                // Fetch fresh photo_reference for each cached activity (FREE - ID Only SKU)
+                const activitiesWithFreshPhotos = await Promise.all(
+                    cachedResult.activities.slice(0, 4).map(async (activity) => {
+                        if (activity.place_id) {
+                            const photo_reference = await getFreshPhotoReference(activity.place_id);
+                            return { ...activity, photo_reference };
+                        }
+                        return activity;
+                    })
+                );
+
                 return {
-                    activities: cachedResult.activities.slice(0, 4),
+                    activities: activitiesWithFreshPhotos,
                     category: category
                 };
             }

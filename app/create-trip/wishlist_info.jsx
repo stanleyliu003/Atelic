@@ -20,8 +20,8 @@ export default function WishlistInfo() {
     useEffect(() => {
         if (activities && activities.length > 0) {
             const allActivityIds = activities
-                .filter(activity => activity.place_id)
-                .map(activity => activity.place_id);
+                .filter(activity => activity.instanceId || activity.place_id)
+                .map(activity => activity.instanceId || activity.place_id);
             setSelectedActivities(allActivityIds);
         }
     }, [activities]);
@@ -124,17 +124,35 @@ export default function WishlistInfo() {
     // Handle create trip button press
     const handleCreateTrip = () => {
         setLoading(true);
+
         // Filter activities to only include selected ones
-        const selectedActivitiesList = activities.filter(activity => 
-            activity.place_id && selectedActivities.includes(activity.place_id)
-        );
-        
+        const selectedActivitiesList = activities.filter(activity => {
+            const activityId = activity.instanceId || activity.place_id;
+            return activityId && selectedActivities.includes(activityId);
+        });
+
+        // Get IDs of deselected activities to remove from context
+        const deselectedActivities = activities.filter(activity => {
+            const activityId = activity.instanceId || activity.place_id;
+            return activityId && !selectedActivities.includes(activityId);
+        });
+
+        // Get instanceIds or place_ids for removal
+        const deselectedIds = deselectedActivities
+            .map(activity => activity.instanceId || activity.place_id)
+            .filter(Boolean);
+
+        // Remove deselected activities from context first
+        if (deselectedIds.length > 0) {
+            removeActivities(deselectedIds);
+        }
+
         // Update the context with only selected activities
         updateActivities(selectedActivitiesList);
-        
+
         // Simulate async navigation for better UX (remove if not needed)
         setTimeout(() => {
-        router.push('/trip-view/trip-view_main');
+            router.push('/trip-view/trip-view_main');
             setLoading(false);
         }, 500);
     };
