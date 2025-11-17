@@ -42,7 +42,6 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
     const fetchFreshPhotoReference = async (placeId: string) => {
         try {
             setIsRefreshing(true);
-            console.log(`[ActivityImage] Fetching fresh photo_reference for place_id: ${placeId}`);
 
             // Call Google Places API directly to get fresh photo_reference (FREE - ID Only SKU)
             // This is the same approach used in getLocationCoordinates Lambda
@@ -53,7 +52,6 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
 
             if (data.status === 'OK' && data.result?.photos?.[0]) {
                 const freshPhotoRef = data.result.photos[0].photo_reference;
-                console.log(`[ActivityImage] Successfully fetched fresh photo_reference for place_id: ${placeId}`);
                 setCurrentPhotoRef(freshPhotoRef);
                 setImageError(false);
 
@@ -66,7 +64,6 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
                 setImageError(true);
             }
         } catch (error) {
-            console.error(`[ActivityImage] Error fetching fresh photo_reference for place_id ${placeId}:`, error);
             setImageError(true);
         } finally {
             setIsRefreshing(false);
@@ -76,7 +73,6 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
 
     // Handle image load error
     const handleImageError = () => {
-        console.log(`[ActivityImage] Image failed to load, photo_reference may be expired`);
 
         // If we have a place_id and haven't already attempted refresh, try to get a fresh photo
         if (place_id && !hasAttemptedRefresh && !isRefreshing) {
