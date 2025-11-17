@@ -10,6 +10,7 @@ import { useCallback } from 'react';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { listUserTripsFromCloud, retrieveTripFromCloud, deleteUserAccountFromCloud } from '../../src/services/lambdaService';
 import { deleteTrip } from '../../src/graphql/customMutations';
+import { removeCollaborator } from '../../src/graphql/mutations';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import Carousel from 'react-native-reanimated-carousel';
 import { TripCarouselImage } from '../../src/components/profile/TripCarouselImage';
@@ -37,6 +38,7 @@ export default function Profile() {
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
   const [deleteAccountChecked, setDeleteAccountChecked] = useState(false);
+  const [leavingTripId, setLeavingTripId] = useState(null);
 
   // PanResponder for swipe down to close settings modal
   const settingsPanResponder = PanResponder.create({
@@ -280,6 +282,71 @@ export default function Profile() {
       console.error('[Profile] Error getting user info:', error);
       Alert.alert('Error', 'Failed to get user information');
     }
+  };
+
+  const handleLeaveTrip = (tripId) => {
+    const currentTrip = userTrips.find(trip => trip.tripId === tripId);
+
+    Alert.alert(
+      'Leave Trip',
+      currentTrip?.selectedCity
+        ? `Are you sure you want to leave the trip "${currentTrip.selectedCity}"? You will no longer have access to this trip.`
+        : 'Are you sure you want to leave this trip? You will no longer have access to it.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLeavingTripId(tripId);
+              console.log('[Profile] Leaving trip:', { tripId, currentUserID, username });
+
+              // Fetch full trip data to get the collaborator entry for the current user
+              const fullTripData = await retrieveTripFromCloud(currentUserID, tripId);
+              const collaborators = fullTripData?.collaborators || [];
+
+              const currentCollaborator = collaborators.find(
+                (c) => c.userID === currentUserID
+              );
+
+              const collaboratorUsername =
+                currentCollaborator?.username || username;
+
+              if (!collaboratorUsername) {
+                console.warn('[Profile] No collaborator username found for current user when leaving trip');
+                Alert.alert('Error', 'Unable to determine your collaborator entry for this trip.');
+                setLeavingTripId(null);
+                return;
+              }
+
+              const result = await API.graphql({
+                query: removeCollaborator,
+                variables: {
+                  tripId,
+                  username: collaboratorUsername,
+                },
+              });
+
+              console.log('[Profile] Leave trip result:', result);
+
+              // Refresh trips from backend so UI updates automatically
+              if (currentUserID) {
+                await loadUserTrips(currentUserID);
+              }
+            } catch (error) {
+              console.error('[Profile] Error leaving trip:', error);
+              Alert.alert('Error', 'Failed to leave trip. Please try again.');
+            } finally {
+              setLeavingTripId(null);
+            }
+          }
+        }
+      ]
+    );
   };
 
   // Handle invite collaborators button press
@@ -906,7 +973,7 @@ export default function Profile() {
 
             {/* Menu Content */}
             <View style={styles.modalContent}>
-              {/* Invite Collaborators */}
+              {/* Invite Collaborators / Share Trip */}
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
@@ -926,6 +993,36 @@ export default function Profile() {
                   </>
                 )}
               </TouchableOpacity>
+
+              {/* Leave Trip - only for editors and viewers */}
+              {(() => {
+                const currentTrip = userTrips.find(trip => trip.tripId === menuVisible);
+                const canLeave = currentTrip && currentTrip.userRole && currentTrip.userRole !== 'owner';
+                if (!canLeave) return null;
+
+                return (
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      setMenuVisible(null);
+                      handleLeaveTrip(currentTrip.tripId);
+                    }}
+                    disabled={leavingTripId === currentTrip.tripId}
+                  >
+                    {leavingTripId === currentTrip.tripId ? (
+                      <>
+                        <ActivityIndicator size="small" color="#FF4444" />
+                        <Text style={[styles.menuItemText, { color: '#FF4444' }]}>Leaving...</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons name="log-out-outline" size={30} color="#FF4444" />
+                        <Text style={[styles.menuItemText, { color: '#FF4444' }]}>Leave Trip</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                );
+              })()}
 
               {/* Delete Trip - only show for owners */}
               {(() => {

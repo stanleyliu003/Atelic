@@ -231,14 +231,7 @@ async function handleRemoveCollaborator(trip, args, requesterId, requesterRole, 
   console.log('Requester Role:', requesterRole);
   console.log('Target Username:', username);
 
-  // Validate permissions
-  if (!canPerformAction(requesterRole, null, 'remove')) {
-    console.log('❌ Permission denied - requester role:', requesterRole);
-    throw new Error('Permission denied: Only trip owners can remove collaborators');
-  }
-  console.log('✅ Permission check passed');
-
-  // Cannot remove the owner
+  // Find the target collaborator by username
   const targetCollaborator = trip.collaborators.find(c => c.username === username);
   if (!targetCollaborator) {
     console.log('❌ User not found in collaborators');
@@ -246,6 +239,18 @@ async function handleRemoveCollaborator(trip, args, requesterId, requesterRole, 
   }
 
   console.log('Target Collaborator:', targetCollaborator);
+
+  // Determine if this is a self-removal ("Leave Trip") action
+  const isSelfRemoval = requesterId && targetCollaborator.userID === requesterId;
+
+  // Validate permissions
+  // - Owners can remove any non-owner collaborator
+  // - Editors/Viewers can remove themselves (leave trip)
+  if (!isSelfRemoval && !canPerformAction(requesterRole, null, 'remove')) {
+    console.log('Permission denied - requester role:', requesterRole, 'target (selfRemoval):', isSelfRemoval);
+    throw new Error('Permission denied: Only trip owners can remove other collaborators');
+  }
+  console.log('Permission check passed');
 
   if (targetCollaborator.role === 'owner') {
     console.log('❌ Cannot remove owner');

@@ -73,7 +73,6 @@ export function TripCarouselImage({
           onPhotoRefUpdate(freshPhotoRef);
         }
       } else {
-        console.log(`[TripCarouselImage] No photo available for place_id: ${placeId}`);
         setImageError(true);
       }
     } catch (error) {
@@ -87,8 +86,6 @@ export function TripCarouselImage({
 
   // Handle image load error
   const handleImageError = () => {
-    console.log(`[TripCarouselImage] Image failed to load, photo_reference may be expired`);
-
     // If we have a place_id and haven't already attempted refresh, try to get a fresh photo
     if (place_id && !hasAttemptedRefresh && !isRefreshing) {
       fetchFreshPhotoReference(place_id);
