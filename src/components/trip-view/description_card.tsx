@@ -305,8 +305,9 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
 
         {/* Activity Image */}
         <View style={styles.imageContainer}>
-          <ActivityImage 
-            photo_reference={activity.photo_reference || ''} 
+          <ActivityImage
+            photo_reference={activity.photo_reference || ''}
+            place_id={activity.place_id}
             style={styles.activityImage}
           />
         </View>
