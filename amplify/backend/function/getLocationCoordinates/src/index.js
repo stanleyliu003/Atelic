@@ -90,6 +90,39 @@ const generateFindPlaceCacheKey = (locationName, bias) => {
     return key;
 };
 
+// Helper function to get ONLY photo_reference using ID Only SKU (FREE)
+const getFreshPhotoReference = async (placeId) => {
+    if (!placeId) return null;
+
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=photos&key=${apiKey}`;
+
+    return new Promise((resolve) => {
+        const req = https.get(url, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const result = JSON.parse(data);
+                    if (result.status === 'OK' && result.result?.photos?.[0]) {
+                        console.log(`Fresh photo_reference fetched for place_id: ${placeId}`);
+                        resolve(result.result.photos[0].photo_reference);
+                    } else {
+                        console.log(`No photo available for place_id: ${placeId}`);
+                        resolve(null);
+                    }
+                } catch (e) {
+                    console.error(`Error parsing photo reference for place_id ${placeId}:`, e);
+                    resolve(null);
+                }
+            });
+        });
+        req.on('error', (err) => {
+            console.error(`Error fetching photo reference for place_id ${placeId}:`, err);
+            resolve(null);
+        });
+    });
+};
+
 // Helper function to get place details (rating, reviews, etc.)
 const getPlaceDetailsByPlaceId = async (placeId) => {
     // Check cache first
@@ -107,14 +140,9 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
             res.on('end', async () => {
                 try {
                     const result = JSON.parse(data);
-                    let photo_reference = null;
                     let placeDetails = null;
-                    
+
                     if (result.status === 'OK' && result.result) {
-                        if (result.result.photos && result.result.photos.length > 0) {
-                            photo_reference = result.result.photos[0].photo_reference;
-                        }
-                        
                         // Process opening hours
                         const processOpeningHours = (openingHoursData) => {
                             if (!openingHoursData) return null;
@@ -124,7 +152,7 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                                 weekday_text: openingHoursData.weekday_text || []
                             };
                         };
-                        
+
                         // Process reviews (limit to first 5 for performance)
                         const processReviews = (reviewsData) => {
                             if (!reviewsData || !Array.isArray(reviewsData)) return [];
@@ -137,78 +165,74 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                                 profile_photo_url: review.profile_photo_url || null
                             }));
                         };
-                        
-                        
+
+
                         placeDetails = {
                             // Basic fields
                             display_name: result.result.name || null,
                             formatted_address: result.result.formatted_address || null,
                             types: result.result.types || [], // Keep full types array for backward compatibility
-                            primaryType: result.result.types && result.result.types.length > 0 
+                            primaryType: result.result.types && result.result.types.length > 0
                                 ? result.result.types[0]
                                 : null,
                             rating: result.result.rating || null,
                             user_ratings_total: result.result.user_ratings_total || null,
                             website_uri: result.result.website || null,
-                            
-                            // Legacy photo_reference for backward compatibility
-                            photo_reference: photo_reference,
-                            
+
+                            // NOTE: photo_reference is NO LONGER CACHED per Google's API guidelines
+                            // It will be fetched fresh on each request using getFreshPhotoReference()
+
                             // Opening hours data
                             regular_opening_hours: processOpeningHours(result.result.opening_hours),
-                            
+
                             // Reviews and summaries
                             reviews: processReviews(result.result.reviews),
                             editorial_summary: result.result.editorial_summary?.overview || null,
-                            
+
                             // Primary type display name (derived from primary type)
-                            primary_type_display_name: result.result.types && result.result.types.length > 0 
+                            primary_type_display_name: result.result.types && result.result.types.length > 0
                                 ? result.result.types[0].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
                                 : null,
-                            
+
                             // International phone number
                             international_phone_number: result.result.international_phone_number || null
                         };
-                        
-                        // Cache the successful result
+
+                        // Cache the successful result (WITHOUT photo_reference)
                         await setCachedData('placedetails', placeId, placeDetails, PLACEDETAILS_TTL);
-                        
+
                         resolve(placeDetails);
                     } else {
                         console.warn(`Could not get details for place_id "${placeId}". Status: ${result.status}`);
-                        const fallbackDetails = { 
+                        const fallbackDetails = {
                             display_name: null,
                             formatted_address: null,
-                            types: [], 
-                            primaryType: null, 
-                            rating: null, 
-                            user_ratings_total: null, 
+                            types: [],
+                            primaryType: null,
+                            rating: null,
+                            user_ratings_total: null,
                             website_uri: null,
-                            photo_reference: null,
                             regular_opening_hours: null,
                             reviews: [],
                             editorial_summary: null,
                             primary_type_display_name: null,
                             international_phone_number: null
                         };
-                        
+
                         // Don't cache failed results, just return fallback
                         resolve(fallbackDetails);
                     }
                 } catch (e) {
                     console.error(`Error parsing place details JSON for place_id "${placeId}":`, e);
-                    const fallbackDetails = { 
+                    const fallbackDetails = {
                         display_name: null,
                         formatted_address: null,
-                        types: [], 
-                        primaryType: null, 
-                        rating: null, 
-                        user_ratings_total: null, 
+                        types: [],
+                        primaryType: null,
+                        rating: null,
+                        user_ratings_total: null,
                         website_uri: null,
-                        photo_reference: null,
-                        photos: [],
                         regular_opening_hours: null,
-                        regular_secondary_opening_hours: null,
                         reviews: [],
                         editorial_summary: null,
                         primary_type_display_name: null,
@@ -220,18 +244,15 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
         });
         req.on('error', (err) => {
             console.error(`[getPlaceDetailsByPlaceId] HTTPS request error for place_id ${placeId}:`, err);
-            const fallbackDetails = { 
+            const fallbackDetails = {
                 display_name: null,
                 formatted_address: null,
-                types: [], 
-                primaryType: null, 
-                rating: null, 
-                user_ratings_total: null, 
+                types: [],
+                primaryType: null,
+                rating: null,
+                user_ratings_total: null,
                 website_uri: null,
-                photo_reference: null,
-                photos: [],
                 regular_opening_hours: null,
-                regular_secondary_opening_hours: null,
                 reviews: [],
                 editorial_summary: null,
                 primary_type_display_name: null,
@@ -255,24 +276,30 @@ const getLocationInfo = async (locationName, bias) => {
             const cachedPlaceDetails = await getCachedData('placedetails', cachedFindPlaceData.place_id);
             if (cachedPlaceDetails) {
                 // Both FindPlace and PlaceDetails are cached
+                // Fetch fresh photo_reference (FREE - ID Only SKU)
+                const photo_reference = await getFreshPhotoReference(cachedFindPlaceData.place_id);
                 return {
                     name: locationName,
                     foundName: cachedFindPlaceData.name,
                     place_id: cachedFindPlaceData.place_id,
                     lat: cachedFindPlaceData.lat,
                     lng: cachedFindPlaceData.lng,
-                    ...cachedPlaceDetails
+                    ...cachedPlaceDetails,
+                    photo_reference: photo_reference
                 };
             } else {
                 // FindPlace is cached but PlaceDetails is not, fetch PlaceDetails only
                 const details = await getPlaceDetailsByPlaceId(cachedFindPlaceData.place_id);
+                // Fetch fresh photo_reference (FREE - ID Only SKU)
+                const photo_reference = await getFreshPhotoReference(cachedFindPlaceData.place_id);
                 return {
                     name: locationName,
                     foundName: cachedFindPlaceData.name,
                     place_id: cachedFindPlaceData.place_id,
                     lat: cachedFindPlaceData.lat,
                     lng: cachedFindPlaceData.lng,
-                    ...details
+                    ...details,
+                    photo_reference: photo_reference
                 };
             }
         } else {
@@ -327,33 +354,36 @@ const getLocationInfo = async (locationName, bias) => {
                             lng: candidate.geometry.location.lng
                         };
                         await setCachedData('findplace', findPlaceCacheKey, findPlaceResult, FINDPLACE_TTL);
-                        
+
                         // Get additional details if we have a place_id
-                        let details = { 
+                        let details = {
                             display_name: candidate.name,
                             formatted_address: null,
-                            types: [], 
-                            primaryType: null, 
-                            rating: null, 
-                            user_ratings_total: null, 
+                            types: [],
+                            primaryType: null,
+                            rating: null,
+                            user_ratings_total: null,
                             website_uri: null,
-                            photo_reference: null,
                             regular_opening_hours: null,
                             reviews: [],
                             editorial_summary: null,
                             primary_type_display_name: null,
                             international_phone_number: null
                         };
+                        let photo_reference = null;
                         if (candidate.place_id) {
                             details = await getPlaceDetailsByPlaceId(candidate.place_id);
+                            // Fetch fresh photo_reference (FREE - ID Only SKU)
+                            photo_reference = await getFreshPhotoReference(candidate.place_id);
                         }
-                        
+
                         resolve({
                             name: locationName, // Return original name for matching
                             foundName: candidate.name, // Return what Google found
                             place_id: candidate.place_id,
                             ...candidate.geometry.location,
-                            ...details
+                            ...details,
+                            photo_reference: photo_reference
                         });
 
                     } else {

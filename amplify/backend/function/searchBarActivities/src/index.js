@@ -11,6 +11,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
+const https = require('https');
 
 // Initialize clients
 const ddbClient = new DynamoDBClient({ region: process.env.REGION });
@@ -20,6 +21,40 @@ const tableName = process.env.STORAGE_PLACESAPIACTIVITYSTORAGE_NAME;
 
 // Cache TTL constants (in seconds)
 const SEARCH_ACTIVITIES_TTL = 365 * 24 * 60 * 60; // 1 year (31,536,000 seconds)
+
+// Helper function to get ONLY photo_reference using ID Only SKU (FREE)
+const getFreshPhotoReference = async (placeId) => {
+    if (!placeId) return null;
+
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=photos&key=${apiKey}`;
+
+    return new Promise((resolve) => {
+        const req = https.get(url, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const result = JSON.parse(data);
+                    if (result.status === 'OK' && result.result?.photos?.[0]) {
+                        console.log(`Fresh photo_reference fetched for place_id: ${placeId}`);
+                        resolve(result.result.photos[0].photo_reference);
+                    } else {
+                        console.log(`No photo available for place_id: ${placeId}`);
+                        resolve(null);
+                    }
+                } catch (e) {
+                    console.error(`Error parsing photo reference for place_id ${placeId}:`, e);
+                    resolve(null);
+                }
+            });
+        });
+        req.on('error', (err) => {
+            console.error(`Error fetching photo reference for place_id ${placeId}:`, err);
+            resolve(null);
+        });
+    });
+};
 
 // Address detection regex - detects if query looks like a street address
 const ADDRESS_REGEX = /\d+[A-Z]?[-#]?\s+[\w\s]+(?:street|st|avenue|ave|road|rd|drive|dr|boulevard|blvd|lane|ln|way|place|pl|court|ct|circle|cir|parkway|pkwy|terrace|ter|alley|plaza|square|sq|highway|hwy|route|rt|row|crescent|cres)/i;
@@ -214,19 +249,24 @@ async function handleAddressQuery(searchQuery, selectedCity, existingActivityNam
             };
         }
 
-        // Check place_id-based activity cache and update if new
+        // Check place_id-based activity cache and update if new (WITHOUT photo_reference per Google guidelines)
         if (activity.place_id) {
-            await setCachedData('activity', activity.place_id, activity, SEARCH_ACTIVITIES_TTL);
+            const activityToCache = { ...activity };
+            delete activityToCache.photo_reference; // Don't cache photo_reference
+            await setCachedData('activity', activity.place_id, activityToCache, SEARCH_ACTIVITIES_TTL);
         }
 
         // Apply deduplication against activities passed from UI
         // UI controls what to deduplicate: empty [] for first search, [searchResults] for "Generate More"
         const deduplicatedActivities = deduplicateActivities([activity], existingActivityNames, existingActivityPlaceIds);
 
-        // Cache the result only for initial requests
+        // Cache the result only for initial requests (WITHOUT photo_reference per Google guidelines)
         if (existingActivityNames.length === 0 && existingActivityPlaceIds.length === 0) {
+            const activityToCache = { ...activity };
+            delete activityToCache.photo_reference; // Don't cache photo_reference
+
             await setCachedData('activities', cacheKey, {
-                activities: [activity],
+                activities: [activityToCache],
                 query: searchQuery,
                 timestamp: new Date().toISOString()
             }, SEARCH_ACTIVITIES_TTL);
@@ -406,14 +446,17 @@ async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActiv
                 primary_type_display_name: coordData ? coordData.primary_type_display_name : null,
                 international_phone_number: coordData ? coordData.international_phone_number : null,
             };
-            
-            // Cache the new activity by place_id for future reuse
+
+            // Cache the new activity by place_id for future reuse (WITHOUT photo_reference per Google guidelines)
             if (activity.place_id) {
-                setCachedData('activity', activity.place_id, activity, SEARCH_ACTIVITIES_TTL).catch(err => {
+                const activityToCache = { ...activity };
+                delete activityToCache.photo_reference; // Don't cache photo_reference
+
+                setCachedData('activity', activity.place_id, activityToCache, SEARCH_ACTIVITIES_TTL).catch(err => {
                     console.warn(`Failed to cache activity for place_id ${activity.place_id}:`, err);
                 });
             }
-            
+
             return activity;
         }).filter(activity => {
             // Filter out activities without place_id to prevent empty cards
@@ -431,10 +474,16 @@ async function handleGeneralSearchQuery(searchQuery, selectedCity, existingActiv
         // Also deduplicate identical place_ids within the current results (prevents same place appearing twice)
         deduplicatedActivities = deduplicateByPlaceId(deduplicatedActivities);
 
-        // Cache the result only for initial requests
+        // Cache the result only for initial requests (WITHOUT photo_reference per Google guidelines)
         if (existingActivityNames.length === 0 && existingActivityPlaceIds.length === 0) {
+            const activitiesToCache = deduplicatedActivities.map(activity => {
+                const activityCopy = { ...activity };
+                delete activityCopy.photo_reference; // Don't cache photo_reference
+                return activityCopy;
+            });
+
             await setCachedData('activities', cacheKey, {
-                activities: deduplicatedActivities,
+                activities: activitiesToCache,
                 query: searchQuery,
                 timestamp: new Date().toISOString()
             }, SEARCH_ACTIVITIES_TTL);
