@@ -128,8 +128,13 @@ export const CreateTripProvider = ({ children }) => {
     };
 
     // Helper function to collect up to 5 unique photo references from activities
+    // Returns array of strings for GraphQL compatibility.
+    // Each string is either:
+    //   - a raw photo_reference (legacy data), or
+    //   - a JSON string: {"photo_reference":"...","place_id":"..."}
     const getTripPhotoReferences = () => {
         const photoRefs = [];
+        const seenPhotoRefs = new Set(); // Track seen photo_references to avoid duplicates
 
         // Strategy: Collect photos from activities across all days + wishlist
         // Priority: Day 1 → Day 2 → Day 3 → ... → Wishlist activities
@@ -142,9 +147,14 @@ export const CreateTripProvider = ({ children }) => {
             if (dayData?.activities && Array.isArray(dayData.activities)) {
                 for (const activity of dayData.activities) {
                     if (activity.photo_reference && photoRefs.length < 5) {
-                        // Avoid duplicates
-                        if (!photoRefs.includes(activity.photo_reference)) {
-                            photoRefs.push(activity.photo_reference);
+                        // Avoid duplicates based on the raw photo_reference string
+                        if (!seenPhotoRefs.has(activity.photo_reference)) {
+                            const payload = {
+                                photo_reference: activity.photo_reference,
+                                place_id: activity.place_id || null
+                            };
+                            photoRefs.push(JSON.stringify(payload));
+                            seenPhotoRefs.add(activity.photo_reference);
                         }
                     }
                 }
@@ -155,14 +165,19 @@ export const CreateTripProvider = ({ children }) => {
         if (photoRefs.length < 5 && activities && Array.isArray(activities)) {
             for (const activity of activities) {
                 if (activity.photo_reference && photoRefs.length < 5) {
-                    if (!photoRefs.includes(activity.photo_reference)) {
-                        photoRefs.push(activity.photo_reference);
+                    if (!seenPhotoRefs.has(activity.photo_reference)) {
+                        const payload = {
+                            photo_reference: activity.photo_reference,
+                            place_id: activity.place_id || null
+                        };
+                        photoRefs.push(JSON.stringify(payload));
+                        seenPhotoRefs.add(activity.photo_reference);
                     }
                 }
             }
         }
 
-        // Return array of up to 5 unique photo references
+        // Return array of up to 5 unique photo reference strings
         return photoRefs.slice(0, 5);
     };
 

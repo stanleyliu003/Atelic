@@ -1099,7 +1099,9 @@ export default function TripViewMain() {
                 wishlist,
                 tripLength: days.length, // Use tripLength state variable, fallback to days.length
                 selectedCity: latestSelectedCity,
-                tripPhotoReference: latestTripPhotoReference || '',
+                tripPhotoReference: Array.isArray(latestTripPhotoReference)
+                    ? latestTripPhotoReference
+                    : (latestTripPhotoReference ? [String(latestTripPhotoReference)] : []),
                 createdAt: tripCreatedAt,
                 startDate: startDate || null,
                 endDate: endDate || null,

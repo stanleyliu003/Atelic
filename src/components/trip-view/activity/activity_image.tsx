@@ -60,7 +60,6 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
                     onPhotoRefUpdate(freshPhotoRef);
                 }
             } else {
-                console.log(`[ActivityImage] No photo available for place_id: ${placeId}`);
                 setImageError(true);
             }
         } catch (error) {
@@ -73,6 +72,7 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
 
     // Handle image load error
     const handleImageError = () => {
+        console.log(`[ActivityImage] Image failed to load, photo_reference may be expired`);
 
         // If we have a place_id and haven't already attempted refresh, try to get a fresh photo
         if (place_id && !hasAttemptedRefresh && !isRefreshing) {

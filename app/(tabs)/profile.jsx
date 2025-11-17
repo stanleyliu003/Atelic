@@ -2,7 +2,7 @@ import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Image, StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking, PanResponder } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking, PanResponder } from 'react-native';
 import { Auth, API } from 'aws-amplify';
 import { useEffect, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
@@ -12,7 +12,7 @@ import { listUserTripsFromCloud, retrieveTripFromCloud, deleteUserAccountFromClo
 import { deleteTrip } from '../../src/graphql/customMutations';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import Carousel from 'react-native-reanimated-carousel';
-import { GOOGLE_PLACES_API_KEY } from '../../src/constants/api';
+import { TripCarouselImage } from '../../src/components/profile/TripCarouselImage';
 
 export default function Profile() {
   const { restoreTripFromObject, setSelectedCity } = useCreateTrip();
@@ -102,11 +102,12 @@ export default function Profile() {
       const tripSummaries = await listUserTripsFromCloud(userID);
       const allTrips = tripSummaries || [];
 
-      // Normalize tripPhotoReference to always be an array
+      // Normalize tripPhotoReference to an array of photo objects
+      // Each entry will be of shape: { photo_reference: string | null, place_id: string | null }
       const normalizedTrips = allTrips.map(trip => {
         let photoRef = trip.tripPhotoReference;
 
-        // If it's a stringified array, parse it
+        // If it's a stringified array, parse it into an array first
         if (typeof photoRef === 'string') {
           // Remove double brackets if present [[...]] -> [...]
           if (photoRef.startsWith('[[') && photoRef.endsWith(']]')) {
@@ -136,9 +137,48 @@ export default function Profile() {
           photoRef = photoRef ? [photoRef] : [];
         }
 
+        // At this point, photoRef should be an array (strings and/or objects).
+        // Convert each entry into a normalized object with photo_reference + place_id.
+        const photoObjects = (photoRef || []).map(ref => {
+          if (!ref) return null;
+
+          // Already an object – normalize keys
+          if (typeof ref === 'object') {
+            return {
+              photo_reference: ref.photo_reference || ref.photoRef || null,
+              place_id: ref.place_id || null,
+            };
+          }
+
+          if (typeof ref === 'string') {
+            const trimmed = ref.trim();
+
+            // If this is a JSON string, parse and normalize
+            if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+              try {
+                const parsed = JSON.parse(trimmed);
+                return {
+                  photo_reference: parsed.photo_reference || parsed.photoRef || null,
+                  place_id: parsed.place_id || null,
+                };
+              } catch (e) {
+                // Fall through to plain string handling
+              }
+            }
+
+            // Plain string: treat as bare photo_reference with no place_id
+            return {
+              photo_reference: trimmed || null,
+              place_id: null,
+            };
+          }
+
+          return null;
+        }).filter(Boolean);
+
         return {
           ...trip,
-          tripPhotoReference: photoRef
+          tripPhotoReference: photoObjects,
         };
       });
 
@@ -285,10 +325,6 @@ export default function Profile() {
     );
   };
 
-  const getImageUrl = (photoReference) => {
-    return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=350&photoreference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`;
-  };
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setCarouselIndices({});
@@ -409,6 +445,53 @@ export default function Profile() {
     }
   };
 
+  // Update in-memory trip photo references when a carousel image fetches a fresh
+  // photo_reference or determines that a photo is unusable.
+  // - If newPhotoRef is a non-empty string, we update that slide's photo_reference.
+  // - If newPhotoRef is null, we remove that slide entirely.
+  const handleTripCarouselPhotoUpdate = (tripId, photoIndex, newPhotoRef) => {
+    const updatePhotos = (trips) =>
+      trips.map(trip => {
+        if (trip.tripId !== tripId || !Array.isArray(trip.tripPhotoReference)) {
+          return trip;
+        }
+
+        let updatedPhotos;
+
+        if (newPhotoRef === null) {
+          // Remove this photo from the trip's carousel
+          updatedPhotos = trip.tripPhotoReference.filter((_, idx) => idx !== photoIndex);
+        } else {
+          // Refresh this photo_reference in place
+          updatedPhotos = trip.tripPhotoReference.map((ref, idx) => {
+            if (idx !== photoIndex || !ref) return ref;
+
+            if (typeof ref === 'object') {
+              return {
+                ...ref,
+                photo_reference: newPhotoRef,
+              };
+            }
+
+            // Fallback – normalize to object shape
+            return {
+              photo_reference: newPhotoRef,
+              place_id: null,
+            };
+          });
+        }
+
+        return {
+          ...trip,
+          tripPhotoReference: updatedPhotos,
+        };
+      });
+
+    setUserTrips(prev => updatePhotos(prev));
+    setOwnedTrips(prev => updatePhotos(prev));
+    setSharedTrips(prev => updatePhotos(prev));
+  };
+
   return (
     <View style={styles.container}>
       {/* Profile Header */}
@@ -503,11 +586,14 @@ export default function Profile() {
                           onSnapToItem={(index) =>
                             setCarouselIndices(prev => ({ ...prev, [trip.tripId]: index }))
                           }
-                          renderItem={({ item }) => (
-                            <Image
-                              source={{ uri: getImageUrl(item) }}
+                          renderItem={({ item, index }) => (
+                            <TripCarouselImage
+                              photo_reference={item?.photo_reference}
+                              place_id={item?.place_id}
                               style={styles.tripCardImage}
-                              resizeMode="cover"
+                              onPhotoRefUpdate={(newRef) =>
+                                handleTripCarouselPhotoUpdate(trip.tripId, index, newRef)
+                              }
                             />
                           )}
                         />
@@ -656,11 +742,14 @@ export default function Profile() {
                           onSnapToItem={(index) =>
                             setCarouselIndices(prev => ({ ...prev, [`shared-${trip.tripId}`]: index }))
                           }
-                          renderItem={({ item }) => (
-                            <Image
-                              source={{ uri: getImageUrl(item) }}
+                          renderItem={({ item, index }) => (
+                            <TripCarouselImage
+                              photo_reference={item?.photo_reference}
+                              place_id={item?.place_id}
                               style={styles.tripCardImage}
-                              resizeMode="cover"
+                              onPhotoRefUpdate={(newRef) =>
+                                handleTripCarouselPhotoUpdate(trip.tripId, index, newRef)
+                              }
                             />
                           )}
                         />
