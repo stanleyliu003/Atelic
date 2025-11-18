@@ -186,12 +186,8 @@ export default function WishlistInfo() {
           {/* All activities grouped by city */}
           {activities && activities.length > 0 && (
             <>
-              {/* Recommended Activities */}
               {(() => {
-                const recommendedActivities = activities.filter(a => a.is_recommended);
-                if (recommendedActivities.length === 0) return null;
-
-                const recommendedByCity = recommendedActivities.reduce((acc, activity) => {
+                const activitiesByCity = activities.reduce((acc, activity) => {
                   const city = activity.city || 'Unknown City';
                   if (!acc[city]) acc[city] = [];
                   acc[city].push(activity);
@@ -201,8 +197,8 @@ export default function WishlistInfo() {
                 return (
                   <>
                     <Text style={styles.recommendedTitle}>Activities</Text>
-                    {Object.entries(recommendedByCity).map(([city, cityActivities]) => (
-                      <View key={`recommended-${city}`} style={styles.citySection}>
+                    {Object.entries(activitiesByCity).map(([city, cityActivities]) => (
+                      <View key={`activities-${city}`} style={styles.citySection}>
                         <Text style={styles.cityTitle}>{city}</Text>
                         <WishlistActivities
                             activities={cityActivities}
@@ -213,40 +209,7 @@ export default function WishlistInfo() {
                             showSelectionIndicator={true}
                             scrollable={false}
                         />
-                      </View>
-                    ))}
-                  </>
-                );
-              })()}
-
-              {/* User Added Activities */}
-              {(() => {
-                const userAddedActivities = activities.filter(a => !a.is_recommended);
-                if (userAddedActivities.length === 0) return null;
-
-                const userAddedByCity = userAddedActivities.reduce((acc, activity) => {
-                  const city = activity.city || 'Unknown City';
-                  if (!acc[city]) acc[city] = [];
-                  acc[city].push(activity);
-                  return acc;
-                }, {});
-
-                return (
-                  <>
-                    <Text style={styles.userAddedTitle}>Your Added Activities</Text>
-                    {Object.entries(userAddedByCity).map(([city, cityActivities]) => (
-                      <View key={`user-added-${city}`} style={styles.citySection}>
-                        <Text style={styles.cityTitle}>{city}</Text>
-                        <WishlistActivities
-                            activities={cityActivities}
-                            selectedActivities={selectedActivities}
-                            onActivitySelect={handleActivitySelect}
-                            onActivityDeselect={handleActivityDeselect}
-                            onDescriptionCardPress={handleActivityDescriptionCardSelect}
-                            showSelectionIndicator={true}
-                            scrollable={false}
-                        />
-                      </View>
+                      </View>                      
                     ))}
                   </>
                 );

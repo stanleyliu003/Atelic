@@ -20,10 +20,10 @@
       "Type": "String",
       "Default": "functiongetLocationCoordinatesName"
     },
-    "geminiApiKey": {
+    "googlePlacesApiKey": {
       "Type": "String"
     },
-    "googlePlacesApiKey": {
+    "geminiApiKey": {
       "Type": "String"
     }
   },
@@ -83,11 +83,11 @@
             "FUNCTION_GETLOCATIONCOORDINATES_NAME": {
               "Ref": "functiongetLocationCoordinatesName"
             },
-            "GEMINI_API_KEY": {
-              "Ref": "geminiApiKey"
-            },
             "GOOGLE_PLACES_API_KEY": {
               "Ref": "googlePlacesApiKey"
+            },
+            "GEMINI_API_KEY": {
+              "Ref": "geminiApiKey"
             }
           }
         },
