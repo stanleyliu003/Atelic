@@ -1281,13 +1281,13 @@ export default function TripViewMain() {
             return;
         }
 
-        // Only autosave if we have a tripId
+        // Only enable periodic autosave if we have a tripId
         if (!tripId) {
-            console.log('[trip-view_main] Autosave disabled - no tripId yet');
+            console.log('[trip-view_main] Periodic autosave disabled - no tripId yet');
             return;
         }
 
-        console.log('[trip-view_main] Autosave enabled for tripId:', tripId);
+        console.log('[trip-view_main] Periodic autosave enabled for tripId:', tripId);
 
         // Trigger 1: Periodic autosave every 5 minutes
         autosaveIntervalRef.current = setInterval(() => {
@@ -1323,7 +1323,25 @@ export default function TripViewMain() {
                 });
         }, 300000); // 5 minutes
 
-        // Trigger 2: App going inactive (before background suspension)
+        return () => {
+            // Clean up periodic autosave
+            if (autosaveIntervalRef.current) {
+                clearInterval(autosaveIntervalRef.current);
+            }
+            if (saveDebounceTimeoutRef.current) {
+                clearTimeout(saveDebounceTimeoutRef.current);
+            }
+        };
+    }, [tripId, currentUserRole]); // Don't include isSaving - use refs instead
+
+    // Trigger 2: App going inactive (before background suspension) - ALWAYS enabled, even for new trips
+    useEffect(() => {
+        // Only autosave for owners and editors (viewers can't edit)
+        if (currentUserRole === 'viewer') {
+            console.log('[trip-view_main] Background autosave disabled - user is viewer');
+            return;
+        }
+
         let inactiveSaveTimeout: NodeJS.Timeout | null = null;
         const handleAppStateChange = (nextAppState: string) => {
             console.log('[trip-view_main] AppState changed to:', nextAppState);
@@ -1352,6 +1370,16 @@ export default function TripViewMain() {
                         return;
                     }
 
+                    // Check if there's any trip data worth saving
+                    const hasContent = tripIdRef.current ||
+                                      (latestTripDataRef.current.activities && latestTripDataRef.current.activities.length > 0) ||
+                                      Object.keys(latestTripDataRef.current.dayActivities || {}).length > 0;
+
+                    if (!hasContent) {
+                        console.log('[trip-view_main] Skipping inactive save (no trip content)');
+                        return;
+                    }
+
                     if (timeSinceLastSave < MIN_AUTOSAVE_INTERVAL) {
                         console.log('[trip-view_main] Skipping inactive save (too soon, last save was', timeSinceLastSave, 'ms ago)');
                         return;
@@ -1375,18 +1403,12 @@ export default function TripViewMain() {
 
         return () => {
             // Clean up
-            if (autosaveIntervalRef.current) {
-                clearInterval(autosaveIntervalRef.current);
-            }
-            if (saveDebounceTimeoutRef.current) {
-                clearTimeout(saveDebounceTimeoutRef.current);
-            }
             if (inactiveSaveTimeout) {
                 clearTimeout(inactiveSaveTimeout);
             }
             appStateSubscription?.remove();
         };
-    }, [tripId, currentUserRole]); // Don't include isSaving - use refs instead
+    }, [currentUserRole]); // Only depends on user role, not tripId
 
     // Real-time subscription for trip updates
     useEffect(() => {
