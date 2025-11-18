@@ -17,6 +17,7 @@ interface ActivityDetailViewProps {
   variant?: 'trip' | 'wishlist';
   showDragIndicator?: boolean;
   onDuplicate?: (activity: Activity) => void;
+  onDelete?: (activity: Activity) => void;
 }
 
 const formatNumber = (num: number) => {
@@ -84,7 +85,7 @@ const renderStars = (rating: number) => {
   return stars;
 };
 
-export function ActivityDetailView({ activity, onClose, variant = 'trip', showDragIndicator = true, onDuplicate }: ActivityDetailViewProps) {
+export function ActivityDetailView({ activity, onClose, variant = 'trip', showDragIndicator = true, onDuplicate, onDelete }: ActivityDetailViewProps) {
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
 
@@ -92,6 +93,13 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
     if (onDuplicate) {
       onDuplicate(activity);
       onClose(); // Close the detail view after duplicating
+    }
+  };
+
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete(activity);
+      onClose(); // Close the detail view after deleting
     }
   };
 
@@ -458,15 +466,28 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
         <View style={styles.bottomSpacing} />
       </ScrollView>
 
-      {/* Fixed Duplicate Button at Bottom Right */}
-      {onDuplicate && (
-        <TouchableOpacity
-          style={styles.duplicateButton}
-          onPress={handleDuplicate}
-          activeOpacity={0.7}
-        >
-          <Feather name="copy" size={22} color={Colors.PRIMARY} />
-        </TouchableOpacity>
+      {/* Fixed Action Buttons at Bottom Right */}
+      {(onDuplicate || onDelete) && (
+        <View style={styles.actionButtonContainer}>
+          {onDuplicate && (
+            <TouchableOpacity
+              style={styles.duplicateButton}
+              onPress={handleDuplicate}
+              activeOpacity={0.7}
+            >
+              <Feather name="copy" size={22} color={Colors.PRIMARY} />
+            </TouchableOpacity>
+          )}
+          {onDelete && (
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={handleDelete}
+              activeOpacity={0.7}
+            >
+              <Feather name="trash" size={22} color="red" />
+            </TouchableOpacity>
+          )}
+        </View>
       )}
     </GestureHandlerRootView>
   );
@@ -791,10 +812,30 @@ const styles = StyleSheet.create({
     color: Colors.GRAY,
     textDecorationLine: 'underline',
   },
-  duplicateButton: {
+  actionButtonContainer: {
     position: 'absolute',
     bottom: 0,
     right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  deleteButton: {
+    width: 50,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.WHITE,
+    borderRadius: 33,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  duplicateButton: {
     width: 50,
     height: 50,
     alignItems: 'center',

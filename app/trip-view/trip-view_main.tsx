@@ -472,6 +472,46 @@ export default function TripViewMain() {
         }
     }, [getDayActivities, reorderDayActivities, updateActivities]);
 
+    // Handler for deleting a single activity
+    const handleDeleteActivity = useCallback((activity: Activity, targetDayNumber?: number) => {
+        console.log('[trip-view_main] Deleting activity:', activity.name);
+
+        if (targetDayNumber !== undefined && targetDayNumber !== null) {
+            // Delete from a specific day
+            const currentDayActivities = getDayActivities(targetDayNumber) || [];
+
+            // Filter out the activity (prefer instanceId, fall back to place_id + name)
+            const newOrder = currentDayActivities.filter(a => {
+                if (activity.instanceId && a.instanceId) {
+                    return a.instanceId !== activity.instanceId;
+                }
+                if (activity.place_id && a.place_id) {
+                    return !(a.place_id === activity.place_id && a.name === activity.name);
+                }
+                return true;
+            });
+
+            reorderDayActivities(targetDayNumber, newOrder);
+            console.log('[trip-view_main] Activity deleted from day', targetDayNumber);
+        } else {
+            // Delete from wishlist
+            updateActivities((prev: Activity[]) => {
+                const prevActivities = Array.isArray(prev) ? prev : [];
+
+                return prevActivities.filter(a => {
+                    if (activity.instanceId && a.instanceId) {
+                        return a.instanceId !== activity.instanceId;
+                    }
+                    if (activity.place_id && a.place_id) {
+                        return !(a.place_id === activity.place_id && a.name === activity.name);
+                    }
+                    return true;
+                });
+            });
+            console.log('[trip-view_main] Activity deleted from wishlist');
+        }
+    }, [getDayActivities, reorderDayActivities, updateActivities]);
+
     // Remove local state and handlers for transfer modal and related logic
     // Use the custom hook for all transfer modal and activity transfer logic
     const {
@@ -1589,6 +1629,7 @@ export default function TripViewMain() {
                         onClose={handleCloseActivityDetail}
                         showDragIndicator={false}
                         onDuplicate={(activity) => handleDuplicateActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
+                        onDelete={(activity) => handleDeleteActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
                     />
                 ) : (
                     <>
