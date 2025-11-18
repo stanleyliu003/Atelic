@@ -38,7 +38,7 @@
  * - Solution: Reanimated's scrollTo works during active gesture!
  */
 import React, { useCallback, useState } from 'react';
-import { ScrollView, View, StyleSheet, TouchableOpacity, Text, Linking, findNodeHandle, UIManager } from 'react-native';
+import { ActivityIndicator, ScrollView, View, StyleSheet, TouchableOpacity, Text, Linking, findNodeHandle, UIManager } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -195,6 +195,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   searchQuery?: string; // Search query value
   onSearchQueryChange?: (text: string) => void; // Search query change handler
   onDuplicate?: (activity: Activity, targetDayNumber?: number) => void; // Callback for duplicating an activity
+  isAddingPlaceFromAutocomplete?: boolean; // Show inline loading row below last activity
 }
 
 export function ActivityList({
@@ -223,7 +224,8 @@ export function ActivityList({
   onAddPlace,
   searchQuery = '',
   onSearchQueryChange,
-  onDuplicate
+  onDuplicate,
+  isAddingPlaceFromAutocomplete = false,
 }: EnhancedActivityListProps) {
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
@@ -557,6 +559,14 @@ export function ActivityList({
         >
           {renderActivities()}
           
+          {/* Inline loading indicator when adding a place from AutocompleteModal */}
+          {isAddingPlaceFromAutocomplete && (
+            <View style={styles.autocompleteLoadingContainer}>
+              <ActivityIndicator size="small" color={Colors.PRIMARY} />
+              <Text style={styles.autocompleteLoadingText}>Activity Loading</Text>
+            </View>
+          )}
+
           {/* SearchBar - visible at bottom of list */}
           {onAddPlace && activities.length > 0 && (
             <View style={{ marginTop: 0, paddingHorizontal: 16 }}>
@@ -597,6 +607,14 @@ export function ActivityList({
     <Container {...containerProps}>
       {renderActivities()}
       
+      {/* Inline loading indicator when adding a place from AutocompleteModal */}
+      {isAddingPlaceFromAutocomplete && (
+        <View style={styles.autocompleteLoadingContainer}>
+          <ActivityIndicator size="small" color={Colors.PRIMARY} />
+          <Text style={styles.autocompleteLoadingText}>Activity Loading</Text>
+        </View>
+      )}
+
       {/* SearchBar - visible at bottom of list */}
       {onAddPlace && activities.length > 0 && (
         <View style={{ marginTop: 0, paddingHorizontal: 16 }}>
@@ -1194,5 +1212,18 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit',
     fontSize: 22,
     color: Colors.GRAY,
+  },
+  autocompleteLoadingContainer: {
+    marginTop:  10,
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  autocompleteLoadingText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    marginLeft: 8,
   },
 });

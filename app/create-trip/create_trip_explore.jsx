@@ -271,6 +271,7 @@ export default function create_trip_explore() {
         onFilterToggle={handleFilterToggle}
         onQueryChange={handleSearchQueryChange}
         onSaveActivities={handleSaveSearchResults}
+        showAddingPlaceLoading={false}
       />
 
       <CategoryModal

@@ -102,6 +102,7 @@ export default function TripViewMain() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
     const [showAutocomplete, setShowAutocomplete] = useState(false);
+    const [isAutocompleteAddingPlace, setIsAutocompleteAddingPlace] = useState(false);
     const [isShareModalVisible, setIsShareModalVisible] = useState(false);
     const [currentUserID, setCurrentUserID] = useState<string>('');
 
@@ -1782,9 +1783,22 @@ export default function TripViewMain() {
                                                 </View>
                                             ))}
 
+                                            {/* Loading indicator while activity is being added from AutocompleteModal */}
+                                            {isAutocompleteAddingPlace && (
+                                                <View style={styles.autocompleteLoadingContainer}>
+                                                    <ActivityIndicator size="small" color={Colors.PRIMARY} />
+                                                    <Text style={styles.autocompleteLoadingText}>Activity Loading</Text>
+                                                </View>
+                                            )}
+
                                             {/* SearchBar after all activities - hide for viewers */}
                                             {currentUserRole !== 'viewer' && (
-                                                <View style={{ marginTop: -30, marginBottom: 20 }}>
+                                                <View
+                                                    style={{
+                                                        marginTop: isAutocompleteAddingPlace ? 0 : -30,
+                                                        marginBottom: 30,
+                                                    }}
+                                                >
                                                     <SearchBar
                                                         value={searchQuery}
                                                         onChangeText={handleSearchQueryChange}
@@ -1863,6 +1877,7 @@ export default function TripViewMain() {
                                     onGoToWishlist={() => handleTabChange('wishlist')}
                                     currentUserRole={currentUserRole}
                                     onDuplicate={currentUserRole !== 'viewer' ? handleDuplicateActivity : undefined}
+                                    isAddingPlaceFromAutocomplete={isAutocompleteAddingPlace}
                                 />
                             );
                         })()}
@@ -1903,6 +1918,8 @@ export default function TripViewMain() {
                 onFilterToggle={handleFilterToggle}
                 onQueryChange={handleSearchQueryChange}
                 onSaveActivities={handleSaveSearchResults}
+                showAddingPlaceLoading={false}
+                onAddingPlaceChange={setIsAutocompleteAddingPlace}
             />
 
             {/* CategoryModal for browsing activities by category */}
@@ -2147,5 +2164,18 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#666',
         marginTop: 10,
+    },
+    autocompleteLoadingContainer: {
+        marginTop: 10,
+        marginBottom: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    autocompleteLoadingText: {
+        fontFamily: 'outfit',
+        fontSize: 14,
+        color: '#666',
+        marginLeft: 8,
     },
 });

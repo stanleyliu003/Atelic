@@ -14,7 +14,6 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { Colors } from '../../../constants/Colors';
-import { FilterChips } from './FilterChips';
 import { getSearchAutocomplete, getPlaceDetails } from '../../services/searchService';
 import { useCreateTrip } from '../../../context/CreateTripContext';
 import Feather from '@expo/vector-icons/Feather';
@@ -40,6 +39,8 @@ import Feather from '@expo/vector-icons/Feather';
  * @param {function} onFilterToggle - Callback when a filter is toggled
  * @param {function} onQueryChange - Callback when search query changes in modal
  * @param {function} onSaveActivities - Callback to save selected activity (single activity array)
+ * @param {function} onAddingPlaceChange - Optional callback to notify parent when a place is being added
+ * @param {boolean} showAddingPlaceLoading - Whether to show "Adding place..." loading state when selecting a place
  */
 export const AutocompleteModal = ({
   visible,
@@ -50,6 +51,8 @@ export const AutocompleteModal = ({
   onFilterToggle,
   onQueryChange,
   onSaveActivities,
+  onAddingPlaceChange,
+  showAddingPlaceLoading = true,
 }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -147,7 +150,15 @@ export const AutocompleteModal = ({
   // Handle suggestion selection - NEW: directly add place
   const handleSuggestionSelect = async (suggestion) => {
     try {
-      setAddingPlace(true);
+      if (onAddingPlaceChange) {
+        onAddingPlaceChange(true);
+      }
+      if (showAddingPlaceLoading) {
+        setAddingPlace(true);
+      } else {
+        // For flows like create_trip_explore, close modal immediately on selection
+        handleCloseModal();
+      }
       setError(null);
 
       console.log('[AutocompleteModal] Selected suggestion:', suggestion);
@@ -169,13 +180,20 @@ export const AutocompleteModal = ({
         onSaveActivities([activity], []);
       }
 
-      // Close modal and reset
-      handleCloseModal();
+      // Close modal and reset (for flows where we kept it open)
+      if (showAddingPlaceLoading) {
+        handleCloseModal();
+      }
     } catch (err) {
       console.error('[AutocompleteModal] Error adding place:', err);
       setError('Failed to add place. Please try again.');
     } finally {
-      setAddingPlace(false);
+      if (onAddingPlaceChange) {
+        onAddingPlaceChange(false);
+      }
+      if (showAddingPlaceLoading) {
+        setAddingPlace(false);
+      }
     }
   };
 
@@ -221,8 +239,8 @@ export const AutocompleteModal = ({
                 style={styles.searchInput}
                 value={localQuery}
                 onChangeText={handleQueryChange}
-                placeholder="Search for places..."
-                placeholderTextColor="#999"
+                placeholder="Search here"
+                placeholderTextColor="#5E5E5E"
                 returnKeyType="search"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -240,11 +258,6 @@ export const AutocompleteModal = ({
               )}
             </View>
           </View>
-
-          {/* Filter Chips */}
-          {localQuery.length > 0 && !addingPlace && (
-            <FilterChips selectedFilters={filters} onFilterToggle={onFilterToggle} />
-          )}
 
           {/* Divider */}
           <View style={styles.divider} />
@@ -316,15 +329,6 @@ export const AutocompleteModal = ({
                 <Ionicons name="search-outline" size={48} color="#ccc" />
                 <Text style={styles.emptyText}>No places found</Text>
                 <Text style={styles.emptySubtext}>Try a different search term</Text>
-              </View>
-            )}
-
-            {/* Empty State - Start typing - Only show if no recent searches */}
-            {!addingPlace && !loading && !error && localQuery.length < 2 && recentSearches.length === 0 && (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="location-outline" size={64} color="#ccc" />
-                <Text style={styles.emptyText}>Search for places</Text>
-                <Text style={styles.emptySubtext}>Type at least 2 characters to see suggestions</Text>
               </View>
             )}
 
@@ -415,12 +419,10 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#F2F2F2',
     borderRadius: 12,
     paddingHorizontal: 15,
     paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: Colors.PRIMARY,
   },
   searchIcon: {
     marginRight: 10,
