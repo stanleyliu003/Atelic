@@ -1,14 +1,17 @@
 /* Amplify Params - DO NOT EDIT
 	ENV
 	REGION
-	GEMINI_API_KEY
+	GOOGLE_PLACES_API_KEY
 Amplify Params - DO NOT EDIT */
 
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const https = require('https');
+const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
+
+const lambdaClient = new LambdaClient({ region: process.env.REGION });
 
 /**
- * Lambda function to generate search autocomplete suggestions using Gemini AI
- * Returns 5 autocomplete suggestions based on user query and active filters
+ * Lambda function to generate search autocomplete suggestions using Google Places Autocomplete API
+ * Returns 5 specific place suggestions with name, address_info, and place_id
  */
 exports.handler = async (event) => {
     console.log('searchAutocomplete input:', JSON.stringify(event, null, 2));
@@ -27,46 +30,32 @@ exports.handler = async (event) => {
         }
 
         // Check for API key
-        if (!process.env.GEMINI_API_KEY) {
-            console.error('GEMINI_API_KEY environment variable not set');
-            throw new Error('GEMINI_API_KEY not configured');
+        if (!process.env.GOOGLE_PLACES_API_KEY) {
+            console.error('GOOGLE_PLACES_API_KEY environment variable not set');
+            throw new Error('GOOGLE_PLACES_API_KEY not configured');
         }
 
-        // Initialize Gemini with API key from environment
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+        console.log(`Calling Google Places Autocomplete API for: "${query}" in ${selectedCity} with filters: [${filters.join(', ')}]`);
 
-        // Create prompt for Gemini with filter context
-        const prompt = buildAutocompletePrompt(selectedCity, query, filters);
-        console.log(`Calling Gemini API for autocomplete: "${query}" in ${selectedCity} with filters: [${filters.join(', ')}]`);
+        // Step 1: Get city coordinates for location bias
+        const cityCoordinates = await getCityCoordinates(selectedCity);
 
-        // Call Gemini API using the SDK
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const geminiResponse = response.text();
-
-        console.log(`Raw Gemini response for "${query}": ${geminiResponse}`);
-
-        // Parse the response from Gemini
-        let analysisResult;
-        try {
-            // Extract JSON from response (similar to CityCategories pattern)
-            const jsonString = geminiResponse.match(/{.*}/s)?.[0] || geminiResponse.trim();
-            analysisResult = JSON.parse(jsonString);
-        } catch (parseError) {
-            console.error(`Error parsing Gemini response for "${query}":`, parseError);
-            console.error(`Raw response: ${geminiResponse}`);
-            throw new Error('Failed to parse autocomplete suggestions from AI response.');
+        if (!cityCoordinates || !cityCoordinates.lat || !cityCoordinates.lng) {
+            console.error(`Could not get coordinates for city: ${selectedCity}`);
+            throw new Error(`Unable to determine location for ${selectedCity}`);
         }
 
-        const { suggestions } = analysisResult;
+        console.log(`City coordinates for ${selectedCity}: ${cityCoordinates.lat}, ${cityCoordinates.lng}`);
 
-        if (!suggestions || !Array.isArray(suggestions)) {
-            console.error(`Invalid suggestions structure for "${query}"`);
-            throw new Error('Invalid JSON structure from AI. Missing "suggestions" array.');
-        }
+        // Step 2: Call Google Places Autocomplete API with location bias
+        const suggestions = await getPlacesAutocomplete(
+            query,
+            cityCoordinates.lat,
+            cityCoordinates.lng,
+            filters
+        );
 
-        console.log(`Successfully generated ${suggestions.length} autocomplete suggestions for query: ${query}`);
+        console.log(`Successfully generated ${suggestions.length} place suggestions for query: ${query}`);
 
         return {
             suggestions: suggestions
@@ -85,37 +74,116 @@ exports.handler = async (event) => {
 };
 
 /**
- * Build autocomplete-specific prompt for Gemini AI
- * Includes user query, city context, and active filters
+ * Get coordinates for a city by calling getLocationCoordinates Lambda
  */
-function buildAutocompletePrompt(selectedCity, query, filters) {
-    const filtersContext = filters.length > 0
-        ? `\nACTIVE FILTERS: ${filters.join(', ')}\nYour suggestions should reflect these filters where relevant.\n`
-        : '';
+async function getCityCoordinates(cityName) {
+    try {
+        const functionName = `getLocationCoordinates-${process.env.ENV}`;
 
-    return `
-You are a travel search assistant for ${selectedCity}. The user has typed: "${query}".
-${filtersContext}
-Generate exactly 5 autocomplete suggestions that:
-1. Complete or expand on the user's query "${query}"
-2. Are specific to ${selectedCity}
-3. Respect the active filters if applicable
-4. Are suitable for searching with Google Places API
-5. Progress from general to more specific suggestions
-6. Are diverse and cover different interpretations of the query
+        const payload = {
+            arguments: {
+                placeName: cityName,
+                selectedCity: cityName
+            }
+        };
 
-CRITICAL CONSTRAINTS:
-- Generate exactly 5 suggestions
-- Each suggestion should be a search query string (not a specific place name)
-- Suggestions should be relevant to travel and activities in ${selectedCity}
-- Keep suggestions no longer than 3 words
-- Do not include the city name in the suggestions 
-- Order from most likely to least likely completion
+        console.log(`Invoking ${functionName} to get coordinates for: ${cityName}`);
 
-STRICT OUTPUT FORMAT:
-Return ONLY this JSON structure with no additional text:
-{"suggestions":["suggestion1","suggestion2","suggestion3","suggestion4","suggestion5"]}
+        const command = new InvokeCommand({
+            FunctionName: functionName,
+            InvocationType: 'RequestResponse',
+            Payload: JSON.stringify(payload)
+        });
 
-Generate 5 autocomplete suggestions for "${query}" in ${selectedCity} now:
-    `;
+        const response = await lambdaClient.send(command);
+        const result = JSON.parse(Buffer.from(response.Payload).toString());
+
+        console.log(`getLocationCoordinates response:`, result);
+
+        if (result && result.lat && result.lng) {
+            return {
+                lat: result.lat,
+                lng: result.lng
+            };
+        }
+
+        return null;
+    } catch (error) {
+        console.error(`Error getting city coordinates for ${cityName}:`, error);
+        return null;
+    }
+}
+
+/**
+ * Call Google Places Autocomplete API and return formatted suggestions
+ */
+async function getPlacesAutocomplete(query, cityLat, cityLng, filters) {
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+
+    // Build the autocomplete URL
+    // Using establishment type to get specific places (not addresses)
+    // Location bias helps prioritize results near the city center
+    // Radius of 50km (50000 meters) to cover the city area
+    const radius = 50000; // 50km in meters
+
+    let url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?` +
+        `input=${encodeURIComponent(query)}` +
+        `&location=${cityLat},${cityLng}` +
+        `&radius=${radius}` +
+        `&types=establishment` +
+        `&key=${apiKey}`;
+
+    console.log(`Places Autocomplete API URL (key hidden): ${url.replace(apiKey, 'HIDDEN')}`);
+
+    return new Promise((resolve, reject) => {
+        const req = https.get(url, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const result = JSON.parse(data);
+
+                    if (result.status === 'OK' && result.predictions && result.predictions.length > 0) {
+                        // Transform predictions to our suggestion format
+                        // Get top 5 results
+                        const suggestions = result.predictions.slice(0, 5).map(prediction => {
+                            // structured_formatting contains:
+                            // - main_text: the place name (e.g., "Tokyo National Museum")
+                            // - secondary_text: the address info (e.g., "Ueno Park, Taito City, Tokyo")
+
+                            const mainText = prediction.structured_formatting?.main_text || prediction.description;
+                            const secondaryText = prediction.structured_formatting?.secondary_text || '';
+
+                            return {
+                                name: mainText,
+                                address_info: secondaryText,
+                                place_id: prediction.place_id
+                            };
+                        });
+
+                        console.log(`Parsed ${suggestions.length} autocomplete suggestions`);
+                        resolve(suggestions);
+
+                    } else if (result.status === 'ZERO_RESULTS') {
+                        console.log(`No autocomplete results found for query: ${query}`);
+                        resolve([]);
+
+                    } else {
+                        console.error(`Places Autocomplete API error. Status: ${result.status}`, result);
+                        resolve([]);
+                    }
+
+                } catch (parseError) {
+                    console.error('Error parsing Places Autocomplete response:', parseError);
+                    console.error('Raw response:', data);
+                    reject(new Error('Failed to parse autocomplete response'));
+                }
+            });
+        });
+
+        req.on('error', (err) => {
+            console.error('HTTPS request error for Places Autocomplete:', err);
+            reject(err);
+        });
+    });
 }

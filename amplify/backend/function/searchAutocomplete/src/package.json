@@ -1,11 +1,11 @@
 {
   "name": "searchautocomplete",
-  "version": "2.0.0",
-  "description": "Lambda function for search autocomplete using Gemini AI",
+  "version": "3.0.0",
+  "description": "Lambda function for search autocomplete using Google Places Autocomplete API",
   "main": "index.js",
   "license": "Apache-2.0",
   "dependencies": {
-    "@google/generative-ai": "^0.21.0"
+    "@aws-sdk/client-lambda": "^3.0.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.92"

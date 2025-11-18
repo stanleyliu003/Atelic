@@ -233,8 +233,23 @@ type DeleteAccountResult {
    category: String!
  }
 
+ type PlaceSuggestion {
+   name: String!
+   address_info: String!
+   place_id: String
+ }
+
+ type SearchAutocompleteResponse {
+   suggestions: [PlaceSuggestion!]!
+ }
+
  type SearchSuggestionsResult {
    suggestions: [String!]!
+ }
+
+ type GetPlaceDetailsResponse {
+   activity: Activity!
+   query: String!
  }
 
  type SearchActivitiesResult {
@@ -255,8 +270,9 @@ type DeleteAccountResult {
    getCityPhoto(selectedCity: String!): CityPhotoResult @function(name: "CityCategories-${env}")
    addAdditionalPlace(placeName: String!, selectedCity: String!): Activity @function(name: "getLocationCoordinates-${env}")
    generateCategoryActivities(selectedCity: String!, category: String!, existingWishlistActivities: [String!]): CategoryActivitiesResult @function(name: "generateCategoryActivities-${env}") @auth(rules: [{ allow: public }])
-   searchAutocomplete(selectedCity: String!, query: String!, filters: [String!]): SearchSuggestionsResult @function(name: "searchAutocomplete-${env}") @auth(rules: [{ allow: public }])
-   searchActivities(selectedCity: String!, searchQuery: String!, filters: [String!], existingWishlistActivities: [ActivityDeduplicationInput!]): SearchActivitiesResult @function(name: "searchBarActivities-${env}") @auth(rules: [{ allow: public }])
+   searchAutocomplete(selectedCity: String!, query: String!, filters: [String!]): SearchAutocompleteResponse @function(name: "searchAutocomplete-${env}") @auth(rules: [{ allow: public }])
+   getPlaceDetails(place_id: String!, selectedCity: String!): GetPlaceDetailsResponse @function(name: "searchBarActivities-${env}") @auth(rules: [{ allow: public }])
+   searchActivities(selectedCity: String!, searchQuery: String!, filters: [String!], existingWishlistActivities: [ActivityDeduplicationInput!]): SearchActivitiesResult @function(name: "searchBarActivities-${env}") @auth(rules: [{ allow: public }]) @deprecated(reason: "Use getPlaceDetails instead")
    getTripIDs(userID: String!): [TripSummary] @function(name: "getTripIDs-${env}") @auth(rules: [{ allow: public }])
    getUserTrips(userID: String!, tripID: String!): Trip @function(name: "getUserTrips-${env}") @auth(rules: [{ allow: public }])
    searchUsers(searchTerm: String!): [UserProfile] @function(name: "searchUsers-${env}") @auth(rules: [{ allow: public }])
