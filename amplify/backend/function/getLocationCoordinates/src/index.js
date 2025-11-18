@@ -131,7 +131,7 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
         return cachedData;
     }
     
-    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total,formatted_address,types,photos,name,opening_hours,secondary_opening_hours,website,reviews,editorial_summary,international_phone_number&key=${apiKey}`;
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total,formatted_address,types,photos,name,geometry,opening_hours,secondary_opening_hours,website,reviews,editorial_summary,international_phone_number&key=${apiKey}`;
     
     return new Promise((resolve, reject) => {
         const req = https.get(url, (res) => {
@@ -179,6 +179,10 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                             user_ratings_total: result.result.user_ratings_total || null,
                             website_uri: result.result.website || null,
 
+                            // Geometry (coordinates)
+                            lat: result.result.geometry?.location?.lat || null,
+                            lng: result.result.geometry?.location?.lng || null,
+
                             // NOTE: photo_reference is NO LONGER CACHED per Google's API guidelines
                             // It will be fetched fresh on each request using getFreshPhotoReference()
 
@@ -212,6 +216,8 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                             rating: null,
                             user_ratings_total: null,
                             website_uri: null,
+                            lat: null,
+                            lng: null,
                             regular_opening_hours: null,
                             reviews: [],
                             editorial_summary: null,
@@ -232,6 +238,8 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                         rating: null,
                         user_ratings_total: null,
                         website_uri: null,
+                        lat: null,
+                        lng: null,
                         regular_opening_hours: null,
                         reviews: [],
                         editorial_summary: null,
@@ -252,6 +260,8 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
                 rating: null,
                 user_ratings_total: null,
                 website_uri: null,
+                lat: null,
+                lng: null,
                 regular_opening_hours: null,
                 reviews: [],
                 editorial_summary: null,
@@ -422,30 +432,72 @@ exports.handler = async (event) => {
     if (event.arguments) {
         console.log('Processing ADD ADDITIONAL PLACE request via GraphQL');
         const { placeName, selectedCity } = event.arguments;
-        
+
         if (!placeName) {
             throw new Error('placeName is required for addAdditionalPlace');
         }
-        
-        // Create bias from selectedCity coordinates if possible
-        let bias = null;
-        if (selectedCity) {
-            console.log(`Creating location bias for additional place search using city: ${selectedCity}`);
-            // Get coordinates for the selected city to create bias
-            const cityResult = await getLocationInfo(selectedCity, null);
-            if (cityResult.lat && cityResult.lng) {
-                bias = { lat: cityResult.lat, lng: cityResult.lng };
-                console.log(`Successfully created bias:`, bias);
+
+        // Check if placeName is actually a place_id (Google Place IDs start with "ChIJ")
+        const isPlaceId = placeName.startsWith('ChIJ');
+
+        let result;
+
+        if (isPlaceId) {
+            console.log(`Detected place_id format: ${placeName}`);
+            // Fetch place details directly using the place_id
+            const details = await getPlaceDetailsByPlaceId(placeName);
+
+            if (!details.lat || !details.lng) {
+                throw new Error(`Could not get coordinates for place_id: ${placeName}`);
+            }
+
+            // Fetch fresh photo_reference
+            const photo_reference = await getFreshPhotoReference(placeName);
+
+            result = {
+                name: placeName,
+                foundName: details.display_name,
+                place_id: placeName,
+                lat: details.lat,
+                lng: details.lng,
+                display_name: details.display_name,
+                formatted_address: details.formatted_address,
+                types: details.types,
+                primaryType: details.primaryType,
+                rating: details.rating,
+                user_ratings_total: details.user_ratings_total,
+                website_uri: details.website_uri,
+                photo_reference: photo_reference,
+                regular_opening_hours: details.regular_opening_hours,
+                reviews: details.reviews,
+                editorial_summary: details.editorial_summary,
+                primary_type_display_name: details.primary_type_display_name,
+                international_phone_number: details.international_phone_number
+            };
+        } else {
+            // Regular text-based search
+            console.log(`Processing text-based place search: ${placeName}`);
+
+            // Create bias from selectedCity coordinates if possible
+            let bias = null;
+            if (selectedCity) {
+                console.log(`Creating location bias for additional place search using city: ${selectedCity}`);
+                // Get coordinates for the selected city to create bias
+                const cityResult = await getLocationInfo(selectedCity, null);
+                if (cityResult.lat && cityResult.lng) {
+                    bias = { lat: cityResult.lat, lng: cityResult.lng };
+                    console.log(`Successfully created bias:`, bias);
+                }
+            }
+
+            result = await getLocationInfo(placeName, bias);
+
+            // Return in Activity format for GraphQL
+            if (result.error) {
+                throw new Error(`Could not find additional place "${placeName}": ${result.error}`);
             }
         }
-        
-        const result = await getLocationInfo(placeName, bias);
-        
-        // Return in Activity format for GraphQL
-        if (result.error) {
-            throw new Error(`Could not find additional place "${placeName}": ${result.error}`);
-        }
-        
+
         console.log(`Successfully processed additional place: ${result.foundName || result.name}`);
         return {
             name: result.foundName || result.name,
