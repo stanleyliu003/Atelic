@@ -226,7 +226,7 @@ exports.handler = async (event) => {
         // Create final activities array using cached data or fresh geocode data
         const finalActivities = recommendations.map(recommendationObj => {
             const { name } = recommendationObj;
-            
+
             // Check if we have a cached activity
             if (cachedActivitiesMap.has(name)) {
                 const cachedActivity = cachedActivitiesMap.get(name);
@@ -237,11 +237,11 @@ exports.handler = async (event) => {
                     is_recommended: true // Category-generated activities are recommended
                 };
             }
-            
+
             // Otherwise use the fresh geocode data
             const geocodeResult = recommendationsToGeocode.find(r => r.name === name);
             const coordData = geocodeResult?.data;
-            
+
             const activity = {
                 name: recommendationObj.name,
                 city: selectedCity,
@@ -281,6 +281,17 @@ exports.handler = async (event) => {
                 console.warn(`Filtering out activity "${activity.name}" - no place_id found`);
                 return false;
             }
+
+            // Filter out activities that are more than 60 miles away from the selected city
+            if (cityBias && activity.lat && activity.lng) {
+                const distance = calculateDistance(cityBias.lat, cityBias.lng, activity.lat, activity.lng);
+                if (distance > 60) {
+                    console.warn(`Filtering out activity "${activity.name}" - ${distance.toFixed(1)} miles away from ${selectedCity} (limit: 60 miles)`);
+                    return false;
+                }
+                console.log(`Activity "${activity.name}" is ${distance.toFixed(1)} miles from ${selectedCity}`);
+            }
+
             return true;
         });
 
@@ -325,6 +336,23 @@ exports.handler = async (event) => {
 
 
 /**
+ * Calculate distance between two coordinates using Haversine formula
+ * Returns distance in miles
+ */
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 3959; // Earth's radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c;
+    return distance;
+}
+
+/**
  * Build category-specific prompt for Gemini AI
  * Based on wishlistAnalyzer prompt structure with category focus
  * Includes existing activities to avoid duplicates
@@ -344,25 +372,27 @@ DO NOT recommend any of these existing locations. Generate 4 DIFFERENT ${categor
     return `
 You are an expert travel assistant. Generate exactly 4 high-quality ${category} recommendations for ${selectedCity}.
 
-CRITICAL CONSTRAINTS:
-1. ONLY focus on places in ${selectedCity} or places nearby ${selectedCity}. Do not recommend locations far away from ${selectedCity}
-2. Generate exactly 4 specific ${category} locations that are WITHIN or NEARBY ${selectedCity} only
-3. Use precise, official names suitable for Google Places API
-4. Don't recommend neighborhoods or areas, only specific locations
-5. Focus on well-regarded, authentic ${category} experiences
+CRITICAL GEOGRAPHIC CONSTRAINTS:
+1. ${selectedCity} may be a city, region, state, or province. All recommendations MUST be physically located WITHIN the geographic boundaries of ${selectedCity}.
+2. DO NOT recommend places in neighboring cities, regions, or states - even if they are close by.
+3. DO NOT recommend places outside ${selectedCity} under any circumstances.
+5. Use precise, official names suitable for Google Places API
+6. Don't recommend neighborhoods or areas, only specific locations
+7. Focus on well-regarded, authentic ${category} experiences
 ${existingActivitiesContext}
 
 CATEGORY FOCUS: ${category}
 Generate 4 recommendations that are:
-- Highly rated and well-regarded ${category} locations in ${selectedCity} or places nearby ${selectedCity}.
+- Highly rated and well-regarded ${category} locations physically located WITHIN ${selectedCity}
 - Accessible to visitors
 - Specific venues, not districts or neighborhoods
+- ONLY within the boundaries of ${selectedCity} (not neighboring areas)
 
 STRICT OUTPUT FORMAT:
 Return ONLY this JSON structure with no additional text:
 {"recommendations":[{"name":"Specific ${category} Name 1","region":"${selectedCity}"},{"name":"Specific ${category} Name 2","region":"${selectedCity}"}]}
 
-Generate 4 specific ${category} recommendations for ${selectedCity} now:
+Generate 4 specific ${category} recommendations that are ONLY within ${selectedCity} now:
     `;
 }
 
