@@ -10,12 +10,14 @@ import {
   View,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { Colors } from '../../../constants/Colors';
 import { FilterChips } from './FilterChips';
 import { getSearchAutocomplete, getPlaceDetails } from '../../services/searchService';
 import { useCreateTrip } from '../../../context/CreateTripContext';
+import Feather from '@expo/vector-icons/Feather';
 
 /**
  * AutocompleteModal Component - Refactored for Direct Place Selection
@@ -252,7 +254,7 @@ export const AutocompleteModal = ({
             {/* Recent Searches Section - Show when query is empty and not loading */}
             {!addingPlace && !loading && localQuery.length === 0 && recentSearches.length > 0 && (
               <View style={styles.recentSection}>
-                <Text style={styles.recentTitle}>RECENT</Text>
+                <Text style={styles.recentTitle}>Recent</Text>
                 {recentSearches.map((recentSearch, index) => (
                   <TouchableOpacity
                     key={recentSearch.place_id || index}
@@ -260,10 +262,24 @@ export const AutocompleteModal = ({
                     onPress={() => handleRecentSearchSelect(recentSearch)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="time-outline" size={20} color="#666" />
+                    <View style={styles.suggestionIconContainer}>
+                      <Ionicons name="time-outline" size={20} color="#444" />
+                    </View>
                     <View style={styles.suggestionTextContainer}>
-                      <Text style={styles.suggestionName}>{recentSearch.name}</Text>
-                      <Text style={styles.suggestionAddress}>{recentSearch.address_info}</Text>
+                      <Text
+                        style={styles.suggestionName}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {recentSearch.name}
+                      </Text>
+                      <Text
+                        style={styles.suggestionAddress}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {recentSearch.address_info}
+                      </Text>
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -322,12 +338,29 @@ export const AutocompleteModal = ({
                     onPress={() => handleSuggestionSelect(suggestion)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="location" size={20} color="#666" />
-                    <View style={styles.suggestionTextContainer}>
-                      <Text style={styles.suggestionName}>{suggestion.name}</Text>
-                      <Text style={styles.suggestionAddress}>{suggestion.address_info}</Text>
+                    <View style={styles.suggestionIconContainer}>
+                      <MaterialCommunityIcons
+                        name="map-marker-outline"
+                        size={20}
+                        color="#444"
+                      />
                     </View>
-                    <Ionicons name="add-circle-outline" size={24} color={Colors.PRIMARY} />
+                    <View style={styles.suggestionTextContainer}>
+                      <Text
+                        style={styles.suggestionName}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {suggestion.name}
+                      </Text>
+                      <Text
+                        style={styles.suggestionAddress}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {suggestion.address_info}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -475,6 +508,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
     gap: 12,
+  },
+  suggestionIconContainer: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#f2f2f2',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   suggestionTextContainer: {
     flex: 1,
