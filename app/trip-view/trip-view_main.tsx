@@ -886,13 +886,13 @@ export default function TripViewMain() {
         });
     };
 
-    // Handler for saving search results
+    // Handler for saving search results (new direct flow)
     const handleSaveSearchResults = (selectedActivities: Activity[]) => {
         if (selectedActivities.length === 0) {
             return;
         }
 
-        // Add the selected activities to the active tab
+        // Add the selected activity to the active tab (single place from autocomplete)
         if (activeTab === 'wishlist') {
             // Add to wishlist
             updateActivities([...(activities || []), ...selectedActivities]);
@@ -907,7 +907,7 @@ export default function TripViewMain() {
             updateActivities([...(activities || []), ...selectedActivities]);
         }
 
-        // Close the autocomplete modal and reset search
+        // Modal auto-closes in AutocompleteModal component
         setShowAutocomplete(false);
         setSearchQuery('');
     };
@@ -1828,7 +1828,7 @@ export default function TripViewMain() {
                 />
             </Animated.View>
 
-            {/* AutocompleteModal for searching activities */}
+            {/* AutocompleteModal for searching activities - new direct flow */}
             <AutocompleteModal
                 visible={showAutocomplete}
                 query={searchQuery}
@@ -1841,16 +1841,6 @@ export default function TripViewMain() {
                 onFilterToggle={handleFilterToggle}
                 onQueryChange={handleSearchQueryChange}
                 onSaveActivities={handleSaveSearchResults}
-                wishlistActivities={[
-                    ...(activities || []),
-                    ...Object.values(dayActivities || {}).flatMap(dayObj =>
-                        Array.isArray((dayObj as any).activities) ? (dayObj as any).activities : []
-                    )
-                ]}
-                activeTab={activeTab}
-                // In trip view, selecting an activity should immediately add it to the active tab
-                // and close the modal, without requiring a separate "Save to..." button.
-                selectionMode="single"
             />
 
             {/* CategoryModal for browsing activities by category */}

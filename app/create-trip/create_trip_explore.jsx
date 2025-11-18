@@ -73,19 +73,14 @@ export default function create_trip_explore() {
     // Modal stays open regardless of text length - only closes via close button
   };
 
-  // Handle saving activities from AutocompleteModal
-  const handleSaveSearchResults = (selectedActivities, deselectedWishlistActivityIds = []) => {
-    // Remove deselected wishlist activities
-    if (deselectedWishlistActivityIds.length > 0) {
-      removeActivities(deselectedWishlistActivityIds);
-    }
-
-    // Add newly selected activities
+  // Handle saving activities from AutocompleteModal (new direct flow)
+  const handleSaveSearchResults = (selectedActivities) => {
+    // Add newly selected activity (single place from autocomplete)
     if (selectedActivities.length > 0) {
       addToWishlist(selectedActivities);
     }
 
-    // Close the autocomplete modal
+    // Modal auto-closes in AutocompleteModal component
     setShowAutocomplete(false);
     setSearchQuery('');
   };
@@ -276,7 +271,6 @@ export default function create_trip_explore() {
         onFilterToggle={handleFilterToggle}
         onQueryChange={handleSearchQueryChange}
         onSaveActivities={handleSaveSearchResults}
-        wishlistActivities={activities}
       />
 
       <CategoryModal

@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -11,81 +10,62 @@ import {
   View,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import Feather from '@expo/vector-icons/Feather';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { Colors } from '../../../constants/Colors';
 import { FilterChips } from './FilterChips';
-import { getSearchAutocomplete, searchActivities } from '../../services/searchService';
-import { WishlistActivities } from '../trip-view/wishlist_activities';
-import { ActivityDetailView } from '../trip-view/description_card';
+import { getSearchAutocomplete, getPlaceDetails } from '../../services/searchService';
 
 /**
- * AutocompleteModal Component
- * Shows autocomplete suggestions as user types their search query
- * Includes filter chips and real-time suggestion updates
+ * AutocompleteModal Component - Refactored for Direct Place Selection
+ *
+ * NEW FLOW:
+ * 1. User types → sees 5 specific place suggestions (not generic queries)
+ * 2. User clicks suggestion → place is immediately added → modal closes
+ *
+ * REMOVED:
+ * - Search results intermediate screen
+ * - "Generate More" button
+ * - Multi-select functionality
+ * - Activity selection state management
  *
  * @param {boolean} visible - Whether modal is visible
  * @param {string} query - Initial search query
  * @param {string[]} filters - Selected filter IDs
  * @param {string} selectedCity - City being searched
- * @param {function} onSuggestionSelect - Callback when a suggestion is selected
  * @param {function} onClose - Callback to close modal
  * @param {function} onFilterToggle - Callback when a filter is toggled
  * @param {function} onQueryChange - Callback when search query changes in modal
- * @param {function} onSaveActivities - Callback to save selected activities
- * @param {Activity[]} wishlistActivities - Activities already in the wishlist for "On list" tag
- * @param {string} activeTab - Current active tab (e.g., 'wishlist', 'day1', 'day2')
- * @param {'multi' | 'single'} selectionMode - 'multi' (default) shows "Save to ..." button, 'single' saves immediately on tap
+ * @param {function} onSaveActivities - Callback to save selected activity (single activity array)
  */
 export const AutocompleteModal = ({
   visible,
   query,
   filters,
   selectedCity,
-  onSuggestionSelect,
   onClose,
   onFilterToggle,
   onQueryChange,
   onSaveActivities,
-  wishlistActivities = [],
-  activeTab = 'wishlist',
-  selectionMode = 'multi',
 }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [localQuery, setLocalQuery] = useState(query);
+  const [addingPlace, setAddingPlace] = useState(false);
   const searchInputRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
-  
-  // Search results state
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchError, setSearchError] = useState(null);
-  const [selectedActivityIds, setSelectedActivityIds] = useState([]);
-  const [showingResults, setShowingResults] = useState(false);
-  const [loadingMoreResults, setLoadingMoreResults] = useState(false);
-
-  // Description card modal state
-  const [selectedActivity, setSelectedActivity] = useState(null);
-  const [showDescriptionCard, setShowDescriptionCard] = useState(false);
 
   // Handle close modal
   const handleCloseModal = () => {
-    console.log('[AutocompleteModal] Close button pressed');
-    console.log('[AutocompleteModal] Current localQuery:', localQuery);
+    console.log('[AutocompleteModal] Closing modal');
     // Clear the search query when closing
     setLocalQuery('');
     if (onQueryChange) {
-      console.log('[AutocompleteModal] Calling onQueryChange with empty string');
       onQueryChange('');
     }
-    // Reset search results state
-    setShowingResults(false);
-    setSearchResults([]);
-    setSelectedActivityIds([]);
-    console.log('[AutocompleteModal] Calling onClose');
+    // Reset suggestions
+    setSuggestions([]);
     onClose();
   };
 
@@ -119,6 +99,7 @@ export const AutocompleteModal = ({
       try {
         const results = await getSearchAutocomplete(selectedCity, searchQuery, filters);
         setSuggestions(results);
+        console.log('[AutocompleteModal] Received suggestions:', results);
       } catch (err) {
         console.error('[AutocompleteModal] Error fetching suggestions:', err);
         setError('Failed to load suggestions');
@@ -155,176 +136,34 @@ export const AutocompleteModal = ({
     if (onQueryChange) {
       onQueryChange(text);
     }
-    
-    // If user is editing and we're showing results, go back to suggestions
-    if (showingResults && text !== localQuery) {
-      setShowingResults(false);
-      setSearchResults([]);
-      setSelectedActivityIds([]);
-    }
   };
-  
-  // Handle suggestion selection - now triggers search
+
+  // Handle suggestion selection - NEW: directly add place
   const handleSuggestionSelect = async (suggestion) => {
-    setLocalQuery(suggestion);
-    if (onQueryChange) {
-      onQueryChange(suggestion);
-    }
-
-    // Start search
-    setSearchLoading(true);
-    setSearchError(null);
-    setShowingResults(true);
-
     try {
-      // Use searchActivities directly with proper empty array format
-      const result = await searchActivities(selectedCity, suggestion, filters, []);
+      setAddingPlace(true);
+      setError(null);
 
-      if (result && result.activities) {
-        setSearchResults(result.activities);
-      } else {
-        setSearchResults([]);
-      }
-    } catch (error) {
-      console.error('[AutocompleteModal] Error searching activities:', error);
-      setSearchError('Failed to search activities. Please try again.');
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
+      console.log('[AutocompleteModal] Selected suggestion:', suggestion);
 
-  // Handle enter key press - triggers searchActivities (uses searchBarActivities Lambda)
-  const handleEnterKeyPress = async () => {
-    if (localQuery.trim().length < 2) {
-      return;
-    }
+      // Call getPlaceDetails to get full activity data
+      const activity = await getPlaceDetails(suggestion.place_id, selectedCity);
 
-    setSearchLoading(true);
-    setSearchError(null);
-    setShowingResults(true);
+      console.log('[AutocompleteModal] Got place details:', activity);
 
-    try {
-      // First search: Don't pass any existing activities
-      // This allows wishlist items to appear with "On list" tag
-      const result = await searchActivities(selectedCity, localQuery, filters, []);
-
-      if (result && result.activities) {
-        setSearchResults(result.activities);
-      } else {
-        setSearchResults([]);
-      }
-    } catch (error) {
-      console.error('[AutocompleteModal] Search error:', error);
-      setSearchError('Failed to search activities. Please try again.');
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
-  
-  // Handle activity selection
-  const handleActivityToggle = (activityId) => {
-    // Single-select mode: immediately save the tapped activity and close modal
-    if (selectionMode === 'single') {
-      if (!searchResults || searchResults.length === 0) {
-        return;
+      // Immediately save the activity
+      if (onSaveActivities) {
+        onSaveActivities([activity], []);
       }
 
-      // Activities from search use instanceId for selection; fall back to place_id if needed
-      const selectedActivity =
-        searchResults.find((activity) => activity.instanceId === activityId) ||
-        searchResults.find((activity) => activity.place_id === activityId);
-
-      if (selectedActivity && onSaveActivities) {
-        // Save a single activity to the active tab
-        onSaveActivities([selectedActivity], []);
-      }
-
-      // Close modal and reset state
+      // Close modal and reset
       handleCloseModal();
-      return;
-    }
-
-    // Multi-select mode: toggle selection state
-    setSelectedActivityIds((prev) => {
-      if (prev.includes(activityId)) {
-        return prev.filter((id) => id !== activityId);
-      } else {
-        return [...prev, activityId];
-      }
-    });
-  };
-  
-  // Handle save selected activities
-  const handleSaveActivities = () => {
-    // Get all selected activities from current search results
-    const newlySelectedActivities = searchResults.filter((activity) =>
-      activity.instanceId && selectedActivityIds.includes(activity.instanceId)
-    );
-
-    // Call onSaveActivities with additions only (no removals via search)
-    onSaveActivities(newlySelectedActivities, []);
-
-    // Reset state
-    setSelectedActivityIds([]);
-    setShowingResults(false);
-    setSearchResults([]);
-    setLocalQuery('');
-    if (onQueryChange) {
-      onQueryChange('');
-    }
-  };
-
-  // Handle generating more search results
-  const handleGenerateMoreResults = async () => {
-    // Check if search results already have 8 or more activities
-    if (searchResults.length >= 8) {
-      Alert.alert(
-        'Activity Limit Reached',
-        `Generation limit reached for search results.`,
-        [{ text: 'OK', style: 'default' }]
-      );
-      return;
-    }
-
-    setLoadingMoreResults(true);
-
-    try {
-      // Pass only current search results to avoid showing duplicates of what was already shown
-      // Do NOT pass wishlist - this allows wishlist items to appear (with "On list" tag)
-      // if they match the search but weren't in the previous batch
-      const existingActivities = searchResults
-        .filter(activity => activity.name)
-        .map(activity => ({
-          name: activity.name,
-          place_id: activity.place_id
-        }));
-
-      const result = await searchActivities(selectedCity, localQuery, filters, existingActivities);
-
-      if (result && result.activities) {
-        // Append new activities to existing search results
-        setSearchResults(prev => [...prev, ...result.activities]);
-      }
-    } catch (error) {
-      console.error('[AutocompleteModal] Error generating more results:', error);
-      setSearchError('Failed to generate more results. Please try again.');
+    } catch (err) {
+      console.error('[AutocompleteModal] Error adding place:', err);
+      setError('Failed to add place. Please try again.');
     } finally {
-      setLoadingMoreResults(false);
+      setAddingPlace(false);
     }
-  };
-  
-  // Handle activity card tap to show description
-  const handleActivityPress = (activity) => {
-    setSelectedActivity(activity);
-    setShowDescriptionCard(true);
-  };
-  
-  // Handle closing description card
-  const handleCloseDescriptionCard = () => {
-    setShowDescriptionCard(false);
-    setSelectedActivity(null);
   };
 
   // Swipe down gesture to close
@@ -335,18 +174,6 @@ export const AutocompleteModal = ({
         runOnJS(handleCloseModal)();
       }
     });
-
-  // Format tab name for display
-  const getTabDisplayName = (tab) => {
-    if (tab === 'wishlist') {
-      return 'Wishlist';
-    }
-    if (tab.startsWith('day')) {
-      const dayNumber = tab.replace('day', '');
-      return `Day ${dayNumber}`;
-    }
-    return 'Wishlist';
-  };
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
@@ -376,19 +203,15 @@ export const AutocompleteModal = ({
                 style={styles.searchInput}
                 value={localQuery}
                 onChangeText={handleQueryChange}
-                placeholder="Search activities..."
+                placeholder="Search for places..."
                 placeholderTextColor="#999"
                 returnKeyType="search"
                 autoCapitalize="none"
                 autoCorrect={false}
                 selectTextOnFocus={true}
-                onSubmitEditing={() => {
-                  if (localQuery.trim().length >= 2) {
-                    handleEnterKeyPress();
-                  }
-                }}
+                editable={!addingPlace}
               />
-              {localQuery.length > 0 && (
+              {localQuery.length > 0 && !addingPlace && (
                 <TouchableOpacity
                   onPress={() => handleQueryChange('')}
                   style={styles.clearButton}
@@ -400,149 +223,81 @@ export const AutocompleteModal = ({
             </View>
           </View>
 
-          {/* Filter Chips - Only show when user has typed something and not showing results */}
-          {localQuery.length > 0 && !showingResults && (
+          {/* Filter Chips */}
+          {localQuery.length > 0 && !addingPlace && (
             <FilterChips selectedFilters={filters} onFilterToggle={onFilterToggle} />
           )}
 
-          {/* Suggestions List */}
+          {/* Divider */}
           <View style={styles.divider} />
 
+          {/* Suggestions List */}
           <ScrollView style={styles.suggestionsContainer} showsVerticalScrollIndicator={false}>
-            {/* Show search results when available */}
-            {showingResults ? (
-              <>
-                {/* Search Loading State */}
-                {searchLoading && (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={Colors.PRIMARY} />
-                    <Text style={styles.loadingText}>Searching for "{localQuery}"...</Text>
-                  </View>
-                )}
+            {/* Adding Place Loading State */}
+            {addingPlace && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.PRIMARY} />
+                <Text style={styles.loadingText}>Adding place...</Text>
+              </View>
+            )}
 
-                {/* Search Error State */}
-                {!searchLoading && searchError && (
-                  <View style={styles.errorContainer}>
-                    <Ionicons name="alert-circle-outline" size={48} color="#999" />
-                    <Text style={styles.errorText}>{searchError}</Text>
-                  </View>
-                )}
+            {/* Autocomplete Loading State */}
+            {!addingPlace && loading && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.PRIMARY} />
+                <Text style={styles.loadingText}>Loading suggestions...</Text>
+              </View>
+            )}
 
-                {/* Search Results */}
-                {!searchLoading && !searchError && (
-                  <>
-                    {searchResults.length === 0 ? (
-                      <View style={styles.emptyContainer}>
-                        <Ionicons name="location-outline" size={64} color="#ccc" />
-                        <Text style={styles.emptyText}>No results found</Text>
-                        <Text style={styles.emptySubtext}>Try adjusting your search or filters</Text>
-                      </View>
-                    ) : (
-                      <View style={styles.resultsContainer}>
-                        <Text style={styles.resultsHeader}>
-                          {searchResults.length} {searchResults.length === 1 ? 'place' : 'places'} found for "{localQuery}"
-                        </Text>
-                        <WishlistActivities
-                          activities={searchResults}
-                          selectedActivities={selectedActivityIds}
-                          onActivitySelect={handleActivityToggle}
-                          onActivityDeselect={handleActivityToggle}
-                          onDescriptionCardPress={handleActivityPress}
-                          showSelectionIndicator={true}
-                          wishlistActivities={[]}
-                        />
+            {/* Error State */}
+            {!addingPlace && !loading && error && (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle-outline" size={48} color="#999" />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
 
-                        {/* Generate More Search Results Button */}
-                        <View style={styles.generateMoreContainer}>
-                          <TouchableOpacity
-                            style={[styles.generateMoreButton, loadingMoreResults && styles.generateMoreButtonDisabled]}
-                            onPress={() => !loadingMoreResults && handleGenerateMoreResults()}
-                            disabled={loadingMoreResults}
-                          >
-                            {loadingMoreResults ? (
-                              <ActivityIndicator size="small" color="#666" />
-                            ) : (
-                              <Feather name="plus-circle" size={24} color="black" />
-                            )}
-                            <Text style={[styles.generateMoreButtonText, loadingMoreResults && styles.generateMoreButtonTextDisabled]}>
-                              {loadingMoreResults ? 'Loading...' : `More ${localQuery}`}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    )}
-                  </>
-                )}
-              </>
-            ) : (
-              /* Show autocomplete suggestions */
-              <>
-                {loading && (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={Colors.PRIMARY} />
-                    <Text style={styles.loadingText}>Loading suggestions...</Text>
-                  </View>
-                )}
+            {/* Empty State - No suggestions found */}
+            {!addingPlace && !loading && !error && suggestions.length === 0 && localQuery.length >= 2 && (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="search-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyText}>No places found</Text>
+                <Text style={styles.emptySubtext}>Try a different search term</Text>
+              </View>
+            )}
 
-                {!loading && error && (
-                  <View style={styles.errorContainer}>
-                    <Ionicons name="alert-circle-outline" size={48} color="#999" />
-                    <Text style={styles.errorText}>{error}</Text>
-                  </View>
-                )}
+            {/* Empty State - Start typing */}
+            {!addingPlace && !loading && !error && localQuery.length < 2 && (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="location-outline" size={64} color="#ccc" />
+                <Text style={styles.emptyText}>Search for places</Text>
+                <Text style={styles.emptySubtext}>Type at least 2 characters to see suggestions</Text>
+              </View>
+            )}
 
-                {!loading && !error && suggestions.length === 0 && localQuery.length >= 2 && (
-                  <View style={styles.emptyContainer}>
-                    <Ionicons name="search-outline" size={48} color="#ccc" />
-                    <Text style={styles.emptyText}>No suggestions found</Text>
-                  </View>
-                )}
-
-                {!loading && !error && suggestions.length > 0 && (
-                  <View style={styles.suggestionsList}>
-                    {suggestions.map((suggestion, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={styles.suggestionItem}
-                        onPress={() => handleSuggestionSelect(suggestion)}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons name="search" size={20} color="#999" />
-                        <Text style={styles.suggestionText}>{suggestion}</Text>
-                        <Ionicons name="arrow-forward" size={20} color="#ccc" />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </>
+            {/* Suggestions List */}
+            {!addingPlace && !loading && !error && suggestions.length > 0 && (
+              <View style={styles.suggestionsList}>
+                {suggestions.map((suggestion, index) => (
+                  <TouchableOpacity
+                    key={suggestion.place_id || index}
+                    style={styles.suggestionItem}
+                    onPress={() => handleSuggestionSelect(suggestion)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="location" size={20} color="#666" />
+                    <View style={styles.suggestionTextContainer}>
+                      <Text style={styles.suggestionName}>{suggestion.name}</Text>
+                      <Text style={styles.suggestionAddress}>{suggestion.address_info}</Text>
+                    </View>
+                    <Ionicons name="add-circle-outline" size={24} color={Colors.PRIMARY} />
+                  </TouchableOpacity>
+                ))}
+              </View>
             )}
           </ScrollView>
-
-          {/* Save Button - Show when there is at least one selected activity (multi-select mode only) */}
-          {selectionMode === 'multi' && showingResults && selectedActivityIds.length > 0 && (
-            <View style={styles.footer}>
-              <TouchableOpacity style={styles.saveButton} onPress={handleSaveActivities} activeOpacity={0.8}>
-                <Text style={styles.saveButtonText}>
-                  Save to {getTabDisplayName(activeTab)}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </GestureHandlerRootView>
       </View>
-
-      {/* Activity Description Card Modal */}
-      {showDescriptionCard && selectedActivity && (
-        <Modal visible={showDescriptionCard} animationType="slide" transparent={false}>
-          <View style={styles.descriptionCardContainer}>
-            <ActivityDetailView 
-              activity={selectedActivity} 
-              onClose={handleCloseDescriptionCard}
-              variant="wishlist"
-            />
-          </View>
-        </Modal>
-      )}
     </Modal>
   );
 };
@@ -641,11 +396,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     marginTop: 10,
+    textAlign: 'center',
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 60,
   },
   emptyText: {
     fontFamily: 'outfit-bold',
@@ -658,47 +414,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ccc',
     marginTop: 5,
+    textAlign: 'center',
   },
   suggestionsList: {
     paddingBottom: 20,
-  },
-  resultsContainer: {
-    paddingHorizontal: 0,
-    paddingBottom: 20,
-  },
-  resultsHeader: {
-    fontFamily: 'outfit-medium',
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 15,
-    paddingHorizontal: 10,
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
-    backgroundColor: Colors.WHITE,
-  },
-  saveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F36406',
-    borderRadius: 15,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  saveButtonText: {
-    fontFamily: 'outfit-bold',
-    fontSize: 16,
-    color: Colors.WHITE,
   },
   suggestionItem: {
     flexDirection: 'row',
@@ -709,48 +428,19 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f0f0f0',
     gap: 12,
   },
-  suggestionText: {
+  suggestionTextContainer: {
     flex: 1,
-    fontFamily: 'outfit',
+    marginLeft: 4,
+  },
+  suggestionName: {
+    fontFamily: 'outfit-medium',
     fontSize: 16,
     color: '#333',
   },
-  descriptionCardContainer: {
-    flex: 1,
-    paddingTop: 70,
-  },
-  generateMoreContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  generateMoreButton: {
-    marginTop: -20,
-    marginBottom: 70,
-    backgroundColor: 'white',
-    borderRadius: 15,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    marginHorizontal: -20,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  generateMoreButtonText: {
-    fontFamily: 'outfit-medium',
-    fontSize: 18,
-    color: '#1a1a1a',
-    fontWeight: '500',
-  },
-  generateMoreButtonDisabled: {
-    opacity: 0.6,
-  },
-  generateMoreButtonTextDisabled: {
-    color: '#666',
+  suggestionAddress: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: '#999',
+    marginTop: 2,
   },
 });

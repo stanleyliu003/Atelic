@@ -2,8 +2,23 @@ import { API, graphqlOperation } from 'aws-amplify';
 import { Activity } from '../types/activity.types';
 import { randomUUID } from 'expo-crypto';
 
+/**
+ * Place suggestion from autocomplete
+ * Contains the place name, address info, and place_id
+ */
+export interface PlaceSuggestion {
+  name: string;
+  address_info: string;
+  place_id?: string;
+}
+
 interface SearchAutocompleteResponse {
-  suggestions: string[];
+  suggestions: PlaceSuggestion[];
+}
+
+interface GetPlaceDetailsResponse {
+  activity: Activity;
+  query: string;
 }
 
 interface SearchActivitiesResponse {
@@ -17,17 +32,18 @@ interface ActivityDeduplication {
 }
 
 /**
- * Get search autocomplete suggestions using Gemini AI
+ * Get search autocomplete suggestions using Google Places Autocomplete API
+ * Returns specific place suggestions with name, address, and place_id
  * @param selectedCity - The city to search in
  * @param query - The user's search query
  * @param filters - Optional array of filter IDs (e.g., ['kid_friendly', 'budget_friendly'])
- * @returns Array of autocomplete suggestions
+ * @returns Array of place suggestions
  */
 export async function getSearchAutocomplete(
   selectedCity: string,
   query: string,
   filters: string[] = []
-): Promise<string[]> {
+): Promise<PlaceSuggestion[]> {
   try {
     console.log('[getSearchAutocomplete] Making GraphQL call with params:', {
       selectedCity,
@@ -38,7 +54,11 @@ export async function getSearchAutocomplete(
     const result = await API.graphql(graphqlOperation(`
       query SearchAutocomplete($selectedCity: String!, $query: String!, $filters: [String!]) {
         searchAutocomplete(selectedCity: $selectedCity, query: $query, filters: $filters) {
-          suggestions
+          suggestions {
+            name
+            address_info
+            place_id
+          }
         }
       }
     `, {
@@ -52,6 +72,81 @@ export async function getSearchAutocomplete(
     return result?.data?.searchAutocomplete?.suggestions ?? [];
   } catch (error) {
     console.error('[getSearchAutocomplete] GraphQL error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get full place details by place_id
+ * Called when user selects a place from autocomplete
+ * @param place_id - The Google Places place_id
+ * @param selectedCity - The city context
+ * @returns Activity object with full details
+ */
+export async function getPlaceDetails(
+  place_id: string,
+  selectedCity: string
+): Promise<Activity> {
+  try {
+    console.log('[getPlaceDetails] Making GraphQL call with params:', {
+      place_id,
+      selectedCity
+    });
+
+    const result = await API.graphql(graphqlOperation(`
+      query GetPlaceDetails($place_id: String!, $selectedCity: String!) {
+        getPlaceDetails(place_id: $place_id, selectedCity: $selectedCity) {
+          activity {
+            name
+            city
+            lat
+            lng
+            rating
+            user_ratings_total
+            formatted_address
+            types
+            primaryType
+            place_id
+            photo_reference
+            is_recommended
+            display_name
+            website_uri
+            editorial_summary
+            primary_type_display_name
+            international_phone_number
+            instanceId
+            regular_opening_hours {
+              open_now
+              weekday_text
+            }
+            reviews {
+              author_name
+              rating
+              text
+              time
+              author_url
+              profile_photo_url
+            }
+          }
+          query
+        }
+      }
+    `, {
+      place_id,
+      selectedCity
+    })) as any;
+
+    console.log('[getPlaceDetails] GraphQL response:', result?.data?.getPlaceDetails);
+
+    const activityData = result?.data?.getPlaceDetails?.activity;
+
+    if (!activityData) {
+      throw new Error('No activity data returned from getPlaceDetails');
+    }
+
+    return activityData;
+  } catch (error) {
+    console.error('[getPlaceDetails] GraphQL error:', error);
     throw error;
   }
 }

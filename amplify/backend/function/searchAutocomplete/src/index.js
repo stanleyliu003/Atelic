@@ -1,7 +1,7 @@
 /* Amplify Params - DO NOT EDIT
 	ENV
+	FUNCTION_GETLOCATIONCOORDINATES_NAME
 	REGION
-	GOOGLE_PLACES_API_KEY
 Amplify Params - DO NOT EDIT */
 
 const https = require('https');
@@ -42,7 +42,11 @@ exports.handler = async (event) => {
 
         if (!cityCoordinates || !cityCoordinates.lat || !cityCoordinates.lng) {
             console.error(`Could not get coordinates for city: ${selectedCity}`);
-            throw new Error(`Unable to determine location for ${selectedCity}`);
+            console.error(`Returning empty suggestions due to missing city coordinates`);
+            // Return empty array instead of throwing - graceful degradation
+            return {
+                suggestions: []
+            };
         }
 
         console.log(`City coordinates for ${selectedCity}: ${cityCoordinates.lat}, ${cityCoordinates.lng}`);
@@ -57,18 +61,18 @@ exports.handler = async (event) => {
 
         console.log(`Successfully generated ${suggestions.length} place suggestions for query: ${query}`);
 
+        // Ensure we always return an array (never null/undefined)
         return {
-            suggestions: suggestions
+            suggestions: Array.isArray(suggestions) ? suggestions : []
         };
 
     } catch (error) {
         console.error('Error in searchAutocomplete:', error);
+
+        // IMPORTANT: Return empty array instead of error object
+        // GraphQL schema requires non-null suggestions array
         return {
-            statusCode: 500,
-            body: JSON.stringify({
-                error: 'Failed to generate autocomplete suggestions',
-                details: error.message
-            })
+            suggestions: []
         };
     }
 };
@@ -176,14 +180,16 @@ async function getPlacesAutocomplete(query, cityLat, cityLng, filters) {
                 } catch (parseError) {
                     console.error('Error parsing Places Autocomplete response:', parseError);
                     console.error('Raw response:', data);
-                    reject(new Error('Failed to parse autocomplete response'));
+                    // Return empty array instead of rejecting
+                    resolve([]);
                 }
             });
         });
 
         req.on('error', (err) => {
             console.error('HTTPS request error for Places Autocomplete:', err);
-            reject(err);
+            // Return empty array instead of rejecting
+            resolve([]);
         });
     });
 }

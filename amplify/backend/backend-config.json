@@ -399,7 +399,15 @@
     },
     "searchAutocomplete": {
       "build": true,
-      "dependsOn": [],
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "getLocationCoordinates"
+        }
+      ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
@@ -762,6 +770,14 @@
       ]
     },
     "AMPLIFY_function_searchAutocomplete_geminiApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchAutocomplete"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchAutocomplete_googlePlacesApiKey": {
       "usedBy": [
         {
           "category": "function",
