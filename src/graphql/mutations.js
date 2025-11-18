@@ -101,6 +101,13 @@ export const createTrip = /* GraphQL */ `
       hotel
       flight
       savedActivities
+      recentSearches {
+        place_id
+        name
+        address_info
+        timestamp
+        __typename
+      }
       __typename
     }
   }
@@ -207,6 +214,13 @@ export const addCollaborator = /* GraphQL */ `
       hotel
       flight
       savedActivities
+      recentSearches {
+        place_id
+        name
+        address_info
+        timestamp
+        __typename
+      }
       __typename
     }
   }
@@ -272,6 +286,13 @@ export const removeCollaborator = /* GraphQL */ `
       hotel
       flight
       savedActivities
+      recentSearches {
+        place_id
+        name
+        address_info
+        timestamp
+        __typename
+      }
       __typename
     }
   }
@@ -341,6 +362,13 @@ export const updateCollaboratorRole = /* GraphQL */ `
       hotel
       flight
       savedActivities
+      recentSearches {
+        place_id
+        name
+        address_info
+        timestamp
+        __typename
+      }
       __typename
     }
   }

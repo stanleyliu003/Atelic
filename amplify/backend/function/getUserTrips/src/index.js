@@ -65,7 +65,8 @@ exports.handler = async (event) => {
         photos: result.Item.photos || null,
         hotel: result.Item.hotel || null,
         flight: result.Item.flight || null,
-        savedActivities: result.Item.savedActivities || null
+        savedActivities: result.Item.savedActivities || null,
+        recentSearches: result.Item.recentSearches || []
       };
     }
 
@@ -112,7 +113,8 @@ exports.handler = async (event) => {
               photos: item.photos || null,
               hotel: item.hotel || null,
               flight: item.flight || null,
-              savedActivities: item.savedActivities || null
+              savedActivities: item.savedActivities || null,
+              recentSearches: item.recentSearches || []
             };
           }
         }

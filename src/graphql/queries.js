@@ -328,6 +328,13 @@ export const getUserTrips = /* GraphQL */ `
       hotel
       flight
       savedActivities
+      recentSearches {
+        place_id
+        name
+        address_info
+        timestamp
+        __typename
+      }
       __typename
     }
   }

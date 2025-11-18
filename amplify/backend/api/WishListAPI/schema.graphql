@@ -257,6 +257,13 @@ type DeleteAccountResult {
    query: String!
  }
 
+ type RecentSearch {
+   place_id: String!
+   name: String!
+   address_info: String
+   timestamp: String!
+ }
+
  input ActivityDeduplicationInput {
    name: String!
    place_id: String
@@ -322,6 +329,7 @@ type DeleteAccountResult {
     hotel: String
     flight: String
     savedActivities: String
+    recentSearches: [RecentSearch]
   }
 
    type TripSummary {
@@ -403,6 +411,13 @@ type DeleteAccountResult {
      emoji: String
    }
 
+   input RecentSearchInput {
+     place_id: String!
+     name: String!
+     address_info: String
+     timestamp: String!
+   }
+
   input CreateTripInput {
     tripId: String!
     userID: String!
@@ -426,6 +441,7 @@ type DeleteAccountResult {
     hotel: String
     flight: String
     savedActivities: String
+    recentSearches: [RecentSearchInput]
   }
 
 

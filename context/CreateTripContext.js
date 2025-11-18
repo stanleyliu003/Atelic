@@ -66,6 +66,9 @@ export const CreateTripProvider = ({ children }) => {
     const [flight, setFlight] = useState(null);
     const [savedActivities, setSavedActivities] = useState(null);
 
+    // Recent searches state
+    const [recentSearches, setRecentSearches] = useState([]);
+
     // Permission helpers
     const canEdit = () => ['owner','editor'].includes(currentUserRole);
     const canInviteEditors = () => currentUserRole === 'owner';
@@ -125,6 +128,24 @@ export const CreateTripProvider = ({ children }) => {
     // Direct setter for dayActivities (if used elsewhere)
     const setDayActivitiesWithLog = (newVal) => {
         setDayActivities(newVal);
+    };
+
+    // Helper function to add a place to recent searches
+    const addToRecentSearches = (place) => {
+        setRecentSearches(prev => {
+            // Remove if already exists (to move it to front)
+            const filtered = prev.filter(item => item.place_id !== place.place_id);
+
+            // Add to front and limit to 7
+            const updated = [{
+                place_id: place.place_id,
+                name: place.name,
+                address_info: place.address_info || place.formatted_address || '',
+                timestamp: new Date().toISOString()
+            }, ...filtered].slice(0, 7);
+
+            return updated;
+        });
     };
 
     // Helper function to collect up to 5 unique photo references from activities
@@ -269,6 +290,9 @@ export const CreateTripProvider = ({ children }) => {
             setFlight(trip.flight || null);
             setSavedActivities(trip.savedActivities || null);
 
+            // Restore recent searches
+            setRecentSearches(trip.recentSearches || []);
+
             console.log('[CreateTripContext] Restored trip - createdAt:', trip.createdAt, 'version:', trip.version || 1);
         });
     };
@@ -321,6 +345,7 @@ export const CreateTripProvider = ({ children }) => {
         setHotel(null);
         setFlight(null);
         setSavedActivities(null);
+        setRecentSearches([]);
         // Note: Don't reset selectedCity and tripLength during create trip flow
         // setSelectedCity('');
         // setTripLength(null);
@@ -366,6 +391,7 @@ export const CreateTripProvider = ({ children }) => {
         setHotel(null);
         setFlight(null);
         setSavedActivities(null);
+        setRecentSearches([]);
     };
 
     // Load trip from cloud storage
@@ -716,6 +742,10 @@ export const CreateTripProvider = ({ children }) => {
         setFlight,
         savedActivities,
         setSavedActivities,
+        // Recent searches
+        recentSearches,
+        setRecentSearches,
+        addToRecentSearches,
     };
 
     return (

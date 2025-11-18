@@ -50,7 +50,42 @@ export default function TripViewMain() {
     const navigation = useNavigation();
     const params = useLocalSearchParams();
     const { restoreTrip } = params;
-    const { activities, removeActivities, setDayPolyline, tripId, wishlistText, dayPolylines, updateActivities, setTripId, restoreTripFromObject, createdAt, setCreatedAt, startDate, endDate, tripLength, setTripLength, setDayPolylinesDeleteDay, selectedCity, generateTripId, tripPhotoReference, collaborators, currentUserRole, setCollaborators, isOwner, version, setVersion, updatedAt, setUpdatedAt, lastUpdatedBy, setLastUpdatedBy, cityCategories, generateActivitiesForCategory, categoryActivities, addToWishlist } = useCreateTrip();
+    const {
+        activities,
+        removeActivities,
+        setDayPolyline,
+        tripId,
+        wishlistText,
+        dayPolylines,
+        updateActivities,
+        setTripId,
+        restoreTripFromObject,
+        createdAt,
+        setCreatedAt,
+        startDate,
+        endDate,
+        tripLength,
+        setTripLength,
+        setDayPolylinesDeleteDay,
+        selectedCity,
+        generateTripId,
+        tripPhotoReference,
+        collaborators,
+        currentUserRole,
+        setCollaborators,
+        isOwner,
+        version,
+        setVersion,
+        updatedAt,
+        setUpdatedAt,
+        lastUpdatedBy,
+        setLastUpdatedBy,
+        cityCategories,
+        generateActivitiesForCategory,
+        categoryActivities,
+        addToWishlist,
+        recentSearches,
+    } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
@@ -265,7 +300,8 @@ export default function TripViewMain() {
         tripLength,
         selectedCity,
         tripPhotoReference,
-        createdAt
+        createdAt,
+        recentSearches,
     });
 
     // Keep latestTripDataRef in sync with the latest values
@@ -277,9 +313,10 @@ export default function TripViewMain() {
             tripLength,
             selectedCity,
             tripPhotoReference,
-            createdAt
+            createdAt,
+            recentSearches,
         };
-    }, [activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt]);
+    }, [activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt, recentSearches]);
 
     // Initialize days based on tripLength (only for new trips, not existing ones)
     const [hasInitialized, setHasInitialized] = useState(false);
@@ -1092,7 +1129,15 @@ export default function TripViewMain() {
 
         try {
             // Use latest values from ref to avoid stale closures
-            const { activities: latestActivities, dayActivities: latestDayActivities, dayPolylines: latestDayPolylines, selectedCity: latestSelectedCity, tripPhotoReference: latestTripPhotoReference, createdAt: latestCreatedAt } = latestTripDataRef.current;
+            const {
+                activities: latestActivities,
+                dayActivities: latestDayActivities,
+                dayPolylines: latestDayPolylines,
+                selectedCity: latestSelectedCity,
+                tripPhotoReference: latestTripPhotoReference,
+                createdAt: latestCreatedAt,
+                recentSearches: latestRecentSearches,
+            } = latestTripDataRef.current;
 
             // Gather days and their activities (sanitize activities for GraphQL input)
             const days = Object.keys(latestDayActivities).map(dayNumber => ({
@@ -1146,6 +1191,7 @@ export default function TripViewMain() {
                 startDate: startDate || null,
                 endDate: endDate || null,
                 cityCategories: cleanCityCategories || null, // Save city categories for restoration
+                recentSearches: Array.isArray(latestRecentSearches) ? latestRecentSearches : [],
             };
 
             // Get current user information

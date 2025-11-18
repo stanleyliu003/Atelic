@@ -15,6 +15,7 @@ import { runOnJS } from 'react-native-reanimated';
 import { Colors } from '../../../constants/Colors';
 import { FilterChips } from './FilterChips';
 import { getSearchAutocomplete, getPlaceDetails } from '../../services/searchService';
+import { useCreateTrip } from '../../../context/CreateTripContext';
 
 /**
  * AutocompleteModal Component - Refactored for Direct Place Selection
@@ -55,6 +56,9 @@ export const AutocompleteModal = ({
   const [addingPlace, setAddingPlace] = useState(false);
   const searchInputRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
+
+  // Get recent searches from context
+  const { recentSearches, addToRecentSearches } = useCreateTrip();
 
   // Handle close modal
   const handleCloseModal = () => {
@@ -151,6 +155,13 @@ export const AutocompleteModal = ({
 
       console.log('[AutocompleteModal] Got place details:', activity);
 
+      // Add to recent searches BEFORE saving
+      addToRecentSearches({
+        place_id: suggestion.place_id,
+        name: suggestion.name,
+        address_info: suggestion.address_info
+      });
+
       // Immediately save the activity
       if (onSaveActivities) {
         onSaveActivities([activity], []);
@@ -164,6 +175,11 @@ export const AutocompleteModal = ({
     } finally {
       setAddingPlace(false);
     }
+  };
+
+  // Handle recent search selection - reuse the same logic as suggestion select
+  const handleRecentSearchSelect = async (recentSearch) => {
+    await handleSuggestionSelect(recentSearch);
   };
 
   // Swipe down gesture to close
@@ -233,6 +249,27 @@ export const AutocompleteModal = ({
 
           {/* Suggestions List */}
           <ScrollView style={styles.suggestionsContainer} showsVerticalScrollIndicator={false}>
+            {/* Recent Searches Section - Show when query is empty and not loading */}
+            {!addingPlace && !loading && localQuery.length === 0 && recentSearches.length > 0 && (
+              <View style={styles.recentSection}>
+                <Text style={styles.recentTitle}>RECENT</Text>
+                {recentSearches.map((recentSearch, index) => (
+                  <TouchableOpacity
+                    key={recentSearch.place_id || index}
+                    style={styles.suggestionItem}
+                    onPress={() => handleRecentSearchSelect(recentSearch)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="time-outline" size={20} color="#666" />
+                    <View style={styles.suggestionTextContainer}>
+                      <Text style={styles.suggestionName}>{recentSearch.name}</Text>
+                      <Text style={styles.suggestionAddress}>{recentSearch.address_info}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
             {/* Adding Place Loading State */}
             {addingPlace && (
               <View style={styles.loadingContainer}>
@@ -266,8 +303,8 @@ export const AutocompleteModal = ({
               </View>
             )}
 
-            {/* Empty State - Start typing */}
-            {!addingPlace && !loading && !error && localQuery.length < 2 && (
+            {/* Empty State - Start typing - Only show if no recent searches */}
+            {!addingPlace && !loading && !error && localQuery.length < 2 && recentSearches.length === 0 && (
               <View style={styles.emptyContainer}>
                 <Ionicons name="location-outline" size={64} color="#ccc" />
                 <Text style={styles.emptyText}>Search for places</Text>
@@ -415,6 +452,17 @@ const styles = StyleSheet.create({
     color: '#ccc',
     marginTop: 5,
     textAlign: 'center',
+  },
+  recentSection: {
+    marginBottom: 20,
+  },
+  recentTitle: {
+    fontFamily: 'outfit-bold',
+    fontSize: 14,
+    color: '#999',
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   suggestionsList: {
     paddingBottom: 20,
