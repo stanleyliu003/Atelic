@@ -1116,6 +1116,17 @@ export default function TripViewMain() {
         };
     };
 
+    // Helper to sanitize recent searches for GraphQL input
+    const sanitizeRecentSearch = (recentSearch: any) => {
+        const { __typename, ...rest } = recentSearch || {};
+        return {
+            place_id: rest.place_id,
+            name: rest.name,
+            address_info: rest.address_info,
+            timestamp: rest.timestamp,
+        };
+    };
+
     // Serialize trip data for saving
     const saveTrip = async () => {
         // Check if save is already in progress using ref for immediate access
@@ -1178,6 +1189,11 @@ export default function TripViewMain() {
                 }))
                 : null;
 
+            // Sanitize recentSearches for GraphQL input
+            const cleanRecentSearches = Array.isArray(latestRecentSearches)
+                ? latestRecentSearches.map(sanitizeRecentSearch)
+                : [];
+
             const tripData = {
                 tripId: currentTripId,
                 days,
@@ -1191,7 +1207,7 @@ export default function TripViewMain() {
                 startDate: startDate || null,
                 endDate: endDate || null,
                 cityCategories: cleanCityCategories || null, // Save city categories for restoration
-                recentSearches: Array.isArray(latestRecentSearches) ? latestRecentSearches : [],
+                recentSearches: cleanRecentSearches,
             };
 
             // Get current user information

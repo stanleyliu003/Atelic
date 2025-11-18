@@ -136,6 +136,13 @@ export const getUserTripsDetailed = /* GraphQL */ `
         emoji
         __typename
       }
+      recentSearches {
+        place_id
+        name
+        address_info
+        timestamp
+        __typename
+      }
       __typename
     }
   }
