@@ -182,7 +182,11 @@ export function ActivityCard({
             activeOpacity={0.7}
           >
             <View style={styles.activityInfo}>
-              <Text style={[styles.activityText, disabled && styles.disabledText]}>
+              <Text
+                style={[styles.activityText, disabled && styles.disabledText]}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
                 {getDisplayName()}
               </Text>
               <View style={styles.activityStats}>
