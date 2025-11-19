@@ -3,10 +3,13 @@ import awsconfig from '../src/aws-exports';
 import { Colors } from '../constants/Colors';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState, useRef } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, AppState, Linking, Dimensions, SafeAreaView } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, AppState, Linking, Dimensions, SafeAreaView, Platform } from 'react-native';
 import { Feather, AntDesign } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import DeviceInfo from 'react-native-device-info';
+import { MINIMUM_APP_VERSION } from '../constants/AppConfig';
+import { isVersionOutdated } from '../src/utils/versionComparison';
+import { UpdateRequired } from '../src/components/UpdateRequired';
 
 // Warm up the browser for better performance (recommended by Expo)
 WebBrowser.maybeCompleteAuthSession();
@@ -70,6 +73,8 @@ export default function Login() {
   const router = useRouter();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showDeletedNotice, setShowDeletedNotice] = useState(false);
+  const [showUpdateRequired, setShowUpdateRequired] = useState(false);
+  const [currentAppVersion, setCurrentAppVersion] = useState(null);
   const isNavigatingRef = useRef(false);
 
   useEffect(() => {
@@ -123,6 +128,21 @@ export default function Login() {
   }, []);
 
   const checkAuthenticationState = async () => {
+    // ========== VERSION CHECK (BEFORE ANYTHING ELSE) ==========
+    const appVersion = DeviceInfo.getVersion() || null;
+    setCurrentAppVersion(appVersion);
+
+    const platform = Platform.OS; // 'ios' or 'android'
+    const minimumVersion = MINIMUM_APP_VERSION[platform];
+
+    if (isVersionOutdated(appVersion, minimumVersion)) {
+      console.log('[Login] App version outdated, showing update prompt');
+      setShowUpdateRequired(true);
+      setIsCheckingAuth(false);
+      return; // Block further execution - don't proceed to auth
+    }
+    // ===========================================================
+
     // Prevent multiple simultaneous navigation attempts
     if (isNavigatingRef.current) {
       return;
@@ -219,6 +239,16 @@ export default function Login() {
       setIsCheckingAuth(false);
     }
   };
+
+  // Show update required screen if app version is outdated
+  if (showUpdateRequired && currentAppVersion) {
+    return (
+      <UpdateRequired
+        currentVersion={currentAppVersion}
+        minimumVersion={MINIMUM_APP_VERSION[Platform.OS]}
+      />
+    );
+  }
 
   // Show loading spinner while checking authentication
   if (isCheckingAuth) {

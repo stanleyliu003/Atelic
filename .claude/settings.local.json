@@ -24,7 +24,9 @@
       "Bash(aws lambda invoke:*)",
       "Bash(node test_date_formatting.js)",
       "Read(//private/tmp/**)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(node test_version_check.js)",
+      "Bash(node test_app_version.js)"
     ],
     "deny": [],
     "ask": [],
