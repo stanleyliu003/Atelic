@@ -106,8 +106,14 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
   // Swipe down gesture to close
   const swipeGesture = Gesture.Pan()
     .onEnd((event) => {
-      // If swiped down more than 100px with sufficient velocity, close the modal
-      if (event.translationY > 100 && event.velocityY > 0) {
+      // Close if either:
+      // 1. Swiped down more than 50px (slow deliberate swipe), OR
+      // 2. Fast downward swipe with velocity > 500 (quick flick)
+      const shouldClose =
+        (event.translationY > 25 && event.velocityY >= 0) || // Slow swipe down
+        (event.velocityY > 500); // Fast swipe down
+
+      if (shouldClose) {
         runOnJS(onClose)();
       }
     });

@@ -241,21 +241,24 @@ export default function TripViewMain() {
                 // Don't update position during move - we'll snap on release
             },
             onPanResponderRelease: (_, gestureState) => {
-                const swipeThreshold = 50; // Minimum distance for a swipe
-                const swipeVelocityThreshold = 0.5; // Minimum velocity for a swipe
-                
+                // More sensitive thresholds for better responsiveness
+                const swipeThreshold = 20; // Reduced from 50 to 20 for more sensitive distance detection
+                const swipeVelocityThreshold = 0.2; // Reduced from 0.5 to 0.2 for more sensitive velocity detection
+
                 const currentState = currentHeightStateRef.current; // Use ref for current value
                 let newState = currentState;
-                
+
                 // Check for swipe up (negative dy) - go one step higher
+                // Accept EITHER sufficient distance OR sufficient velocity
                 if (gestureState.dy < -swipeThreshold || gestureState.vy < -swipeVelocityThreshold) {
                     newState = Math.min(currentState + 1, 2); // Max state is 2
                 }
                 // Check for swipe down (positive dy) - go one step lower
+                // Accept EITHER sufficient distance OR sufficient velocity
                 else if (gestureState.dy > swipeThreshold || gestureState.vy > swipeVelocityThreshold) {
                     newState = Math.max(currentState - 1, 0); // Min state is 0
                 }
-                
+
                 // Animate to the new state if it changed
                 if (newState !== currentState) {
                     setCurrentHeightState(newState);
