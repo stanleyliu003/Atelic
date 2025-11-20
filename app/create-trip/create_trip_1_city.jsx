@@ -4,7 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Animated, PanResponder, Switch } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Animated, PanResponder, Switch, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { API } from 'aws-amplify';
@@ -177,20 +177,21 @@ export default function create_trip_1_city({ showBackButton = true }) {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={60}
         >
-            <View style={{
-                padding: 25,
-                paddingTop: 40,
-                backgroundColor: Colors.WHITE,
-                minHeight: '100%'
-            }}>
-                {/* Header Row */}
-                {showBackButton && (
-                    <View style={styles.headerRow}>
-                        <TouchableOpacity onPress={() => router.replace('(tabs)/create_new_trip')} style={styles.backButton}>
-                            <Ionicons name="arrow-back" size={32} color="black" />
-                        </TouchableOpacity>
-                    </View>
-                )}
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View style={{
+                    padding: 25,
+                    paddingTop: 40,
+                    backgroundColor: Colors.WHITE,
+                    minHeight: '100%'
+                }}>
+                    {/* Header Row */}
+                    {showBackButton && (
+                        <View style={styles.headerRow}>
+                            <TouchableOpacity onPress={() => router.replace('(tabs)/create_new_trip')} style={styles.backButton}>
+                                <Ionicons name="arrow-back" size={32} color="black" />
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
                 {/* Destination Prompt */}
                 <View style={styles.promptSection}>                    
@@ -540,7 +541,8 @@ export default function create_trip_1_city({ showBackButton = true }) {
                         <Text style={styles.nextButtonText}>Next</Text>
                     </TouchableOpacity>
                 </View>
-            </View>
+                </View>
+            </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
     )
 }
