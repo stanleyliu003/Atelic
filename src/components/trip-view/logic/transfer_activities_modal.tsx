@@ -2,6 +2,7 @@ import { Colors } from '../../../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { formatDayTab } from '../../../utils/dateFormatting';
 
 type DayOption = number | 'wishlist';
 
@@ -12,6 +13,7 @@ interface TransferActivitiesModalProps {
   onSelectDay: (day: DayOption) => void;
   onConfirm: () => void;
   onClose: () => void;
+  startDate?: string | null;
 }
 
 export const TransferActivitiesModal: React.FC<TransferActivitiesModalProps> = ({
@@ -21,6 +23,7 @@ export const TransferActivitiesModal: React.FC<TransferActivitiesModalProps> = (
   onSelectDay,
   onConfirm,
   onClose,
+  startDate,
 }) => {
   return (
     <Modal
@@ -54,7 +57,12 @@ export const TransferActivitiesModal: React.FC<TransferActivitiesModalProps> = (
                   styles.dayPickerText,
                   selectedDay === item && styles.dayPickerTextSelected
                 ]}>
-                  {item === 'wishlist' ? 'Wishlist' : `Day ${item}`}
+                  {item === 'wishlist'
+                    ? 'Wishlist'
+                    : startDate
+                      ? formatDayTab(startDate, item as number)
+                      : `Day ${item}`
+                  }
                 </Text>
               </Pressable>
             )}

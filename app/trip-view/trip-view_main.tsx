@@ -1902,6 +1902,7 @@ export default function TripViewMain() {
                 selectedDay={selectedDay}
                 onSelectDay={handleDaySelection}
                 onClose={() => setIsModalVisible(false)}
+                startDate={startDate}
                 />
             </Animated.View>
 
