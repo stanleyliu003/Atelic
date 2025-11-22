@@ -100,42 +100,59 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
   }, [displayActivities, wishlistActivities, dayActivities]);
 
   // Toggle activity selection
+  // We always allow toggling; handleSave is responsible for making sure
+  // we don't actually remove wishlist items that are in day tabs.
   const handleActivityToggle = (activityId) => {
     setSelectedActivityIds((prev) => {
       const isCurrentlySelected = prev.includes(activityId);
-      const isInWishlist = wishlistActivityIdsInResults.includes(activityId);
-      const isInDay = dayActivityIdsInResults.includes(activityId);
-
-      // Prevent deselection only if activity is BOTH in wishlist AND in day tabs
-      // This prevents removing from wishlist when it's still being used in a day
-      if (isCurrentlySelected && isInWishlist && isInDay) {
-        return prev; // Cannot deselect - activity is in both wishlist and day tabs
-      }
-
-      // Allow all other selections/deselections
       if (isCurrentlySelected) {
         return prev.filter((id) => id !== activityId);
-      } else {
-        return [...prev, activityId];
       }
+      return [...prev, activityId];
     });
   };
 
   // Handle save button press
   const handleSave = () => {
     // Get newly selected activities (not in wishlist) - use NEW instanceIds from displayActivities
-    // Activities matching day tabs CAN be added as duplicates now (they have new instanceIds)
     const newlySelectedActivities = displayActivities.filter((activity) =>
       activity.instanceId &&
       selectedActivityIds.includes(activity.instanceId) &&
       !wishlistActivityIdsInResults.includes(activity.instanceId)
     );
 
-    // Get deselected wishlist activities (were in wishlist but now deselected)
-    // Only allow deselection if NOT in day tabs
-    const deselectedWishlistActivityIds = wishlistActivityIdsInResults.filter(
-      (activityId) => !selectedActivityIds.includes(activityId) && !dayActivityIdsInResults.includes(activityId)
+    // Map deselected display activities back to the REAL wishlist instanceIds.
+    // Important: wishlistActivities passed from TripViewMain already EXCLUDES any
+    // activities that are in day tabs, so it's always safe to remove them here.
+    //
+    // 1) Find display instanceIds that represent wishlist items and are now deselected
+    const deselectedDisplayIds = wishlistActivityIdsInResults.filter(
+      (activityId) => !selectedActivityIds.includes(activityId)
     );
+
+    // 2) Build lookup: display instanceId -> place_id
+    const displayIdToPlaceId = new Map(
+      displayActivities
+        .filter(a => a.instanceId && a.place_id)
+        .map(a => [a.instanceId, a.place_id])
+    );
+
+    // 3) For each deselected display card, collect the underlying wishlist instanceIds
+    //    (by place_id) to actually remove from context.
+    const deselectedWishlistInstanceIdsSet = new Set();
+
+    deselectedDisplayIds.forEach(displayId => {
+      const placeId = displayIdToPlaceId.get(displayId);
+      if (!placeId) return;
+
+      (wishlistActivities || [])
+        .filter(a => a.place_id === placeId && a.instanceId)
+        .forEach(a => {
+          deselectedWishlistInstanceIdsSet.add(a.instanceId);
+        });
+    });
+
+    const deselectedWishlistActivityIds = Array.from(deselectedWishlistInstanceIdsSet);
 
     // Call onSave with both additions and removals
     onSave(newlySelectedActivities, deselectedWishlistActivityIds);
