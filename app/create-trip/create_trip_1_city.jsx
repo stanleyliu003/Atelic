@@ -19,6 +19,8 @@ export default function create_trip_1_city({ showBackButton = true }) {
         setIsCreatingTrip,
         selectedCity,
         setSelectedCity,
+        selectedCityLocation,
+        setSelectedCityLocation,
         clearTripCreationCache,
         cityCategories,
         setCityCategories,
@@ -166,7 +168,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
             console.error('Error clearing categories cache:', error);
         }
 
-        router.push('/create-trip/create_trip_explore');
+        router.push('trip-view/trip-view_main');
     };
 
     const dayOptions = Array.from({ length: 30 }, (_, i) => i + 1);
@@ -206,10 +208,17 @@ export default function create_trip_1_city({ showBackButton = true }) {
                     <GooglePlacesAutocomplete
                         ref={googlePlacesRef}
                         placeholder='Ex: Boston, MA, USA'
-                        onPress={async (data) => {
+                        onPress={async (data, details = null) => {
                             setSelectedCity(data.description);
                             selectedCityRef.current = data.description;
                             setHasSelectedPlace(true);
+                            // Store selected city's coordinates for initial map centering
+                            if (details && details.geometry && details.geometry.location) {
+                                const { lat, lng } = details.geometry.location;
+                                setSelectedCityLocation({ lat, lng });
+                            } else {
+                                setSelectedCityLocation(null);
+                            }
                             // Update the text field to show the selected city immediately
                             if (googlePlacesRef.current) {
                                 googlePlacesRef.current.setAddressText(data.description);
@@ -283,7 +292,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                 color: '#1a1a1a',
                             },
                         }}
-                        fetchDetails={false}
+                        fetchDetails={true}
                         enablePoweredByContainer={false}
                         debounce={200}
                     />

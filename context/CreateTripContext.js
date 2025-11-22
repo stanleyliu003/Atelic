@@ -38,6 +38,8 @@ export const CreateTripProvider = ({ children }) => {
     const [endDate, setEndDate] = useState(null);
     const [isCreatingTrip, setIsCreatingTrip] = useState(false);
     const [selectedCity, setSelectedCity] = useState('');
+    // Store the selected city's coordinates for map centering before activities exist
+    const [selectedCityLocation, setSelectedCityLocation] = useState(null); // { lat, lng } | null
     const [tripLength, setTripLength] = useState(null);
     const [cityCategories, setCityCategories] = useState(null);
     const [selectedCategories, setSelectedCategories] = useState([]);
@@ -369,6 +371,7 @@ export const CreateTripProvider = ({ children }) => {
         setDayPolylines({});
         setDayActivities({});
         setSelectedCity('');
+        setSelectedCityLocation(null);
         setTripLength(null);
         setCityCategories(null);
         setSelectedCategories([]);
@@ -685,6 +688,8 @@ export const CreateTripProvider = ({ children }) => {
         setIsCreatingTrip,
         selectedCity,
         setSelectedCity,
+        selectedCityLocation,
+        setSelectedCityLocation,
         tripLength,
         setTripLength: setTripLengthWithLog,
         cityCategories,

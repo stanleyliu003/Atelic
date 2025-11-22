@@ -19,6 +19,8 @@ interface MapViewProps {
   // Collaboration props
   onShareTrip?: () => void;
   allActivities?: Activity[]; // All activities from the trip (wishlist + all days)
+  // Selected city's coordinates for initial centering when there are no activities yet
+  selectedCityLocation?: { lat: number; lng: number } | null;
 }
 
 // Custom numbered marker component with selection state
@@ -58,7 +60,8 @@ export function TripMapView({
   currentHeightState = 1, // Default to middle state
   heightStates = [0.30, 0.65, 0.90], // Default height states
   onShareTrip,
-  allActivities = []
+  allActivities = [],
+  selectedCityLocation = null,
 }: MapViewProps) {
   const mapRef = useRef<MapView>(null);
 
@@ -95,7 +98,17 @@ export function TripMapView({
   // Calculate the region to show all markers with proper bounds
   const getRegionForActivities = (): Region => {
     if (dynamicMarkers.length === 0) {
-      // If no activities on current tab, find first activity with coordinates from all activities
+      // If no activities on current tab, prefer centering on the selected city's coordinates
+      if (selectedCityLocation && selectedCityLocation.lat != null && selectedCityLocation.lng != null) {
+        return {
+          latitude: selectedCityLocation.lat,
+          longitude: selectedCityLocation.lng,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        };
+      }
+
+      // If we don't have a selected city location, fall back to first activity with coordinates from all activities
       const firstActivityWithCoords = allActivities.find(
         (activity: Activity) => activity.lat != null && activity.lng != null
       );
@@ -213,7 +226,7 @@ export function TripMapView({
   // Center the map on the first marker, or a default location if no markers exist
   const initialRegion: Region = useMemo(() => {
     return getInitialRegion();
-  }, [activeTab, dynamicMarkers, currentHeightState, allActivities]);
+  }, [activeTab, dynamicMarkers, currentHeightState, allActivities, selectedCityLocation]);
 
   // Animate to show all activities when activities, activeTab, or height state changes
   useEffect(() => {
@@ -221,7 +234,7 @@ export function TripMapView({
       const newRegion = getInitialRegion();
       mapRef.current.animateToRegion(newRegion, 1000); // 1 second animation
     }
-  }, [activities, activeTab, dynamicMarkers, currentHeightState]);
+  }, [activities, activeTab, dynamicMarkers, currentHeightState, selectedCityLocation]);
 
   // Updated useEffect for selected marker zoom
   useEffect(() => {

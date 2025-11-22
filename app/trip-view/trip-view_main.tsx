@@ -85,6 +85,7 @@ export default function TripViewMain() {
         categoryActivities,
         addToWishlist,
         recentSearches,
+        selectedCityLocation,
     } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
@@ -1661,6 +1662,7 @@ export default function TripViewMain() {
                 currentHeightState={currentHeightState}
                 heightStates={heightStates}
                 allActivities={getAllActivitiesFromTrip()}
+                selectedCityLocation={selectedCityLocation || undefined}
                 onShareTrip={async () => {
                     if (!tripId) {
                         // Save trip first if it doesn't exist
