@@ -928,24 +928,42 @@ export default function TripViewMain() {
     };
 
     // Handler for saving search results (new direct flow)
-    const handleSaveSearchResults = (selectedActivities: Activity[]) => {
+    const handleSaveSearchResults = (selectedActivities: Activity[], wishlistActivityIds?: string[]) => {
         if (selectedActivities.length === 0) {
             return;
         }
 
-        // Add the selected activity to the active tab (single place from autocomplete)
-        if (activeTab === 'wishlist') {
-            // Add to wishlist
-            updateActivities([...(activities || []), ...selectedActivities]);
-        } else if (activeTab.startsWith('day')) {
-            // Add to the specific day
-            const dayNumber = parseInt(activeTab.replace('day', ''));
-            selectedActivities.forEach(activity => {
-                addActivityToDay(activity, dayNumber);
-            });
+        // If wishlistActivityIds are provided, we're moving activities from wishlist to current tab
+        if (wishlistActivityIds && wishlistActivityIds.length > 0) {
+            // Remove from wishlist
+            removeActivities(wishlistActivityIds);
+
+            // Add to the current tab
+            if (activeTab === 'wishlist') {
+                // Already on wishlist, no need to move
+                return;
+            } else if (activeTab.startsWith('day')) {
+                // Add to the specific day
+                const dayNumber = parseInt(activeTab.replace('day', ''));
+                selectedActivities.forEach(activity => {
+                    addActivityToDay(activity, dayNumber);
+                });
+            }
         } else {
-            // Fallback to wishlist
-            updateActivities([...(activities || []), ...selectedActivities]);
+            // Normal flow: adding new activities from search
+            if (activeTab === 'wishlist') {
+                // Add to wishlist
+                updateActivities([...(activities || []), ...selectedActivities]);
+            } else if (activeTab.startsWith('day')) {
+                // Add to the specific day
+                const dayNumber = parseInt(activeTab.replace('day', ''));
+                selectedActivities.forEach(activity => {
+                    addActivityToDay(activity, dayNumber);
+                });
+            } else {
+                // Fallback to wishlist
+                updateActivities([...(activities || []), ...selectedActivities]);
+            }
         }
 
         // Modal auto-closes in AutocompleteModal component
@@ -1924,6 +1942,8 @@ export default function TripViewMain() {
                 onSaveActivities={handleSaveSearchResults}
                 showAddingPlaceLoading={false}
                 onAddingPlaceChange={setIsAutocompleteAddingPlace}
+                wishlistActivities={activities || []}
+                activeTab={activeTab}
             />
 
             {/* CategoryModal for browsing activities by category */}

@@ -17,6 +17,8 @@ import { Colors } from '../../../constants/Colors';
 import { getSearchAutocomplete, getPlaceDetails } from '../../services/searchService';
 import { useCreateTrip } from '../../../context/CreateTripContext';
 import Feather from '@expo/vector-icons/Feather';
+import { WishlistActivities } from '../trip-view/wishlist_activities';
+import { ActivityDetailView } from '../trip-view/description_card';
 
 /**
  * AutocompleteModal Component - Refactored for Direct Place Selection
@@ -38,9 +40,11 @@ import Feather from '@expo/vector-icons/Feather';
  * @param {function} onClose - Callback to close modal
  * @param {function} onFilterToggle - Callback when a filter is toggled
  * @param {function} onQueryChange - Callback when search query changes in modal
- * @param {function} onSaveActivities - Callback to save selected activity (single activity array)
+ * @param {function} onSaveActivities - Callback to save selected activity (single activity array) or move wishlist activities (newActivities, wishlistActivityIds)
  * @param {function} onAddingPlaceChange - Optional callback to notify parent when a place is being added
  * @param {boolean} showAddingPlaceLoading - Whether to show "Adding place..." loading state when selecting a place
+ * @param {Activity[]} wishlistActivities - Activities in the wishlist to display
+ * @param {string} activeTab - Current active tab (to show "Save to Day X" or "Save to Wishlist")
  */
 export const AutocompleteModal = ({
   visible,
@@ -53,6 +57,8 @@ export const AutocompleteModal = ({
   onSaveActivities,
   onAddingPlaceChange,
   showAddingPlaceLoading = true,
+  wishlistActivities = [],
+  activeTab = 'wishlist',
 }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -61,6 +67,9 @@ export const AutocompleteModal = ({
   const [addingPlace, setAddingPlace] = useState(false);
   const searchInputRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
+  const [selectedWishlistActivities, setSelectedWishlistActivities] = useState([]);
+  const [selectedActivityForDetail, setSelectedActivityForDetail] = useState(null);
+  const [showActivityDetail, setShowActivityDetail] = useState(false);
 
   // Get recent searches from context
   const { recentSearches, addToRecentSearches } = useCreateTrip();
@@ -73,8 +82,9 @@ export const AutocompleteModal = ({
     if (onQueryChange) {
       onQueryChange('');
     }
-    // Reset suggestions
+    // Reset suggestions and selections
     setSuggestions([]);
+    setSelectedWishlistActivities([]);
     onClose();
   };
 
@@ -202,6 +212,47 @@ export const AutocompleteModal = ({
     await handleSuggestionSelect(recentSearch);
   };
 
+  // Handle wishlist activity selection
+  const handleWishlistActivitySelect = (activityId) => {
+    setSelectedWishlistActivities(prev => [...prev, activityId]);
+  };
+
+  // Handle wishlist activity deselection
+  const handleWishlistActivityDeselect = (activityId) => {
+    setSelectedWishlistActivities(prev => prev.filter(id => id !== activityId));
+  };
+
+  // Handle save wishlist activities to current tab
+  const handleSaveWishlistActivities = () => {
+    if (selectedWishlistActivities.length === 0) return;
+
+    // Get the actual activity objects
+    const activitiesToMove = wishlistActivities.filter(activity =>
+      selectedWishlistActivities.includes(activity.instanceId || activity.place_id)
+    );
+
+    // Call the save callback with activities and their IDs to remove from wishlist
+    if (onSaveActivities) {
+      onSaveActivities(activitiesToMove, selectedWishlistActivities);
+    }
+
+    // Reset and close
+    setSelectedWishlistActivities([]);
+    handleCloseModal();
+  };
+
+  // Handle activity card press to show description
+  const handleActivityCardPress = (activity) => {
+    setSelectedActivityForDetail(activity);
+    setShowActivityDetail(true);
+  };
+
+  // Handle close activity detail
+  const handleCloseActivityDetail = () => {
+    setShowActivityDetail(false);
+    setSelectedActivityForDetail(null);
+  };
+
   // Swipe down gesture to close
   const swipeGesture = Gesture.Pan()
     .onEnd((event) => {
@@ -299,6 +350,22 @@ export const AutocompleteModal = ({
               </View>
             )}
 
+            {/* Wishlist Activities Section - Show when query is empty, not on wishlist tab, and wishlist has activities */}
+            {!addingPlace && !loading && localQuery.length === 0 && activeTab !== 'wishlist' && wishlistActivities.length > 0 && (
+              <View style={styles.wishlistSection}>
+                <Text style={styles.recentTitle}>Wishlist</Text>
+                <WishlistActivities
+                  activities={wishlistActivities}
+                  selectedActivities={selectedWishlistActivities}
+                  onActivitySelect={handleWishlistActivitySelect}
+                  onActivityDeselect={handleWishlistActivityDeselect}
+                  onDescriptionCardPress={handleActivityCardPress}
+                  showSelectionIndicator={true}
+                  scrollable={false}
+                />
+              </View>
+            )}
+
             {/* Adding Place Loading State */}
             {addingPlace && (
               <View style={styles.loadingContainer}>
@@ -370,8 +437,36 @@ export const AutocompleteModal = ({
               </View>
             )}
           </ScrollView>
+
+          {/* Save Button - Only show when wishlist activities are selected */}
+          {selectedWishlistActivities.length > 0 && (
+            <View style={styles.footer}>
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveWishlistActivities} activeOpacity={0.8}>
+                <Text style={styles.saveButtonText}>
+                  Save
+                  to {activeTab === 'wishlist' ? 'Wishlist' : `Day ${activeTab.replace('day', '')}`}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </GestureHandlerRootView>
       </View>
+
+      {/* Activity Detail View Modal */}
+      {showActivityDetail && selectedActivityForDetail && (
+        <Modal visible={showActivityDetail} animationType="slide" transparent={true}>
+          <View style={styles.detailModalOverlay}>
+            <View style={styles.detailModalContainer}>
+              <ActivityDetailView
+                activity={selectedActivityForDetail}
+                onClose={handleCloseActivityDetail}
+                variant="wishlist"
+                showDragIndicator={true}
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
     </Modal>
   );
 };
@@ -387,6 +482,18 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
     height: '90%',
+  },
+  detailModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  detailModalContainer: {
+    backgroundColor: Colors.WHITE,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    height: '90%',
+    paddingHorizontal: 0,
   },
   dragIndicatorContainer: {
     width: '100%',
@@ -491,6 +598,9 @@ const styles = StyleSheet.create({
   recentSection: {
     marginBottom: 20,
   },
+  wishlistSection: {
+    marginBottom: 20,
+  },
   recentTitle: {
     fontFamily: 'outfit-bold',
     fontSize: 14,
@@ -498,6 +608,33 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#e9ecef',
+    backgroundColor: Colors.WHITE,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F36406',
+    borderRadius: 15,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  saveButtonText: {
+    fontFamily: 'outfit-bold',
+    fontSize: 16,
+    color: Colors.WHITE,
   },
   suggestionsList: {
     paddingBottom: 20,

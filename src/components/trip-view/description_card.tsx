@@ -270,11 +270,11 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
   const hoursStatus = getHoursStatus();
 
   return (
-    <GestureHandlerRootView style={styles.container}>
+    <GestureHandlerRootView style={[styles.container, variant === 'wishlist' && styles.containerWishlist]}>
       {/* Swipeable Drag Indicator */}
       {showDragIndicator && (
         <GestureDetector gesture={swipeGesture}>
-          <View style={styles.dragIndicatorContainer}>
+          <View style={[styles.dragIndicatorContainer, variant === 'wishlist' && styles.dragIndicatorContainerWishlist]}>
             <View style={styles.dragIndicator} />
           </View>
         </GestureDetector>
@@ -504,11 +504,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.WHITE,
   },
+  containerWishlist: {
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    overflow: 'hidden',
+  },
   dragIndicatorContainer: {
     width: '100%',
     alignItems: 'center',
     paddingVertical: 12,
     paddingTop: 8,
+  },
+  dragIndicatorContainerWishlist: {
+    marginTop: 15,
   },
   dragIndicator: {
     width: 40,
@@ -542,7 +550,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   closeButtonWishlist: {
-    top: -10,
+    top: 12,
     right: 15,
   },
   content: {
