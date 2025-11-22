@@ -16,6 +16,7 @@ import { runOnJS } from 'react-native-reanimated';
 import { Colors } from '../../../constants/Colors';
 import { WishlistActivities } from '../trip-view/wishlist_activities';
 import { ActivityDetailView } from '../trip-view/description_card';
+import { duplicateActivity } from '../../utils/activityInstanceId';
 
 /**
  * CategoryModal Component
@@ -37,54 +38,82 @@ import { ActivityDetailView } from '../trip-view/description_card';
 export const CategoryModal = ({ visible, category, activities, loading = false, loadingMore = false, onSave, onClose, onGenerateMore, wishlistActivities = [], dayActivities = [] }) => {
   const [selectedActivityIds, setSelectedActivityIds] = useState([]);
   const [selectedActivity, setSelectedActivity] = useState(null);
-  
+
   // Track which activities from category results are already in wishlist
   const [wishlistActivityIdsInResults, setWishlistActivityIdsInResults] = useState([]);
-  
+
   // Track which activities are in day tabs (cannot be deselected)
   const [dayActivityIdsInResults, setDayActivityIdsInResults] = useState([]);
 
-  // Auto-select activities that are in wishlist or day tabs when activities change
+  // Create fresh instances of activities to allow duplicates
+  // This regenerates instanceIds for activities that already exist in wishlist/days
+  const [displayActivities, setDisplayActivities] = useState([]);
+
+
+  // Reset state when category changes (user switched to different category)
+  useEffect(() => {
+    setSelectedActivityIds([]);
+    setWishlistActivityIdsInResults([]);
+    setDayActivityIdsInResults([]);
+  }, [category]);
+
+  // Regenerate instanceIds for all activities to allow duplicates
+  // This ensures activities can be added to wishlist even if they're already in day tabs
   useEffect(() => {
     if (activities.length > 0) {
-      // Track activities in wishlist (match by place_id, store instanceId)
+      const freshActivities = activities.map(activity => duplicateActivity(activity));
+      setDisplayActivities(freshActivities);
+    } else {
+      setDisplayActivities([]);
+    }
+  }, [activities]);
+
+  // Auto-select activities that are in wishlist or day tabs when activities change
+  useEffect(() => {
+    if (displayActivities.length > 0) {
+      // Track display activities in wishlist (match by place_id, store NEW instanceId from displayActivities)
       const wishlistPlaceIds = wishlistActivities.map(a => a.place_id).filter(Boolean);
-      const activitiesInWishlist = activities
+      const activitiesInWishlist = displayActivities
         .filter(activity => activity.place_id && wishlistPlaceIds.includes(activity.place_id))
         .map(activity => activity.instanceId);
 
-      // Track activities in day tabs (match by place_id, store instanceId)
+      // Track display activities in day tabs (match by place_id, store NEW instanceId from displayActivities)
       const dayPlaceIds = dayActivities.map(a => a.place_id).filter(Boolean);
-      const activitiesInDays = activities
+      const activitiesInDays = displayActivities
         .filter(activity => activity.place_id && dayPlaceIds.includes(activity.place_id))
         .map(activity => activity.instanceId);
 
       setWishlistActivityIdsInResults(activitiesInWishlist);
       setDayActivityIdsInResults(activitiesInDays);
 
-      // Preserve existing manual selections and add auto-selected activities
-      setSelectedActivityIds(prev => {
-        const autoSelectedIds = [...new Set([...activitiesInWishlist, ...activitiesInDays])];
-        // Keep all previous selections and add any new auto-selected ones
-        return [...new Set([...prev, ...autoSelectedIds])];
-      });
-    } else if (activities.length === 0) {
+      // Only auto-select wishlist activities (not day activities)
+      // Day activities should appear unselected since they're no longer in the wishlist
+      // Don't include prev state - start fresh based on current wishlist
+      const autoSelectedIds = [...new Set([...activitiesInWishlist])];
+      setSelectedActivityIds(autoSelectedIds);
+    } else {
       // Reset when activities are cleared
       setWishlistActivityIdsInResults([]);
       setDayActivityIdsInResults([]);
       setSelectedActivityIds([]);
     }
-  }, [activities, wishlistActivities, dayActivities]);
+  }, [displayActivities, wishlistActivities, dayActivities]);
 
   // Toggle activity selection
   const handleActivityToggle = (activityId) => {
-    // Prevent deselection if activity is in a day tab
-    if (dayActivityIdsInResults.includes(activityId)) {
-      return; // Do nothing - activity is in a day and cannot be deselected
-    }
-    
     setSelectedActivityIds((prev) => {
-      if (prev.includes(activityId)) {
+      const isCurrentlySelected = prev.includes(activityId);
+      const isInWishlist = wishlistActivityIdsInResults.includes(activityId);
+      const isInDay = dayActivityIdsInResults.includes(activityId);
+
+      // Prevent deselection only if activity is BOTH in wishlist AND in day tabs
+      // This prevents removing from wishlist when it's still being used in a day
+      if (isCurrentlySelected && isInWishlist && isInDay) {
+        return prev; // Cannot deselect - activity is in both wishlist and day tabs
+      }
+
+      // Allow all other selections/deselections
+      if (isCurrentlySelected) {
         return prev.filter((id) => id !== activityId);
       } else {
         return [...prev, activityId];
@@ -94,12 +123,12 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
 
   // Handle save button press
   const handleSave = () => {
-    // Get newly selected activities (not in wishlist or days) - use instanceId for matching
-    const newlySelectedActivities = activities.filter((activity) =>
+    // Get newly selected activities (not in wishlist) - use NEW instanceIds from displayActivities
+    // Activities matching day tabs CAN be added as duplicates now (they have new instanceIds)
+    const newlySelectedActivities = displayActivities.filter((activity) =>
       activity.instanceId &&
       selectedActivityIds.includes(activity.instanceId) &&
-      !wishlistActivityIdsInResults.includes(activity.instanceId) &&
-      !dayActivityIdsInResults.includes(activity.instanceId)
+      !wishlistActivityIdsInResults.includes(activity.instanceId)
     );
 
     // Get deselected wishlist activities (were in wishlist but now deselected)
@@ -183,7 +212,7 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
             <View style={styles.headerLeft}>
               <Text style={styles.headerTitle}>{category}</Text>
               <Text style={styles.headerSubtitle}>
-                {activities.length} {activities.length === 1 ? 'place' : 'places'} found
+                {displayActivities.length} {displayActivities.length === 1 ? 'place' : 'places'} found
               </Text>
             </View>
             <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -202,7 +231,7 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
                 <ActivityIndicator size="large" color={Colors.PRIMARY} />
                 <Text style={styles.loadingText}>Loading activities...</Text>
               </View>
-            ) : activities.length === 0 ? (
+            ) : displayActivities.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="location-outline" size={64} color="#ccc" />
                 <Text style={styles.emptyText}>No results found</Text>
@@ -211,7 +240,7 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
             ) : (
               <>
                 <WishlistActivities
-                  activities={activities}
+                  activities={displayActivities}
                   selectedActivities={selectedActivityIds}
                   onActivitySelect={handleActivityToggle}
                   onActivityDeselect={handleActivityToggle}

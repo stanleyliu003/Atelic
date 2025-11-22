@@ -454,12 +454,16 @@ export function ActivityList({
   }
 
   const handleActivityPress = (activity: Activity) => {
-    if (variant === 'selectable' && activity.instanceId) {
-      const isSelected = selectedActivities.includes(activity.instanceId);
-      if (isSelected && onActivityDeselect) {
-        onActivityDeselect(activity.instanceId);
-      } else if (!isSelected && onActivitySelect) {
-        onActivitySelect(activity.instanceId);
+    if (variant === 'selectable') {
+      // Use instanceId if available, otherwise fall back to place_id for category activities
+      const activityId = activity.instanceId || activity.place_id;
+      if (activityId) {
+        const isSelected = selectedActivities.includes(activityId);
+        if (isSelected && onActivityDeselect) {
+          onActivityDeselect(activityId);
+        } else if (!isSelected && onActivitySelect) {
+          onActivitySelect(activityId);
+        }
       }
     } else if (onActivityPress) {
       onActivityPress(activity);
@@ -477,7 +481,9 @@ export function ActivityList({
   // Render activities with conditional wrapper based on drag & drop requirement
   const renderActivities = () => {
     return currentActivities.map((activity: Activity, index: number) => {
-      const isSelected = activity.instanceId ? selectedActivities.includes(activity.instanceId) : false;
+      // Use instanceId if available, otherwise fall back to place_id for category activities
+      const activityId = activity.instanceId || activity.place_id;
+      const isSelected = activityId ? selectedActivities.includes(activityId) : false;
       const isLastActivity = index === currentActivities.length - 1;
       const routeLeg = routeLegs[index];
       const nextActivityDistance = routeLeg?.distance;

@@ -547,18 +547,18 @@ export const CreateTripProvider = ({ children }) => {
         );
     };
 
-    // Add activities to wishlist with deduplication based on place_id
+    // Add activities to wishlist - allow duplicates with unique instanceIds
     const addToWishlist = (newActivities) => {
-        const existingPlaceIds = new Set(activities.map(a => a.place_id).filter(Boolean));
-        const uniqueActivities = newActivities.filter(a => a.place_id && !existingPlaceIds.has(a.place_id));
+        // Ensure all new activities have instanceIds (generate if missing)
+        const activitiesWithInstanceIds = ensureActivitiesHaveInstanceIds(newActivities);
 
-        if (uniqueActivities.length > 0) {
-            updateActivities([...activities, ...uniqueActivities]);
+        if (activitiesWithInstanceIds.length > 0) {
+            updateActivities([...activities, ...activitiesWithInstanceIds]);
         }
 
         return {
-            added: uniqueActivities.length,
-            duplicates: newActivities.length - uniqueActivities.length
+            added: activitiesWithInstanceIds.length,
+            duplicates: 0 // No longer preventing duplicates
         };
     };
 

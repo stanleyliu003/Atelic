@@ -1956,7 +1956,7 @@ export default function TripViewMain() {
                 onSave={handleSaveCategoryActivities}
                 onClose={() => setShowCategoryModal(false)}
                 onGenerateMore={handleGenerateMoreCategoryActivities}
-                wishlistActivities={activities || []}
+                wishlistActivities={getActivitiesForTab('wishlist')}
                 dayActivities={Object.values(dayActivities || {}).flatMap(dayObj =>
                     Array.isArray((dayObj as any).activities) ? (dayObj as any).activities : []
                 )}
