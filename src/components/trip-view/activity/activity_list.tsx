@@ -425,9 +425,22 @@ export function ActivityList({
 
   // Simplified - no longPress handlers needed for route info management
 
-  // Since we always have recommendations, we don't need empty state handling
+  // Handle empty state
   if (!activities || activities.length === 0) {
-    // Only show empty state if action button is provided
+    // If onAddPlace is provided, show SearchBar instead of action button
+    if (onAddPlace) {
+      return (
+        <View style={styles.emptyWithSearchContainer}>
+          <SearchBar
+            value={searchQuery}
+            onChangeText={onSearchQueryChange || (() => {})}
+            onPress={onAddPlace}
+            placeholder="Add places"
+          />
+        </View>
+      );
+    }
+    // Otherwise, show the traditional empty state with action button (for backward compatibility)
     if (emptyStateActionPress) {
       return (
         <NoActivities
@@ -436,7 +449,7 @@ export function ActivityList({
         />
       );
     }
-    // Return empty view if no empty state props provided
+    // Return empty view if no props provided
     return <View />;
   }
 
@@ -574,7 +587,7 @@ export function ActivityList({
                 value={searchQuery}
                 onChangeText={onSearchQueryChange || (() => {})}
                 onPress={onAddPlace}
-                placeholder="Add more activities"
+                placeholder="Add places"
               />
             </View>
           )}
@@ -1159,6 +1172,11 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingBottom: 20,
+  },
+  emptyWithSearchContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+    marginTop: -5,
   },
   activityCard: {
     marginBottom: 12,

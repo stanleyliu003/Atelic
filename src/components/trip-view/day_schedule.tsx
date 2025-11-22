@@ -109,8 +109,6 @@ export function DaySchedule({
         showSelectionIndicator={showSelectionIndicator}
         variant="selectable"
         disabled={disabled}
-        emptyStateActionPress={onGoToWishlist}
-        emptyStateActionText="Move Activities from Wishlist"
         routeLegs={routeLegs}
         travelMode={travelMode}
         enableDragDrop={!disabled && currentUserRole !== 'viewer'}
