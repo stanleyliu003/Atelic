@@ -103,8 +103,8 @@ export function TripMapView({
         return {
           latitude: selectedCityLocation.lat,
           longitude: selectedCityLocation.lng,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
+          latitudeDelta: 0.1, // Zoomed out 2x (was 0.05)
+          longitudeDelta: 0.1, // Zoomed out 2x (was 0.05)
         };
       }
 

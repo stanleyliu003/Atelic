@@ -2093,10 +2093,10 @@ const styles = StyleSheet.create({
     tabContent: {
         flex: 1,
         marginTop: 0,
-        marginHorizontal: 20,
+        marginHorizontal: 10, // Reduced from 20 to 5
         backgroundColor: '#fff',
         borderRadius: 10,
-        padding: 20,
+        padding: 20, // Reduced from 20 to 
         marginBottom: 40, // Space for transfer button
     },
     citySection: {

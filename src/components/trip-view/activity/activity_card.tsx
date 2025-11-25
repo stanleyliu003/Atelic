@@ -184,7 +184,7 @@ export function ActivityCard({
             <View style={styles.activityInfo}>
               <Text
                 style={[styles.activityText, disabled && styles.disabledText]}
-                numberOfLines={2}
+                numberOfLines={1}
                 ellipsizeMode="tail"
               >
                 {getDisplayName()}
@@ -254,11 +254,12 @@ export function ActivityCard({
 const styles = StyleSheet.create({
   cardContainer: {
     marginBottom: 5,
+    marginHorizontal: 2, // Add horizontal margin to show shadow borders
   },
   activityCard: {
     backgroundColor: '#fff',
     borderRadius: 10,
-    padding: 10,
+    padding: 2, // Reduced from 10 to 5 (saves 10px total: 5px on each side)
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

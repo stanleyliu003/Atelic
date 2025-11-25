@@ -1520,6 +1520,9 @@ const styles = StyleSheet.create({
   },
   carouselContainer: {
     position: 'relative',
+    overflow: 'hidden',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   paginationDots: {
     flexDirection: 'row',
