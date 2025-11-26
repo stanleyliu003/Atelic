@@ -2093,7 +2093,7 @@ const styles = StyleSheet.create({
     tabContent: {
         flex: 1,
         marginTop: 0,
-        marginHorizontal: 10, // Reduced from 20 to 5
+        marginHorizontal: 8, // Reduced from 20 to 5
         backgroundColor: '#fff',
         borderRadius: 10,
         padding: 20, // Reduced from 20 to 
