@@ -233,19 +233,33 @@ export function ActivityCard({
                 >
                   {hasNotes ? (
                     <View style={styles.notesButtonContentColumn}>
-                      {(activity.startTime && activity.endTime) && (
-                        <Text style={styles.notesTimeText} numberOfLines={1}>
-                          {getNotesButtonText()}
-                        </Text>
-                      )}
-                      {activity.notes ? (
-                        <Text style={styles.notesPreviewText} numberOfLines={2}>
-                          {activity.notes}
-                        </Text>
+                      {(activity.startTime && activity.endTime) && activity.notes ? (
+                        // Show time | Notes with pencil icon on one line
+                        <View style={styles.notesButtonContent}>
+                          <Text style={styles.notesTimeText} numberOfLines={1}>
+                            {getNotesButtonText()}   <Text style={styles.notesInlineText}>Notes</Text>
+                          </Text>
+                          <MaterialIcons name="edit" size={12} color={Colors.GRAY} style={styles.pencilIcon} />
+                        </View>
                       ) : (
-                        !activity.startTime && !activity.endTime && (
-                          <Text style={styles.notesButtonText}>Add Notes</Text>
-                        )
+                        <>
+                          {/* Show time only if no notes */}
+                          {(activity.startTime && activity.endTime) && !activity.notes && (
+                            <Text style={styles.notesTimeText} numberOfLines={1}>
+                              {getNotesButtonText()}
+                            </Text>
+                          )}
+                          {/* Show notes only if no time */}
+                          {activity.notes && !activity.startTime && !activity.endTime && (
+                            <Text style={styles.notesPreviewText} numberOfLines={2}>
+                              {activity.notes}
+                            </Text>
+                          )}
+                          {/* Fallback if no time and no notes (shouldn't happen when hasNotes is true) */}
+                          {!activity.notes && !activity.startTime && !activity.endTime && (
+                            <Text style={styles.notesButtonText}>Add Notes</Text>
+                          )}
+                        </>
                       )}
                     </View>
                   ) : (
@@ -318,7 +332,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   selectedCard: {
-    backgroundColor: '#f0f8ff', // Light blue background for selected state f0f8ff
+    backgroundColor: '#f0f8ff',
     //borderWidth: 1,
     borderColor: Colors.PRIMARY,
   },
@@ -514,7 +528,7 @@ const styles = StyleSheet.create({
     maxWidth: 190,
   },
   notesButtonActive: {
-    backgroundColor: '#d3e4fd', // Light blue when active
+    backgroundColor: '#e9ecef', // Light blue when active
   },
   notesButtonContent: {
     flexDirection: 'row',
@@ -531,10 +545,16 @@ const styles = StyleSheet.create({
     color: Colors.GRAY,
   },
   notesTimeText: {
-    fontFamily: 'outfit-medium',
-    fontSize: 13,
-    color: Colors.PRIMARY,
-    fontWeight: 'bold',
+    fontFamily: 'outfit-bold',
+    fontSize: 12,
+    color: Colors.GRAY,
+    fontWeight: 'normal',
+  },
+  notesInlineText: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: Colors.GRAY,
+    fontWeight: 'normal',
   },
   notesPreviewText: {
     fontFamily: 'outfit',
