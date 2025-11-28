@@ -157,14 +157,6 @@ export function ActivityCard({
     return 'Add Notes';
   };
 
-  // Get preview of notes (first 30 characters)
-  const getNotesPreview = () => {
-    if (!activity.notes) return null;
-    return activity.notes.length > 30
-      ? `${activity.notes.substring(0, 30)}...`
-      : activity.notes;
-  };
-
   return (
     <View style={styles.cardContainer}>
       <View
@@ -240,14 +232,20 @@ export function ActivityCard({
                   disabled={disabled}
                 >
                   {hasNotes ? (
-                    <View style={styles.notesButtonContent}>
-                      <Text style={styles.notesButtonText} numberOfLines={1}>
-                        {getNotesButtonText()}
-                      </Text>
-                      {getNotesPreview() && (
-                        <Text style={styles.notesPreviewText} numberOfLines={1}>
-                          {getNotesPreview()}
+                    <View style={styles.notesButtonContentColumn}>
+                      {(activity.startTime && activity.endTime) && (
+                        <Text style={styles.notesTimeText} numberOfLines={1}>
+                          {getNotesButtonText()}
                         </Text>
+                      )}
+                      {activity.notes ? (
+                        <Text style={styles.notesPreviewText} numberOfLines={2}>
+                          {activity.notes}
+                        </Text>
+                      ) : (
+                        !activity.startTime && !activity.endTime && (
+                          <Text style={styles.notesButtonText}>Add Notes</Text>
+                        )
                       )}
                     </View>
                   ) : (
@@ -523,17 +521,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
+  notesButtonContentColumn: {
+    flexDirection: 'column',
+    gap: 2,
+  },
   notesButtonText: {
     fontFamily: 'outfit',
     fontSize: 14,
     color: Colors.GRAY,
   },
+  notesTimeText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 13,
+    color: Colors.PRIMARY,
+    fontWeight: 'bold',
+  },
   notesPreviewText: {
     fontFamily: 'outfit',
-    fontSize: 10,
+    fontSize: 12,
     color: Colors.GRAY,
-    fontStyle: 'italic',
-    marginLeft: 4,
+    lineHeight: 16,
   },
   pencilIcon: {
     marginLeft: 2,

@@ -68,10 +68,13 @@ export function AddNotesModal({ visible, onClose, activity }) {
             </View>
 
             {/* Notes Input */}
-            <ScrollView style={styles.notesInputContainer}>
+            <ScrollView
+              style={styles.notesInputContainer}
+              contentContainerStyle={styles.notesScrollContent}
+            >
               <TextInput
                 style={styles.notesInput}
-                placeholder="Add notes about this place..."
+                placeholder={`Add notes about ${activity.name}...`}
                 placeholderTextColor="#999"
                 multiline
                 value={notes}
@@ -113,7 +116,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    height: '70%',
+    height: '40%',
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -144,11 +147,15 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 15,
   },
+  notesScrollContent: {
+    flexGrow: 1,
+    minHeight: 200,
+  },
   notesInput: {
     fontFamily: 'outfit',
     fontSize: 16,
     color: Colors.PRIMARY,
-    minHeight: 100,
+    minHeight: 200,
   },
   addTimeButton: {
     flexDirection: 'row',
