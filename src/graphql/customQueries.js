@@ -8,6 +8,7 @@ export const getUserTripsDetailed = /* GraphQL */ `
       days {
         dayNumber
         activities {
+          instanceId
           name
           city
           lat
@@ -56,12 +57,16 @@ export const getUserTripsDetailed = /* GraphQL */ `
           editorial_summary
           primary_type_display_name
           international_phone_number
+          notes
+          startTime
+          endTime
           __typename
         }
         encodedPolyline
         __typename
       }
       wishlist {
+        instanceId
         name
         city
         lat
@@ -110,6 +115,9 @@ export const getUserTripsDetailed = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       tripLength

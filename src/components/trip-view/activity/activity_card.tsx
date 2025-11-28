@@ -224,52 +224,55 @@ export function ActivityCard({
                   </View>
                 )}
                   */}
-
-                {/* Add Notes Button */}
-                <TouchableOpacity
-                  style={[styles.notesButton, hasNotes && styles.notesButtonActive]}
-                  onPress={() => setNotesModalVisible(true)}
-                  disabled={disabled}
-                >
-                  {hasNotes ? (
-                    <View style={styles.notesButtonContentColumn}>
-                      {(activity.startTime && activity.endTime) && activity.notes ? (
-                        // Show time | Notes with pencil icon on one line
-                        <View style={styles.notesButtonContent}>
-                          <Text style={styles.notesTimeText} numberOfLines={1}>
-                            {getNotesButtonText()}   <Text style={styles.notesInlineText}>Notes</Text>
-                          </Text>
-                          <MaterialIcons name="edit" size={12} color={Colors.GRAY} style={styles.pencilIcon} />
-                        </View>
-                      ) : (
-                        <>
-                          {/* Show time only if no notes */}
-                          {(activity.startTime && activity.endTime) && !activity.notes && (
-                            <Text style={styles.notesTimeText} numberOfLines={1}>
-                              {getNotesButtonText()}
-                            </Text>
-                          )}
-                          {/* Show notes only if no time */}
-                          {activity.notes && !activity.startTime && !activity.endTime && (
-                            <Text style={styles.notesPreviewText} numberOfLines={2}>
-                              {activity.notes}
-                            </Text>
-                          )}
-                          {/* Fallback if no time and no notes (shouldn't happen when hasNotes is true) */}
-                          {!activity.notes && !activity.startTime && !activity.endTime && (
-                            <Text style={styles.notesButtonText}>Add Notes</Text>
-                          )}
-                        </>
-                      )}
-                    </View>
-                  ) : (
-                    <View style={styles.notesButtonContent}>
-                      <Text style={styles.notesButtonText}>Add Notes</Text>
-                      <MaterialIcons name="edit" size={12} color={Colors.GRAY} style={styles.pencilIcon} />
-                    </View>
-                  )}
-                </TouchableOpacity>
               </View>
+
+              {/* Add Notes Button - Always on a new line */}
+              <TouchableOpacity
+                style={[styles.notesButton, hasNotes && styles.notesButtonActive]}
+                onPress={() => setNotesModalVisible(true)}
+                disabled={disabled}
+              >
+                <View style={styles.notesButtonWrapper}>
+                  {hasNotes ? (
+                    <>
+                      <View style={styles.notesButtonContentColumn}>
+                        {(activity.startTime && activity.endTime) && activity.notes ? (
+                          // Show time only when both time and notes exist
+                          <Text style={styles.notesTimeText} numberOfLines={1}>
+                            {getNotesButtonText()}
+                          </Text>
+                        ) : (
+                          <>
+                            {/* Show time only if no notes */}
+                            {(activity.startTime && activity.endTime) && !activity.notes && (
+                              <Text style={styles.notesTimeText} numberOfLines={1}>
+                                {getNotesButtonText()}
+                              </Text>
+                            )}
+                            {/* Show notes only if no time */}
+                            {activity.notes && !activity.startTime && !activity.endTime && (
+                              <Text style={styles.notesPreviewText} numberOfLines={2}>
+                                {activity.notes}
+                              </Text>
+                            )}
+                            {/* Fallback if no time and no notes (shouldn't happen when hasNotes is true) */}
+                            {!activity.notes && !activity.startTime && !activity.endTime && (
+                              <Text style={styles.notesButtonText}>Add Notes</Text>
+                            )}
+                          </>
+                        )}
+                      </View>
+                      {/* Show "Notes" text at the right when time is set */}
+                      {(activity.startTime && activity.endTime) && (
+                        <Text style={styles.notesLabelText}>Notes</Text>
+                      )}
+                    </>
+                  ) : (
+                    <Text style={styles.notesButtonText}>Add Notes</Text>
+                  )}
+                  <MaterialIcons name="edit" size={12} color={Colors.GRAY} style={styles.pencilIcon} />
+                </View>
+              </TouchableOpacity>
             </View>
 
             <ActivityImage
@@ -447,7 +450,7 @@ const styles = StyleSheet.create({
   },
   typesText: {
     fontFamily: 'outfit',
-    fontSize: 13,
+    fontSize: 13.5,
     color: Colors.GRAY,
     textTransform: 'capitalize',
   },
@@ -530,6 +533,12 @@ const styles = StyleSheet.create({
   notesButtonActive: {
     backgroundColor: '#e9ecef', // Light blue when active
   },
+  notesButtonWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
   notesButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -538,10 +547,11 @@ const styles = StyleSheet.create({
   notesButtonContentColumn: {
     flexDirection: 'column',
     gap: 2,
+    flex: 1,
   },
   notesButtonText: {
     fontFamily: 'outfit',
-    fontSize: 14,
+    fontSize: 13.5,
     color: Colors.GRAY,
   },
   notesTimeText: {
@@ -561,6 +571,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.GRAY,
     lineHeight: 16,
+  },
+  notesLabelText: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: Colors.GRAY,
+    marginRight: 4,
   },
   pencilIcon: {
     marginLeft: 2,
