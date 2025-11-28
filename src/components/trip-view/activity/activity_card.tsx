@@ -429,14 +429,13 @@ const styles = StyleSheet.create({
     color: Colors.GRAY,
   },
   typesContainer: {
-    backgroundColor: '#e9ecef',
+    backgroundColor: Colors.WHITE,
     borderRadius: 10,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
+    paddingHorizontal: 0,
   },
   typesText: {
     fontFamily: 'outfit',
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.GRAY,
     textTransform: 'capitalize',
   },
@@ -509,11 +508,12 @@ const styles = StyleSheet.create({
   },
   notesButton: {
     backgroundColor: '#e9ecef',
+    marginTop: 8,
     borderRadius: 10,
     paddingVertical: 3,
     paddingHorizontal: 8,
-    marginLeft: 5,
-    maxWidth: 150,
+    marginLeft: -3,
+    maxWidth: 190,
   },
   notesButtonActive: {
     backgroundColor: '#d3e4fd', // Light blue when active
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
   },
   notesButtonText: {
     fontFamily: 'outfit',
-    fontSize: 12,
+    fontSize: 14,
     color: Colors.GRAY,
   },
   notesPreviewText: {
