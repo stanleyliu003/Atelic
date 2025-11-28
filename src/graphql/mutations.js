@@ -36,6 +36,9 @@ export const optimizeRoute = /* GraphQL */ `
       editorial_summary
       primary_type_display_name
       international_phone_number
+      notes
+      startTime
+      endTime
       __typename
     }
   }
@@ -68,6 +71,9 @@ export const createTrip = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       tripLength
@@ -181,6 +187,9 @@ export const addCollaborator = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       tripLength
@@ -253,6 +262,9 @@ export const removeCollaborator = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       tripLength
@@ -329,6 +341,9 @@ export const updateCollaboratorRole = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       tripLength
@@ -403,6 +418,9 @@ export const createWishlistAnalysis = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       createdAt
@@ -441,6 +459,9 @@ export const updateWishlistAnalysis = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       createdAt
@@ -479,6 +500,9 @@ export const deleteWishlistAnalysis = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       createdAt

@@ -26,6 +26,9 @@ export const analyzeWishlist = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       __typename
@@ -122,6 +125,9 @@ export const addAdditionalPlace = /* GraphQL */ `
       editorial_summary
       primary_type_display_name
       international_phone_number
+      notes
+      startTime
+      endTime
       __typename
     }
   }
@@ -156,6 +162,9 @@ export const generateCategoryActivities = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       category
@@ -206,6 +215,9 @@ export const getPlaceDetails = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       query
@@ -245,6 +257,9 @@ export const searchActivities = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       query
@@ -295,6 +310,9 @@ export const getUserTrips = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       tripLength
@@ -379,6 +397,9 @@ export const getWishlistAnalysis = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       createdAt

@@ -29,6 +29,9 @@ export const onTripUpdated = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       tripLength
@@ -102,6 +105,9 @@ export const onCreateWishlistAnalysis = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       createdAt
@@ -139,6 +145,9 @@ export const onUpdateWishlistAnalysis = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       createdAt
@@ -176,6 +185,9 @@ export const onDeleteWishlistAnalysis = /* GraphQL */ `
         editorial_summary
         primary_type_display_name
         international_phone_number
+        notes
+        startTime
+        endTime
         __typename
       }
       createdAt
