@@ -160,8 +160,11 @@ const styles = StyleSheet.create({
   addTimeButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
+    width: '50%',
     paddingVertical: 12,
     paddingHorizontal: 16,
+    marginBottom: 30,
     backgroundColor: '#f0f0f0',
     borderRadius: 10,
     gap: 8,

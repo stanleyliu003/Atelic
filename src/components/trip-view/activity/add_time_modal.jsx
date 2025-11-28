@@ -6,7 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Dimensions
+  Pressable
 } from 'react-native';
 import { Colors } from '../../../../constants/Colors';
 
@@ -14,7 +14,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 const ITEM_HEIGHT = 40;
 
-function TimePickerColumn({ values, selectedValue, onValueChange }) {
+function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel }) {
   const scrollViewRef = useRef(null);
 
   const handleScrollEnd = (event) => {
@@ -37,7 +37,7 @@ function TimePickerColumn({ values, selectedValue, onValueChange }) {
         animated: false,
       });
     }
-  }, []);
+  }, [selectedValue, values]);
 
   return (
     <View style={styles.pickerColumn}>
@@ -48,17 +48,15 @@ function TimePickerColumn({ values, selectedValue, onValueChange }) {
         decelerationRate="fast"
         onMomentumScrollEnd={handleScrollEnd}
         scrollEventThrottle={16}
-        contentContainerStyle={styles.scrollContent}
+        nestedScrollEnabled={true}
+        onScrollBeginDrag={() => console.log('SCROLL START:', debugLabel)}
+        onScrollEndDrag={() => console.log('SCROLL END:', debugLabel)}
       >
-        <View style={{ height: ITEM_HEIGHT }} />
         {values.map((value) => (
           <View key={value} style={styles.pickerItem}>
-            <Text style={styles.pickerText}>
-              {value}
-            </Text>
+            <Text style={styles.pickerText}>{value}</Text>
           </View>
         ))}
-        <View style={{ height: ITEM_HEIGHT }} />
       </ScrollView>
       <View style={styles.selectionIndicator} />
     </View>
@@ -92,16 +90,12 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
       animationType="fade"
       onRequestClose={onClose}
     >
-      <TouchableOpacity
-        style={styles.overlay}
-        activeOpacity={1}
-        onPress={onClose}
-      >
-        <TouchableOpacity
-          activeOpacity={1}
-          style={styles.modalContainer}
-          onPress={(e) => e.stopPropagation()}
-        >
+      <View style={styles.overlay}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+        />
+        <View style={styles.modalContainer}>
           <View style={styles.timePickerContainer}>
             {/* Start Time */}
             <View style={styles.timeSection}>
@@ -111,12 +105,14 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                   values={HOURS}
                   selectedValue={startHour}
                   onValueChange={setStartHour}
+                  debugLabel="start-hour"
                 />
                 <Text style={styles.colon}>:</Text>
                 <TimePickerColumn
                   values={MINUTES}
                   selectedValue={startMinute}
                   onValueChange={setStartMinute}
+                  debugLabel="start-minute"
                 />
               </View>
             </View>
@@ -132,12 +128,14 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                   values={HOURS}
                   selectedValue={endHour}
                   onValueChange={setEndHour}
+                  debugLabel="end-hour"
                 />
                 <Text style={styles.colon}>:</Text>
                 <TimePickerColumn
                   values={MINUTES}
                   selectedValue={endMinute}
                   onValueChange={setEndMinute}
+                  debugLabel="end-minute"
                 />
               </View>
             </View>
@@ -147,8 +145,8 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
           <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
             <Text style={styles.saveButtonText}>Save</Text>
           </TouchableOpacity>
-        </TouchableOpacity>
-      </TouchableOpacity>
+        </View>
+      </View>
     </Modal>
   );
 }
@@ -161,9 +159,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
   modalContainer: {
-    width: Dimensions.get('window').width * 0.85,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 15,
+    width: '85%',
+    backgroundColor: 'white',
+    borderRadius: 20,
     padding: 20,
   },
   timePickerContainer: {
@@ -176,8 +174,8 @@ const styles = StyleSheet.create({
   },
   timeSectionTitle: {
     fontFamily: 'outfit-medium',
-    fontSize: 14,
-    color: 'white',
+    fontSize: 16,
+    color: Colors.PRIMARY,
     marginBottom: 10,
   },
   pickerRow: {
@@ -186,11 +184,8 @@ const styles = StyleSheet.create({
   },
   pickerColumn: {
     height: ITEM_HEIGHT * 3,
-    width: 50,
-    position: 'relative',
-  },
-  scrollContent: {
-    paddingVertical: 0,
+    width: 60,
+    overflow: 'hidden',
   },
   pickerItem: {
     height: ITEM_HEIGHT,
@@ -198,9 +193,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pickerText: {
-    fontFamily: 'outfit',
+    fontFamily: 'outfit-medium',
     fontSize: 18,
-    color: '#666',
+    color: Colors.PRIMARY,
   },
   selectionIndicator: {
     position: 'absolute',
@@ -210,18 +205,18 @@ const styles = StyleSheet.create({
     height: ITEM_HEIGHT,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(0, 0, 0, 0.2)',
     pointerEvents: 'none',
   },
   colon: {
     fontFamily: 'outfit-medium',
     fontSize: 22,
-    color: 'white',
+    color: Colors.PRIMARY,
     marginHorizontal: 5,
   },
   divider: {
     width: 1,
-    backgroundColor: '#333',
+    backgroundColor: '#ddd',
     marginHorizontal: 10,
   },
   saveButton: {
