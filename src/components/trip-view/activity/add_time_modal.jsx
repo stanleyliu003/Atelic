@@ -4,17 +4,15 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
   Pressable
 } from 'react-native';
-import { Colors } from '../../../../constants/Colors';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 const ITEM_HEIGHT = 40;
 
-function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel }) {
+function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, visible }) {
   const scrollViewRef = useRef(null);
 
   const handleScrollEnd = (event) => {
@@ -30,14 +28,19 @@ function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel }) 
   };
 
   useEffect(() => {
+    if (!visible) return;
+
     const index = values.indexOf(selectedValue);
     if (index >= 0 && scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({
-        y: index * ITEM_HEIGHT,
-        animated: false,
-      });
+      // Use setTimeout to ensure the ScrollView is fully mounted
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({
+          y: index * ITEM_HEIGHT,
+          animated: false,
+        });
+      }, 50);
     }
-  }, [selectedValue, values]);
+  }, [selectedValue, values, visible]);
 
   return (
     <View style={styles.pickerColumn}>
@@ -49,39 +52,103 @@ function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel }) 
         onMomentumScrollEnd={handleScrollEnd}
         scrollEventThrottle={16}
         nestedScrollEnabled={true}
-        onScrollBeginDrag={() => console.log('SCROLL START:', debugLabel)}
-        onScrollEndDrag={() => console.log('SCROLL END:', debugLabel)}
       >
+        {/* Top spacer so the first real value can sit in the middle highlighted row */}
+        <View style={styles.pickerSpacer} />
+
         {values.map((value) => (
           <View key={value} style={styles.pickerItem}>
             <Text style={styles.pickerText}>{value}</Text>
           </View>
         ))}
+
+        {/* Bottom spacer so the last real value can also sit in the middle row */}
+        <View style={styles.pickerSpacer} />
       </ScrollView>
-      <View style={styles.selectionIndicator} />
     </View>
   );
 }
 
 export default function AddTimeModal({ visible, onClose, initialStartTime, initialEndTime, onSave }) {
-  const parseTime = (time) => {
-    if (!time) return { hour: '09', minute: '00' };
-    const [hour, minute] = time.split(':');
+  const parseTime = (time, fallback = '09:00') => {
+    const effectiveTime = time || fallback;
+    const [hour, minute] = effectiveTime.split(':');
     return { hour: hour.padStart(2, '0'), minute: minute.padStart(2, '0') };
   };
 
-  const startParsed = parseTime(initialStartTime);
-  const endParsed = parseTime(initialEndTime);
+  const toMinutes = (hour, minute) => parseInt(hour, 10) * 60 + parseInt(minute, 10);
+
+  const minutesToTime = (totalMinutes) => {
+    const clamped = Math.max(0, Math.min(totalMinutes, 23 * 60 + 59));
+    const hour = String(Math.floor(clamped / 60)).padStart(2, '0');
+    const minute = String(clamped % 60).padStart(2, '0');
+    return { hour, minute };
+  };
+
+  // Initial times: default 09:00 → 10:00, but honor any existing activity times
+  const startParsed = parseTime(initialStartTime, '09:00');
+  let initialEndParsed;
+  if (initialEndTime) {
+    // If the activity already has an end time, use it as-is (we'll still enforce ordering in the effect below)
+    initialEndParsed = parseTime(initialEndTime, '10:00');
+  } else {
+    // No stored end time – default to one hour after the (possibly stored) start time
+    const startMinutes = toMinutes(startParsed.hour, startParsed.minute);
+    initialEndParsed = minutesToTime(startMinutes + 60);
+  }
 
   const [startHour, setStartHour] = useState(startParsed.hour);
   const [startMinute, setStartMinute] = useState(startParsed.minute);
-  const [endHour, setEndHour] = useState(endParsed.hour);
-  const [endMinute, setEndMinute] = useState(endParsed.minute);
+  const [endHour, setEndHour] = useState(initialEndParsed.hour);
+  const [endMinute, setEndMinute] = useState(initialEndParsed.minute);
 
-  const handleSave = () => {
-    onSave(`${startHour}:${startMinute}`, `${endHour}:${endMinute}`);
-    onClose();
-  };
+  // Whenever the modal is (re)opened, scroll to the correct default or stored times
+  useEffect(() => {
+    if (!visible) return;
+
+    // Recompute start based on latest props:
+    // - If activity has a stored startTime, use it
+    // - Otherwise default to 09:00
+    const recomputedStart = parseTime(initialStartTime, '09:00');
+
+    // Recompute end:
+    // - If activity has a stored endTime, use it
+    // - Otherwise default to one hour after the (possibly stored) start time
+    let recomputedEnd;
+    if (initialEndTime) {
+      recomputedEnd = parseTime(initialEndTime, '10:00');
+    } else {
+      const startMinutes = toMinutes(recomputedStart.hour, recomputedStart.minute);
+      recomputedEnd = minutesToTime(startMinutes + 60);
+    }
+
+    setStartHour(recomputedStart.hour);
+    setStartMinute(recomputedStart.minute);
+    setEndHour(recomputedEnd.hour);
+    setEndMinute(recomputedEnd.minute);
+  }, [visible, initialStartTime, initialEndTime]);
+
+  // Ensure end time is always after start time and auto-save on valid change
+  useEffect(() => {
+    const startTotal = toMinutes(startHour, startMinute);
+    const endTotal = toMinutes(endHour, endMinute);
+
+    if (endTotal <= startTotal) {
+      const adjusted = minutesToTime(startTotal + 60);
+
+      if (adjusted.hour !== endHour) {
+        setEndHour(adjusted.hour);
+      }
+      if (adjusted.minute !== endMinute) {
+        setEndMinute(adjusted.minute);
+      }
+      return;
+    }
+
+    if (visible) {
+      onSave(`${startHour}:${startMinute}`, `${endHour}:${endMinute}`);
+    }
+  }, [startHour, startMinute, endHour, endMinute, visible]);
 
   return (
     <Modal
@@ -99,21 +166,25 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
           <View style={styles.timePickerContainer}>
             {/* Start Time */}
             <View style={styles.timeSection}>
-              <Text style={styles.timeSectionTitle}>Start Time</Text>
-              <View style={styles.pickerRow}>
-                <TimePickerColumn
-                  values={HOURS}
-                  selectedValue={startHour}
-                  onValueChange={setStartHour}
-                  debugLabel="start-hour"
-                />
-                <Text style={styles.colon}>:</Text>
-                <TimePickerColumn
-                  values={MINUTES}
-                  selectedValue={startMinute}
-                  onValueChange={setStartMinute}
-                  debugLabel="start-minute"
-                />
+              <Text style={styles.timeSectionTitle}>Start</Text>
+              <View style={styles.pickerRowContainer}>
+                <View style={styles.rowSelectionIndicator} />
+                <View style={styles.pickerRow}>
+                  <TimePickerColumn
+                    values={HOURS}
+                    selectedValue={startHour}
+                    onValueChange={setStartHour}
+                    debugLabel="start-hour"
+                    visible={visible}
+                  />
+                  <TimePickerColumn
+                    values={MINUTES}
+                    selectedValue={startMinute}
+                    onValueChange={setStartMinute}
+                    debugLabel="start-minute"
+                    visible={visible}
+                  />
+                </View>
               </View>
             </View>
 
@@ -122,29 +193,28 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
 
             {/* End Time */}
             <View style={styles.timeSection}>
-              <Text style={styles.timeSectionTitle}>End Time</Text>
-              <View style={styles.pickerRow}>
-                <TimePickerColumn
-                  values={HOURS}
-                  selectedValue={endHour}
-                  onValueChange={setEndHour}
-                  debugLabel="end-hour"
-                />
-                <Text style={styles.colon}>:</Text>
-                <TimePickerColumn
-                  values={MINUTES}
-                  selectedValue={endMinute}
-                  onValueChange={setEndMinute}
-                  debugLabel="end-minute"
-                />
+              <Text style={styles.timeSectionTitle}>End</Text>
+              <View style={styles.pickerRowContainer}>
+                <View style={styles.rowSelectionIndicator} />
+                <View style={styles.pickerRow}>
+                  <TimePickerColumn
+                    values={HOURS}
+                    selectedValue={endHour}
+                    onValueChange={setEndHour}
+                    debugLabel="end-hour"
+                    visible={visible}
+                  />
+                  <TimePickerColumn
+                    values={MINUTES}
+                    selectedValue={endMinute}
+                    onValueChange={setEndMinute}
+                    debugLabel="end-minute"
+                    visible={visible}
+                  />
+                </View>
               </View>
             </View>
           </View>
-
-          {/* Save Button */}
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Save</Text>
-          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -160,7 +230,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: '85%',
-    backgroundColor: 'white',
+    backgroundColor: '#000',
     borderRadius: 20,
     padding: 20,
   },
@@ -173,19 +243,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   timeSectionTitle: {
-    fontFamily: 'outfit-medium',
-    fontSize: 16,
-    color: Colors.PRIMARY,
+    fontFamily: 'outfit-bold',
+    fontSize: 18,
+    color: '#fff',
     marginBottom: 10,
   },
   pickerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+  },
+  // Container for both hour and minute columns so the highlight spans the full row
+  pickerRowContainer: {
+    height: ITEM_HEIGHT * 3,
+    width: '100%',
+    position: 'relative',
+    justifyContent: 'center',
   },
   pickerColumn: {
     height: ITEM_HEIGHT * 3,
     width: 60,
     overflow: 'hidden',
+  },
+  pickerSpacer: {
+    height: ITEM_HEIGHT,
   },
   pickerItem: {
     height: ITEM_HEIGHT,
@@ -195,40 +276,22 @@ const styles = StyleSheet.create({
   pickerText: {
     fontFamily: 'outfit-medium',
     fontSize: 18,
-    color: Colors.PRIMARY,
+    color: '#fff',
   },
-  selectionIndicator: {
+  // Highlight the currently selected time across the whole row
+  rowSelectionIndicator: {
     position: 'absolute',
     top: ITEM_HEIGHT,
     left: 0,
     right: 0,
     height: ITEM_HEIGHT,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 8,
     pointerEvents: 'none',
-  },
-  colon: {
-    fontFamily: 'outfit-medium',
-    fontSize: 22,
-    color: Colors.PRIMARY,
-    marginHorizontal: 5,
   },
   divider: {
     width: 1,
-    backgroundColor: '#ddd',
-    marginHorizontal: 10,
-  },
-  saveButton: {
-    marginTop: 20,
-    backgroundColor: Colors.PRIMARY,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    fontFamily: 'outfit-medium',
-    fontSize: 16,
-    color: 'white',
+    backgroundColor: '#444',
+    marginHorizontal: 15,
   },
 });
