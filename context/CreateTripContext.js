@@ -304,11 +304,39 @@ export const CreateTripProvider = ({ children }) => {
     };
 
     const removeActivities = (activityInstanceIds) => {
-        setActivities(prevActivities => 
-            prevActivities.filter(activity => 
+        setActivities(prevActivities =>
+            prevActivities.filter(activity =>
                 !activity.instanceId || !activityInstanceIds.includes(activity.instanceId)
             )
         );
+    };
+
+    // Helper to update a single activity's notes/times across wishlist and days
+    const updateActivityNotes = (instanceId, updates) => {
+        console.log('[CreateTripContext] Updating activity notes for instanceId:', instanceId, 'with:', updates);
+
+        // Update in wishlist
+        setActivities(prev => prev.map(activity =>
+            activity.instanceId === instanceId
+                ? { ...activity, ...updates }
+                : activity
+        ));
+
+        // Update in dayActivities
+        setDayActivities(prev => {
+            const newDayActivities = { ...prev };
+            Object.keys(newDayActivities).forEach(dayNum => {
+                newDayActivities[dayNum] = {
+                    ...newDayActivities[dayNum],
+                    activities: newDayActivities[dayNum].activities.map(activity =>
+                        activity.instanceId === instanceId
+                            ? { ...activity, ...updates }
+                            : activity
+                    )
+                };
+            });
+            return newDayActivities;
+        });
     };
 
     const updateWishlistText = (text) => {
@@ -663,6 +691,7 @@ export const CreateTripProvider = ({ children }) => {
         isLoading,
         updateActivities,
         removeActivities,
+        updateActivityNotes,
         updateWishlistText,
         setIsLoading,
         dayPolylines,
