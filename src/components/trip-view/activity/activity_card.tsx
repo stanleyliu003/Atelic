@@ -2,12 +2,13 @@ import { Colors } from '../../../../constants/Colors';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import React from 'react';
+import React, { useState } from 'react';
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Activity } from '../../../types/activity.types';
 import { formatDistance, formatDuration } from '../../../utils/routeUtils';
 import { ActivityImage } from './activity_image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { AddNotesModal } from './add_notes_modal';
 
 
 interface ActivityCardProps {
@@ -78,6 +79,7 @@ export function ActivityCard({
   enableDragDrop = false,
   useInlineSelectionLayout = false
 }: ActivityCardProps) {
+  const [notesModalVisible, setNotesModalVisible] = useState(false);
 
   const handlePress = () => {
     if (!disabled && onPress) {
@@ -142,6 +144,25 @@ export function ActivityCard({
       return `${index + 1}. ${activity.name}`;
     }
     return activity.name;
+  };
+
+  // Helper to determine if activity has notes or times
+  const hasNotes = !!(activity.notes || activity.startTime || activity.endTime);
+
+  // Get the button text based on whether times are set
+  const getNotesButtonText = () => {
+    if (activity.startTime && activity.endTime) {
+      return `${activity.startTime} - ${activity.endTime}`;
+    }
+    return 'Add Notes';
+  };
+
+  // Get preview of notes (first 30 characters)
+  const getNotesPreview = () => {
+    if (!activity.notes) return null;
+    return activity.notes.length > 30
+      ? `${activity.notes.substring(0, 30)}...`
+      : activity.notes;
   };
 
   return (
@@ -211,6 +232,31 @@ export function ActivityCard({
                   </View>
                 )}
                   */}
+
+                {/* Add Notes Button */}
+                <TouchableOpacity
+                  style={[styles.notesButton, hasNotes && styles.notesButtonActive]}
+                  onPress={() => setNotesModalVisible(true)}
+                  disabled={disabled}
+                >
+                  {hasNotes ? (
+                    <View style={styles.notesButtonContent}>
+                      <Text style={styles.notesButtonText} numberOfLines={1}>
+                        {getNotesButtonText()}
+                      </Text>
+                      {getNotesPreview() && (
+                        <Text style={styles.notesPreviewText} numberOfLines={1}>
+                          {getNotesPreview()}
+                        </Text>
+                      )}
+                    </View>
+                  ) : (
+                    <View style={styles.notesButtonContent}>
+                      <Text style={styles.notesButtonText}>Add Notes</Text>
+                      <MaterialIcons name="edit" size={12} color={Colors.GRAY} style={styles.pencilIcon} />
+                    </View>
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -247,6 +293,13 @@ export function ActivityCard({
           )}
         </TouchableOpacity>
       )}
+
+      {/* Add Notes Modal */}
+      <AddNotesModal
+        visible={notesModalVisible}
+        onClose={() => setNotesModalVisible(false)}
+        activity={activity}
+      />
     </View>
   );
 }
@@ -453,5 +506,36 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit-medium',
     fontSize: 18,
     color: Colors.GRAY,
+  },
+  notesButton: {
+    backgroundColor: '#e9ecef',
+    borderRadius: 10,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    marginLeft: 5,
+    maxWidth: 150,
+  },
+  notesButtonActive: {
+    backgroundColor: '#d3e4fd', // Light blue when active
+  },
+  notesButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  notesButtonText: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: Colors.GRAY,
+  },
+  notesPreviewText: {
+    fontFamily: 'outfit',
+    fontSize: 10,
+    color: Colors.GRAY,
+    fontStyle: 'italic',
+    marginLeft: 4,
+  },
+  pencilIcon: {
+    marginLeft: 2,
   },
 });
