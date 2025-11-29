@@ -2,12 +2,13 @@ import { Colors } from '../../../../constants/Colors';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import React from 'react';
+import React, { useState } from 'react';
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Activity } from '../../../types/activity.types';
 import { formatDistance, formatDuration } from '../../../utils/routeUtils';
 import { ActivityImage } from './activity_image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { AddNotesModal } from './add_notes_modal';
 
 
 interface ActivityCardProps {
@@ -78,6 +79,7 @@ export function ActivityCard({
   enableDragDrop = false,
   useInlineSelectionLayout = false
 }: ActivityCardProps) {
+  const [notesModalVisible, setNotesModalVisible] = useState(false);
 
   const handlePress = () => {
     if (!disabled && onPress) {
@@ -142,6 +144,17 @@ export function ActivityCard({
       return `${index + 1}. ${activity.name}`;
     }
     return activity.name;
+  };
+
+  // Helper to determine if activity has notes or times
+  const hasNotes = !!(activity.notes || activity.startTime || activity.endTime);
+
+  // Get the button text based on whether times are set
+  const getNotesButtonText = () => {
+    if (activity.startTime && activity.endTime) {
+      return `${activity.startTime} - ${activity.endTime}`;
+    }
+    return 'Add Notes';
   };
 
   return (
@@ -212,6 +225,54 @@ export function ActivityCard({
                 )}
                   */}
               </View>
+
+              {/* Add Notes Button - Always on a new line */}
+              <TouchableOpacity
+                style={[styles.notesButton, hasNotes && styles.notesButtonActive]}
+                onPress={() => setNotesModalVisible(true)}
+                disabled={disabled}
+              >
+                <View style={styles.notesButtonWrapper}>
+                  {hasNotes ? (
+                    <>
+                      <View style={styles.notesButtonContentColumn}>
+                        {(activity.startTime && activity.endTime) && activity.notes ? (
+                          // Show time only when both time and notes exist
+                          <Text style={styles.notesTimeText} numberOfLines={1}>
+                            {getNotesButtonText()}
+                          </Text>
+                        ) : (
+                          <>
+                            {/* Show time only if no notes */}
+                            {(activity.startTime && activity.endTime) && !activity.notes && (
+                              <Text style={styles.notesTimeText} numberOfLines={1}>
+                                {getNotesButtonText()}
+                              </Text>
+                            )}
+                            {/* Show notes only if no time */}
+                            {activity.notes && !activity.startTime && !activity.endTime && (
+                              <Text style={styles.notesPreviewText} numberOfLines={2}>
+                                {activity.notes}
+                              </Text>
+                            )}
+                            {/* Fallback if no time and no notes (shouldn't happen when hasNotes is true) */}
+                            {!activity.notes && !activity.startTime && !activity.endTime && (
+                              <Text style={styles.notesButtonText}>Add Notes</Text>
+                            )}
+                          </>
+                        )}
+                      </View>
+                      {/* Show "Notes" text at the right when time is set */}
+                      {(activity.startTime && activity.endTime) && (
+                        <Text style={styles.notesLabelText}>Notes</Text>
+                      )}
+                    </>
+                  ) : (
+                    <Text style={styles.notesButtonText}>Add Notes</Text>
+                  )}
+                  <MaterialIcons name="edit" size={12} color={Colors.GRAY} style={styles.pencilIcon} />
+                </View>
+              </TouchableOpacity>
             </View>
 
             <ActivityImage
@@ -247,6 +308,13 @@ export function ActivityCard({
           )}
         </TouchableOpacity>
       )}
+
+      {/* Add Notes Modal */}
+      <AddNotesModal
+        visible={notesModalVisible}
+        onClose={() => setNotesModalVisible(false)}
+        activity={activity}
+      />
     </View>
   );
 }
@@ -267,7 +335,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   selectedCard: {
-    backgroundColor: '#f0f8ff', // Light blue background for selected state f0f8ff
+    backgroundColor: '#f0f8ff',
     //borderWidth: 1,
     borderColor: Colors.PRIMARY,
   },
@@ -376,14 +444,13 @@ const styles = StyleSheet.create({
     color: Colors.GRAY,
   },
   typesContainer: {
-    backgroundColor: '#e9ecef',
+    backgroundColor: Colors.WHITE,
     borderRadius: 10,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
+    paddingHorizontal: 0,
   },
   typesText: {
     fontFamily: 'outfit',
-    fontSize: 12,
+    fontSize: 13.5,
     color: Colors.GRAY,
     textTransform: 'capitalize',
   },
@@ -453,5 +520,65 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit-medium',
     fontSize: 18,
     color: Colors.GRAY,
+  },
+  notesButton: {
+    backgroundColor: '#e9ecef',
+    marginTop: 8,
+    borderRadius: 10,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    marginLeft: -3,
+    maxWidth: 190,
+  },
+  notesButtonActive: {
+    backgroundColor: '#e9ecef', // Light blue when active
+  },
+  notesButtonWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  notesButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  notesButtonContentColumn: {
+    flexDirection: 'column',
+    gap: 2,
+    flex: 1,
+  },
+  notesButtonText: {
+    fontFamily: 'outfit',
+    fontSize: 13.5,
+    color: Colors.GRAY,
+  },
+  notesTimeText: {
+    fontFamily: 'outfit-bold',
+    fontSize: 12,
+    color: Colors.GRAY,
+    fontWeight: 'normal',
+  },
+  notesInlineText: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: Colors.GRAY,
+    fontWeight: 'normal',
+  },
+  notesPreviewText: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: Colors.GRAY,
+    lineHeight: 16,
+  },
+  notesLabelText: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: Colors.GRAY,
+    marginRight: 4,
+  },
+  pencilIcon: {
+    marginLeft: 2,
   },
 });

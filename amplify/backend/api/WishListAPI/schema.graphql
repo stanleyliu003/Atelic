@@ -29,6 +29,10 @@
     editorial_summary: String
     primary_type_display_name: String
     international_phone_number: String
+    # Activity notes and time tracking
+    notes: String
+    startTime: String  # Format: "HH:mm" (e.g., "09:30")
+    endTime: String    # Format: "HH:mm" (e.g., "17:45")
   }
 
    type WishlistAnalysisResult {
@@ -388,6 +392,10 @@ type DeleteAccountResult {
      editorial_summary: String
      primary_type_display_name: String
      international_phone_number: String
+     # Activity notes and time tracking
+     notes: String
+     startTime: String  # Format: "HH:mm" (e.g., "09:30")
+     endTime: String    # Format: "HH:mm" (e.g., "17:45")
    }
 
    input DayInput {

@@ -50,6 +50,10 @@ export type Activity = {
   editorial_summary?: string;
   primary_type_display_name?: string;
   international_phone_number?: string;
+  // Activity notes and time tracking
+  notes?: string;
+  startTime?: string; // Format: "HH:mm" (e.g., "09:30")
+  endTime?: string;   // Format: "HH:mm" (e.g., "17:45")
 };
 
 // Tab type for navigation between wishlist and different days
