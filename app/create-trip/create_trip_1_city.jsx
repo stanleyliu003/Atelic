@@ -4,7 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Animated, PanResponder, Switch, TouchableWithoutFeedback, Keyboard, ActivityIndicator } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Animated, PanResponder, Switch, TouchableWithoutFeedback, Keyboard, ActivityIndicator, Alert } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { API, Auth } from 'aws-amplify';
@@ -789,6 +789,48 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                         )}
                                     </View>
                                 </TouchableOpacity>
+
+                                {/* Invited Tripmates Display */}
+                                {collaborators && collaborators.filter(c => c.role !== 'owner').length > 0 && (
+                                    <View style={styles.invitedTripmatesContainer}>
+                                        {collaborators
+                                            .filter(c => c.role !== 'owner')
+                                            .map((collaborator, index) => (
+                                                <View key={collaborator.username || index} style={styles.tripmateChip}>
+                                                    <Text style={styles.tripmateUsername}>@{collaborator.username}</Text>
+                                                    <TouchableOpacity
+                                                        onPress={async () => {
+                                                            // Remove collaborator
+                                                            try {
+                                                                const { API } = await import('aws-amplify');
+                                                                const { removeCollaborator } = await import('../../src/graphql/mutations');
+
+                                                                const result = await API.graphql({
+                                                                    query: removeCollaborator,
+                                                                    variables: {
+                                                                        tripId,
+                                                                        username: collaborator.username
+                                                                    }
+                                                                });
+
+                                                                const updatedTrip = result.data?.removeCollaborator;
+                                                                if (updatedTrip?.collaborators) {
+                                                                    setCollaborators(updatedTrip.collaborators);
+                                                                }
+                                                            } catch (error) {
+                                                                console.error('[create_trip_1_city] Error removing collaborator:', error);
+                                                                Alert.alert('Error', 'Failed to remove tripmate. Please try again.');
+                                                            }
+                                                        }}
+                                                        style={styles.tripmateRemoveButton}
+                                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                    >
+                                                        <Ionicons name="close" size={16} color="#666" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            ))}
+                                    </View>
+                                )}
                             </View>
                         )}
                     </View>
@@ -1124,5 +1166,29 @@ const styles = StyleSheet.create({
     },
     inviteTripmateButtonDisabled: {
         opacity: 0.6,
+    },
+    invitedTripmatesContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginTop: 12,
+        gap: 8,
+    },
+    tripmateChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#e9ecef',
+        borderRadius: 20,
+        paddingVertical: 6,
+        paddingLeft: 12,
+        paddingRight: 8,
+        gap: 6,
+    },
+    tripmateUsername: {
+        fontFamily: 'outfit',
+        fontSize: 14,
+        color: '#333',
+    },
+    tripmateRemoveButton: {
+        padding: 2,
     },
 })
