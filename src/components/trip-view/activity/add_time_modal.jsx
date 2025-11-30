@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  Modal,
   View,
   Text,
   StyleSheet,
@@ -150,93 +149,113 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
     }
   }, [startHour, startMinute, endHour, endMinute, visible]);
 
+  if (!visible) return null;
+
   return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <View style={styles.overlay}>
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={onClose}
-        />
-        <View style={styles.modalContainer}>
-          <View style={styles.timePickerContainer}>
-            {/* Start Time */}
-            <View style={styles.timeSection}>
-              <Text style={styles.timeSectionTitle}>Start</Text>
-              <View style={styles.pickerRowContainer}>
-                <View style={styles.rowSelectionIndicator} />
-                <View style={styles.pickerRow}>
-                  <TimePickerColumn
-                    values={HOURS}
-                    selectedValue={startHour}
-                    onValueChange={setStartHour}
-                    debugLabel="start-hour"
-                    visible={visible}
-                  />
-                  <TimePickerColumn
-                    values={MINUTES}
-                    selectedValue={startMinute}
-                    onValueChange={setStartMinute}
-                    debugLabel="start-minute"
-                    visible={visible}
-                  />
-                </View>
+    <View style={styles.overlayWrapper}>
+      {/* Backdrop overlay */}
+      <Pressable
+        style={styles.backdrop}
+        onPress={onClose}
+      />
+      {/* Popover container */}
+      <View style={styles.popoverContainer}>
+        <View style={styles.timePickerContainer}>
+          {/* Start Time */}
+          <View style={styles.timeSection}>
+            <Text style={styles.timeSectionTitle}>Start</Text>
+            <View style={styles.pickerRowContainer}>
+              <View style={styles.rowSelectionIndicator} />
+              <View style={styles.pickerRow}>
+                <TimePickerColumn
+                  values={HOURS}
+                  selectedValue={startHour}
+                  onValueChange={setStartHour}
+                  debugLabel="start-hour"
+                  visible={visible}
+                />
+                <TimePickerColumn
+                  values={MINUTES}
+                  selectedValue={startMinute}
+                  onValueChange={setStartMinute}
+                  debugLabel="start-minute"
+                  visible={visible}
+                />
               </View>
             </View>
+          </View>
 
-            {/* Divider */}
-            <View style={styles.divider} />
+          {/* Divider */}
+          <View style={styles.divider} />
 
-            {/* End Time */}
-            <View style={styles.timeSection}>
-              <Text style={styles.timeSectionTitle}>End</Text>
-              <View style={styles.pickerRowContainer}>
-                <View style={styles.rowSelectionIndicator} />
-                <View style={styles.pickerRow}>
-                  <TimePickerColumn
-                    values={HOURS}
-                    selectedValue={endHour}
-                    onValueChange={setEndHour}
-                    debugLabel="end-hour"
-                    visible={visible}
-                  />
-                  <TimePickerColumn
-                    values={MINUTES}
-                    selectedValue={endMinute}
-                    onValueChange={setEndMinute}
-                    debugLabel="end-minute"
-                    visible={visible}
-                  />
-                </View>
+          {/* End Time */}
+          <View style={styles.timeSection}>
+            <Text style={styles.timeSectionTitle}>End</Text>
+            <View style={styles.pickerRowContainer}>
+              <View style={styles.rowSelectionIndicator} />
+              <View style={styles.pickerRow}>
+                <TimePickerColumn
+                  values={HOURS}
+                  selectedValue={endHour}
+                  onValueChange={setEndHour}
+                  debugLabel="end-hour"
+                  visible={visible}
+                />
+                <TimePickerColumn
+                  values={MINUTES}
+                  selectedValue={endMinute}
+                  onValueChange={setEndMinute}
+                  debugLabel="end-minute"
+                  visible={visible}
+                />
               </View>
             </View>
           </View>
         </View>
       </View>
-    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  overlayWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'box-none',
   },
-  modalContainer: {
-    width: '85%',
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+  },
+  popoverContainer: {
+    position: 'absolute',
+    bottom: 60,
+    left: 0,
+    width: '70%',
     backgroundColor: '#000',
     borderRadius: 20,
-    padding: 20,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.44,
+    shadowRadius: 10.32,
+    elevation: 16,
+    zIndex: 10,
   },
   timePickerContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    gap: 5,
   },
   timeSection: {
     flex: 1,
@@ -244,14 +263,14 @@ const styles = StyleSheet.create({
   },
   timeSectionTitle: {
     fontFamily: 'outfit-bold',
-    fontSize: 18,
+    fontSize: 16,
     color: '#fff',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   pickerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 5,
   },
   // Container for both hour and minute columns so the highlight spans the full row
   pickerRowContainer: {
@@ -262,7 +281,7 @@ const styles = StyleSheet.create({
   },
   pickerColumn: {
     height: ITEM_HEIGHT * 3,
-    width: 60,
+    width: 45,
     overflow: 'hidden',
   },
   pickerSpacer: {
@@ -292,6 +311,6 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     backgroundColor: '#444',
-    marginHorizontal: 15,
+    marginHorizontal: 8,
   },
 });

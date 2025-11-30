@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  Pressable
 } from 'react-native';
 import { Colors } from '../../../../constants/Colors';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -32,6 +33,16 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
     onClose();
   };
 
+  const handleClose = () => {
+    // Save changes when closing via backdrop
+    updateActivityNotes(activity.instanceId, {
+      notes: notes.trim(),
+      startTime: isWishlist ? '' : startTime,
+      endTime: isWishlist ? '' : endTime,
+    });
+    onClose();
+  };
+
   const handleTimeUpdate = (start, end) => {
     setStartTime(start);
     setEndTime(end);
@@ -42,54 +53,55 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
       visible={visible}
       transparent={true}
       animationType="slide"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.modalOverlay}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={onClose}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
+        <View style={styles.modalOverlay} pointerEvents="box-none">
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={handleClose}
+          />
+          <View
             style={styles.modalContent}
-            onPress={(e) => e.stopPropagation()}
+            pointerEvents="auto"
           >
             {/* Header */}
-            <View style={styles.header}>
+            <Pressable style={styles.header} onPress={() => setTimeModalVisible(false)}>
               <Text style={styles.placeName} numberOfLines={1}>
                 {activity.name}
               </Text>
               <TouchableOpacity onPress={handleSave}>
                 <Text style={styles.doneButton}>Done</Text>
               </TouchableOpacity>
-            </View>
+            </Pressable>
 
             {/* Notes Input */}
-            <ScrollView
-              style={styles.notesInputContainer}
-              contentContainerStyle={styles.notesScrollContent}
-            >
-              <TextInput
-                style={styles.notesInput}
-                placeholder={`Add notes about ${activity.name}...`}
-                placeholderTextColor="#999"
-                multiline
-                value={notes}
-                onChangeText={setNotes}
-                textAlignVertical="top"
-              />
-            </ScrollView>
+            <Pressable style={styles.notesInputContainer} onPress={() => setTimeModalVisible(false)}>
+              <ScrollView
+                contentContainerStyle={styles.notesScrollContent}
+              >
+                <TextInput
+                  style={styles.notesInput}
+                  placeholder={`Add notes about ${activity.name}...`}
+                  placeholderTextColor="#999"
+                  multiline
+                  value={notes}
+                  onChangeText={setNotes}
+                  textAlignVertical="top"
+                />
+              </ScrollView>
+            </Pressable>
 
             {/* Add Time Button - Only show if NOT in wishlist */}
             {!isWishlist && (
-              <>
+              <View style={styles.timePickerWrapper} pointerEvents="box-none">
                 <TouchableOpacity
                   style={styles.addTimeButton}
                   onPress={() => setTimeModalVisible(true)}
+                  pointerEvents="auto"
                 >
                   <MaterialIcons name="access-time" size={18} color={Colors.PRIMARY} />
                   <Text style={styles.addTimeText}>
@@ -97,7 +109,7 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
                   </Text>
                 </TouchableOpacity>
 
-                {/* Time Modal */}
+                {/* Time Picker Popover */}
                 <AddTimeModal
                   visible={timeModalVisible}
                   onClose={() => setTimeModalVisible(false)}
@@ -105,10 +117,10 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
                   initialEndTime={endTime}
                   onSave={handleTimeUpdate}
                 />
-              </>
+              </View>
             )}
-          </TouchableOpacity>
-        </TouchableOpacity>
+          </View>
+        </View>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -162,6 +174,10 @@ const styles = StyleSheet.create({
     color: Colors.PRIMARY,
     minHeight: 200,
   },
+  timePickerWrapper: {
+    position: 'relative',
+    marginBottom: 30,
+  },
   addTimeButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -169,7 +185,6 @@ const styles = StyleSheet.create({
     width: '50%',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    marginBottom: 30,
     backgroundColor: '#f0f0f0',
     borderRadius: 10,
     gap: 8,
