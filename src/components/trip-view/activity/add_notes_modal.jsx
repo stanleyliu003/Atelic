@@ -12,6 +12,8 @@ import {
   Pressable,
   Keyboard
 } from 'react-native';
+import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { Colors } from '../../../../constants/Colors';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useCreateTrip } from '../../../../context/CreateTripContext';
@@ -92,6 +94,15 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
     setEndTime(end);
   };
 
+  // Swipe down gesture to close
+  const swipeGesture = Gesture.Pan()
+    .onEnd((event) => {
+      // If swiped down more than 100px with sufficient velocity, close the modal
+      if (event.translationY > 100 && event.velocityY > 0) {
+        runOnJS(handleClose)();
+      }
+    });
+
   return (
     <Modal
       visible={visible}
@@ -108,10 +119,17 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
             style={StyleSheet.absoluteFill}
             onPress={handleClose}
           />
-          <View
+          <GestureHandlerRootView
             style={[styles.modalContent, isKeyboardVisible && styles.modalContentExpanded]}
             pointerEvents="auto"
           >
+            {/* Swipeable Drag Indicator */}
+            <GestureDetector gesture={swipeGesture}>
+              <View style={styles.dragIndicatorContainer}>
+                <View style={styles.dragIndicator} />
+              </View>
+            </GestureDetector>
+
             {/* Header */}
             <Pressable style={styles.header} onPress={() => setTimeModalVisible(false)}>
               <Text style={styles.placeName} numberOfLines={1}>
@@ -182,7 +200,7 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
                 />
               </View>
             )}
-          </View>
+          </GestureHandlerRootView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -204,6 +222,17 @@ const styles = StyleSheet.create({
   },
   modalContentExpanded: {
     height: '75%',
+  },
+  dragIndicatorContainer: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  dragIndicator: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 3,
   },
   header: {
     flexDirection: 'row',
