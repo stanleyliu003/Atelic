@@ -2,7 +2,7 @@ import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking, PanResponder } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking, PanResponder, Image } from 'react-native';
 import { Auth, API } from 'aws-amplify';
 import { useEffect, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
@@ -679,9 +679,11 @@ export default function Profile() {
                         )}
                       </View>
                     ) : (
-                      <View style={styles.tripCardImagePlaceholder}>
-                        <FontAwesome name="map-marker" size={30} color={Colors.GRAY} />
-                      </View>
+                      <Image
+                        source={require('../../assets/images/default_trip.jpg')}
+                        style={styles.tripCardImage}
+                        resizeMode="cover"
+                      />
                     )}
                     <View style={styles.tripCardInfo}>
                       <View style={styles.tripCardTitleRow}>
@@ -835,9 +837,11 @@ export default function Profile() {
                         )}
                       </View>
                     ) : (
-                      <View style={styles.tripCardImagePlaceholder}>
-                        <FontAwesome name="map-marker" size={30} color={Colors.GRAY} />
-                      </View>
+                      <Image
+                        source={require('../../assets/images/default_trip.jpg')}
+                        style={styles.tripCardImage}
+                        resizeMode="cover"
+                      />
                     )}
                     <View style={styles.tripCardInfo}>
                       <View style={styles.tripCardTitleRow}>
