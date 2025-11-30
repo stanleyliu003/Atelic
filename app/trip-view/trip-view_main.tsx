@@ -1428,17 +1428,14 @@ export default function TripViewMain() {
     useEffect(() => {
         // Only autosave for owners and editors (viewers can't edit)
         if (currentUserRole === 'viewer') {
-            console.log('[trip-view_main] Autosave disabled - user is viewer');
             return;
         }
 
         // Only enable periodic autosave if we have a tripId
         if (!tripId) {
-            console.log('[trip-view_main] Periodic autosave disabled - no tripId yet');
             return;
         }
 
-        console.log('[trip-view_main] Periodic autosave enabled for tripId:', tripId);
 
         // Trigger 1: Periodic autosave every 5 minutes
         autosaveIntervalRef.current = setInterval(() => {
@@ -1447,23 +1444,23 @@ export default function TripViewMain() {
 
             // Prevent saves during reload from subscription
             if (isReloadingRef.current) {
-                console.log('[trip-view_main] Skipping periodic autosave (reloading)');
+                // console.log('[trip-view_main] Skipping periodic autosave (reloading)');
                 return;
             }
 
             // Check if already saving using ref
             if (isSavingRef.current) {
-                console.log('[trip-view_main] Skipping periodic autosave (save in progress)');
+                // console.log('[trip-view_main] Skipping periodic autosave (save in progress)');
                 return;
             }
 
             // Prevent duplicate saves within MIN_AUTOSAVE_INTERVAL
             if (timeSinceLastSave < MIN_AUTOSAVE_INTERVAL) {
-                console.log('[trip-view_main] Skipping periodic autosave (too soon)');
+                // console.log('[trip-view_main] Skipping periodic autosave (too soon)');
                 return;
             }
 
-            console.log('[trip-view_main] Periodic autosave triggered');
+            // console.log('[trip-view_main] Periodic autosave triggered');
 
             saveTrip()
                 .then(() => {

@@ -313,7 +313,6 @@ export const CreateTripProvider = ({ children }) => {
 
     // Helper to update a single activity's notes/times across wishlist and days
     const updateActivityNotes = (instanceId, updates) => {
-        console.log('[CreateTripContext] Updating activity notes for instanceId:', instanceId, 'with:', updates);
 
         // Update in wishlist
         setActivities(prev => prev.map(activity =>

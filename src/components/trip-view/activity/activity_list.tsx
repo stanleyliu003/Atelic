@@ -276,8 +276,6 @@ export function ActivityList({
 
   // Auto-scroll functions
   const startAutoScroll = useCallback((direction: 'up' | 'down', speed: number) => {
-    console.log(`▶️ [SCROLL-COMP] AUTO-SCROLL ${direction.toUpperCase()} started | Speed: ${speed.toFixed(2)}px/frame | Current scrollY: ${currentScrollY.value.toFixed(1)}px`);
-    
     // Update speed if already running in same direction
     if (autoScrollInterval.current !== null) {
       if (autoScrollDirection.current === direction) {
@@ -286,13 +284,11 @@ export function ActivityList({
         return;
       } else {
         // Direction changed, stop and restart
-        // console.log('🔄 [AUTO-SCROLL] Direction changed, restarting');
         cancelAnimationFrame(autoScrollInterval.current);
         autoScrollInterval.current = null;
       }
     }
 
-    // console.log(`▶️ [AUTO-SCROLL] STARTED - Direction: ${direction}, Speed: ${speed.toFixed(2)}px/frame`);
     autoScrollDirection.current = direction;
     autoScrollSpeed.current = speed;
 
@@ -321,10 +317,6 @@ export function ActivityList({
       // This was causing issues when dragging last activity upward from bottom.
       const maxScroll = Math.max(0, contentHeight - viewHeight);
 
-      // Log content height source on first scroll of each auto-scroll session
-      if (scrollFrameCount === 0) {
-        console.log(`📊 [SCROLL-BOUNDS] Content: ${contentHeight.toFixed(1)}px | View: ${viewHeight.toFixed(1)}px | MaxScroll: ${maxScroll.toFixed(1)}px | CurrentScroll: ${currentOffset.toFixed(1)}px | Direction: ${currentDirection}`);
-      }
       scrollFrameCount++;
 
       const delta = currentSpeed * deltaTime;
@@ -335,26 +327,11 @@ export function ActivityList({
       // Clamp to valid scroll range
       newOffset = Math.max(0, Math.min(maxScroll, newOffset));
 
-      // Log every 20px of scroll change for debugging
-      const scrollChange = Math.abs(newOffset - currentOffset);
-      if (scrollFrameCount % 10 === 0 || scrollChange > 20) { // Log every 10 frames or big jumps
-        console.log(`🔄 [SCROLL-COMP] Scrolling ${currentDirection} | Old: ${currentOffset.toFixed(1)}px → New: ${newOffset.toFixed(1)}px | Delta: ${(newOffset - currentOffset).toFixed(1)}px`);
-      }
-
       // Use Reanimated's scrollTo on UI thread to bypass gesture blocking
       runOnUI(performScrollWorklet)(newOffset);
 
       // Update shared value for next iteration
       currentScrollY.value = newOffset;
-
-      // Log the boundaries for debugging
-      // if (newOffset === 0 && maxScroll === 0) {
-      //   console.log(`🛑 [AUTO-SCROLL] Cannot scroll - content fits in view (maxScroll: 0px)`);
-      // } else if (newOffset === 0) {
-      //   console.log(`🛑 [AUTO-SCROLL] Reached top boundary`);
-      // } else if (newOffset >= maxScroll) {
-      //   console.log(`🛑 [AUTO-SCROLL] Reached bottom boundary`);
-      // }
 
       autoScrollInterval.current = requestAnimationFrame(scroll);
     };
@@ -365,7 +342,6 @@ export function ActivityList({
 
   const stopAutoScroll = useCallback(() => {
     if (autoScrollInterval.current !== null) {
-      console.log(`⏹️ [SCROLL-COMP] AUTO-SCROLL STOPPED | Final scrollY: ${currentScrollY.value.toFixed(1)}px`);
       cancelAnimationFrame(autoScrollInterval.current);
       autoScrollInterval.current = null;
       autoScrollDirection.current = 'none';
@@ -398,11 +374,6 @@ export function ActivityList({
         
         // Include SearchBar in maxScroll (it's scrollable content)
         const maxScroll = Math.max(0, contentHeight - visibleHeight);
-
-        // console.log(`📐 [LAYOUT] ScrollView Y: ${y.toFixed(1)}, Width: ${width.toFixed(1)}`);
-        // console.log(`📐 [LAYOUT] Layout Height (visible): ${layoutHeight.toFixed(1)}px, Content Height: ${measuredHeight.toFixed(1)}px`);
-        // console.log(`📏 [LAYOUT] Content: ${contentHeight.toFixed(1)}px, Max scroll: ${maxScroll.toFixed(1)}px, Activities: ${currentActivities.length}`);
-        // console.log(`📱 [LAYOUT] Calculated visible cards: ${(visibleHeight / 189).toFixed(2)} cards (assuming 189px per card with route)`);
       });
     }
   }, [currentActivities.length]);
@@ -573,9 +544,6 @@ export function ActivityList({
           onScroll={handleScroll}
           scrollEventThrottle={16}
           onContentSizeChange={(width, height) => {
-            const avgPerActivity = currentActivities.length > 0 ? height / currentActivities.length : 0;
-            // console.log(`📏 [CONTENT-SIZE] Content size changed: ${height.toFixed(1)}px (${currentActivities.length} activities, avg ${avgPerActivity.toFixed(1)}px each)`);
-            // console.log(`📏 [CONTENT-SIZE] Current scrollViewLayout height: ${scrollViewLayout.value.height.toFixed(1)}px`);
             runOnUI(() => {
               'worklet';
               scrollViewContentSize.value = { width, height };
@@ -874,13 +842,10 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       const directionChanged = result.direction !== previous?.direction;
 
       if (directionChanged) {
-        // Log when state changes
         if (result.direction !== 'none') {
-          // console.log(`🎯 [EDGE-DETECT] Entering ${result.direction} zone | ${result.debug}`);
           // Start auto-scroll
           runOnJS(startAutoScroll)(result.direction, result.speed);
         } else {
-          // console.log(`🎯 [EDGE-DETECT] Exiting edge zone | ${result.debug}`);
           // Stop auto-scroll
           runOnJS(stopAutoScroll)();
         }
@@ -888,13 +853,6 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
         // Direction hasn't changed but we're still in a zone - update speed
         runOnJS(startAutoScroll)(result.direction, result.speed);
       }
-
-      // Log debug info when not in zone (only occasionally to avoid spam)
-      // if (result.direction === 'none' && previous?.direction === 'none' && result.debug) {
-      //   if (Math.random() < 0.05) { // 5% of the time
-      //     console.log(`🔍 [EDGE-DETECT] Outside zones | ${result.debug}`);
-      //   }
-      // }
     }
   );
 
@@ -931,7 +889,6 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
 
       // Capture initial scroll position to compensate for autoscroll during drag
       initialScrollY.value = currentScrollY.value;
-      console.log(`🎬 [SCROLL-COMP] Drag started on card ${cardIndex} | Initial scrollY: ${currentScrollY.value.toFixed(1)}px`);
 
       // SCROLL COMPENSATION: When route cards collapse (height: 0), all items shift up
       // Calculate how much to scroll up so the dragged card stays under the user's finger
@@ -944,9 +901,6 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
 
       if (compensationOffset > 0) {
         const targetScrollY = Math.max(0, currentScrollY.value - compensationOffset);
-        console.log(`📐 [SCROLL-COMP] Card ${cardIndex}: Compensating for ${numRouteCardsAbove} route cards above collapsing`);
-        console.log(`   Route card height: ${ROUTE_CARD_WITH_MARGINS}px | Total offset: ${compensationOffset}px`);
-        console.log(`   Scroll: ${currentScrollY.value.toFixed(1)}px → ${targetScrollY.toFixed(1)}px (delta: ${-(compensationOffset).toFixed(1)}px)`);
 
         // Apply scroll compensation immediately with smooth animation
         scrollTo(scrollViewRef, 0, targetScrollY, true); // true = animated
@@ -974,13 +928,6 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       // Use absoluteY from event if available, otherwise calculate
       if (event.absoluteY !== undefined) {
         dragAbsoluteY.value = event.absoluteY;
-        // Log occasionally to track position (every 50px movement)
-        // if (Math.abs(event.translationY) % 50 < 5) {
-        //   console.log(`👆 [DRAG] absoluteY: ${event.absoluteY.toFixed(1)}, translationY: ${event.translationY.toFixed(1)}`);
-        // }
-      } else {
-        // Log if absoluteY is not available
-        // console.log('⚠️ [DRAG] event.absoluteY is undefined - edge detection may not work');
       }
 
       // Calculate target index based on drag distance INCLUDING scroll compensation
@@ -992,16 +939,12 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
 
       // Broadcast target index to all cards for coordinated shifting
       if (newTargetIndex !== targetDropIndex.value) {
-        console.log(`🎯 [DRAG] Target index: ${targetDropIndex.value} → ${newTargetIndex} | Gesture: ${event.translationY.toFixed(1)}px | ScrollDelta: ${scrollDelta.toFixed(1)}px | Effective: ${effectiveDragDistance.toFixed(1)}px | PosChange: ${positionChange}`);
         targetDropIndex.value = newTargetIndex;
       }
     })
     .onEnd((event) => {
       const finalScrollDelta = currentScrollY.value - initialScrollY.value;
       const effectiveDragDistance = event.translationY + finalScrollDelta;
-      console.log(`🏁 [SCROLL-COMP] Drag ended on card ${cardIndex}`);
-      console.log(`   Gesture: ${event.translationY.toFixed(1)}px | ScrollDelta: ${finalScrollDelta.toFixed(1)}px | Effective: ${effectiveDragDistance.toFixed(1)}px`);
-      console.log(`   Original index: ${originalIndex.value} → Target index: ${targetDropIndex.value} | Will ${targetDropIndex.value !== originalIndex.value ? 'REORDER' : 'stay in place'}`);
 
       // Stop auto-scroll when drag ends
       runOnJS(stopAutoScroll)();
@@ -1015,8 +958,6 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
 
       if (reverseCompensationOffset > 0) {
         const targetScrollY = currentScrollY.value + reverseCompensationOffset;
-        console.log(`📐 [SCROLL-COMP] REVERSE: Route cards expanding, scrolling back down`);
-        console.log(`   Offset: ${reverseCompensationOffset}px | Scroll: ${currentScrollY.value.toFixed(1)}px → ${targetScrollY.toFixed(1)}px`);
 
         // Apply reverse compensation with smooth animation
         scrollTo(scrollViewRef, 0, targetScrollY, true); // true = animated
@@ -1028,8 +969,6 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
       // This ensures reordering works correctly when autoscroll is involved
       const effectiveDragDistanceForThreshold = Math.abs(effectiveDragDistance);
       const hasExceededThreshold = effectiveDragDistanceForThreshold >= (ITEM_HEIGHT * MOVEMENT_THRESHOLD);
-
-      console.log(`   Threshold check: ${effectiveDragDistanceForThreshold.toFixed(1)}px >= ${(ITEM_HEIGHT * MOVEMENT_THRESHOLD).toFixed(1)}px ? ${hasExceededThreshold ? 'YES' : 'NO'}`);
 
       // Only trigger reorder if:
       // 1. The target position is different from original position
@@ -1073,7 +1012,6 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
     })
     .onFinalize(() => {
       // Called on cancel, end, or fail - ensure cleanup
-      // console.log(`🧹 [DRAG] Finalized (cleanup) for card ${cardIndex}`);
       runOnJS(stopAutoScroll)();
       dragAbsoluteY.value = -1;
     });
@@ -1094,13 +1032,6 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
     //
     // Formula: translateY = gestureTranslation + scrollDelta
     const scrollDelta = isBeingDragged ? (currentScrollY.value - initialScrollY.value) : 0;
-
-    // Log compensation calculations (throttled to avoid spam)
-    if (isBeingDragged && Math.abs(scrollDelta) > 0.1) {
-      if (Math.floor(Math.abs(scrollDelta)) % 10 === 0) { // Log every 10px of scroll
-        console.log(`📐 [SCROLL-COMP] Card ${cardIndex} | Gesture: ${translateY.value.toFixed(1)}px | ScrollDelta: ${scrollDelta.toFixed(1)}px | Final: ${(translateY.value + scrollDelta).toFixed(1)}px`);
-      }
-    }
 
     const finalTranslateY = isBeingDragged
       ? translateY.value + scrollDelta  // Dragged card: gesture + scroll compensation

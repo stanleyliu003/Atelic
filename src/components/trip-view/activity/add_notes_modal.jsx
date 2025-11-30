@@ -9,7 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Pressable
+  Pressable,
+  Keyboard
 } from 'react-native';
 import { Colors } from '../../../../constants/Colors';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -33,7 +34,25 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
   const [startTime, setStartTime] = useState(isWishlist ? '' : (activity.startTime || ''));
   const [endTime, setEndTime] = useState(isWishlist ? '' : (activity.endTime || ''));
   const [timeModalVisible, setTimeModalVisible] = useState(false);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const notesInputRef = useRef(null);
+
+  // Track keyboard visibility
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, []);
 
   // Close time modal whenever notes modal opens
   useEffect(() => {
@@ -90,7 +109,7 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
             onPress={handleClose}
           />
           <View
-            style={styles.modalContent}
+            style={[styles.modalContent, isKeyboardVisible && styles.modalContentExpanded]}
             pointerEvents="auto"
           >
             {/* Header */}
@@ -166,6 +185,9 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 20,
   },
+  modalContentExpanded: {
+    height: '75%',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -193,13 +215,11 @@ const styles = StyleSheet.create({
   },
   notesScrollContent: {
     flexGrow: 1,
-    minHeight: 200,
   },
   notesInput: {
     fontFamily: 'outfit',
     fontSize: 16,
     color: Colors.PRIMARY,
-    minHeight: 200,
   },
   timePickerWrapper: {
     position: 'relative',
