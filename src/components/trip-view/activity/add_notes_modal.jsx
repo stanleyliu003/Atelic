@@ -144,16 +144,33 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
             {/* Add Time Button - Only show if NOT in wishlist */}
             {!isWishlist && (
               <View style={styles.timePickerWrapper} pointerEvents="box-none">
-                <TouchableOpacity
-                  style={styles.addTimeButton}
-                  onPress={() => setTimeModalVisible(true)}
-                  pointerEvents="auto"
-                >
-                  <MaterialIcons name="access-time" size={18} color={Colors.PRIMARY} />
-                  <Text style={styles.addTimeText}>
-                    {startTime && endTime ? `${format12Hour(startTime)} - ${format12Hour(endTime)}` : 'Add Time'}
-                  </Text>
-                </TouchableOpacity>
+                <View style={styles.timeButtonRow}>
+                  <TouchableOpacity
+                    style={styles.addTimeButton}
+                    onPress={() => setTimeModalVisible(true)}
+                    pointerEvents="auto"
+                  >
+                    <MaterialIcons name="access-time" size={18} color={Colors.PRIMARY} />
+                    <Text style={styles.addTimeText}>
+                      {startTime && endTime ? `${format12Hour(startTime)} - ${format12Hour(endTime)}` : 'Add Time'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Clear Time Button - Only show if time is set */}
+                  {startTime && endTime && (
+                    <TouchableOpacity
+                      style={styles.clearTimeButton}
+                      onPress={() => {
+                        setTimeModalVisible(false); // Close the time modal first
+                        setStartTime('');
+                        setEndTime('');
+                      }}
+                      pointerEvents="auto"
+                    >
+                      <MaterialIcons name="close" size={18} color="#666" />
+                    </TouchableOpacity>
+                  )}
+                </View>
 
                 {/* Time Picker Popover */}
                 <AddTimeModal
@@ -225,15 +242,27 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 30,
   },
+  timeButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   addTimeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
     paddingVertical: 12,
     paddingHorizontal: 16,
     backgroundColor: '#f0f0f0',
     borderRadius: 10,
     gap: 8,
+  },
+  clearTimeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addTimeText: {
     fontFamily: 'outfit-medium',

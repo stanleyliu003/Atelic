@@ -430,12 +430,12 @@ export default function TripViewMain() {
 
     // Function to add activities back to the wishlist
     const addActivitiesToWishlist = (newActivities: Activity[]) => {
-        // Combine existing activities with new ones, removing duplicates by instanceId
-        const combinedActivities = [...(activities || []), ...newActivities];
+        // Combine new activities first, then existing ones, to prioritize new data
+        const combinedActivities = [...newActivities, ...(activities || [])];
         const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
             // Use instanceId for deduplication (allows duplicate places with different instanceIds)
             if (!activity.instanceId) return true; // Keep activities without instanceId (backward compat)
-            // Keep only the first occurrence of each instanceId
+            // Keep only the first occurrence of each instanceId (now from newActivities)
             return arr.findIndex(a => a.instanceId === activity.instanceId) === index;
         });
 

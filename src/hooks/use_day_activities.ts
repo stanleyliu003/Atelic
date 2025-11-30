@@ -76,7 +76,15 @@ export function useDayActivities() {
       return newDayActivities;
     });
     const transferredActivities = dayActivities[dayNumber]?.activities.filter((activity: Activity) => activity.instanceId && activityInstanceIds.includes(activity.instanceId)) || [];
-    return transferredActivities;
+
+    // Clear startTime and endTime when moving to wishlist
+    const clearedActivities = transferredActivities.map(activity => ({
+      ...activity,
+      startTime: '',
+      endTime: '',
+    }));
+
+    return clearedActivities;
   }, [setDayActivities, dayActivities]);
 
   const getDayActivities = useCallback((dayNumber: number): Activity[] => {
