@@ -4,13 +4,15 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Animated, PanResponder, Switch, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Animated, PanResponder, Switch, TouchableWithoutFeedback, Keyboard, ActivityIndicator } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
-import { API } from 'aws-amplify';
+import { API, Auth } from 'aws-amplify';
 import { getCityCategories } from '../../src/graphql/queries';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CalendarPicker from 'react-native-calendar-picker';
+import { ShareTripModal } from '../../src/components/trip-view/collaboration';
+import { createTrip } from '../../src/graphql/mutations';
 
 export default function create_trip_1_city({ showBackButton = true }) {
     const router = useRouter();
@@ -28,7 +30,21 @@ export default function create_trip_1_city({ showBackButton = true }) {
         setTripLength,
         setStartDate: setContextStartDate,
         setEndDate: setContextEndDate,
-        CACHE_KEYS
+        startDate: contextStartDate,
+        endDate: contextEndDate,
+        CACHE_KEYS,
+        tripId,
+        setTripId,
+        generateTripId,
+        collaborators,
+        setCollaborators,
+        setCreatedAt,
+        activities,
+        dayActivities,
+        dayPolylines,
+        tripPhotoReference,
+        createdAt,
+        recentSearches
     } = useCreateTrip();
     const googlePlacesRef = useRef(null);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -40,6 +56,9 @@ export default function create_trip_1_city({ showBackButton = true }) {
     const [hasSelectedPlace, setHasSelectedPlace] = useState(false);
     const selectedCityRef = useRef(null);
     const [searchText, setSearchText] = useState('');
+    const [isShareModalVisible, setIsShareModalVisible] = useState(false);
+    const [currentUserID, setCurrentUserID] = useState('');
+    const [isSavingTrip, setIsSavingTrip] = useState(false);
 
 
     // Pan responder for swipe-down gesture to close calendar
@@ -121,6 +140,18 @@ export default function create_trip_1_city({ showBackButton = true }) {
         setHasSelectedPlace(false);
         selectedCityRef.current = null;
 
+        // Get current user ID
+        const getCurrentUser = async () => {
+            try {
+                const user = await Auth.currentAuthenticatedUser();
+                const userID = user.username;
+                setCurrentUserID(userID);
+            } catch (error) {
+                console.error('[create_trip_1_city] Error getting current user:', error);
+            }
+        };
+        getCurrentUser();
+
         // Cleanup when component unmounts
         return () => {
             setIsCreatingTrip(false);
@@ -153,6 +184,201 @@ export default function create_trip_1_city({ showBackButton = true }) {
             console.error('Error fetching city categories:', error);
             setCityCategories(null);
         }
+    };
+
+    // Helper function to sanitize activity objects for GraphQL input
+    const sanitizeActivity = (activity) => {
+        const {
+            __typename,
+            regular_opening_hours,
+            reviews,
+            ...sanitized
+        } = activity;
+
+        // Clean regular_opening_hours if it exists
+        let cleanOpeningHours = null;
+        if (regular_opening_hours) {
+            const { __typename: openingTypename, periods, ...openingHoursRest } = regular_opening_hours;
+            cleanOpeningHours = {
+                ...openingHoursRest,
+                ...(periods && {
+                    periods: periods.map((period) => {
+                        const { __typename: periodTypename, open, close, ...periodRest } = period;
+                        const cleanPeriod = { ...periodRest };
+
+                        if (open) {
+                            const { __typename: openTypename, ...openRest } = open;
+                            cleanPeriod.open = openRest;
+                        }
+
+                        if (close) {
+                            const { __typename: closeTypename, ...closeRest } = close;
+                            cleanPeriod.close = closeRest;
+                        }
+
+                        return cleanPeriod;
+                    })
+                })
+            };
+        }
+
+        // Clean reviews if they exist
+        let cleanReviews = null;
+        if (reviews && Array.isArray(reviews)) {
+            cleanReviews = reviews.map((review) => {
+                const { __typename: reviewTypename, ...reviewRest } = review;
+                return reviewRest;
+            });
+        }
+
+        return {
+            ...sanitized,
+            ...(cleanOpeningHours && { regular_opening_hours: cleanOpeningHours }),
+            ...(cleanReviews && { reviews: cleanReviews })
+        };
+    };
+
+    // Save trip to database
+    const saveTrip = async () => {
+        try {
+            setIsSavingTrip(true);
+            console.log('[create_trip_1_city] Saving trip to database...');
+
+            // Generate tripId if it doesn't exist
+            let currentTripId = tripId;
+            if (!currentTripId) {
+                currentTripId = generateTripId();
+                setTripId(currentTripId);
+                console.log('[create_trip_1_city] Generated new tripId:', currentTripId);
+            }
+
+            // Generate createdAt if it doesn't exist
+            let tripCreatedAt = createdAt;
+            if (!tripCreatedAt) {
+                tripCreatedAt = new Date().toISOString();
+                setCreatedAt(tripCreatedAt);
+                console.log('[create_trip_1_city] Generated new createdAt:', tripCreatedAt);
+            }
+
+            // Get current user information
+            const currentUser = await Auth.currentAuthenticatedUser();
+            const currentUserID = currentUser.username;
+            const currentUserEmail = currentUser.attributes?.email || '';
+            const currentUserName = currentUser.attributes?.name || '';
+            const currentUsername = currentUser.attributes?.preferred_username || currentUser.username || currentUserEmail.split('@')[0];
+
+            // Initialize collaborators with current user as owner if not already set
+            let collaboratorsToSave;
+            if (collaborators.length === 0) {
+                const ownerCollaborator = {
+                    email: currentUserEmail,
+                    fullName: currentUserName,
+                    username: currentUsername,
+                    userID: currentUserID,
+                    role: 'owner',
+                    addedBy: currentUserName
+                };
+                collaboratorsToSave = [ownerCollaborator];
+                setCollaborators(collaboratorsToSave);
+            } else {
+                collaboratorsToSave = collaborators.map(collaborator => ({
+                    email: collaborator.email,
+                    fullName: collaborator.fullName,
+                    username: collaborator.username || collaborator.email.split('@')[0],
+                    userID: collaborator.userID,
+                    role: collaborator.role,
+                    addedBy: collaborator.addedBy
+                }));
+            }
+
+            // Gather days and their activities (will be empty at this point)
+            const days = Object.keys(dayActivities || {}).map(dayNumber => ({
+                dayNumber: Number(dayNumber),
+                activities: (dayActivities[dayNumber]?.activities || []).map(sanitizeActivity),
+                encodedPolyline: (dayPolylines || {})[dayNumber] || null,
+            }));
+
+            // Gather wishlist activities (sanitize them)
+            const dayActivityInstanceIds = days.flatMap(day => day.activities.map(a => a.instanceId)).filter(Boolean);
+            const wishlist = (activities || [])
+                .filter((activity) => !activity.instanceId || !dayActivityInstanceIds.includes(activity.instanceId))
+                .map(sanitizeActivity);
+
+            // Sanitize cityCategories
+            const cleanCityCategories = Array.isArray(cityCategories)
+                ? cityCategories.map((c) => ({
+                    category: c?.category,
+                    category_items: Array.isArray(c?.category_items) ? c.category_items : [],
+                    ...(typeof c?.emoji === 'string' ? { emoji: c.emoji } : {})
+                }))
+                : null;
+
+            // Sanitize recentSearches
+            const cleanRecentSearches = Array.isArray(recentSearches)
+                ? recentSearches.map((rs) => {
+                    const { __typename, ...rest } = rs || {};
+                    return {
+                        place_id: rest.place_id,
+                        name: rest.name,
+                        address_info: rest.address_info,
+                        timestamp: rest.timestamp,
+                    };
+                })
+                : [];
+
+            // Prepare trip data
+            const tripData = {
+                tripId: currentTripId,
+                userID: currentUserID, // Owner's userID
+                days,
+                wishlist,
+                tripLength: tripLength,
+                selectedCity: selectedCity,
+                tripPhotoReference: Array.isArray(tripPhotoReference)
+                    ? tripPhotoReference
+                    : (tripPhotoReference ? [String(tripPhotoReference)] : []),
+                createdAt: tripCreatedAt,
+                startDate: contextStartDate || null,
+                endDate: contextEndDate || null,
+                cityCategories: cleanCityCategories || null,
+                recentSearches: cleanRecentSearches,
+                collaborators: collaboratorsToSave,
+                version: 1,
+                updatedAt: new Date().toISOString(),
+                lastUpdatedBy: currentUserEmail
+            };
+
+            // Save to database
+            const result = await API.graphql({
+                query: createTrip,
+                variables: { input: tripData }
+            });
+
+            console.log('[create_trip_1_city] Trip saved successfully:', result);
+            setIsSavingTrip(false);
+            return true;
+        } catch (error) {
+            console.error('[create_trip_1_city] Error saving trip:', error);
+            setIsSavingTrip(false);
+            throw error;
+        }
+    };
+
+    const handleInviteTripmate = async () => {
+        try {
+            // Save trip to database first
+            await saveTrip();
+
+            // Now open ShareTripModal (trip exists in DB, so addCollaborator will work)
+            setIsShareModalVisible(true);
+        } catch (error) {
+            console.error('[create_trip_1_city] Error saving trip before invite:', error);
+            // Could show an alert to user here
+        }
+    };
+
+    const handleCollaboratorsUpdate = (updatedCollaborators) => {
+        setCollaborators(updatedCollaborators);
     };
 
     const handleNext = async () => {
@@ -534,6 +760,37 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                 </View>
                             </View>
                         </Modal>
+
+                        {/* Invite Tripmate Button - shown after trip length is selected */}
+                        {tripLength && (
+                            <View style={{ marginTop: 15 }}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.inviteTripmateButton,
+                                        isSavingTrip && styles.inviteTripmateButtonDisabled
+                                    ]}
+                                    onPress={handleInviteTripmate}
+                                    disabled={isSavingTrip}
+                                >
+                                    <View style={styles.inviteTripmateContent}>
+                                        {isSavingTrip ? (
+                                            <>
+                                                <ActivityIndicator size="small" color="#666" />
+                                                <Text style={styles.inviteTripmateText}>Loading...</Text>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <MaterialIcons name="person-add" size={24} color="#666" />
+                                                <View style={styles.inviteTripmateTextContainer}>
+                                                    <Text style={styles.inviteTripmateText}>Invite tripmates</Text>
+                                                    <Text style={styles.inviteTripmateOptional}>Optional</Text>
+                                                </View>
+                                            </>
+                                        )}
+                                    </View>
+                                </TouchableOpacity>
+                            </View>
+                        )}
                     </View>
                 )}
 
@@ -552,6 +809,20 @@ export default function create_trip_1_city({ showBackButton = true }) {
                 </View>
                 </View>
             </TouchableWithoutFeedback>
+
+            {/* Share Trip Modal */}
+            {currentUserID && tripId && (
+                <ShareTripModal
+                    visible={isShareModalVisible}
+                    onClose={() => setIsShareModalVisible(false)}
+                    tripId={tripId}
+                    collaborators={collaborators || []}
+                    currentUserRole="owner"
+                    currentUserID={currentUserID}
+                    selectedCity={selectedCity}
+                    onCollaboratorsUpdate={handleCollaboratorsUpdate}
+                />
+            )}
         </KeyboardAvoidingView>
     )
 }
@@ -812,5 +1083,46 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#F36406',
         textAlign: 'center',
+    },
+    inviteTripmateButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 20,
+        padding: 15,
+        borderWidth: 0,
+        borderRadius: 20,
+        backgroundColor: 'white',
+        minHeight: 55,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    inviteTripmateContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        flex: 1,
+    },
+    inviteTripmateTextContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    inviteTripmateText: {
+        fontFamily: 'outfit',
+        fontSize: 16,
+        color: '#1a1a1a',
+    },
+    inviteTripmateOptional: {
+        fontFamily: 'outfit',
+        fontSize: 14,
+        color: '#999999',
+        fontStyle: 'italic',
+    },
+    inviteTripmateButtonDisabled: {
+        opacity: 0.6,
     },
 })

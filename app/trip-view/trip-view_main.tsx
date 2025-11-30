@@ -1187,12 +1187,18 @@ export default function TripViewMain() {
             // Compose trip data object
             // Generate tripId if it doesn't exist (first time save)
             // Use tripIdRef for immediate access to avoid race conditions
+            // IMPORTANT: Check context tripId first (may have been set from create_trip_1_city)
             let currentTripId = tripIdRef.current;
             if (!currentTripId) {
+                // Only generate a new tripId if one doesn't exist in context
                 currentTripId = generateTripId();
                 console.log('[trip-view_main] Generated new tripId:', currentTripId);
                 // Immediately update ref to prevent duplicate generation
                 tripIdRef.current = currentTripId;
+                // Also update context state
+                setTripId(currentTripId);
+            } else {
+                console.log('[trip-view_main] Using existing tripId from context:', currentTripId);
             }
 
             // Preserve original createdAt for existing trips, generate only for new trips
@@ -1249,11 +1255,12 @@ export default function TripViewMain() {
             let collaboratorsToSave;
             let ownerUserID; // This will be used as the partition key in DynamoDB
 
-            // Check if this is a truly NEW trip (no tripId AND no collaborators in context)
+            // Check if this is a truly NEW trip (no tripId in DB AND no collaborators in context)
+            // Note: tripId might exist in context if set from create_trip_1_city, but not saved to DB yet
             const isBrandNewTrip = !tripId && collaborators.length === 0;
 
             if (isBrandNewTrip) {
-                // NEW TRIP: Current user becomes owner
+                // NEW TRIP (created directly in trip-view_main): Current user becomes owner
                 ownerUserID = currentUserID;
                 collaboratorsToSave = [{
                     email: currentUserEmail,
@@ -1263,8 +1270,9 @@ export default function TripViewMain() {
                     role: 'owner',
                     addedBy: currentUserName
                 }];
-            } else {
-                // EXISTING TRIP: Preserve ALL collaborators
+                console.log('[trip-view_main] New trip - current user set as owner');
+            } else if (collaborators.length > 0) {
+                // EXISTING TRIP or TRIP WITH COLLABORATORS (set from create_trip_1_city): Preserve ALL collaborators
 
                 // Find the owner's userID
                 const owner = collaborators.find(c => c.role === 'owner');
@@ -1283,6 +1291,20 @@ export default function TripViewMain() {
                     role: collaborator.role,
                     addedBy: collaborator.addedBy
                 }));
+                console.log('[trip-view_main] Using existing collaborators from context (may be from create_trip_1_city)');
+            } else {
+                // FALLBACK: Trip has tripId but no collaborators (edge case)
+                // This shouldn't happen in normal flow, but handle it gracefully
+                ownerUserID = currentUserID;
+                collaboratorsToSave = [{
+                    email: currentUserEmail,
+                    fullName: currentUserName,
+                    username: currentUsername,
+                    userID: currentUserID,
+                    role: 'owner',
+                    addedBy: currentUserName
+                }];
+                console.warn('[trip-view_main] Trip has tripId but no collaborators - setting current user as owner');
             }
 
             // Add OWNER's userID and collaborators to trip data
@@ -1328,9 +1350,13 @@ export default function TripViewMain() {
             }
 
             // Update local collaborators state after successful save
-            // For new trips OR if collaborators were somehow lost
-            if (isBrandNewTrip || collaborators.length === 0) {
+            // Only update if this was a brand new trip without any collaborators
+            // If collaborators exist (from create_trip_1_city), keep them as-is
+            if (isBrandNewTrip) {
                 setCollaborators(collaboratorsToSave);
+                console.log('[trip-view_main] Collaborators initialized after first save');
+            } else {
+                console.log('[trip-view_main] Keeping existing collaborators (may include invites from create_trip_1_city)');
             }
 
         } catch (error: any) {
