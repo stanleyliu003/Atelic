@@ -196,6 +196,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   onSearchQueryChange?: (text: string) => void; // Search query change handler
   onDuplicate?: (activity: Activity, targetDayNumber?: number) => void; // Callback for duplicating an activity
   isAddingPlaceFromAutocomplete?: boolean; // Show inline loading row below last activity
+  activeTab?: string; // Current active tab (wishlist or day#)
 }
 
 export function ActivityList({
@@ -226,6 +227,7 @@ export function ActivityList({
   onSearchQueryChange,
   onDuplicate,
   isAddingPlaceFromAutocomplete = false,
+  activeTab
 }: EnhancedActivityListProps) {
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
@@ -515,6 +517,7 @@ export function ActivityList({
         duplicateActivityIndicator: isInWishlist,
         useInlineSelectionLayout,
         onDuplicate: onDuplicate ? () => onDuplicate(activity) : undefined,
+        activeTab,
       };
 
       if (enableDragDrop && scrollable) {
@@ -684,6 +687,7 @@ interface DraggableActivityCardProps {
   startAutoScroll: (direction: 'up' | 'down', speed: number) => void; // Start auto-scroll
   stopAutoScroll: () => void; // Stop auto-scroll
   scrollViewRef: AnimatedRef<Animated.ScrollView>; // Reference to ScrollView for scroll compensation
+  activeTab?: string; // Current active tab (wishlist or day#)
 }
 
 const DraggableActivityCard = React.memo(function DraggableActivityCard({
@@ -720,6 +724,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
   startAutoScroll,
   stopAutoScroll,
   scrollViewRef,
+  activeTab,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -1151,6 +1156,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
             duplicateActivityIndicator={duplicateActivityIndicator}
             enableDragDrop={true}
             useInlineSelectionLayout={useInlineSelectionLayout}
+            activeTab={activeTab}
           />
         </Animated.View>
       </GestureDetector>

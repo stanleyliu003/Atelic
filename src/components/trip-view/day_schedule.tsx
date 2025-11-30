@@ -29,6 +29,7 @@ interface DayScheduleProps {
   currentUserRole?: string; // User's role in the trip (owner, editor, viewer)
   onDuplicate?: (activity: Activity, targetDayNumber?: number) => void; // Callback for duplicating an activity
   isAddingPlaceFromAutocomplete?: boolean; // Show inline loading row below last activity
+  activeTab?: string; // Current active tab (wishlist or day#)
 }
 
 export function DaySchedule({
@@ -56,6 +57,7 @@ export function DaySchedule({
   currentUserRole,
   onDuplicate,
   isAddingPlaceFromAutocomplete,
+  activeTab,
 }: DayScheduleProps) {
   const selectedCount = selectedActivities.length;
 
@@ -125,6 +127,7 @@ export function DaySchedule({
         onSearchQueryChange={onSearchQueryChange}
         onDuplicate={onDuplicate ? (activity) => onDuplicate(activity, dayNumber) : undefined}
         isAddingPlaceFromAutocomplete={isAddingPlaceFromAutocomplete}
+        activeTab={activeTab}
       />
     </View>
   );

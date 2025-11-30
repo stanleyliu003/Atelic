@@ -10,6 +10,7 @@ interface WishlistActivitiesProps {
   showSelectionIndicator?: boolean;
   wishlistActivities?: Activity[]; // Activities already in the wishlist for "On list" tag
   onDuplicate?: (activity: Activity, targetDayNumber?: number) => void; // Callback for duplicating an activity
+  activeTab?: string; // Current active tab (wishlist or day#)
 }
 
 export function WishlistActivities({
@@ -20,7 +21,8 @@ export function WishlistActivities({
   onDescriptionCardPress,
   showSelectionIndicator = false,
   wishlistActivities,
-  onDuplicate
+  onDuplicate,
+  activeTab = 'wishlist'
 }: WishlistActivitiesProps) {
   return (
     <ActivityList
@@ -35,6 +37,7 @@ export function WishlistActivities({
       wishlistActivities={wishlistActivities}
       useInlineSelectionLayout={true}
       onDuplicate={onDuplicate}
+      activeTab={activeTab}
     />
   );
 }

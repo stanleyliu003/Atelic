@@ -1828,6 +1828,7 @@ export default function TripViewMain() {
                                                         onDescriptionCardPress={handleActivityDescriptionCardSelect}
                                                         showSelectionIndicator={isSelectionMode && currentUserRole !== 'viewer'}
                                                         onDuplicate={currentUserRole !== 'viewer' ? handleDuplicateActivity : undefined}
+                                                        activeTab={activeTab}
                                                     />
                                                 </View>
                                             ))}
@@ -1927,6 +1928,7 @@ export default function TripViewMain() {
                                     currentUserRole={currentUserRole}
                                     onDuplicate={currentUserRole !== 'viewer' ? handleDuplicateActivity : undefined}
                                     isAddingPlaceFromAutocomplete={isAutocompleteAddingPlace}
+                                    activeTab={activeTab}
                                 />
                             );
                         })()}

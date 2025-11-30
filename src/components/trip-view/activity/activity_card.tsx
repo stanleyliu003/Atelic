@@ -30,6 +30,7 @@ interface ActivityCardProps {
   duplicateActivityIndicator?: boolean; // New prop to indicate activities already in wishlist
   enableDragDrop?: boolean; // New prop to enable drag & drop functionality
   useInlineSelectionLayout?: boolean; // Use inline layout for wishlist (not absolute positioned)
+  activeTab?: string; // Current active tab (wishlist or day#)
 }
 
 // Helper function to convert our travel modes to Google Maps travel modes
@@ -77,7 +78,8 @@ export function ActivityCard({
   hideRouteInfo = false,
   duplicateActivityIndicator = false,
   enableDragDrop = false,
-  useInlineSelectionLayout = false
+  useInlineSelectionLayout = false,
+  activeTab
 }: ActivityCardProps) {
   const [notesModalVisible, setNotesModalVisible] = useState(false);
 
@@ -314,6 +316,7 @@ export function ActivityCard({
         visible={notesModalVisible}
         onClose={() => setNotesModalVisible(false)}
         activity={activity}
+        activeTab={activeTab}
       />
     </View>
   );

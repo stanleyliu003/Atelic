@@ -15,18 +15,19 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useCreateTrip } from '../../../../context/CreateTripContext';
 import AddTimeModal from './add_time_modal';
 
-export function AddNotesModal({ visible, onClose, activity }) {
+export function AddNotesModal({ visible, onClose, activity, activeTab }) {
   const { updateActivityNotes } = useCreateTrip();
   const [notes, setNotes] = useState(activity.notes || '');
-  const [startTime, setStartTime] = useState(activity.startTime || '');
-  const [endTime, setEndTime] = useState(activity.endTime || '');
+  const isWishlist = activeTab === 'wishlist';
+  const [startTime, setStartTime] = useState(isWishlist ? '' : (activity.startTime || ''));
+  const [endTime, setEndTime] = useState(isWishlist ? '' : (activity.endTime || ''));
   const [timeModalVisible, setTimeModalVisible] = useState(false);
 
   const handleSave = () => {
     updateActivityNotes(activity.instanceId, {
       notes: notes.trim(),
-      startTime,
-      endTime,
+      startTime: isWishlist ? '' : startTime,
+      endTime: isWishlist ? '' : endTime,
     });
     onClose();
   };
@@ -83,25 +84,29 @@ export function AddNotesModal({ visible, onClose, activity }) {
               />
             </ScrollView>
 
-            {/* Add Time Button */}
-            <TouchableOpacity
-              style={styles.addTimeButton}
-              onPress={() => setTimeModalVisible(true)}
-            >
-              <MaterialIcons name="access-time" size={18} color={Colors.PRIMARY} />
-              <Text style={styles.addTimeText}>
-                {startTime && endTime ? `${startTime} - ${endTime}` : 'Add Time'}
-              </Text>
-            </TouchableOpacity>
+            {/* Add Time Button - Only show if NOT in wishlist */}
+            {!isWishlist && (
+              <>
+                <TouchableOpacity
+                  style={styles.addTimeButton}
+                  onPress={() => setTimeModalVisible(true)}
+                >
+                  <MaterialIcons name="access-time" size={18} color={Colors.PRIMARY} />
+                  <Text style={styles.addTimeText}>
+                    {startTime && endTime ? `${startTime} - ${endTime}` : 'Add Time'}
+                  </Text>
+                </TouchableOpacity>
 
-            {/* Time Modal */}
-            <AddTimeModal
-              visible={timeModalVisible}
-              onClose={() => setTimeModalVisible(false)}
-              initialStartTime={startTime}
-              initialEndTime={endTime}
-              onSave={handleTimeUpdate}
-            />
+                {/* Time Modal */}
+                <AddTimeModal
+                  visible={timeModalVisible}
+                  onClose={() => setTimeModalVisible(false)}
+                  initialStartTime={startTime}
+                  initialEndTime={endTime}
+                  onSave={handleTimeUpdate}
+                />
+              </>
+            )}
           </TouchableOpacity>
         </TouchableOpacity>
       </KeyboardAvoidingView>
