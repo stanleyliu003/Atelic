@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     paddingHorizontal: 8,
     marginLeft: -3,
-    maxWidth: 190,
+    alignSelf: 'flex-start',
   },
   notesButtonActive: {
     backgroundColor: '#e9ecef', // Light blue when active
@@ -536,8 +536,7 @@ const styles = StyleSheet.create({
   notesButtonWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
+    gap: 5,
   },
   notesButtonContent: {
     flexDirection: 'row',
