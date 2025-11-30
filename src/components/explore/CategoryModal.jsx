@@ -264,6 +264,7 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
                   onDescriptionCardPress={handleActivityPress}
                   showSelectionIndicator={true}
                   wishlistActivities={[]}
+                  hideNotesButton={true}
                 />
                 
                 {/* Generate More Category Activities Button - Show at bottom of activities list */}

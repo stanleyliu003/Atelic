@@ -197,6 +197,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   onDuplicate?: (activity: Activity, targetDayNumber?: number) => void; // Callback for duplicating an activity
   isAddingPlaceFromAutocomplete?: boolean; // Show inline loading row below last activity
   activeTab?: string; // Current active tab (wishlist or day#)
+  hideNotesButton?: boolean; // Hide the notes button (e.g., in CategoryModal)
 }
 
 export function ActivityList({
@@ -227,7 +228,8 @@ export function ActivityList({
   onSearchQueryChange,
   onDuplicate,
   isAddingPlaceFromAutocomplete = false,
-  activeTab
+  activeTab,
+  hideNotesButton = false
 }: EnhancedActivityListProps) {
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
@@ -518,6 +520,7 @@ export function ActivityList({
         useInlineSelectionLayout,
         onDuplicate: onDuplicate ? () => onDuplicate(activity) : undefined,
         activeTab,
+        hideNotesButton,
       };
 
       if (enableDragDrop && scrollable) {
@@ -688,6 +691,7 @@ interface DraggableActivityCardProps {
   stopAutoScroll: () => void; // Stop auto-scroll
   scrollViewRef: AnimatedRef<Animated.ScrollView>; // Reference to ScrollView for scroll compensation
   activeTab?: string; // Current active tab (wishlist or day#)
+  hideNotesButton?: boolean; // Hide the notes button (e.g., in CategoryModal)
 }
 
 const DraggableActivityCard = React.memo(function DraggableActivityCard({
@@ -725,6 +729,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
   stopAutoScroll,
   scrollViewRef,
   activeTab,
+  hideNotesButton = false,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -1157,6 +1162,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
             enableDragDrop={true}
             useInlineSelectionLayout={useInlineSelectionLayout}
             activeTab={activeTab}
+            hideNotesButton={hideNotesButton}
           />
         </Animated.View>
       </GestureDetector>
