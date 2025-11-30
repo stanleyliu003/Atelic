@@ -239,39 +239,34 @@ export function ActivityCard({
                 >
                   <View style={styles.notesButtonWrapper}>
                     {hasNotes ? (
-                      <>
-                        <View style={styles.notesButtonContentColumn}>
-                          {(activity.startTime && activity.endTime) && activity.notes ? (
-                            // Show time only when both time and notes exist
+                      <View style={styles.notesButtonContentColumn}>
+                        {/* If both time and notes exist: show time on first line, notes on second line (1 line max) */}
+                        {(activity.startTime && activity.endTime) && activity.notes ? (
+                          <>
                             <Text style={styles.notesTimeText} numberOfLines={1}>
                               {getNotesButtonText()}
                             </Text>
-                          ) : (
-                            <>
-                              {/* Show time only if no notes */}
-                              {(activity.startTime && activity.endTime) && !activity.notes && (
-                                <Text style={styles.notesTimeText} numberOfLines={1}>
-                                  {getNotesButtonText()}
-                                </Text>
-                              )}
-                              {/* Show notes only if no time */}
-                              {activity.notes && !activity.startTime && !activity.endTime && (
-                                <Text style={styles.notesPreviewText} numberOfLines={2}>
-                                  {activity.notes}
-                                </Text>
-                              )}
-                              {/* Fallback if no time and no notes (shouldn't happen when hasNotes is true) */}
-                              {!activity.notes && !activity.startTime && !activity.endTime && (
-                                <Text style={styles.notesButtonText}>Add Notes</Text>
-                              )}
-                            </>
-                          )}
-                        </View>
-                        {/* Show "Notes" text at the right when time is set */}
-                        {(activity.startTime && activity.endTime) && (
-                          <Text style={styles.notesLabelText}>Notes</Text>
+                            <Text style={styles.notesPreviewText} numberOfLines={1}>
+                              {activity.notes}
+                            </Text>
+                          </>
+                        ) : (
+                          <>
+                            {/* Show time only if no notes */}
+                            {(activity.startTime && activity.endTime) && !activity.notes && (
+                              <Text style={styles.notesTimeText} numberOfLines={1}>
+                                {getNotesButtonText()}
+                              </Text>
+                            )}
+                            {/* Show notes (2 lines max) if no time */}
+                            {activity.notes && !activity.startTime && !activity.endTime && (
+                              <Text style={styles.notesPreviewText} numberOfLines={2}>
+                                {activity.notes}
+                              </Text>
+                            )}
+                          </>
                         )}
-                      </>
+                      </View>
                     ) : (
                       <Text style={styles.notesButtonText}>Add Notes</Text>
                     )}
@@ -451,7 +446,6 @@ const styles = StyleSheet.create({
     color: Colors.GRAY,
   },
   typesContainer: {
-    backgroundColor: Colors.WHITE,
     borderRadius: 10,
     paddingHorizontal: 0,
   },
@@ -533,8 +527,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderRadius: 10,
     paddingVertical: 3,
-    paddingHorizontal: 8,
+    paddingLeft: 8,
+    paddingRight: 5,
     marginLeft: -3,
+    marginRight: 25,
     alignSelf: 'flex-start',
   },
   notesButtonActive: {
@@ -553,7 +549,7 @@ const styles = StyleSheet.create({
   notesButtonContentColumn: {
     flexDirection: 'column',
     gap: 2,
-    flex: 1,
+    flexShrink: 1,
   },
   notesButtonText: {
     fontFamily: 'outfit',
@@ -574,13 +570,13 @@ const styles = StyleSheet.create({
   },
   notesPreviewText: {
     fontFamily: 'outfit',
-    fontSize: 12,
+    fontSize: 10.5,
     color: Colors.GRAY,
     lineHeight: 16,
   },
   notesLabelText: {
     fontFamily: 'outfit',
-    fontSize: 12,
+    fontSize: 10,
     color: Colors.GRAY,
     marginRight: 4,
   },
