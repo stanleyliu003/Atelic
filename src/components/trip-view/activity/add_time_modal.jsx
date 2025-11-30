@@ -7,21 +7,24 @@ import {
   Pressable
 } from 'react-native';
 
-const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+const PERIODS = ['AM', 'PM'];
 const ITEM_HEIGHT = 40;
 
-function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, visible }) {
+function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, visible, enableWrap = true }) {
   const scrollViewRef = useRef(null);
 
   const handleScrollEnd = (event) => {
     const offset = event.nativeEvent.contentOffset.y;
-    const index = Math.round(offset / ITEM_HEIGHT);
+    // Adjust index by 1 if wrapping is enabled (extra item at the top)
+    const index = Math.round(offset / ITEM_HEIGHT) - (enableWrap ? 1 : 0);
     const selectedIndex = Math.min(Math.max(index, 0), values.length - 1);
 
     onValueChange(values[selectedIndex]);
+    // Add 1 to position if wrapping is enabled to account for the extra item at the top
     scrollViewRef.current?.scrollTo({
-      y: selectedIndex * ITEM_HEIGHT,
+      y: (selectedIndex + (enableWrap ? 1 : 0)) * ITEM_HEIGHT,
       animated: true,
     });
   };
@@ -32,14 +35,15 @@ function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, vi
     const index = values.indexOf(selectedValue);
     if (index >= 0 && scrollViewRef.current) {
       // Use setTimeout to ensure the ScrollView is fully mounted
+      // Add 1 to position if wrapping is enabled to account for the extra item at the top
       setTimeout(() => {
         scrollViewRef.current?.scrollTo({
-          y: index * ITEM_HEIGHT,
+          y: (index + (enableWrap ? 1 : 0)) * ITEM_HEIGHT,
           animated: false,
         });
       }, 50);
     }
-  }, [selectedValue, values, visible]);
+  }, [selectedValue, values, visible, enableWrap]);
 
   return (
     <View style={styles.pickerColumn}>
@@ -52,36 +56,87 @@ function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, vi
         scrollEventThrottle={16}
         nestedScrollEnabled={true}
       >
-        {/* Top spacer so the first real value can sit in the middle highlighted row */}
-        <View style={styles.pickerSpacer} />
+        {enableWrap ? (
+          <>
+            {/* Show last value above the first (for wrapping effect) */}
+            <View style={styles.pickerItem}>
+              <Text style={styles.pickerText}>{values[values.length - 1]}</Text>
+            </View>
 
-        {values.map((value) => (
-          <View key={value} style={styles.pickerItem}>
-            <Text style={styles.pickerText}>{value}</Text>
-          </View>
-        ))}
+            {values.map((value) => (
+              <View key={value} style={styles.pickerItem}>
+                <Text style={styles.pickerText}>{value}</Text>
+              </View>
+            ))}
 
-        {/* Bottom spacer so the last real value can also sit in the middle row */}
-        <View style={styles.pickerSpacer} />
+            {/* Show first value below the last (for wrapping effect) */}
+            <View style={styles.pickerItem}>
+              <Text style={styles.pickerText}>{values[0]}</Text>
+            </View>
+          </>
+        ) : (
+          <>
+            {/* Top spacer for non-wrapping columns */}
+            <View style={styles.pickerSpacer} />
+
+            {values.map((value) => (
+              <View key={value} style={styles.pickerItem}>
+                <Text style={styles.pickerText}>{value}</Text>
+              </View>
+            ))}
+
+            {/* Bottom spacer for non-wrapping columns */}
+            <View style={styles.pickerSpacer} />
+          </>
+        )}
       </ScrollView>
     </View>
   );
 }
 
 export default function AddTimeModal({ visible, onClose, initialStartTime, initialEndTime, onSave }) {
+  // Convert 24-hour time to 12-hour format with AM/PM
   const parseTime = (time, fallback = '09:00') => {
     const effectiveTime = time || fallback;
-    const [hour, minute] = effectiveTime.split(':');
-    return { hour: hour.padStart(2, '0'), minute: minute.padStart(2, '0') };
+    const [hour24, minute] = effectiveTime.split(':');
+    const hourNum = parseInt(hour24, 10);
+    const isPM = hourNum >= 12;
+    const hour12 = hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum;
+    return {
+      hour: String(hour12),
+      minute: minute.padStart(2, '0'),
+      period: isPM ? 'PM' : 'AM'
+    };
   };
 
-  const toMinutes = (hour, minute) => parseInt(hour, 10) * 60 + parseInt(minute, 10);
+  // Convert 12-hour time with period to total minutes for comparison
+  const toMinutes = (hour, minute, period) => {
+    let hour24 = parseInt(hour, 10);
+    if (period === 'AM' && hour24 === 12) hour24 = 0;
+    if (period === 'PM' && hour24 !== 12) hour24 += 12;
+    return hour24 * 60 + parseInt(minute, 10);
+  };
 
+  // Convert total minutes to 12-hour format with period
   const minutesToTime = (totalMinutes) => {
     const clamped = Math.max(0, Math.min(totalMinutes, 23 * 60 + 59));
-    const hour = String(Math.floor(clamped / 60)).padStart(2, '0');
-    const minute = String(clamped % 60).padStart(2, '0');
-    return { hour, minute };
+    const hour24 = Math.floor(clamped / 60);
+    const minute = clamped % 60;
+    const isPM = hour24 >= 12;
+    const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+    return {
+      hour: String(hour12),
+      minute: String(minute).padStart(2, '0'),
+      period: isPM ? 'PM' : 'AM'
+    };
+  };
+
+  // Convert 12-hour format back to 24-hour for saving
+  const to24Hour = (hour, minute, period) => {
+    let hour24 = parseInt(hour, 10);
+    if (period === 'AM' && hour24 === 12) hour24 = 0;
+    if (period === 'PM' && hour24 !== 12) hour24 += 12;
+    return `${String(hour24).padStart(2, '0')}:${minute}`;
   };
 
   // Initial times: default 09:00 → 10:00, but honor any existing activity times
@@ -92,14 +147,16 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
     initialEndParsed = parseTime(initialEndTime, '10:00');
   } else {
     // No stored end time – default to one hour after the (possibly stored) start time
-    const startMinutes = toMinutes(startParsed.hour, startParsed.minute);
+    const startMinutes = toMinutes(startParsed.hour, startParsed.minute, startParsed.period);
     initialEndParsed = minutesToTime(startMinutes + 60);
   }
 
   const [startHour, setStartHour] = useState(startParsed.hour);
   const [startMinute, setStartMinute] = useState(startParsed.minute);
+  const [startPeriod, setStartPeriod] = useState(startParsed.period);
   const [endHour, setEndHour] = useState(initialEndParsed.hour);
   const [endMinute, setEndMinute] = useState(initialEndParsed.minute);
+  const [endPeriod, setEndPeriod] = useState(initialEndParsed.period);
 
   // Whenever the modal is (re)opened, scroll to the correct default or stored times
   useEffect(() => {
@@ -117,20 +174,22 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
     if (initialEndTime) {
       recomputedEnd = parseTime(initialEndTime, '10:00');
     } else {
-      const startMinutes = toMinutes(recomputedStart.hour, recomputedStart.minute);
+      const startMinutes = toMinutes(recomputedStart.hour, recomputedStart.minute, recomputedStart.period);
       recomputedEnd = minutesToTime(startMinutes + 60);
     }
 
     setStartHour(recomputedStart.hour);
     setStartMinute(recomputedStart.minute);
+    setStartPeriod(recomputedStart.period);
     setEndHour(recomputedEnd.hour);
     setEndMinute(recomputedEnd.minute);
+    setEndPeriod(recomputedEnd.period);
   }, [visible, initialStartTime, initialEndTime]);
 
   // Ensure end time is always after start time and auto-save on valid change
   useEffect(() => {
-    const startTotal = toMinutes(startHour, startMinute);
-    const endTotal = toMinutes(endHour, endMinute);
+    const startTotal = toMinutes(startHour, startMinute, startPeriod);
+    const endTotal = toMinutes(endHour, endMinute, endPeriod);
 
     if (endTotal <= startTotal) {
       const adjusted = minutesToTime(startTotal + 60);
@@ -141,13 +200,18 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
       if (adjusted.minute !== endMinute) {
         setEndMinute(adjusted.minute);
       }
+      if (adjusted.period !== endPeriod) {
+        setEndPeriod(adjusted.period);
+      }
       return;
     }
 
     if (visible) {
-      onSave(`${startHour}:${startMinute}`, `${endHour}:${endMinute}`);
+      const startTime24 = to24Hour(startHour, startMinute, startPeriod);
+      const endTime24 = to24Hour(endHour, endMinute, endPeriod);
+      onSave(startTime24, endTime24);
     }
-  }, [startHour, startMinute, endHour, endMinute, visible]);
+  }, [startHour, startMinute, startPeriod, endHour, endMinute, endPeriod, visible]);
 
   if (!visible) return null;
 
@@ -181,6 +245,14 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                   debugLabel="start-minute"
                   visible={visible}
                 />
+                <TimePickerColumn
+                  values={PERIODS}
+                  selectedValue={startPeriod}
+                  onValueChange={setStartPeriod}
+                  debugLabel="start-period"
+                  visible={visible}
+                  enableWrap={false}
+                />
               </View>
             </View>
           </View>
@@ -207,6 +279,14 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                   onValueChange={setEndMinute}
                   debugLabel="end-minute"
                   visible={visible}
+                />
+                <TimePickerColumn
+                  values={PERIODS}
+                  selectedValue={endPeriod}
+                  onValueChange={setEndPeriod}
+                  debugLabel="end-period"
+                  visible={visible}
+                  enableWrap={false}
                 />
               </View>
             </View>
@@ -237,8 +317,9 @@ const styles = StyleSheet.create({
   popoverContainer: {
     position: 'absolute',
     bottom: 60,
-    left: 0,
-    width: '70%',
+    left: -60,
+    right: 0,
+    marginHorizontal: 60,
     backgroundColor: '#000',
     borderRadius: 20,
     padding: 15,
@@ -272,7 +353,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
   },
-  // Container for both hour and minute columns so the highlight spans the full row
+  // Container for hour, minute, and period columns so the highlight spans the full row
   pickerRowContainer: {
     height: ITEM_HEIGHT * 3,
     width: '100%',
@@ -281,7 +362,7 @@ const styles = StyleSheet.create({
   },
   pickerColumn: {
     height: ITEM_HEIGHT * 3,
-    width: 45,
+    width: 35,
     overflow: 'hidden',
   },
   pickerSpacer: {
