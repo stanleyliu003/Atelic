@@ -10,6 +10,16 @@ import { ActivityImage } from './activity_image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { AddNotesModal } from './add_notes_modal';
 
+// Helper function to convert 24-hour time to 12-hour format with AM/PM
+const format12Hour = (time24?: string): string => {
+  if (!time24) return '';
+  const [hourStr, minute] = time24.split(':');
+  const hour24 = parseInt(hourStr, 10);
+  const isPM = hour24 >= 12;
+  const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+  return `${hour12}:${minute} ${isPM ? 'PM' : 'AM'}`;
+};
+
 
 interface ActivityCardProps {
   activity: Activity;
@@ -156,7 +166,7 @@ export function ActivityCard({
   // Get the button text based on whether times are set
   const getNotesButtonText = () => {
     if (activity.startTime && activity.endTime) {
-      return `${activity.startTime} - ${activity.endTime}`;
+      return `${format12Hour(activity.startTime)} - ${format12Hour(activity.endTime)}`;
     }
     return 'Add Notes';
   };

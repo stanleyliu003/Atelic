@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -16,6 +16,16 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useCreateTrip } from '../../../../context/CreateTripContext';
 import AddTimeModal from './add_time_modal';
 
+// Helper function to convert 24-hour time to 12-hour format with AM/PM
+const format12Hour = (time24) => {
+  if (!time24) return '';
+  const [hourStr, minute] = time24.split(':');
+  const hour24 = parseInt(hourStr, 10);
+  const isPM = hour24 >= 12;
+  const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+  return `${hour12}:${minute} ${isPM ? 'PM' : 'AM'}`;
+};
+
 export function AddNotesModal({ visible, onClose, activity, activeTab }) {
   const { updateActivityNotes } = useCreateTrip();
   const [notes, setNotes] = useState(activity.notes || '');
@@ -23,6 +33,21 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
   const [startTime, setStartTime] = useState(isWishlist ? '' : (activity.startTime || ''));
   const [endTime, setEndTime] = useState(isWishlist ? '' : (activity.endTime || ''));
   const [timeModalVisible, setTimeModalVisible] = useState(false);
+  const notesInputRef = useRef(null);
+
+  // Close time modal whenever notes modal opens
+  useEffect(() => {
+    if (visible) {
+      setTimeModalVisible(false);
+    }
+  }, [visible]);
+
+  // Blur the notes input when time modal opens
+  useEffect(() => {
+    if (timeModalVisible) {
+      notesInputRef.current?.blur();
+    }
+  }, [timeModalVisible]);
 
   const handleSave = () => {
     updateActivityNotes(activity.instanceId, {
@@ -84,12 +109,14 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
                 contentContainerStyle={styles.notesScrollContent}
               >
                 <TextInput
+                  ref={notesInputRef}
                   style={styles.notesInput}
                   placeholder={`Add notes about ${activity.name}...`}
                   placeholderTextColor="#999"
                   multiline
                   value={notes}
                   onChangeText={setNotes}
+                  onFocus={() => setTimeModalVisible(false)}
                   textAlignVertical="top"
                 />
               </ScrollView>
@@ -105,7 +132,7 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
                 >
                   <MaterialIcons name="access-time" size={18} color={Colors.PRIMARY} />
                   <Text style={styles.addTimeText}>
-                    {startTime && endTime ? `${startTime} - ${endTime}` : 'Add Time'}
+                    {startTime && endTime ? `${format12Hour(startTime)} - ${format12Hour(endTime)}` : 'Add Time'}
                   </Text>
                 </TouchableOpacity>
 
@@ -133,7 +160,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    height: '40%',
+    height: '48%',
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -182,7 +209,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    width: '50%',
     paddingVertical: 12,
     paddingHorizontal: 16,
     backgroundColor: '#f0f0f0',
