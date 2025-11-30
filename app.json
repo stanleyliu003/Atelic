@@ -18,6 +18,9 @@
       "bundleIdentifier": "AtelicStable",
       "deploymentTarget": "15.0",
       "buildNumber": "28",
+      "infoPlist": {
+        "CFBundleName": "Atelic"
+      },
       "config": {
         "googleMapsApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
       }

@@ -33,9 +33,9 @@ const urlOpener = async (url, redirectUrl) => {
     // On iOS, this will use ASWebAuthenticationSession (in-app browser)
     // On Android, this will use Chrome Custom Tabs (in-app browser)
     const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl, {
-      // Prefer ephemeral session to avoid showing saved password suggestions
-      // This creates a more seamless OAuth experience without autofill popups
-      preferEphemeralSession: true,
+      // Use persistent session to enable Google Account Chooser
+      // This allows users to select from existing Google accounts on their device
+      preferEphemeralSession: false,
       // Show toolbar at bottom with Done button
       showInRecents: false,
     });
