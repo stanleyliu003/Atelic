@@ -17,14 +17,15 @@ function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, vi
 
   const handleScrollEnd = (event) => {
     const offset = event.nativeEvent.contentOffset.y;
-    // Adjust index by 1 if wrapping is enabled (extra item at the top)
-    const index = Math.round(offset / ITEM_HEIGHT) - (enableWrap ? 1 : 0);
+    // The middle row is at offset ITEM_HEIGHT (accounting for top spacer/wrap item)
+    // Calculate which index corresponds to the middle visible row
+    const index = Math.round(offset / ITEM_HEIGHT);
     const selectedIndex = Math.min(Math.max(index, 0), values.length - 1);
 
     onValueChange(values[selectedIndex]);
-    // Add 1 to position if wrapping is enabled to account for the extra item at the top
+    // Snap to position where selected item is in the middle row
     scrollViewRef.current?.scrollTo({
-      y: (selectedIndex + (enableWrap ? 1 : 0)) * ITEM_HEIGHT,
+      y: selectedIndex * ITEM_HEIGHT,
       animated: true,
     });
   };
@@ -35,10 +36,10 @@ function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, vi
     const index = values.indexOf(selectedValue);
     if (index >= 0 && scrollViewRef.current) {
       // Use setTimeout to ensure the ScrollView is fully mounted
-      // Add 1 to position if wrapping is enabled to account for the extra item at the top
+      // Scroll so the selected value appears in the middle row
       setTimeout(() => {
         scrollViewRef.current?.scrollTo({
-          y: (index + (enableWrap ? 1 : 0)) * ITEM_HEIGHT,
+          y: index * ITEM_HEIGHT,
           animated: false,
         });
       }, 50);
