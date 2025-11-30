@@ -65,6 +65,16 @@ exports.handler = async (event) => {
         const fullName = nameAttr ? nameAttr.Value.toLowerCase() : '';
         const username = usernameAttr ? usernameAttr.Value.toLowerCase() : '';
 
+        // CRITICAL: Filter out incomplete user profiles
+        // Users must have both a username and full name to appear in search results
+        // This prevents incomplete Google/Apple sign-ups from being displayed as "@"
+        if (!username || username.trim().length === 0) {
+          return false;
+        }
+        if (!fullName || fullName.trim().length === 0) {
+          return false;
+        }
+
         // Match against username (highest priority), full name, or email (partial matching)
         return username.includes(searchTermLower) || fullName.includes(searchTermLower) || email.includes(searchTermLower);
       })
