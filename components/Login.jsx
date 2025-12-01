@@ -30,6 +30,12 @@ const updateUserProfileMutation = /* GraphQL */ `
 // instead of opening Safari browser
 const urlOpener = async (url, redirectUrl) => {
   try {
+    // Skip OAuth flow for logout URLs (prevents unwanted popup during sign-out)
+    if (url.includes('/logout') || url.includes('sign_out')) {
+      console.log('[OAuth] Skipping urlOpener for logout URL');
+      return { type: 'cancel' };
+    }
+
     // On iOS, this will use ASWebAuthenticationSession (in-app browser)
     // On Android, this will use Chrome Custom Tabs (in-app browser)
     const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl, {

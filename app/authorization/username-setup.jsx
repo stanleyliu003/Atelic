@@ -315,7 +315,7 @@ export default function UsernameSetup() {
               style={{ padding: 5, marginBottom: 20, alignSelf: 'flex-start' }}
               onPress={async () => {
                 try {
-                  await Auth.signOut();
+                  await Auth.signOut({ global: false });
                 } catch (e) {}
                 router.replace('/');
               }}

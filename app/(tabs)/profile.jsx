@@ -414,7 +414,7 @@ export default function Profile() {
             style: 'destructive',
             onPress: async () => {
               try {
-                await Auth.signOut();
+                await Auth.signOut({ global: false });
                 // Clear any stored user data
                 setFullName('');
                 setUsername('');
@@ -471,7 +471,7 @@ export default function Profile() {
 
         if (deletionResult.success) {
           // Sign out the user
-          await Auth.signOut();
+          await Auth.signOut({ global: false });
 
           // Clear user data
           setFullName('');
