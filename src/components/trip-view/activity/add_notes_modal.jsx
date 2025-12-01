@@ -29,7 +29,7 @@ const format12Hour = (time24) => {
   return `${hour12}:${minute} ${isPM ? 'PM' : 'AM'}`;
 };
 
-export function AddNotesModal({ visible, onClose, activity, activeTab }) {
+export function AddNotesModal({ visible, onClose, activity, activeTab, currentUserRole }) {
   const { updateActivityNotes } = useCreateTrip();
   const [notes, setNotes] = useState(activity.notes || '');
   const isWishlist = activeTab === 'wishlist';
@@ -38,6 +38,7 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
   const [timeModalVisible, setTimeModalVisible] = useState(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const notesInputRef = useRef(null);
+  const isViewer = currentUserRole === 'viewer';
 
   // Track keyboard visibility
   useEffect(() => {
@@ -71,21 +72,26 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
   }, [timeModalVisible]);
 
   const handleSave = () => {
-    updateActivityNotes(activity.instanceId, {
-      notes: notes.trim(),
-      startTime: isWishlist ? '' : startTime,
-      endTime: isWishlist ? '' : endTime,
-    });
+    // Only save if user is not a viewer
+    if (!isViewer) {
+      updateActivityNotes(activity.instanceId, {
+        notes: notes.trim(),
+        startTime: isWishlist ? '' : startTime,
+        endTime: isWishlist ? '' : endTime,
+      });
+    }
     onClose();
   };
 
   const handleClose = () => {
-    // Save changes when closing via backdrop
-    updateActivityNotes(activity.instanceId, {
-      notes: notes.trim(),
-      startTime: isWishlist ? '' : startTime,
-      endTime: isWishlist ? '' : endTime,
-    });
+    // Only save changes when closing via backdrop if user is not a viewer
+    if (!isViewer) {
+      updateActivityNotes(activity.instanceId, {
+        notes: notes.trim(),
+        startTime: isWishlist ? '' : startTime,
+        endTime: isWishlist ? '' : endTime,
+      });
+    }
     onClose();
   };
 
@@ -148,13 +154,14 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
                 <TextInput
                   ref={notesInputRef}
                   style={styles.notesInput}
-                  placeholder={`Add notes about ${activity.name}...`}
+                  placeholder={isViewer ? `Notes: ${activity.name}` : `Add notes about ${activity.name}...`}
                   placeholderTextColor="#999"
                   multiline
                   value={notes}
                   onChangeText={setNotes}
                   onFocus={() => setTimeModalVisible(false)}
                   textAlignVertical="top"
+                  editable={!isViewer}
                 />
               </ScrollView>
             </Pressable>
@@ -167,6 +174,7 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
                     style={styles.addTimeButton}
                     onPress={() => setTimeModalVisible(true)}
                     pointerEvents="auto"
+                    disabled={isViewer}
                   >
                     <MaterialIcons name="access-time" size={18} color={Colors.PRIMARY} />
                     <Text style={styles.addTimeText}>
@@ -174,8 +182,8 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Clear Time Button - Only show if time is set */}
-                  {startTime && endTime && (
+                  {/* Clear Time Button - Only show if time is set and user is not a viewer */}
+                  {startTime && endTime && !isViewer && (
                     <TouchableOpacity
                       style={styles.clearTimeButton}
                       onPress={() => {
@@ -190,14 +198,17 @@ export function AddNotesModal({ visible, onClose, activity, activeTab }) {
                   )}
                 </View>
 
-                {/* Time Picker Popover */}
-                <AddTimeModal
-                  visible={timeModalVisible}
-                  onClose={() => setTimeModalVisible(false)}
-                  initialStartTime={startTime}
-                  initialEndTime={endTime}
-                  onSave={handleTimeUpdate}
-                />
+                {/* Time Picker Popover - Only show if not a viewer */}
+                {!isViewer && (
+                  <AddTimeModal
+                    visible={timeModalVisible}
+                    onClose={() => setTimeModalVisible(false)}
+                    initialStartTime={startTime}
+                    initialEndTime={endTime}
+                    onSave={handleTimeUpdate}
+                    currentUserRole={currentUserRole}
+                  />
+                )}
               </View>
             )}
           </GestureHandlerRootView>

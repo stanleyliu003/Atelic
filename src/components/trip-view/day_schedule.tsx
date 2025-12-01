@@ -26,7 +26,7 @@ interface DayScheduleProps {
   onReorder?: (dayNumber: number, newOrder: Activity[]) => void; // New prop for reordering activities
   routeLoading?: boolean; // Loading state for route recalculation
   onGoToWishlist?: () => void; // Navigate to wishlist callback
-  currentUserRole?: string; // User's role in the trip (owner, editor, viewer)
+  currentUserRole?: 'owner' | 'editor' | 'viewer'; // User's role in the trip (owner, editor, viewer)
   onDuplicate?: (activity: Activity, targetDayNumber?: number) => void; // Callback for duplicating an activity
   isAddingPlaceFromAutocomplete?: boolean; // Show inline loading row below last activity
   activeTab?: string; // Current active tab (wishlist or day#)
@@ -128,6 +128,7 @@ export function DaySchedule({
         onDuplicate={onDuplicate ? (activity) => onDuplicate(activity, dayNumber) : undefined}
         isAddingPlaceFromAutocomplete={isAddingPlaceFromAutocomplete}
         activeTab={activeTab}
+        currentUserRole={currentUserRole}
       />
     </View>
   );

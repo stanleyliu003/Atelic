@@ -42,6 +42,7 @@ interface ActivityCardProps {
   useInlineSelectionLayout?: boolean; // Use inline layout for wishlist (not absolute positioned)
   activeTab?: string; // Current active tab (wishlist or day#)
   hideNotesButton?: boolean; // Hide the notes button (e.g., in CategoryModal)
+  currentUserRole?: 'owner' | 'editor' | 'viewer'; // User's role for permission control
 }
 
 // Helper function to convert our travel modes to Google Maps travel modes
@@ -91,7 +92,8 @@ export function ActivityCard({
   enableDragDrop = false,
   useInlineSelectionLayout = false,
   activeTab,
-  hideNotesButton = false
+  hideNotesButton = false,
+  currentUserRole
 }: ActivityCardProps) {
   const [notesModalVisible, setNotesModalVisible] = useState(false);
 
@@ -326,6 +328,7 @@ export function ActivityCard({
         onClose={() => setNotesModalVisible(false)}
         activity={activity}
         activeTab={activeTab}
+        currentUserRole={currentUserRole}
       />
     </View>
   );

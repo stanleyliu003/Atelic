@@ -12,10 +12,12 @@ const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
 const PERIODS = ['AM', 'PM'];
 const ITEM_HEIGHT = 40;
 
-function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, visible, enableWrap = true }) {
+function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, visible, enableWrap = true, disabled = false }) {
   const scrollViewRef = useRef(null);
 
   const handleScrollEnd = (event) => {
+    if (disabled) return; // Don't handle scroll for viewers
+
     const offset = event.nativeEvent.contentOffset.y;
     // The middle row is at offset ITEM_HEIGHT (accounting for top spacer/wrap item)
     // Calculate which index corresponds to the middle visible row
@@ -56,6 +58,7 @@ function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, vi
         onMomentumScrollEnd={handleScrollEnd}
         scrollEventThrottle={16}
         nestedScrollEnabled={true}
+        scrollEnabled={!disabled}
       >
         {enableWrap ? (
           <>
@@ -95,7 +98,8 @@ function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, vi
   );
 }
 
-export default function AddTimeModal({ visible, onClose, initialStartTime, initialEndTime, onSave }) {
+export default function AddTimeModal({ visible, onClose, initialStartTime, initialEndTime, onSave, currentUserRole }) {
+  const isViewer = currentUserRole === 'viewer';
   // Convert 24-hour time to 12-hour format with AM/PM
   const parseTime = (time, fallback = '09:00') => {
     const effectiveTime = time || fallback;
@@ -207,7 +211,7 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
       return;
     }
 
-    if (visible) {
+    if (visible && !isViewer) {
       const startTime24 = to24Hour(startHour, startMinute, startPeriod);
       const endTime24 = to24Hour(endHour, endMinute, endPeriod);
       onSave(startTime24, endTime24);
@@ -238,6 +242,7 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                   onValueChange={setStartHour}
                   debugLabel="start-hour"
                   visible={visible}
+                  disabled={isViewer}
                 />
                 <TimePickerColumn
                   values={MINUTES}
@@ -245,6 +250,7 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                   onValueChange={setStartMinute}
                   debugLabel="start-minute"
                   visible={visible}
+                  disabled={isViewer}
                 />
                 <TimePickerColumn
                   values={PERIODS}
@@ -253,6 +259,7 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                   debugLabel="start-period"
                   visible={visible}
                   enableWrap={false}
+                  disabled={isViewer}
                 />
               </View>
             </View>
@@ -273,6 +280,7 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                   onValueChange={setEndHour}
                   debugLabel="end-hour"
                   visible={visible}
+                  disabled={isViewer}
                 />
                 <TimePickerColumn
                   values={MINUTES}
@@ -280,6 +288,7 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                   onValueChange={setEndMinute}
                   debugLabel="end-minute"
                   visible={visible}
+                  disabled={isViewer}
                 />
                 <TimePickerColumn
                   values={PERIODS}
@@ -288,6 +297,7 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                   debugLabel="end-period"
                   visible={visible}
                   enableWrap={false}
+                  disabled={isViewer}
                 />
               </View>
             </View>

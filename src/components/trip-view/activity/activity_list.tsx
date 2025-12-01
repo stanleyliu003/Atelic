@@ -198,6 +198,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   isAddingPlaceFromAutocomplete?: boolean; // Show inline loading row below last activity
   activeTab?: string; // Current active tab (wishlist or day#)
   hideNotesButton?: boolean; // Hide the notes button (e.g., in CategoryModal)
+  currentUserRole?: 'owner' | 'editor' | 'viewer'; // User's role for permission control
 }
 
 export function ActivityList({
@@ -229,7 +230,8 @@ export function ActivityList({
   onDuplicate,
   isAddingPlaceFromAutocomplete = false,
   activeTab,
-  hideNotesButton = false
+  hideNotesButton = false,
+  currentUserRole
 }: EnhancedActivityListProps) {
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
@@ -492,6 +494,7 @@ export function ActivityList({
         onDuplicate: onDuplicate ? () => onDuplicate(activity) : undefined,
         activeTab,
         hideNotesButton,
+        currentUserRole,
       };
 
       if (enableDragDrop && scrollable) {

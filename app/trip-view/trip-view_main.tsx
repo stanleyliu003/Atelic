@@ -1826,6 +1826,7 @@ export default function TripViewMain() {
                                                         showSelectionIndicator={isSelectionMode && currentUserRole !== 'viewer'}
                                                         onDuplicate={currentUserRole !== 'viewer' ? handleDuplicateActivity : undefined}
                                                         activeTab={activeTab}
+                                                        currentUserRole={currentUserRole}
                                                     />
                                                 </View>
                                             ))}
@@ -1922,10 +1923,10 @@ export default function TripViewMain() {
                                     onReorder={currentUserRole !== 'viewer' ? handleDayActivityReorder : undefined}
                                     routeLoading={routeLoading}
                                     onGoToWishlist={() => handleTabChange('wishlist')}
-                                    currentUserRole={currentUserRole}
                                     onDuplicate={currentUserRole !== 'viewer' ? handleDuplicateActivity : undefined}
                                     isAddingPlaceFromAutocomplete={isAutocompleteAddingPlace}
                                     activeTab={activeTab}
+                                    currentUserRole={currentUserRole}
                                 />
                             );
                         })()}

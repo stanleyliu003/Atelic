@@ -12,6 +12,7 @@ interface WishlistActivitiesProps {
   onDuplicate?: (activity: Activity, targetDayNumber?: number) => void; // Callback for duplicating an activity
   activeTab?: string; // Current active tab (wishlist or day#)
   hideNotesButton?: boolean; // Hide the notes button (e.g., in CategoryModal)
+  currentUserRole?: 'owner' | 'editor' | 'viewer'; // User's role for permission control
 }
 
 export function WishlistActivities({
@@ -24,7 +25,8 @@ export function WishlistActivities({
   wishlistActivities,
   onDuplicate,
   activeTab = 'wishlist',
-  hideNotesButton = false
+  hideNotesButton = false,
+  currentUserRole,
 }: WishlistActivitiesProps) {
   return (
     <ActivityList
@@ -41,6 +43,7 @@ export function WishlistActivities({
       onDuplicate={onDuplicate}
       activeTab={activeTab}
       hideNotesButton={hideNotesButton}
+      currentUserRole={currentUserRole}
     />
   );
 }

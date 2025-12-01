@@ -11,6 +11,7 @@ interface WishlistActivitiesProps {
   wishlistActivities?: Activity[]; // Activities already in the wishlist for "On list" tag
   onDuplicate?: (activity: Activity, targetDayNumber?: number) => void; // Callback for duplicating an activity
   activeTab?: string; // Current active tab (wishlist or day#)
+  currentUserRole?: 'owner' | 'editor' | 'viewer'; // User's role for permission control
 }
 
 export function WishlistActivities({
@@ -22,7 +23,8 @@ export function WishlistActivities({
   showSelectionIndicator = false,
   wishlistActivities,
   onDuplicate,
-  activeTab = 'wishlist'
+  activeTab = 'wishlist',
+  currentUserRole
 }: WishlistActivitiesProps) {
   return (
     <ActivityList
@@ -38,6 +40,7 @@ export function WishlistActivities({
       useInlineSelectionLayout={true}
       onDuplicate={onDuplicate}
       activeTab={activeTab}
+      currentUserRole={currentUserRole}
     />
   );
 }
