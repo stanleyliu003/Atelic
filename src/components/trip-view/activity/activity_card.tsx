@@ -228,7 +228,11 @@ export function ActivityCard({
                 )}
                 {activity.primary_type_display_name && (
                   <View style={styles.typesContainer}>
-                    <Text style={[styles.typesText, disabled && styles.disabledText]}>
+                    <Text
+                      style={[styles.typesText, disabled && styles.disabledText]}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
                       {activity.primary_type_display_name}
                     </Text>
                   </View>
@@ -446,7 +450,7 @@ const styles = StyleSheet.create({
   activityStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -461,6 +465,8 @@ const styles = StyleSheet.create({
   typesContainer: {
     borderRadius: 10,
     paddingHorizontal: 0,
+    flex: 1,
+    minWidth: 0,
   },
   typesText: {
     fontFamily: 'outfit',
