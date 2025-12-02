@@ -66,8 +66,10 @@ export async function saveOperation(operation: Operation): Promise<boolean> {
   console.log('[tripOperationsService] 🔑 Operation userId:', operation.userId);
 
   try {
-    // Calculate TTL: current time + 1 hour (in Unix timestamp seconds)
-    const ttl = Math.floor(Date.now() / 1000) + (60 * 60); // 1 hour from now
+    // Calculate TTL: current time + 24 hours (in Unix timestamp seconds)
+    // STAGE 2 TESTING: Extended to 24 hours for testing (was 1 hour)
+    // TODO: Reduce back to 1 hour once Stage 3 (real-time sync) is implemented
+    const ttl = Math.floor(Date.now() / 1000) + (60 * 60 * 24); // 24 hours from now
 
     const input = {
       tripID: operation.tripID,
@@ -79,11 +81,11 @@ export async function saveOperation(operation: Operation): Promise<boolean> {
       target: operation.target,
       dayNumber: operation.dayNumber,
       operationData: JSON.stringify(operation), // Store full operation as JSON
-      ttl: ttl, // DynamoDB will auto-delete after 1 hour
+      ttl: ttl, // DynamoDB will auto-delete after 24 hours
     };
 
     console.log('[tripOperationsService] 🔑 Sending userId to GraphQL:', input.userId);
-    console.log('[tripOperationsService] ⏰ TTL set to:', new Date(ttl * 1000).toISOString(), '(1 hour from now)');
+    console.log('[tripOperationsService] ⏰ TTL set to:', new Date(ttl * 1000).toISOString(), '(24 hours from now)');
 
     await API.graphql(graphqlOperation(createTripOperation, { input }));
 

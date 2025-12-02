@@ -644,14 +644,12 @@ export default function TripViewMain() {
 
                 // Retry after delay
                 setTimeout(() => processSaveQueue(), 2000);
-            } else {
-                // STAGE 2: All operations saved successfully - run verification
-                // This runs in "dual-write mode" to ensure reconstruction accuracy
-                console.log('[processSaveQueue] ✅ All operations saved - running verification');
-                verifyTripReconstruction().catch(error => {
-                    console.error('[processSaveQueue] Verification error (non-blocking):', error);
-                });
             }
+
+            // STAGE 2 NOTE: Automatic verification disabled for the user making changes
+            // Verification should run on the RECEIVING end (User Y/Z), not the sending end (User X)
+            // The user making changes already has the correct state
+            // Use global.verifyTrip() to manually test reconstruction logic during development
 
         } catch (error: any) {
             console.error('[processSaveQueue] Unexpected error:', error);
@@ -1006,10 +1004,10 @@ export default function TripViewMain() {
         setTripLength(getDayCount());
 
         // ✨ NEW: Track operation: add day
+        // Pass newDayNumber as 4th argument so operation has dayNumber field set
         const op = createOperation('add', 'day', {
-            dayNumber: newDayNumber,
             action: 'addDay'
-        });
+        }, newDayNumber);
         queueSave(op);
 
         // Switch to the newly created day
@@ -1031,11 +1029,11 @@ export default function TripViewMain() {
         // Function to perform the deletion
         const performDeletion = () => {
             // ✨ NEW: Track operation: delete day BEFORE performing deletion
+            // Pass dayToDelete as 4th argument so operation has dayNumber field set
             const op = createOperation('remove', 'day', {
-                dayNumber: dayToDelete,
                 action: 'deleteDay',
                 hadActivities: hasActivities
-            });
+            }, dayToDelete);
             queueSave(op);
 
             // Delete the day and get its activities to move back to wishlist

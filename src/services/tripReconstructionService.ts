@@ -61,11 +61,42 @@ export function applyOperation(
 /**
  * Applies an ADD operation
  * Adds activities to wishlist or a specific day
+ * Also handles special "addDay" action to create empty days
  */
 function applyAddOperation(
   state: ReconstructedTripState,
   operation: OperationAdd
 ): ReconstructedTripState {
+  // Special case: Adding a new day (creates empty day)
+  if (operation.target === 'day' && operation.data?.action === 'addDay') {
+    const dayNumber = operation.dayNumber;
+
+    if (dayNumber === undefined) {
+      console.warn('[applyAddOperation] addDay action missing dayNumber:', operation);
+      return state;
+    }
+
+    // Create empty day if it doesn't exist
+    const existingDay = state.dayActivities[dayNumber];
+    if (existingDay) {
+      console.log('[applyAddOperation] Day', dayNumber, 'already exists - skipping addDay');
+      return state;
+    }
+
+    return {
+      ...state,
+      dayActivities: {
+        ...state.dayActivities,
+        [dayNumber]: {
+          dayNumber,
+          activities: [],
+          encodedPolyline: undefined,
+        },
+      },
+    };
+  }
+
+  // Normal case: Adding activities
   const activitiesToAdd = Array.isArray(operation.data) ? operation.data : [operation.data];
 
   if (operation.target === 'wishlist') {
@@ -100,6 +131,7 @@ function applyAddOperation(
 /**
  * Applies a REMOVE operation
  * Removes activities by instanceId from wishlist or a specific day
+ * Also handles special "deleteDay" action to remove entire days
  *
  * IDEMPOTENT: If activity doesn't exist, no error - just continue
  */
@@ -107,6 +139,44 @@ function applyRemoveOperation(
   state: ReconstructedTripState,
   operation: OperationRemove
 ): ReconstructedTripState {
+  // Special case: Deleting an entire day
+  if (operation.target === 'day' && (operation.data as any)?.action === 'deleteDay') {
+    const dayNumber = operation.dayNumber;
+
+    if (dayNumber === undefined) {
+      console.warn('[applyRemoveOperation] deleteDay action missing dayNumber:', operation);
+      return state;
+    }
+
+    const existingDay = state.dayActivities[dayNumber];
+    if (!existingDay) {
+      console.log('[applyRemoveOperation] Day', dayNumber, 'does not exist - skipping deleteDay');
+      return state;
+    }
+
+    // Remove the day and renumber subsequent days
+    const newDayActivities: { [dayNumber: number]: DayWithPolyline } = {};
+    Object.entries(state.dayActivities).forEach(([dayStr, dayObj]) => {
+      const dayNum = Number(dayStr);
+
+      // Skip the day we're deleting
+      if (dayNum === dayNumber) return;
+
+      // Renumber days that come after the deleted day
+      const newDayNum = dayNum > dayNumber ? dayNum - 1 : dayNum;
+      newDayActivities[newDayNum] = {
+        ...dayObj,
+        dayNumber: newDayNum,
+      };
+    });
+
+    return {
+      ...state,
+      dayActivities: newDayActivities,
+    };
+  }
+
+  // Normal case: Removing activities
   const idsToRemove = Array.isArray(operation.data) ? operation.data : [operation.data];
 
   if (operation.target === 'wishlist') {
