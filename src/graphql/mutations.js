@@ -527,6 +527,7 @@ export const createTripOperation = /* GraphQL */ `
       target
       dayNumber
       operationData
+      ttl
       createdAt
       updatedAt
       __typename
@@ -549,6 +550,7 @@ export const updateTripOperation = /* GraphQL */ `
       target
       dayNumber
       operationData
+      ttl
       createdAt
       updatedAt
       __typename
@@ -571,6 +573,7 @@ export const deleteTripOperation = /* GraphQL */ `
       target
       dayNumber
       operationData
+      ttl
       createdAt
       updatedAt
       __typename
