@@ -21,12 +21,13 @@ import { optimizeRouteWithHaversine } from '../../src/components/trip-view/logic
 import { Activity, TabType } from '../../src/types/activity.types';
 import { API, Auth, graphqlOperation } from 'aws-amplify';
 import { createTrip } from '../../src/graphql/mutations';
+import { onCreateTripOperation } from '../../src/graphql/subscriptions';
 import { retrieveTripFromCloud } from '../../src/services/lambdaService';
 import Entypo from '@expo/vector-icons/Entypo';
 import { duplicateActivity } from '../../src/utils/activityInstanceId';
 import { Operation } from '../../src/types/operation.types';
 import { saveOperation, listOperations } from '../../src/services/tripOperationsService';
-import { verifyStateReconstruction } from '../../src/services/tripReconstructionService';
+import { verifyStateReconstruction, applyOperation, ReconstructedTripState } from '../../src/services/tripReconstructionService';
 
 // GraphQL subscription for real-time trip updates
 const onTripUpdated = /* GraphQL */ `
@@ -63,6 +64,7 @@ export default function TripViewMain() {
         updateActivities,
         setTripId,
         restoreTripFromObject,
+        setDayActivities,
         createdAt,
         setCreatedAt,
         startDate,
@@ -208,6 +210,19 @@ export default function TripViewMain() {
 
     // Track if we're currently capturing operations (prevent during restore)
     const isCapturingOperations = useRef(true);
+
+    // ===== OPERATION SYNC STATE (Stage 3) =====
+    // Track last operation timestamp we've processed from other users
+    const lastProcessedOperationTimestampRef = useRef<number>(0);
+
+    // Track if we're currently syncing operations (prevent concurrent syncs)
+    const isSyncingOperationsRef = useRef<boolean>(false);
+
+    // Track if we're applying remote operations (disable autosave during sync)
+    const isApplyingRemoteOperationsRef = useRef<boolean>(false);
+
+    // Track which remote operations we've already applied (per opId) to prevent duplicates
+    const appliedOperationIdsRef = useRef<Set<string>>(new Set());
 
     // Keep tripIdRef in sync with tripId state
     useEffect(() => {
@@ -491,6 +506,12 @@ export default function TripViewMain() {
             return null;
         }
 
+        // Guard: Don't track when applying remote operations (Stage 3)
+        if (isApplyingRemoteOperationsRef.current) {
+            console.log('[createOperation] Skipping - applying remote operations');
+            return null;
+        }
+
         // Guard: Don't track for viewers
         if (currentUserRole === 'viewer') {
             console.log('[createOperation] Skipping - viewer role');
@@ -673,6 +694,136 @@ export default function TripViewMain() {
             }
         };
     }, []);
+
+    // ===== OPERATION SYNC FUNCTIONS (Stage 3) =====
+
+    /**
+     * Sync new operations from other users
+     * Fetches operations with timestamp > lastProcessedTimestamp and applies them incrementally
+     */
+    const syncNewOperations = useCallback(async () => {
+        if (isSyncingOperationsRef.current) {
+            console.log('[syncNewOperations] Already syncing - skipping');
+            return;
+        }
+
+        if (!tripId) {
+            console.log('[syncNewOperations] No tripId - skipping');
+            return;
+        }
+
+        if (!currentUserID) {
+            console.log('[syncNewOperations] No currentUserID - skipping');
+            return;
+        }
+
+        isSyncingOperationsRef.current = true;
+        const syncStartTime = Date.now();
+
+        try {
+            console.log('[syncNewOperations] 🔄 Starting sync for trip:', tripId);
+            console.log('[syncNewOperations] Last processed timestamp:', lastProcessedOperationTimestampRef.current);
+
+            // 1. Fetch ALL operations for this trip
+            const allOperations = await listOperations(tripId);
+            console.log('[syncNewOperations] Fetched', allOperations.length, 'total operations');
+
+            // 2. Filter to only NEW operations:
+            //    - timestamp > lastProcessed
+            //    - not our own userId
+            //    - not already applied (by opId)
+            const newOperations = allOperations.filter(
+                op =>
+                    op.timestamp > lastProcessedOperationTimestampRef.current &&
+                    op.userId !== currentUserID && // Skip our own operations
+                    !appliedOperationIdsRef.current.has(op.opId) // Skip ops we've already applied
+            );
+
+            if (newOperations.length === 0) {
+                console.log('[syncNewOperations] ✅ No new operations to sync');
+                isSyncingOperationsRef.current = false;
+                return;
+            }
+
+            console.log('[syncNewOperations] 🆕 Found', newOperations.length, 'new operations from other users');
+
+            // 3. Get current state from context
+            // Calculate wishlist (activities not assigned to any day) using instanceId membership
+            const dayActivityInstanceIds = Object.values(dayActivities || {})
+                .flatMap((day: any) =>
+                    Array.isArray(day.activities)
+                        ? day.activities.map((a: Activity) => a.instanceId)
+                        : []
+                )
+                .filter((id): id is string => Boolean(id));
+
+            const wishlistActivities =
+                (activities || []).filter(
+                    (a: Activity) =>
+                        !a.instanceId || !dayActivityInstanceIds.includes(a.instanceId)
+                ) || [];
+            const currentState: ReconstructedTripState = {
+                wishlist: wishlistActivities,
+                dayActivities: dayActivities || {}
+            };
+
+            console.log('[syncNewOperations] Current state - wishlist:', currentState.wishlist.length, 'days:', Object.keys(currentState.dayActivities).length);
+
+            // 4. Apply new operations incrementally using reduce
+            const updatedState = newOperations.reduce((state, operation) => {
+                console.log('[syncNewOperations] Applying:', operation.type, operation.opId);
+                // Cast to AnyOperation to satisfy applyOperation's type without changing runtime shape
+                return applyOperation(state, operation as any);
+            }, currentState);
+
+            console.log('[syncNewOperations] Updated state - wishlist:', updatedState.wishlist.length, 'days:', Object.keys(updatedState.dayActivities).length);
+
+            // 5. Update local state with reconstructed data
+            // CRITICAL: Set flag to prevent createOperation from firing during state updates
+            isApplyingRemoteOperationsRef.current = true;
+
+            try {
+                // Update wishlist
+                if (JSON.stringify(currentState.wishlist) !== JSON.stringify(updatedState.wishlist)) {
+                    console.log('[syncNewOperations] Updating wishlist...');
+                    updateActivities(updatedState.wishlist);
+                }
+
+                // Update all day activities if they differ from current state
+                if (JSON.stringify(currentState.dayActivities) !== JSON.stringify(updatedState.dayActivities)) {
+                    console.log(
+                        '[syncNewOperations] Updating dayActivities from remote operations. Days:',
+                        Object.keys(updatedState.dayActivities).length
+                    );
+                    // Replace the entire dayActivities map to ensure deletes/renumbering are applied
+                    setDayActivities(updatedState.dayActivities as any);
+                }
+
+            } finally {
+                // Re-enable operation tracking after state settles
+                setTimeout(() => {
+                    isApplyingRemoteOperationsRef.current = false;
+                    console.log('[syncNewOperations] ✅ Remote operations applied, operation tracking re-enabled');
+                }, 150);
+            }
+
+            // 6. Mark operations as applied and update last processed timestamp
+            newOperations.forEach((op) => {
+                appliedOperationIdsRef.current.add(op.opId);
+            });
+            const latestTimestamp = Math.max(...newOperations.map(op => op.timestamp));
+            lastProcessedOperationTimestampRef.current = latestTimestamp;
+            console.log('[syncNewOperations] Updated lastProcessedTimestamp to:', latestTimestamp);
+
+            const syncDuration = Date.now() - syncStartTime;
+            console.log('[syncNewOperations] ✅ Sync complete in', syncDuration, 'ms');
+
+        } catch (error) {
+            console.error('[syncNewOperations] ❌ Sync failed:', error);
+        } finally {
+            isSyncingOperationsRef.current = false;
+        }
+    }, [tripId, currentUserID, activities, dayActivities, updateActivities]);
 
     // Function to add activities back to the wishlist
     const addActivitiesToWishlist = (newActivities: Activity[]) => {
@@ -1827,10 +1978,23 @@ export default function TripViewMain() {
                 console.log('Is processing:', saveQueueRef.current.isProcessing);
                 return saveQueueRef.current.operations;
             };
+            (global as any).syncOperations = () => {
+                console.log('=== Manually triggering operation sync ===');
+                console.log('Last processed timestamp:', lastProcessedOperationTimestampRef.current);
+                return syncNewOperations();
+            };
+            (global as any).getLastProcessedTimestamp = () => {
+                const timestamp = lastProcessedOperationTimestampRef.current;
+                console.log('Last processed timestamp:', timestamp);
+                console.log('As date:', new Date(timestamp).toLocaleString());
+                return timestamp;
+            };
             console.log('[trip-view_main] 🛠️ Debug utilities available:');
             console.log('  - global.verifyTrip() - Run reconstruction verification');
             console.log('  - global.getOperationLog() - View all operations');
             console.log('  - global.getSaveQueue() - View pending save queue');
+            console.log('  - global.syncOperations() - Manually trigger operation sync (Stage 3)');
+            console.log('  - global.getLastProcessedTimestamp() - View last synced timestamp');
         }
     }, []);
 
@@ -2044,7 +2208,7 @@ export default function TripViewMain() {
                     return;
                 }
 
-                console.log('[trip-view_main] Trip updated by another user - reloading...');
+                console.log('[trip-view_main] Trip updated by another user - syncing operations...');
 
                 // Update version tracking
                 setVersion(updatedTrip.version);
@@ -2052,8 +2216,8 @@ export default function TripViewMain() {
                 setLastUpdatedBy(updatedTrip.lastUpdatedBy);
                 versionRef.current = updatedTrip.version;
 
-                // Auto-reload to get latest changes
-                handleReloadTrip();
+                // STAGE 3: Use incremental operation sync instead of full reload
+                syncNewOperations();
             },
             error: (error: any) => {
                 console.error('[trip-view_main] Subscription error:', error);
@@ -2065,6 +2229,96 @@ export default function TripViewMain() {
             subscription.unsubscribe();
         };
     }, [tripId, currentUserID, currentUserRole, isScreenFocused]);
+
+    // Real-time subscription for TripOperation creations (Stage 3 - operation-level events)
+    useEffect(() => {
+        // Only subscribe if we have a tripId, a current user, and the screen is focused
+        if (!tripId) {
+            console.log('[trip-view_main] Skipping operation subscription - no tripId');
+            return;
+        }
+
+        if (!currentUserID) {
+            console.log('[trip-view_main] Skipping operation subscription - no currentUserID');
+            return;
+        }
+
+        if (!isScreenFocused) {
+            console.log('[trip-view_main] Skipping operation subscription - screen not focused');
+            return;
+        }
+
+        console.log('[trip-view_main] Subscribing to TripOperation events for trip:', tripId);
+
+        const subscription = (API.graphql(
+            graphqlOperation(onCreateTripOperation, {
+                filter: {
+                    tripID: { eq: tripId }
+                }
+            })
+        ) as any).subscribe({
+            next: ({ value }: any) => {
+                const op = value?.data?.onCreateTripOperation;
+                if (!op) {
+                    return;
+                }
+
+                // Ignore operations created by this client
+                if (op.userId === currentUserID) {
+                    return;
+                }
+
+                console.log(
+                    '[trip-view_main] TripOperation created by another user - syncing operations...',
+                    op.type,
+                    op.target,
+                    op.dayNumber
+                );
+
+                // Trigger incremental sync based on operations
+                syncNewOperations();
+            },
+            error: (error: any) => {
+                console.error('[trip-view_main] TripOperation subscription error:', error);
+            }
+        });
+
+        return () => {
+            console.log('[trip-view_main] Unsubscribing from TripOperation events');
+            subscription.unsubscribe();
+        };
+    }, [tripId, currentUserID, isScreenFocused, syncNewOperations]);
+
+    // Initialize baseline timestamp for operation sync (Stage 3)
+    useEffect(() => {
+        if (!tripId) return;
+
+        const initializeBaselineTimestamp = async () => {
+            try {
+                console.log('[trip-view_main] Initializing baseline timestamp for trip:', tripId);
+
+                // Fetch all operations for this trip
+                const allOperations = await listOperations(tripId);
+
+                if (allOperations.length > 0) {
+                    // Set baseline to the latest operation timestamp
+                    const latestTimestamp = Math.max(...allOperations.map(op => op.timestamp));
+                    lastProcessedOperationTimestampRef.current = latestTimestamp;
+                    console.log('[trip-view_main] ✅ Baseline timestamp set to:', latestTimestamp, '(' + allOperations.length + ' existing operations)');
+                } else {
+                    // No operations yet - set to current time
+                    lastProcessedOperationTimestampRef.current = Date.now();
+                    console.log('[trip-view_main] ✅ No existing operations - baseline set to current time');
+                }
+            } catch (error) {
+                console.error('[trip-view_main] ❌ Failed to initialize baseline timestamp:', error);
+                // Fallback to current time
+                lastProcessedOperationTimestampRef.current = Date.now();
+            }
+        };
+
+        initializeBaselineTimestamp();
+    }, [tripId]);
 
     // Get current user ID for collaboration features
     useEffect(() => {

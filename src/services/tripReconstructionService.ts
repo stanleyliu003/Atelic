@@ -374,50 +374,132 @@ function applyMoveOperation(
   state: ReconstructedTripState,
   operation: OperationMove
 ): ReconstructedTripState {
-  const { activity, fromLocation, toLocation } = operation.data;
+  const data: any = operation.data;
 
-  // Step 1: Remove from source location
-  let newState = { ...state };
+  // Helper to perform the actual move once we know activity + locations
+  const moveActivity = (
+    curState: ReconstructedTripState,
+    activity: Activity,
+    fromLocation: 'wishlist' | number,
+    toLocation: 'wishlist' | number
+  ): ReconstructedTripState => {
+    let newState: ReconstructedTripState = {
+      wishlist: [...curState.wishlist],
+      dayActivities: { ...curState.dayActivities },
+    };
 
-  if (fromLocation === 'wishlist') {
-    newState.wishlist = newState.wishlist.filter(
-      (act) => act.instanceId !== activity.instanceId
-    );
-  } else if (typeof fromLocation === 'number') {
-    const fromDay = newState.dayActivities[fromLocation];
-    if (fromDay) {
+    // Remove from source
+    if (fromLocation === 'wishlist') {
+      newState.wishlist = newState.wishlist.filter(
+        (act) => act.instanceId !== activity.instanceId
+      );
+    } else {
+      const fromDay = newState.dayActivities[fromLocation];
+      if (fromDay) {
+        newState.dayActivities = {
+          ...newState.dayActivities,
+          [fromLocation]: {
+            ...fromDay,
+            activities: fromDay.activities.filter(
+              (act) => act.instanceId !== activity.instanceId
+            ),
+          },
+        };
+      }
+    }
+
+    // Add to destination
+    if (toLocation === 'wishlist') {
+      newState.wishlist = [...newState.wishlist, activity];
+    } else {
+      const toDay = newState.dayActivities[toLocation] || {
+        dayNumber: toLocation,
+        activities: [],
+        encodedPolyline: undefined,
+      };
+
       newState.dayActivities = {
         ...newState.dayActivities,
-        [fromLocation]: {
-          ...fromDay,
-          activities: fromDay.activities.filter(
-            (act) => act.instanceId !== activity.instanceId
-          ),
+        [toLocation]: {
+          ...toDay,
+          activities: [...toDay.activities, activity],
         },
       };
     }
+
+    return newState;
+  };
+
+  // NEW SHAPE: activity + fromLocation/toLocation present
+  if (data && data.activity && data.fromLocation !== undefined && data.toLocation !== undefined) {
+    return moveActivity(state, data.activity, data.fromLocation, data.toLocation);
   }
 
-  // Step 2: Add to destination location
-  if (toLocation === 'wishlist') {
-    newState.wishlist = [...newState.wishlist, activity];
-  } else if (typeof toLocation === 'number') {
-    const toDay = newState.dayActivities[toLocation] || {
-      dayNumber: toLocation,
-      activities: [],
-      encodedPolyline: undefined,
-    };
-
-    newState.dayActivities = {
-      ...newState.dayActivities,
-      [toLocation]: {
-        ...toDay,
-        activities: [...toDay.activities, activity],
-      },
-    };
+  // LEGACY SHAPE: instanceId + fromDay/fromWishlist
+  if (!data || !data.instanceId) {
+    console.warn('[applyMoveOperation] Invalid move data - missing instanceId:', operation);
+    return state;
   }
 
-  return newState;
+  const instanceId: string = data.instanceId;
+
+  // Derive from/to locations from legacy fields
+  let fromLocation: 'wishlist' | number | null = null;
+  let toLocation: 'wishlist' | number | null = null;
+
+  if (operation.target === 'wishlist' && typeof (data as any).fromDay === 'number') {
+    // Moving from a specific day back to wishlist
+    fromLocation = (data as any).fromDay;
+    toLocation = 'wishlist';
+  } else if (operation.target === 'day' && typeof operation.dayNumber === 'number') {
+    // Moving TO a specific day
+    toLocation = operation.dayNumber;
+
+    if (data.fromWishlist) {
+      fromLocation = 'wishlist';
+    } else if (typeof data.fromDay === 'number') {
+      fromLocation = data.fromDay;
+    } else {
+      // Fallback: find the day that currently contains this instanceId
+      const containingDayEntry = Object.entries(state.dayActivities).find(
+        ([, day]) => day.activities.some((a) => a.instanceId === instanceId)
+      );
+      if (containingDayEntry) {
+        fromLocation = Number(containingDayEntry[0]);
+      } else {
+        // If we can't find it in any day, assume wishlist as source
+        fromLocation = 'wishlist';
+      }
+    }
+  }
+
+  if (fromLocation === null || toLocation === null) {
+    console.warn(
+      '[applyMoveOperation] Could not determine from/to locations for legacy move operation:',
+      operation
+    );
+    return state;
+  }
+
+  // Look up the activity from the source location
+  let activity: Activity | undefined;
+
+  if (fromLocation === 'wishlist') {
+    activity = state.wishlist.find((a) => a.instanceId === instanceId);
+  } else {
+    const fromDay = state.dayActivities[fromLocation];
+    activity = fromDay?.activities.find((a) => a.instanceId === instanceId);
+  }
+
+  if (!activity) {
+    console.warn(
+      '[applyMoveOperation] Activity not found in source location for legacy move:',
+      instanceId
+    );
+    return state;
+  }
+
+  return moveActivity(state, activity, fromLocation, toLocation);
 }
 
 /**

@@ -62,13 +62,34 @@ export type OperationReorder = Operation & {
 /**
  * Move operation - atomic move between wishlist and days
  */
+// MOVE operation
+// Supports BOTH legacy (Stage 1/2) and new (Stage 3) payload shapes.
+//
+// Legacy shape (what the frontend currently writes):
+//  - Moving from day -> wishlist:
+//      target: 'wishlist'
+//      dayNumber: undefined
+//      data: { instanceId: string, fromDay: number }
+//  - Moving from wishlist/day -> day:
+//      target: 'day'
+//      dayNumber: <destination day>
+//      data: { instanceId: string, fromWishlist?: boolean, fromDay?: number }
+//
+// New shape (future-proof, atomic):
+//  - data: { activity, fromLocation, toLocation }
 export type OperationMove = Operation & {
   type: 'move';
-  data: {
-    activity: Activity; // Full activity for atomic operation
-    fromLocation: 'wishlist' | number; // number = day number
-    toLocation: 'wishlist' | number;
-  };
+  data:
+    | {
+        activity: Activity;
+        fromLocation: 'wishlist' | number;
+        toLocation: 'wishlist' | number;
+      }
+    | {
+        instanceId: string;
+        fromDay?: number;
+        fromWishlist?: boolean;
+      };
 };
 
 /**
