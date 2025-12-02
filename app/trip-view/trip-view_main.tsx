@@ -2210,11 +2210,14 @@ export default function TripViewMain() {
 
                 console.log('[trip-view_main] Trip updated by another user - syncing operations...');
 
-                // Update version tracking
+                // Update version & collaborators from full trip payload
                 setVersion(updatedTrip.version);
                 setUpdatedAt(updatedTrip.updatedAt);
                 setLastUpdatedBy(updatedTrip.lastUpdatedBy);
                 versionRef.current = updatedTrip.version;
+                if (updatedTrip.collaborators) {
+                    setCollaborators(updatedTrip.collaborators);
+                }
 
                 // STAGE 3: Use incremental operation sync instead of full reload
                 syncNewOperations();
