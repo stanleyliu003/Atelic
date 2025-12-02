@@ -25,7 +25,8 @@ import { retrieveTripFromCloud } from '../../src/services/lambdaService';
 import Entypo from '@expo/vector-icons/Entypo';
 import { duplicateActivity } from '../../src/utils/activityInstanceId';
 import { Operation } from '../../src/types/operation.types';
-import { saveOperation } from '../../src/services/tripOperationsService';
+import { saveOperation, listOperations } from '../../src/services/tripOperationsService';
+import { verifyStateReconstruction } from '../../src/services/tripReconstructionService';
 
 // GraphQL subscription for real-time trip updates
 const onTripUpdated = /* GraphQL */ `
@@ -643,6 +644,13 @@ export default function TripViewMain() {
 
                 // Retry after delay
                 setTimeout(() => processSaveQueue(), 2000);
+            } else {
+                // STAGE 2: All operations saved successfully - run verification
+                // This runs in "dual-write mode" to ensure reconstruction accuracy
+                console.log('[processSaveQueue] ✅ All operations saved - running verification');
+                verifyTripReconstruction().catch(error => {
+                    console.error('[processSaveQueue] Verification error (non-blocking):', error);
+                });
             }
 
         } catch (error: any) {
@@ -1731,6 +1739,102 @@ export default function TripViewMain() {
             setIsSaving(false);
         }
     };
+
+    /**
+     * Stage 2: Verification Function
+     * Verifies that the current trip state can be reconstructed from operations
+     * This runs in "dual-write mode" - we save both the full trip AND verify reconstruction
+     */
+    const verifyTripReconstruction = async () => {
+        try {
+            const currentTripId = tripIdRef.current;
+            if (!currentTripId) {
+                console.log('[verifyTripReconstruction] No tripId - skipping verification');
+                return;
+            }
+
+            console.log('[verifyTripReconstruction] 🔍 Starting verification for trip:', currentTripId);
+
+            // Fetch all operations for this trip from DynamoDB
+            const operations = await listOperations(currentTripId);
+            console.log('[verifyTripReconstruction] Loaded', operations.length, 'operations from DynamoDB');
+
+            if (operations.length === 0) {
+                console.log('[verifyTripReconstruction] No operations yet - skipping verification');
+                return;
+            }
+
+            // Get current state
+            const {
+                activities: latestActivities,
+                dayActivities: latestDayActivities,
+            } = latestTripDataRef.current;
+
+            // Calculate wishlist (activities not assigned to any day)
+            const dayActivityInstanceIds = Object.values(latestDayActivities)
+                .flatMap((day: any) => day.activities.map((a: Activity) => a.instanceId))
+                .filter(Boolean);
+
+            const wishlist = (latestActivities || []).filter(
+                (activity: Activity) => !activity.instanceId || !dayActivityInstanceIds.includes(activity.instanceId)
+            );
+
+            // Run verification - cast operations to AnyOperation[]
+            const result = verifyStateReconstruction(wishlist, latestDayActivities, operations as any);
+
+            if (result.isMatch) {
+                console.log('[verifyTripReconstruction] ✅ VERIFICATION PASSED - Reconstruction matches actual state!');
+            } else {
+                console.error('[verifyTripReconstruction] ❌ VERIFICATION FAILED - Differences found:');
+                result.differences.forEach((diff) => console.error('  - ' + diff));
+
+                // Log detailed state comparison for debugging
+                console.log('[verifyTripReconstruction] 📊 Actual wishlist count:', result.actualState.wishlist.length);
+                console.log('[verifyTripReconstruction] 📊 Reconstructed wishlist count:', result.reconstructedState.wishlist.length);
+                console.log('[verifyTripReconstruction] 📊 Actual days:', Object.keys(result.actualState.dayActivities).length);
+                console.log('[verifyTripReconstruction] 📊 Reconstructed days:', Object.keys(result.reconstructedState.dayActivities).length);
+            }
+
+            return result;
+        } catch (error) {
+            console.error('[verifyTripReconstruction] ❌ Error during verification:', error);
+        }
+    };
+
+    /**
+     * Stage 2: Debugging utilities
+     * Exposes verification and operation inspection functions for manual testing
+     */
+    useEffect(() => {
+        // Expose debugging functions to console (dev only)
+        if (__DEV__) {
+            (global as any).verifyTrip = verifyTripReconstruction;
+            (global as any).getOperationLog = () => {
+                console.log('=== Current Operation Log ===');
+                console.log('Total operations:', operationLogRef.current.length);
+                console.log('Applied operations:', operationLogRef.current.filter(op => op.applied).length);
+                console.log('Pending operations:', operationLogRef.current.filter(op => !op.applied).length);
+                console.table(operationLogRef.current.map(op => ({
+                    type: op.type,
+                    target: op.target,
+                    dayNumber: op.dayNumber,
+                    applied: op.applied,
+                    timestamp: new Date(op.timestamp).toLocaleTimeString(),
+                })));
+                return operationLogRef.current;
+            };
+            (global as any).getSaveQueue = () => {
+                console.log('=== Current Save Queue ===');
+                console.log('Queued operations:', saveQueueRef.current.operations.length);
+                console.log('Is processing:', saveQueueRef.current.isProcessing);
+                return saveQueueRef.current.operations;
+            };
+            console.log('[trip-view_main] 🛠️ Debug utilities available:');
+            console.log('  - global.verifyTrip() - Run reconstruction verification');
+            console.log('  - global.getOperationLog() - View all operations');
+            console.log('  - global.getSaveQueue() - View pending save queue');
+        }
+    }, []);
 
     useEffect(() => {
         navigation.setOptions({
