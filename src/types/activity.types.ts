@@ -54,6 +54,11 @@ export type Activity = {
   notes?: string;
   startTime?: string; // Format: "HH:mm" (e.g., "09:30")
   endTime?: string;   // Format: "HH:mm" (e.g., "17:45")
+
+  // Real-time collaboration timestamps
+  lastModified?: number; // Timestamp when this activity was last modified
+  modifiedBy?: string; // UserID who last modified
+  lastReordered?: number; // Timestamp when this activity was last reordered
 };
 
 // Tab type for navigation between wishlist and different days

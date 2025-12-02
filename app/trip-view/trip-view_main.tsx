@@ -24,6 +24,8 @@ import { createTrip } from '../../src/graphql/mutations';
 import { retrieveTripFromCloud } from '../../src/services/lambdaService';
 import Entypo from '@expo/vector-icons/Entypo';
 import { duplicateActivity } from '../../src/utils/activityInstanceId';
+import { Operation } from '../../src/types/operation.types';
+import { saveOperation } from '../../src/services/tripOperationsService';
 
 // GraphQL subscription for real-time trip updates
 const onTripUpdated = /* GraphQL */ `
@@ -180,6 +182,31 @@ export default function TripViewMain() {
 
     // Track screen focus state for subscription management
     const [isScreenFocused, setIsScreenFocused] = useState(true);
+
+    // ===== OPERATION TRACKING STATE (Stage 1) =====
+    // Operation log for tracking changes
+    const operationLogRef = useRef<Operation[]>([]);
+
+    // Sequence counter for deterministic ordering
+    const operationSequenceRef = useRef<number>(0);
+
+    // Maximum operation log size to prevent memory exhaustion
+    const MAX_OPERATION_LOG_SIZE = 1000;
+    const MAX_APPLIED_OPERATIONS = 100;
+
+    // Save queue for batching operations (100-300ms coalescing)
+    const saveQueueRef = useRef<{
+        operations: Operation[];
+        timeoutId: NodeJS.Timeout | null;
+        isProcessing: boolean;
+    }>({
+        operations: [],
+        timeoutId: null,
+        isProcessing: false,
+    });
+
+    // Track if we're currently capturing operations (prevent during restore)
+    const isCapturingOperations = useRef(true);
 
     // Keep tripIdRef in sync with tripId state
     useEffect(() => {
@@ -428,6 +455,201 @@ export default function TripViewMain() {
         }
     };
 
+    // ===== OPERATION TRACKING FUNCTIONS (Stage 1) =====
+
+    /**
+     * Create a new operation with validation
+     */
+    const createOperation = useCallback((
+        type: Operation['type'],
+        target: Operation['target'],
+        data: any,
+        dayNumber?: number
+    ): Operation | null => {
+        // Guard: Don't track operations if capturing is disabled (e.g., during restore)
+        if (!isCapturingOperations.current) {
+            console.log('[createOperation] Skipping - not capturing');
+            return null;
+        }
+
+        // Guard: Don't track for viewers
+        if (currentUserRole === 'viewer') {
+            console.log('[createOperation] Skipping - viewer role');
+            return null;
+        }
+
+        // Guard: Must have a tripId
+        if (!tripIdRef.current) {
+            console.log('[createOperation] Skipping - no tripId');
+            return null;
+        }
+
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(7);
+
+        // Increment sequence number for deterministic ordering
+        operationSequenceRef.current += 1;
+        const sequenceNumber = operationSequenceRef.current;
+
+        const opId = `${currentUserID}_${type}_${target}_${dayNumber || 'none'}_${timestamp}_${random}`;
+
+        const operation: Operation = {
+            tripID: tripIdRef.current,
+            timestamp,
+            opId,
+            userId: currentUserID,
+            sequenceNumber,
+            type,
+            target,
+            dayNumber,
+            data,
+            applied: false,
+        };
+
+        console.log('[createOperation] Created:', type, target, dayNumber || '');
+
+        return operation;
+    }, [currentUserID, currentUserRole]);
+
+    /**
+     * Queue an operation and trigger coalesced save
+     */
+    const queueSave = useCallback((operation: Operation | null) => {
+        if (!operation) {
+            return;
+        }
+
+        // Validate operation belongs to current trip
+        if (operation.tripID !== tripIdRef.current) {
+            console.error('[queueSave] Operation tripId mismatch!');
+            return;
+        }
+
+        console.log('[queueSave] Queuing operation:', operation.type, operation.target);
+
+        // Add to operation log
+        operationLogRef.current.push(operation);
+
+        // Enforce max operation log size
+        if (operationLogRef.current.length > MAX_OPERATION_LOG_SIZE) {
+            console.log('[queueSave] Cleaning operation log (exceeds', MAX_OPERATION_LOG_SIZE, ')');
+
+            // Keep unapplied operations (critical - not saved yet)
+            const unapplied = operationLogRef.current.filter(op => !op.applied);
+
+            // Keep most recent applied operations from THIS user only
+            const applied = operationLogRef.current
+                .filter(op => op.applied && op.userId === currentUserID)
+                .sort((a, b) => b.timestamp - a.timestamp)
+                .slice(0, MAX_APPLIED_OPERATIONS);
+
+            operationLogRef.current = [...unapplied, ...applied];
+
+            console.log('[queueSave] Cleaned:', {
+                unapplied: unapplied.length,
+                applied: applied.length,
+                total: operationLogRef.current.length
+            });
+        }
+
+        // Add to save queue
+        saveQueueRef.current.operations.push(operation);
+
+        // Clear existing timeout
+        if (saveQueueRef.current.timeoutId) {
+            clearTimeout(saveQueueRef.current.timeoutId);
+        }
+
+        // Coalescing delay:
+        // - 100ms if first operation (feels instant)
+        // - 300ms if batching (allow time for more changes)
+        const delay = saveQueueRef.current.operations.length === 1 ? 100 : 300;
+
+        saveQueueRef.current.timeoutId = setTimeout(() => {
+            processSaveQueue();
+        }, delay);
+    }, [currentUserID]);
+
+    /**
+     * Process queued operations and save to DynamoDB
+     */
+    const processSaveQueue = useCallback(async () => {
+        // Already processing or nothing to save
+        if (saveQueueRef.current.isProcessing || saveQueueRef.current.operations.length === 0) {
+            return;
+        }
+
+        // Don't save during reload
+        if (isReloadingRef.current) {
+            console.log('[processSaveQueue] Skipping (reloading)');
+            setTimeout(() => processSaveQueue(), 1000);
+            return;
+        }
+
+        saveQueueRef.current.isProcessing = true;
+        const opsToSave = [...saveQueueRef.current.operations];
+        saveQueueRef.current.operations = []; // Clear queue
+
+        console.log(`[processSaveQueue] Saving ${opsToSave.length} operations`);
+
+        try {
+            // Save all operations in parallel (append-only - no conflicts!)
+            const results = await Promise.allSettled(
+                opsToSave.map(op => saveOperation(op))
+            );
+
+            // Check results
+            const succeeded = results.filter(r => r.status === 'fulfilled' && r.value).length;
+            const failed = results.filter(r => r.status === 'rejected' || !r.value).length;
+
+            console.log(`[processSaveQueue] Saved ${succeeded}/${opsToSave.length} operations`);
+
+            // Mark successful operations as applied
+            opsToSave.forEach((op, i) => {
+                const result = results[i];
+                if (result.status === 'fulfilled' && result.value) {
+                    op.applied = true;
+                }
+            });
+
+            if (failed > 0) {
+                console.warn(`[processSaveQueue] ${failed} operations failed - will retry`);
+
+                // Put failed operations back in queue
+                const failedOps = opsToSave.filter((op, i) => {
+                    const result = results[i];
+                    return result.status === 'rejected' || !result.value;
+                });
+
+                saveQueueRef.current.operations.unshift(...failedOps);
+
+                // Retry after delay
+                setTimeout(() => processSaveQueue(), 2000);
+            }
+
+        } catch (error: any) {
+            console.error('[processSaveQueue] Unexpected error:', error);
+
+            // Put operations back in queue
+            saveQueueRef.current.operations.unshift(...opsToSave);
+
+            // Retry
+            setTimeout(() => processSaveQueue(), 2000);
+
+        } finally {
+            saveQueueRef.current.isProcessing = false;
+        }
+    }, []);
+
+    // Cleanup save queue on unmount
+    useEffect(() => {
+        return () => {
+            if (saveQueueRef.current.timeoutId) {
+                clearTimeout(saveQueueRef.current.timeoutId);
+            }
+        };
+    }, []);
+
     // Function to add activities back to the wishlist
     const addActivitiesToWishlist = (newActivities: Activity[]) => {
         // Combine new activities first, then existing ones, to prioritize new data
@@ -440,6 +662,10 @@ export default function TripViewMain() {
         });
 
         updateActivities(deduplicatedActivities);
+
+        // Track operation: add activities to wishlist
+        const op = createOperation('add', 'wishlist', newActivities);
+        queueSave(op);
     };
 
     // Handler for duplicating an activity
@@ -535,6 +761,10 @@ export default function TripViewMain() {
 
             reorderDayActivities(targetDayNumber, newOrder);
             console.log('[trip-view_main] Activity deleted from day', targetDayNumber);
+
+            // Track operation: remove from day
+            const op = createOperation('remove', 'day', activity.instanceId, targetDayNumber);
+            queueSave(op);
         } else {
             // Delete from wishlist
             updateActivities((prev: Activity[]) => {
@@ -551,8 +781,12 @@ export default function TripViewMain() {
                 });
             });
             console.log('[trip-view_main] Activity deleted from wishlist');
+
+            // Track operation: remove from wishlist
+            const op = createOperation('remove', 'wishlist', activity.instanceId);
+            queueSave(op);
         }
-    }, [getDayActivities, reorderDayActivities, updateActivities]);
+    }, [getDayActivities, reorderDayActivities, updateActivities, createOperation, queueSave]);
 
     // Remove local state and handlers for transfer modal and related logic
     // Use the custom hook for all transfer modal and activity transfer logic
@@ -840,8 +1074,23 @@ export default function TripViewMain() {
     // Handle reordering activities within a day via drag and drop
     const handleDayActivityReorder = async (dayNumber: number, newOrder: Activity[]) => {
         try {
+            const reorderTimestamp = Date.now();
+
+            // Add timestamp to activities for conflict resolution
+            const orderedActivities = newOrder.map(a => ({
+                ...a,
+                lastReordered: reorderTimestamp
+            }));
+
             // Update the activities for this day using the existing reorderDayActivities function
-            reorderDayActivities(dayNumber, newOrder);
+            reorderDayActivities(dayNumber, orderedActivities);
+
+            // Track operation: reorder (store IDs only, not full activities)
+            const op = createOperation('reorder', 'day', {
+                reorderedIds: orderedActivities.map(a => a.instanceId),
+                lastReordered: reorderTimestamp
+            }, dayNumber);
+            queueSave(op);
 
             // Clear the route cache for this day to trigger route recalculation
             const dayTab = `day${dayNumber}`;
@@ -850,11 +1099,11 @@ export default function TripViewMain() {
             // If this is the currently active tab, trigger route recalculation
             if (activeTab === dayTab) {
                 setRouteLoading(true);
-                const newRouteData = await fetchRoutePolyline(newOrder);
+                const newRouteData = await fetchRoutePolyline(orderedActivities);
                 setRouteData(newRouteData);
 
                 // Update the route cache for this day
-                const activitiesHash = hashActivities(newOrder);
+                const activitiesHash = hashActivities(orderedActivities);
                 routeCache.current[dayTab] = {
                     activitiesHash,
                     routeData: newRouteData,
@@ -1611,7 +1860,10 @@ export default function TripViewMain() {
         const getCurrentUser = async () => {
             try {
                 const user = await Auth.currentAuthenticatedUser();
-                const userID = user.username;
+                // Use Cognito 'sub' claim for @auth owner field
+                const userID = user.attributes.sub;
+                console.log('[trip-view_main] 🔑 Current user sub:', userID);
+                console.log('[trip-view_main] 🔑 Username:', user.username);
                 setCurrentUserID(userID);
             } catch (error) {
                 console.error('[trip-view_main] Error getting current user:', error);

@@ -26,7 +26,13 @@
       "Read(//private/tmp/**)",
       "Read(//tmp/**)",
       "Bash(node test_version_check.js)",
-      "Bash(node test_app_version.js)"
+      "Bash(node test_app_version.js)",
+      "Bash(aws dynamodb describe-table:*)",
+      "Bash(mkdir:*)",
+      "Bash(amplify add function:*)",
+      "Bash(pkill -f \"amplify add function\")",
+      "Bash(chmod:*)",
+      "Bash(/Users/stanleycliu/Desktop/Atelic_App_Dev/Atelic_Stable/clear-all-caches.sh)"
     ],
     "deny": [],
     "ask": [],
