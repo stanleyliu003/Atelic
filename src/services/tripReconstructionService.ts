@@ -408,9 +408,14 @@ function applyMoveOperation(
       }
     }
 
-    // Add to destination
+    // Add to destination (idempotently – avoid duplicate instanceIds)
     if (toLocation === 'wishlist') {
-      newState.wishlist = [...newState.wishlist, activity];
+      const existsInWishlist = newState.wishlist.some(
+        (act) => act.instanceId === activity.instanceId
+      );
+      if (!existsInWishlist) {
+        newState.wishlist = [...newState.wishlist, activity];
+      }
     } else {
       const toDay = newState.dayActivities[toLocation] || {
         dayNumber: toLocation,
@@ -418,11 +423,17 @@ function applyMoveOperation(
         encodedPolyline: undefined,
       };
 
+      const existsInDay = toDay.activities.some(
+        (act) => act.instanceId === activity.instanceId
+      );
+
       newState.dayActivities = {
         ...newState.dayActivities,
         [toLocation]: {
           ...toDay,
-          activities: [...toDay.activities, activity],
+          activities: existsInDay
+            ? toDay.activities
+            : [...toDay.activities, activity],
         },
       };
     }
