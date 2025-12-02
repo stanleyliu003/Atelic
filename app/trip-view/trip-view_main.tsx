@@ -390,11 +390,29 @@ export default function TripViewMain() {
                     // Add the transferred activities back to the wishlist
                     if (transferredActivities.length > 0) {
                         addActivitiesToWishlist(transferredActivities);
+
+                        // ✨ NEW: Track operation: move activities to wishlist
+                        transferredActivities.forEach(activity => {
+                            const op = createOperation('move', 'wishlist', {
+                                instanceId: activity.instanceId,
+                                fromDay: currentDayNumber
+                            });
+                            queueSave(op);
+                        });
                     }
                 } else if (tab.startsWith('day')) {
                     // Transfer to the selected day
                     const dayNumber = parseInt(tab.replace('day', ''));
                     transferActivitiesToDay(selectedActivitiesList, dayNumber);
+
+                    // ✨ NEW: Track operation: move activities to day
+                    selectedActivitiesList.forEach((activity: Activity) => {
+                        const op = createOperation('move', 'day', {
+                            instanceId: activity.instanceId,
+                            fromWishlist: activeTab === 'wishlist'
+                        }, dayNumber);
+                        queueSave(op);
+                    });
                 }
 
                 // Clear selection after transfer
@@ -711,6 +729,10 @@ export default function TripViewMain() {
                 'with instanceId:',
                 duplicatedActivity.instanceId
             );
+
+            // ✨ NEW: Track operation: add duplicated activity to day
+            const op = createOperation('add', 'day', [duplicatedActivity], targetDayNumber);
+            queueSave(op);
         } else {
             // Duplicate within wishlist – insert directly after the original
             updateActivities((prev: Activity[]) => {
@@ -737,8 +759,12 @@ export default function TripViewMain() {
                 return nextActivities;
             });
             console.log('[trip-view_main] Activity duplicated in wishlist with instanceId:', duplicatedActivity.instanceId);
+
+            // ✨ NEW: Track operation: add duplicated activity to wishlist
+            const op = createOperation('add', 'wishlist', [duplicatedActivity]);
+            queueSave(op);
         }
-    }, [getDayActivities, reorderDayActivities, updateActivities]);
+    }, [getDayActivities, reorderDayActivities, updateActivities, createOperation, queueSave]);
 
     // Handler for deleting a single activity
     const handleDeleteActivity = useCallback((activity: Activity, targetDayNumber?: number) => {
@@ -930,6 +956,16 @@ export default function TripViewMain() {
             }));
             // 5. Update the activities for this day
             reorderDayActivities(dayNumber, reorderedFull);
+
+            // ✨ NEW: Track operation: reorder after optimization
+            const reorderTimestamp = Date.now();
+            const op = createOperation('reorder', 'day', {
+                reorderedIds: reorderedFull.map(a => a.instanceId),
+                lastReordered: reorderTimestamp,
+                optimized: true // Flag to indicate this was from route optimization
+            }, dayNumber);
+            queueSave(op);
+
             // 6. Call getRoute Lambda via GraphQL for the new order
             const newRouteData = await fetchRoutePolyline(reorderedFull);
             // 7. Update the route cache for this day regardless of active tab
@@ -960,6 +996,14 @@ export default function TripViewMain() {
         const newDayNumber = addNewDay();
         // Update tripLength to reflect the new day count
         setTripLength(getDayCount());
+
+        // ✨ NEW: Track operation: add day
+        const op = createOperation('add', 'day', {
+            dayNumber: newDayNumber,
+            action: 'addDay'
+        });
+        queueSave(op);
+
         // Switch to the newly created day
         setActiveTab(`day${newDayNumber}`);
         // Trigger auto-scroll to the new day
@@ -978,6 +1022,14 @@ export default function TripViewMain() {
 
         // Function to perform the deletion
         const performDeletion = () => {
+            // ✨ NEW: Track operation: delete day BEFORE performing deletion
+            const op = createOperation('remove', 'day', {
+                dayNumber: dayToDelete,
+                action: 'deleteDay',
+                hadActivities: hasActivities
+            });
+            queueSave(op);
+
             // Delete the day and get its activities to move back to wishlist
             const deletedDayActivities = deleteDayAndRenumber(dayToDelete);
 
@@ -993,6 +1045,15 @@ export default function TripViewMain() {
                 });
 
                 updateActivities(deduplicatedActivities);
+
+                // ✨ NEW: Track moving activities back to wishlist
+                deletedDayActivities.forEach((activity: Activity) => {
+                    const op = createOperation('move', 'wishlist', {
+                        instanceId: activity.instanceId,
+                        fromDay: dayToDelete
+                    });
+                    queueSave(op);
+                });
             }
 
             // Clear route cache for days that got renumbered
@@ -1060,6 +1121,25 @@ export default function TripViewMain() {
 
     const handleDeleteActivities = () => {
         if (selectedActivities.length === 0) return;
+
+        // ✨ NEW: Track deletion of each activity before removing
+        selectedActivities.forEach(instanceId => {
+            // Determine if activity is in wishlist or a day
+            const wishlistActivities = getActivitiesForTab('wishlist');
+            const inWishlist = wishlistActivities.some(a => a.instanceId === instanceId);
+
+            if (inWishlist) {
+                const op = createOperation('remove', 'wishlist', instanceId);
+                queueSave(op);
+            } else {
+                // Activity is in a day - find which day
+                if (activeTab.startsWith('day')) {
+                    const dayNumber = parseInt(activeTab.replace('day', ''));
+                    const op = createOperation('remove', 'day', instanceId, dayNumber);
+                    queueSave(op);
+                }
+            }
+        });
 
         // Remove from CreateTripContext (master list)
         removeActivities(selectedActivities);
@@ -1188,6 +1268,12 @@ export default function TripViewMain() {
             // Remove from wishlist
             removeActivities(wishlistActivityIds);
 
+            // ✨ NEW: Track removal from wishlist
+            wishlistActivityIds.forEach(instanceId => {
+                const op = createOperation('remove', 'wishlist', instanceId);
+                queueSave(op);
+            });
+
             // Add to the current tab
             if (activeTab === 'wishlist') {
                 // Already on wishlist, no need to move
@@ -1198,21 +1284,37 @@ export default function TripViewMain() {
                 selectedActivities.forEach(activity => {
                     addActivityToDay(activity, dayNumber);
                 });
+
+                // ✨ NEW: Track add to day
+                const op = createOperation('add', 'day', selectedActivities, dayNumber);
+                queueSave(op);
             }
         } else {
             // Normal flow: adding new activities from search
             if (activeTab === 'wishlist') {
                 // Add to wishlist
                 updateActivities([...(activities || []), ...selectedActivities]);
+
+                // ✨ NEW: Track add to wishlist
+                const op = createOperation('add', 'wishlist', selectedActivities);
+                queueSave(op);
             } else if (activeTab.startsWith('day')) {
                 // Add to the specific day
                 const dayNumber = parseInt(activeTab.replace('day', ''));
                 selectedActivities.forEach(activity => {
                     addActivityToDay(activity, dayNumber);
                 });
+
+                // ✨ NEW: Track add to day
+                const op = createOperation('add', 'day', selectedActivities, dayNumber);
+                queueSave(op);
             } else {
                 // Fallback to wishlist
                 updateActivities([...(activities || []), ...selectedActivities]);
+
+                // ✨ NEW: Track add to wishlist
+                const op = createOperation('add', 'wishlist', selectedActivities);
+                queueSave(op);
             }
         }
 
@@ -1263,11 +1365,18 @@ export default function TripViewMain() {
         // Remove deselected wishlist activities
         if (deselectedWishlistActivityIds.length > 0) {
             removeActivities(deselectedWishlistActivityIds);
+
+            // ✨ NEW: Track removal of deselected activities
+            deselectedWishlistActivityIds.forEach(instanceId => {
+                const op = createOperation('remove', 'wishlist', instanceId);
+                queueSave(op);
+            });
         }
 
         // Add newly selected activities
         if (selectedActivities.length > 0) {
             addToWishlist(selectedActivities);
+            // Note: addToWishlist calls addActivitiesToWishlist which already tracks operations
         }
 
         setShowCategoryModal(false);
@@ -1862,8 +1971,6 @@ export default function TripViewMain() {
                 const user = await Auth.currentAuthenticatedUser();
                 // Use Cognito 'sub' claim for @auth owner field
                 const userID = user.attributes.sub;
-                console.log('[trip-view_main] 🔑 Current user sub:', userID);
-                console.log('[trip-view_main] 🔑 Username:', user.username);
                 setCurrentUserID(userID);
             } catch (error) {
                 console.error('[trip-view_main] Error getting current user:', error);

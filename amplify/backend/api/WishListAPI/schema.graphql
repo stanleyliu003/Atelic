@@ -291,6 +291,7 @@ type TripOperation
   target: String!
   dayNumber: Int
   operationData: AWSJSON!
+  ttl: Int # Unix timestamp for DynamoDB TTL (auto-delete after 1 hour)
 }
 
  type Query {
