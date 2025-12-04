@@ -71,7 +71,7 @@ exports.handler = async (event) => {
     }
 
     // If not found as owner, try to find as collaborator
-    console.log('Trip not found as owner, searching as collaborator...');
+    console.log('Trip not found as owner, searching as collaborator with pagination...');
 
     const scanParams = {
       TableName: process.env.STORAGE_TRIPSTORAGE_NAME,
@@ -82,15 +82,46 @@ exports.handler = async (event) => {
     };
 
     console.log('Scanning for trip as collaborator:', JSON.stringify(scanParams));
-    const scanResult = await docClient.send(new ScanCommand(scanParams));
 
-    if (scanResult.Items && scanResult.Items.length > 0) {
+    // Handle pagination to scan the entire table
+    let allItems = [];
+    let lastEvaluatedKey = null;
+    let scanCount = 0;
+
+    do {
+      scanCount++;
+      const currentScanParams = { ...scanParams };
+      if (lastEvaluatedKey) {
+        currentScanParams.ExclusiveStartKey = lastEvaluatedKey;
+      }
+
+      console.log(`[Collaborator Scan ${scanCount}] Fetching batch...`);
+      const scanResult = await docClient.send(new ScanCommand(currentScanParams));
+
+      console.log(`[Collaborator Scan ${scanCount}] Found ${scanResult.Items?.length || 0} items in this batch`);
+
+      if (scanResult.Items && scanResult.Items.length > 0) {
+        allItems = allItems.concat(scanResult.Items);
+      }
+
+      lastEvaluatedKey = scanResult.LastEvaluatedKey;
+
+      if (lastEvaluatedKey) {
+        console.log(`[Collaborator Scan ${scanCount}] More results available, continuing pagination...`);
+      } else {
+        console.log(`[Collaborator Scan ${scanCount}] No more results, pagination complete`);
+      }
+    } while (lastEvaluatedKey);
+
+    console.log(`[Pagination Complete] Total items collected: ${allItems.length} after ${scanCount} scan(s)`);
+
+    if (allItems.length > 0) {
       // Check if the user is actually a collaborator on any of these trips
-      for (const item of scanResult.Items) {
+      for (const item of allItems) {
         if (item.collaborators && Array.isArray(item.collaborators)) {
           const isCollaborator = item.collaborators.some(c => c.userID === userID);
           if (isCollaborator) {
-            console.log('Retrieved trip as collaborator:');
+            console.log('Retrieved trip as collaborator:', item.tripID);
 
             return {
               tripId: item.tripID,
