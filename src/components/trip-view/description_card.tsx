@@ -18,6 +18,7 @@ interface ActivityDetailViewProps {
   showDragIndicator?: boolean;
   onDuplicate?: (activity: Activity) => void;
   onDelete?: (activity: Activity) => void;
+  userRole?: 'owner' | 'editor' | 'viewer';
 }
 
 const formatNumber = (num: number) => {
@@ -85,7 +86,7 @@ const renderStars = (rating: number) => {
   return stars;
 };
 
-export function ActivityDetailView({ activity, onClose, variant = 'trip', showDragIndicator = true, onDuplicate, onDelete }: ActivityDetailViewProps) {
+export function ActivityDetailView({ activity, onClose, variant = 'trip', showDragIndicator = true, onDuplicate, onDelete, userRole }: ActivityDetailViewProps) {
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
 
@@ -473,7 +474,7 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
       </ScrollView>
 
       {/* Fixed Action Buttons at Bottom Right */}
-      {(onDuplicate || onDelete) && (
+      {(onDuplicate || onDelete) && userRole !== 'viewer' && (
         <View style={styles.actionButtonContainer}>
           {onDuplicate && (
             <TouchableOpacity

@@ -1739,6 +1739,7 @@ export default function TripViewMain() {
                         showDragIndicator={false}
                         onDuplicate={(activity) => handleDuplicateActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
                         onDelete={(activity) => handleDeleteActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
+                        userRole={currentUserRole}
                     />
                 ) : (
                     <>
