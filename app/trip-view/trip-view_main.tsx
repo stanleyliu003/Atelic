@@ -2257,8 +2257,17 @@ export default function TripViewMain() {
         const getCurrentUser = async () => {
             try {
                 const user = await Auth.currentAuthenticatedUser();
-                // Use Cognito 'sub' claim for @auth owner field
-                const userID = user.attributes.sub;
+                // Use username (not sub) for consistency with collaborator storage
+                // For Google OAuth users, username is like 'google_110194548211753772771'
+                // For Apple OAuth users, username is like 'signinwithapple_000664.415e0f3e94404bee9a761c4921ebc4e2.2215'
+                // For native users, username is their Cognito UUID
+                const userID = user.username;
+                console.log('[trip-view_main] Setting currentUserID:', userID);
+                console.log('[trip-view_main] User details:', {
+                    sub: user.attributes.sub,
+                    username: user.username,
+                    email: user.attributes.email
+                });
                 setCurrentUserID(userID);
             } catch (error) {
                 console.error('[trip-view_main] Error getting current user:', error);
@@ -2276,7 +2285,8 @@ export default function TripViewMain() {
         if (!tripId && collaborators.length === 0) {
             try {
                 const currentUser = await Auth.currentAuthenticatedUser();
-                const currentUserID = currentUser.attributes?.sub || currentUser.username;
+                // Use username (not sub) for consistency with collaborator storage
+                const currentUserID = currentUser.username;
                 const currentUserEmail = currentUser.attributes?.email || '';
                 const currentUserName = currentUser.attributes?.name || '';
                 const currentUsername = currentUser.attributes?.preferred_username || currentUser.username || currentUserEmail.split('@')[0];
