@@ -871,6 +871,10 @@
       "providerPlugin": "awscloudformation",
       "service": "DynamoDB"
     },
+    "TripOperationsStorage": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    },
     "TripStorage": {
       "providerPlugin": "awscloudformation",
       "service": "DynamoDB"
