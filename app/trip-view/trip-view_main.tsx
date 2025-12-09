@@ -40,6 +40,7 @@ const onTripUpdated = /* GraphQL */ `
             collaborators {
                 email
                 fullName
+                username
                 userID
                 role
                 addedBy

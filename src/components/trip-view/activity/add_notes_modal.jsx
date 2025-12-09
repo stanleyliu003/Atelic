@@ -42,6 +42,15 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
   const notesInputRef = useRef(null);
   const isViewer = currentUserRole === 'viewer';
 
+  // Sync local state with activity prop changes (from TripOperations updates)
+  useEffect(() => {
+    setNotes(activity.notes || '');
+    if (!isWishlist) {
+      setStartTime(activity.startTime || '');
+      setEndTime(activity.endTime || '');
+    }
+  }, [activity.notes, activity.startTime, activity.endTime, isWishlist]);
+
   // Track keyboard visibility
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
