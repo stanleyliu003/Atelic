@@ -165,20 +165,16 @@ export default function TripViewMain() {
     // Ref for immediate tripID access (avoids async state update issues)
     const tripIdRef = useRef(tripId);
 
-    // Version ref for immediate access (avoids async state issues)
-    const versionRef = useRef<number>(version);
+    // ===== REMOVED: Version-based autosave refs =====
+    // - versionRef: No longer using optimistic locking
+    // - autosaveIntervalRef: Removed 5-minute periodic autosave
+    // - saveDebounceTimeoutRef: Not needed with operation-based saves
 
-    // Autosave interval ref
-    const autosaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-    // Track last save time to prevent duplicate rapid-fire saves
+    // Track last save time to prevent duplicate rapid-fire saves (still used for background save)
     const lastSaveTimeRef = useRef<number>(0);
 
-    // Minimum time between autosaves (in milliseconds) - 5 seconds
+    // Minimum time between autosaves (in milliseconds) - 5 seconds (still used for background save)
     const MIN_AUTOSAVE_INTERVAL = 5000;
-
-    // Debounce timeout for state-change-triggered saves
-    const saveDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Track if currently reloading from subscription to prevent autosave
     const isReloadingRef = useRef(false);
@@ -255,11 +251,8 @@ export default function TripViewMain() {
         }, [])
     );
 
-    // Keep versionRef in sync with context version
-    useEffect(() => {
-        versionRef.current = version;
-        console.log('[trip-view_main] Version ref synced:', version);
-    }, [version]);
+    // ===== REMOVED: versionRef sync =====
+    // No longer tracking versions - using operation-based architecture
 
     // Handler for scroll position changes
     const handleScrollPositionChange = (dayNumber: number, position: number) => {
@@ -1578,8 +1571,7 @@ export default function TripViewMain() {
                 // Restore trip data into context
                 restoreTripFromObject(updatedTrip, currentUserID);
 
-                // Update version tracking
-                versionRef.current = updatedTrip.version || 1;
+                // Note: No version tracking needed - using operation-based architecture
 
                 console.log('[trip-view_main] Trip reloaded');
             }
@@ -1824,17 +1816,13 @@ export default function TripViewMain() {
 
             // Add OWNER's userID and collaborators to trip data
             // This ensures we always use the owner's userID as the partition key in DynamoDB
-            const nextVersion = versionRef.current + 1;
-
-            // IMMEDIATELY update versionRef to prevent race conditions
-            // This prevents concurrent saves from using the same version number
-            versionRef.current = nextVersion;
+            // NOTE: Version field removed - operations handle conflict resolution via timestamps
 
             const tripDataWithUser = {
                 ...tripData,
                 userID: ownerUserID, // Always use owner's userID, not current user's userID
                 collaborators: collaboratorsToSave,
-                version: nextVersion,
+                // version field removed - no longer using optimistic locking
                 updatedAt: new Date().toISOString(),
                 lastUpdatedBy: currentUserEmail
             };
@@ -1846,12 +1834,10 @@ export default function TripViewMain() {
             });
 
             // Update local state after successful save
-            if (result.data?.createTrip?.version) {
-                setVersion(result.data.createTrip.version);
+            if (result.data?.createTrip) {
                 setUpdatedAt(result.data.createTrip.updatedAt);
                 setLastUpdatedBy(result.data.createTrip.lastUpdatedBy);
-                // versionRef already updated above, but sync with server response for safety
-                versionRef.current = result.data.createTrip.version;
+                // Note: No version tracking needed with operation-based architecture
             }
 
             // ALWAYS update tripId if it wasn't set (prevents duplicate generation on next save)
@@ -1876,11 +1862,7 @@ export default function TripViewMain() {
 
         } catch (error: any) {
             console.error('[trip-view_main] Error saving trip:', error);
-
-            // Rollback version on failure to maintain consistency for retry
-            // Since we optimistically incremented at line 1075, we need to decrement on failure
-            versionRef.current = versionRef.current - 1;
-
+            // Note: No version rollback needed - using operation-based architecture
             throw error;
         } finally {
             // Release save lock (both state and ref)
@@ -2048,65 +2030,12 @@ export default function TripViewMain() {
     //     };
     // }, [tripId, activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt, currentUserRole]);
 
-    // Autosave with multiple triggers
-    useEffect(() => {
-        // Only autosave for owners and editors (viewers can't edit)
-        if (currentUserRole === 'viewer') {
-            return;
-        }
+    // ===== REMOVED: 5-minute periodic autosave =====
+    // Operations are saved immediately (100-300ms) via queueSave/processSaveQueue
+    // No need for periodic saves when every change is already tracked
+    // Snapshots are still saved on app background (see below)
 
-        // Only enable periodic autosave if we have a tripId
-        if (!tripId) {
-            return;
-        }
-
-
-        // Trigger 1: Periodic autosave every 5 minutes
-        autosaveIntervalRef.current = setInterval(() => {
-            const now = Date.now();
-            const timeSinceLastSave = now - lastSaveTimeRef.current;
-
-            // Prevent saves during reload from subscription
-            if (isReloadingRef.current) {
-                // console.log('[trip-view_main] Skipping periodic autosave (reloading)');
-                return;
-            }
-
-            // Check if already saving using ref
-            if (isSavingRef.current) {
-                // console.log('[trip-view_main] Skipping periodic autosave (save in progress)');
-                return;
-            }
-
-            // Prevent duplicate saves within MIN_AUTOSAVE_INTERVAL
-            if (timeSinceLastSave < MIN_AUTOSAVE_INTERVAL) {
-                // console.log('[trip-view_main] Skipping periodic autosave (too soon)');
-                return;
-            }
-
-            // console.log('[trip-view_main] Periodic autosave triggered');
-
-            saveTrip()
-                .then(() => {
-                    lastSaveTimeRef.current = Date.now();
-                })
-                .catch(error => {
-                    console.error('[trip-view_main] Autosave failed:', error);
-                });
-        }, 300000); // 5 minutes
-
-        return () => {
-            // Clean up periodic autosave
-            if (autosaveIntervalRef.current) {
-                clearInterval(autosaveIntervalRef.current);
-            }
-            if (saveDebounceTimeoutRef.current) {
-                clearTimeout(saveDebounceTimeoutRef.current);
-            }
-        };
-    }, [tripId, currentUserRole]); // Don't include isSaving - use refs instead
-
-    // Trigger 2: App going inactive (before background suspension) - ALWAYS enabled, even for new trips
+    // App going inactive (before background suspension) - Snapshot save for safety
     useEffect(() => {
         // Only autosave for owners and editors (viewers can't edit)
         if (currentUserRole === 'viewer') {
@@ -2210,11 +2139,10 @@ export default function TripViewMain() {
 
                 console.log('[trip-view_main] Trip updated by another user - syncing operations...');
 
-                // Update version & collaborators from full trip payload
-                setVersion(updatedTrip.version);
+                // Update metadata & collaborators from full trip payload
+                // Note: No version tracking needed with operation-based architecture
                 setUpdatedAt(updatedTrip.updatedAt);
                 setLastUpdatedBy(updatedTrip.lastUpdatedBy);
-                versionRef.current = updatedTrip.version;
                 if (updatedTrip.collaborators) {
                     setCollaborators(updatedTrip.collaborators);
                 }
