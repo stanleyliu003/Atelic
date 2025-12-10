@@ -33,7 +33,8 @@
       "Bash(pkill -f \"amplify add function\")",
       "Bash(chmod:*)",
       "Bash(/Users/stanleycliu/Desktop/Atelic_App_Dev/Atelic_Stable/clear-all-caches.sh)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(dig:*)"
     ],
     "deny": [],
     "ask": [],
