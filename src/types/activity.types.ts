@@ -107,4 +107,34 @@ export type TripData = {
   days: DayWithPolyline[];
   wishlist: Activity[];
   wishlistText: string;
-}; 
+};
+
+// Transportation mode types
+export type TravelMode = 'WALK' | 'DRIVE' | 'TRANSIT';
+
+export interface RouteLegModeData {
+  distance: number;
+  duration: string;
+  polyline: string;
+}
+
+export interface EnhancedRouteLeg {
+  // Cached data for all modes
+  modeData: {
+    DRIVE?: RouteLegModeData;
+    WALK?: RouteLegModeData;
+    TRANSIT?: RouteLegModeData;
+  };
+  // Currently selected mode
+  selectedMode: TravelMode;
+  // Loading states
+  loadingModes: TravelMode[];
+}
+
+export interface RouteData {
+  polyline: any[]; // Combined polyline from all legs
+  legs: EnhancedRouteLeg[];
+  totalDistance: number;
+  totalDuration: string;
+  travelMode: string; // For backward compatibility
+}

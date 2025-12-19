@@ -27,7 +27,8 @@
       "Read(//tmp/**)",
       "Bash(node test_version_check.js)",
       "Bash(node test_app_version.js)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm run ios:*)"
     ],
     "deny": [],
     "ask": [],
