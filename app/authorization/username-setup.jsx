@@ -57,6 +57,44 @@ export default function UsernameSetup() {
   const [isExternalProvider, setIsExternalProvider] = useState(false);
   const [isAppleUser, setIsAppleUser] = useState(false);
   const [isGoogleUser, setIsGoogleUser] = useState(false);
+  const [selectedActivities, setSelectedActivities] = useState([]);
+  const [selectedUseCases, setSelectedUseCases] = useState([]);
+
+  const activityOptions = [
+    { label: 'History', emoji: '🏛️', value: 'history' },
+    { label: 'Foodie', emoji: '🍜', value: 'foodie' },
+    { label: 'Art', emoji: '🎨', value: 'art' },
+    { label: 'Hidden Gems', emoji: '✨', value: 'hidden-gems' },
+    { label: 'Relaxation', emoji: '🧘‍♀️', value: 'relaxation' },
+    { label: 'Outdoors', emoji: '🌲', value: 'outdoors' },
+    { label: 'Nightlife', emoji: '🍸', value: 'nightlife' },
+    { label: 'Luxury', emoji: '💎', value: 'luxury' },
+    { label: 'Budget', emoji: '🎒', value: 'budget' },
+    { label: 'Kid Friendly', emoji: '🧸', value: 'kid-friendly' },
+  ];
+
+  const useCaseOptions = [
+    {
+      label: 'Collaborate with friends',
+      description: 'Invite your friends and family to join your trip and plan special memories together.'
+    },
+    {
+      label: 'Organize my itinerary',
+      description: 'Build the perfect itinerary customized to your schedule. Get directions, time estimates, and add notes about each place.'
+    },
+    {
+      label: 'Find unique things to do',
+      description: 'Receive activity recommendations personalized to your interests.'
+    },
+    {
+      label: 'Manage trip expenses',
+      description: 'Track costs of each travel expenses to stay within your travel budget.'
+    },
+    {
+      label: 'Keep all my bookings in one place',
+      description: 'Import your flight, hotel, reservations, and ticket details into your itinerary.'
+    },
+  ];
 
   useEffect(() => {
     // Check if user signed in with external provider (Apple or Google)
@@ -141,6 +179,24 @@ export default function UsernameSetup() {
     if (!date) return '';
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return date.toLocaleDateString('en-US', options);
+  };
+
+  // Toggle activity selection
+  const toggleActivity = (value) => {
+    if (selectedActivities.includes(value)) {
+      setSelectedActivities(selectedActivities.filter(item => item !== value));
+    } else {
+      setSelectedActivities([...selectedActivities, value]);
+    }
+  };
+
+  // Toggle use case selection
+  const toggleUseCase = (label) => {
+    if (selectedUseCases.includes(label)) {
+      setSelectedUseCases(selectedUseCases.filter(item => item !== label));
+    } else {
+      setSelectedUseCases([...selectedUseCases, label]);
+    }
   };
 
   const handleContinue = async () => {
@@ -322,6 +378,16 @@ export default function UsernameSetup() {
       }
       setCurrentPage(4);
     } else if (currentPage === 4) {
+      // Validate gender
+      if (!gender) {
+        setError('Please select your gender.');
+        return;
+      }
+      setCurrentPage(5);
+    } else if (currentPage === 5) {
+      // Activities page - no validation required
+      setCurrentPage(6);
+    } else if (currentPage === 6) {
       // Final page - submit
       handleContinue();
     }
@@ -355,7 +421,11 @@ export default function UsernameSetup() {
     } else if (currentPage === 3) {
       return !username || username.trim().length < 5 || username.trim().length > 20;
     } else if (currentPage === 4) {
-      return !gender || isLoading;
+      return !gender;
+    } else if (currentPage === 5) {
+      return false; // Activities page - optional
+    } else if (currentPage === 6) {
+      return isLoading;
     }
     return false;
   };
@@ -413,7 +483,7 @@ export default function UsernameSetup() {
                   Welcome {getFirstName()}! When's your birthday?
                 </Text>
                 <Text style={styles.subtitle}>
-                  We'll use this for activity recommendations, performance analytics, and to keep younger users safe.
+                  We'll use this for activity recommendations and to keep younger users safe.
                 </Text>
 
                 <View style={{ marginTop: 40 }}>
@@ -514,25 +584,114 @@ export default function UsernameSetup() {
                 </Text>
 
                 <View style={{ marginTop: 40 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
+                  <View style={{ gap: 15 }}>
                     <TouchableOpacity
-                      style={[styles.genderButton, gender === 'male' && styles.genderButtonSelected]}
-                      onPress={() => setGender('male')}
+                      style={[styles.genderButtonFull, gender === 'man' && styles.genderButtonSelected]}
+                      onPress={() => setGender('man')}
                     >
-                      <Text style={{ color: gender === 'male' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Male</Text>
+                      <Text style={{ color: gender === 'man' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Man</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.genderButton, gender === 'female' && styles.genderButtonSelected]}
-                      onPress={() => setGender('female')}
+                      style={[styles.genderButtonFull, gender === 'woman' && styles.genderButtonSelected]}
+                      onPress={() => setGender('woman')}
                     >
-                      <Text style={{ color: gender === 'female' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Female</Text>
+                      <Text style={{ color: gender === 'woman' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Woman</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.genderButton, gender === 'other' && styles.genderButtonSelected]}
-                      onPress={() => setGender('other')}
+                      style={[styles.genderButtonFull, gender === 'non-binary' && styles.genderButtonSelected]}
+                      onPress={() => setGender('non-binary')}
                     >
-                      <Text style={{ color: gender === 'other' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Other</Text>
+                      <Text style={{ color: gender === 'non-binary' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Non-Binary</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.genderButtonFull, gender === 'prefer-not-to-say' && styles.genderButtonSelected]}
+                      onPress={() => setGender('prefer-not-to-say')}
+                    >
+                      <Text style={{ color: gender === 'prefer-not-to-say' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Prefer not to say</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={styles.helperText}>
+                    Your gender will not appear on your profile.
+                  </Text>
+                </View>
+              </>
+            )}
+
+            {/* Page 5: Activity Preferences */}
+            {currentPage === 5 && (
+              <>
+                <Text style={styles.title}>What types of activities do you enjoy?</Text>
+                <Text style={styles.subtitle}>
+                  When you create a trip, Atelic recommends activities personalized to your interests.
+                </Text>
+
+                <View style={{ marginTop: 40 }}>
+                  <View style={styles.activityGrid}>
+                    {activityOptions.map((activity) => {
+                      const isSelected = selectedActivities.includes(activity.value);
+                      return (
+                        <TouchableOpacity
+                          key={activity.value}
+                          style={[
+                            styles.activityBox,
+                            isSelected && styles.activityBoxSelected
+                          ]}
+                          onPress={() => toggleActivity(activity.value)}
+                        >
+                          <Text style={styles.activityEmoji}>{activity.emoji}</Text>
+                          <Text style={[
+                            styles.activityLabel,
+                            { color: isSelected ? Colors.WHITE : Colors.BLACK }
+                          ]}>
+                            {activity.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* Page 6: Use Cases */}
+            {currentPage === 6 && (
+              <>
+                <Text style={styles.title}>What do you plan to use Atelic for?</Text>
+                <Text style={styles.subtitle}>
+                  Choose as many as apply.
+                </Text>
+
+                <View style={{ marginTop: 40 }}>
+                  <View style={{ gap: 15 }}>
+                    {useCaseOptions.map((useCase) => {
+                      const isSelected = selectedUseCases.includes(useCase.label);
+                      return (
+                        <TouchableOpacity
+                          key={useCase.label}
+                          style={[
+                            styles.useCaseButton,
+                            isSelected && styles.useCaseButtonSelected
+                          ]}
+                          onPress={() => toggleUseCase(useCase.label)}
+                        >
+                          <Text style={[
+                            styles.useCaseLabel,
+                            { color: isSelected ? Colors.WHITE : Colors.BLACK }
+                          ]}>
+                            {useCase.label}
+                          </Text>
+                          {isSelected && (
+                            <Text style={[
+                              styles.useCaseDescription,
+                              { color: Colors.WHITE }
+                            ]}>
+                              {useCase.description}
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 </View>
               </>
@@ -548,7 +707,8 @@ export default function UsernameSetup() {
               style={[
                 styles.button,
                 {
-                  opacity: isNextDisabled() ? 0.3 : 1
+                  opacity: isNextDisabled() ? 0.3 : 1,
+                  marginTop: currentPage === 5 ? 0 : 40
                 }
               ]}
             >
@@ -556,13 +716,13 @@ export default function UsernameSetup() {
                 <ActivityIndicator color={Colors.WHITE} />
               ) : (
                 <Text style={styles.buttonText}>
-                  {currentPage === 4 ? 'Complete' : 'Next'}
+                  {currentPage === 6 ? 'Complete' : 'Next'}
                 </Text>
               )}
             </TouchableOpacity>
 
             {/* Terms and Privacy Policy - Show on last page */}
-            {currentPage === 4 && (
+            {currentPage === 6 && (
               <View style={{ marginTop: 40, paddingHorizontal: 0 }}>
                 <Text style={{
                   fontFamily: 'outfit',
@@ -735,7 +895,65 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.WHITE,
     alignItems: 'center',
   },
+  genderButtonFull: {
+    width: '100%',
+    padding: 18,
+    borderRadius: 15,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+  },
   genderButtonSelected: {
     backgroundColor: '#F36406',
+  },
+  activityGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  activityBox: {
+    width: '48%',
+    aspectRatio: 1.43,
+    padding: 15,
+    borderRadius: 15,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activityBoxSelected: {
+    backgroundColor: '#F36406',
+  },
+  activityEmoji: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  activityLabel: {
+    fontFamily: 'outfit',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  useCaseButton: {
+    width: '100%',
+    padding: 18,
+    borderRadius: 15,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+  },
+  useCaseButtonSelected: {
+    backgroundColor: '#F36406',
+  },
+  useCaseLabel: {
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  useCaseDescription: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    textAlign: 'left',
+    marginTop: 8,
+    paddingHorizontal: 10,
+    lineHeight: 20,
   },
 });
