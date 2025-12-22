@@ -2,7 +2,7 @@ import { Colors } from '../../constants/Colors';
 import { Auth, API } from 'aws-amplify';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView, Modal } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView, Modal, ImageBackground } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DeviceInfo from 'react-native-device-info';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -388,7 +388,13 @@ export default function UsernameSetup() {
       // Activities page - no validation required
       setCurrentPage(6);
     } else if (currentPage === 6) {
-      // Final page - submit
+      // Good company page - no validation required
+      setCurrentPage(7);
+    } else if (currentPage === 7) {
+      // Use cases page - no validation required
+      setCurrentPage(8);
+    } else if (currentPage === 8) {
+      // Final welcome page - submit
       handleContinue();
     }
   };
@@ -425,6 +431,10 @@ export default function UsernameSetup() {
     } else if (currentPage === 5) {
       return false; // Activities page - optional
     } else if (currentPage === 6) {
+      return false; // Good company page - no validation
+    } else if (currentPage === 7) {
+      return false; // Use cases page - optional
+    } else if (currentPage === 8) {
       return isLoading;
     }
     return false;
@@ -445,7 +455,7 @@ export default function UsernameSetup() {
           <View style={styles.content}>
             {/* Back Button */}
             <TouchableOpacity
-              style={{ padding: 5, marginBottom: 20, alignSelf: 'flex-start' }}
+              style={{ padding: 5, marginBottom: 10, alignSelf: 'flex-start' }}
               onPress={handleBack}
             >
               <Ionicons name="arrow-back" size={40} color="black" />
@@ -654,8 +664,21 @@ export default function UsernameSetup() {
               </>
             )}
 
-            {/* Page 6: Use Cases */}
+            {/* Page 6: Good Company */}
             {currentPage === 6 && (
+              <>
+                <Text style={styles.imageTitle}>You're in good company</Text>
+                <Text style={styles.imageSubtitle}>Hundreds of travelers plan their trip with Atelic</Text>
+                <ImageBackground
+                  source={require('../../assets/images/friends_traveling3.jpeg')}
+                  style={styles.imageBackground}
+                  imageStyle={styles.backgroundImage}
+                />
+              </>
+            )}
+
+            {/* Page 7: Use Cases */}
+            {currentPage === 7 && (
               <>
                 <Text style={styles.title}>What do you plan to use Atelic for?</Text>
                 <Text style={styles.subtitle}>
@@ -697,6 +720,19 @@ export default function UsernameSetup() {
               </>
             )}
 
+            {/* Page 8: Welcome */}
+            {currentPage === 8 && (
+              <>
+                <Text style={styles.imageTitle}>Welcome {getFirstName()}</Text>
+                <Text style={styles.imageSubtitle}>You're all set. Start your first itinerary, invite your travel buddies, and create your dream trip!</Text>
+                <ImageBackground
+                  source={require('../../assets/images/freinds_traveling4.png')}
+                  style={styles.imageBackground}
+                  imageStyle={styles.backgroundImage}
+                />
+              </>
+            )}
+
             {error ? (
               <Text style={styles.errorText}>{error}</Text>
             ) : null}
@@ -708,7 +744,7 @@ export default function UsernameSetup() {
                 styles.button,
                 {
                   opacity: isNextDisabled() ? 0.3 : 1,
-                  marginTop: currentPage === 5 ? 0 : 40
+                  marginTop: currentPage === 5 ? 0 : 30
                 }
               ]}
             >
@@ -716,13 +752,13 @@ export default function UsernameSetup() {
                 <ActivityIndicator color={Colors.WHITE} />
               ) : (
                 <Text style={styles.buttonText}>
-                  {currentPage === 6 ? 'Complete' : 'Next'}
+                  {currentPage === 8 ? 'Start planning' : 'Continue'}
                 </Text>
               )}
             </TouchableOpacity>
 
-            {/* Terms and Privacy Policy - Show on last page */}
-            {currentPage === 6 && (
+            {/* Terms and Privacy Policy - Show on use cases page */}
+            {currentPage === 7 && (
               <View style={{ marginTop: 40, paddingHorizontal: 0 }}>
                 <Text style={{
                   fontFamily: 'outfit',
@@ -903,9 +939,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   genderButtonSelected: {
-    backgroundColor: '#F36406',
+    backgroundColor: '#000000',
   },
   activityGrid: {
+    marginTop: -10,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
@@ -921,7 +958,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   activityBoxSelected: {
-    backgroundColor: '#F36406',
+    backgroundColor: '#000000',
   },
   activityEmoji: {
     fontSize: 32,
@@ -940,7 +977,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   useCaseButtonSelected: {
-    backgroundColor: '#F36406',
+    backgroundColor: '#000000',
   },
   useCaseLabel: {
     fontFamily: 'outfit-medium',
@@ -955,5 +992,27 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 10,
     lineHeight: 20,
+  },
+  imageBackground: {
+    width: '100%',
+    height: 430,
+    marginTop: 20,
+  },
+  backgroundImage: {
+    borderRadius: 20,
+  },
+  imageTitle: {
+    fontFamily: 'outfit-bold',
+    fontSize: 32,
+    color: Colors.BLACK,
+    textAlign: 'center',
+  },
+  imageSubtitle: {
+    fontFamily: 'outfit',
+    fontSize: 16,
+    color: Colors.GRAY,
+    textAlign: 'center',
+    marginTop: 10,
+    lineHeight: 24,
   },
 });
