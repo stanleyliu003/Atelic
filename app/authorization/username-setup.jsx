@@ -2,9 +2,10 @@ import { Colors } from '../../constants/Colors';
 import { Auth, API } from 'aws-amplify';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DeviceInfo from 'react-native-device-info';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const updateUserProfileMutation = /* GraphQL */ `
   mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
@@ -45,12 +46,12 @@ const searchUsers = /* GraphQL */ `
 
 export default function UsernameSetup() {
   const router = useRouter();
+  const [currentPage, setCurrentPage] = useState(1);
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [age, setAge] = useState('');
-  const [ageError, setAgeError] = useState('');
-  const [ageTouched, setAgeTouched] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date(new Date().setFullYear(new Date().getFullYear() - 25)));
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [gender, setGender] = useState('');
   const [fullName, setFullName] = useState('');
   const [isExternalProvider, setIsExternalProvider] = useState(false);
@@ -64,7 +65,7 @@ export default function UsernameSetup() {
         const user = await Auth.currentAuthenticatedUser();
         const attributes = await Auth.userAttributes(user);
 
-        console.log('User attributes:', attributes); // Debug log to see what's available
+        console.log('User attributes:', attributes);
 
         // Check if user has identities attribute indicating external provider sign-in
         const identitiesAttr = attributes.find(attr => attr.Name === 'identities');
@@ -79,18 +80,17 @@ export default function UsernameSetup() {
             identity.userId?.startsWith('google_')
           );
           const isExternal = isApple || isGoogle;
-          
+
           setIsExternalProvider(isExternal);
           setIsAppleUser(isApple);
           setIsGoogleUser(isGoogle);
 
           // For external users, check if name is already available
           if (isExternal) {
-            // Check for both 'name' attribute and separate given_name/family_name attributes
             const nameAttr = attributes.find(attr => attr.Name === 'name');
             const givenNameAttr = attributes.find(attr => attr.Name === 'given_name');
             const familyNameAttr = attributes.find(attr => attr.Name === 'family_name');
-            
+
             if (nameAttr && nameAttr.Value) {
               console.log(`${isApple ? 'Apple' : 'Google'} user name found:`, nameAttr.Value);
               setFullName(nameAttr.Value);
@@ -117,34 +117,34 @@ export default function UsernameSetup() {
     checkUserProvider();
   }, []);
 
-  const validateAge = (ageValue) => {
-    if (!ageValue) {
-      setAgeError('');
-      return;
-    }
-    const ageNum = parseInt(ageValue);
-    if (isNaN(ageNum) || ageNum < 4 || ageNum > 100) {
-      setAgeError('Age must be a valid number between 4 and 100.');
-    } else {
-      setAgeError('');
-    }
+  // Extract first name from full name
+  const getFirstName = () => {
+    if (!fullName) return '';
+    return fullName.trim().split(' ')[0];
   };
 
-  const handleAgeChange = (value) => {
-    setAge(value);
-    if (ageTouched) {
-      validateAge(value);
+  // Calculate age from birthdate
+  const calculateAge = (birthdate) => {
+    if (!birthdate) return null;
+    const today = new Date();
+    const birthDate = new Date(birthdate);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
     }
+    return age;
   };
 
-  const handleAgeBlur = () => {
-    setAgeTouched(true);
-    validateAge(age);
+  // Format date for display
+  const formatDate = (date) => {
+    if (!date) return '';
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
   };
 
   const handleContinue = async () => {
     setError('');
-    setAgeError('');
     setIsLoading(true);
 
     // Validate all fields first
@@ -154,8 +154,7 @@ export default function UsernameSetup() {
       return;
     }
 
-    // Validate full name for Google users (Apple users don't need to provide it per Apple guidelines)
-    if (isGoogleUser && (!fullName || fullName.trim().length < 2)) {
+    if (!fullName || fullName.trim().length < 2) {
       setError('Please enter your full name.');
       setIsLoading(false);
       return;
@@ -167,16 +166,16 @@ export default function UsernameSetup() {
       return;
     }
 
-    if (!age) {
-      setAgeError('Please enter your age.');
+    if (!selectedDate) {
+      setError('Please select your birthday.');
       setIsLoading(false);
       return;
     }
 
-    // Validate age is a number between 4 and 100
-    const ageNum = parseInt(age);
-    if (isNaN(ageNum) || ageNum < 4 || ageNum > 100) {
-      setAgeError('Age must be a valid number between 4 and 100.');
+    // Validate age is between 4 and 100
+    const age = calculateAge(selectedDate);
+    if (!age || age < 4 || age > 100) {
+      setError('Age must be between 4 and 100.');
       setIsLoading(false);
       return;
     }
@@ -215,28 +214,19 @@ export default function UsernameSetup() {
       // Step 2: Username is available, update the user's preferred_username
       const user = await Auth.currentAuthenticatedUser();
 
-      // Convert age to birthdate format (YYYY-MM-DD) for Cognito
-      // Cognito requires birthdate to be at least 10 characters
-      const currentYear = new Date().getFullYear();
-      const birthYear = currentYear - ageNum;
-      const birthdate = `${birthYear}-01-01`;
+      // Format birthdate as YYYY-MM-DD for Cognito
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const birthdate = `${year}-${month}-${day}`;
 
       // Prepare attributes to update
       const attributesToUpdate = {
         'preferred_username': username.trim(),
         'gender': gender,
-        'birthdate': birthdate
+        'birthdate': birthdate,
+        'name': fullName.trim()
       };
-
-      // Add name attribute for external provider users
-      // Apple users: combine given_name + family_name into name attribute
-      // Google users: use the fullName from user input
-      if ((isAppleUser || isGoogleUser) && fullName.trim()) {
-        attributesToUpdate['name'] = fullName.trim();
-      } else {
-        // Fallback: use username as fullName if no fullName is available
-        attributesToUpdate['name'] = username.trim();
-      }
 
       // Update user attributes
       await Auth.updateUserAttributes(user, attributesToUpdate);
@@ -250,7 +240,7 @@ export default function UsernameSetup() {
         const prefUsername = prefUsernameAttr?.Value || username.trim();
         const cognitoUserId = current.username;
         const appVersion = DeviceInfo.getVersion() || null;
-        const osName = DeviceInfo.getSystemName() || null;       // maps to deviceType
+        const osName = DeviceInfo.getSystemName() || null;
         const osVersion = DeviceInfo.getSystemVersion() || null;
         const modelName = DeviceInfo.getModel() || null;
         await API.graphql({
@@ -269,7 +259,7 @@ export default function UsernameSetup() {
           },
           authMode: 'AMAZON_COGNITO_USER_POOLS'
         });
-        // Best-effort read after write (authorized via Query @auth)
+        // Best-effort read after write
         try {
           await API.graphql({
             query: getUserProfileQuery,
@@ -297,6 +287,79 @@ export default function UsernameSetup() {
     }
   };
 
+  const handleNext = () => {
+    setError('');
+
+    if (currentPage === 1) {
+      // Validate full name
+      if (!fullName || fullName.trim().length < 2) {
+        setError('Please enter your full name.');
+        return;
+      }
+      setCurrentPage(2);
+    } else if (currentPage === 2) {
+      // Validate birthday
+      if (!selectedDate) {
+        setError('Please select your birthday.');
+        return;
+      }
+      const age = calculateAge(selectedDate);
+      if (!age || age < 4 || age > 100) {
+        setError('Age must be between 4 and 100.');
+        return;
+      }
+      setCurrentPage(3);
+    } else if (currentPage === 3) {
+      // Validate username
+      if (!username || username.trim().length < 5) {
+        setError('Username must be at least 5 characters long.');
+        return;
+      }
+      const usernameRegex = /^[a-zA-Z0-9_]{5,20}$/;
+      if (!usernameRegex.test(username)) {
+        setError('Username must be 5-20 characters and contain only letters, numbers, and underscores.');
+        return;
+      }
+      setCurrentPage(4);
+    } else if (currentPage === 4) {
+      // Final page - submit
+      handleContinue();
+    }
+  };
+
+  const handleBack = () => {
+    setError('');
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    } else {
+      // Sign out and go back to login
+      Auth.signOut({ global: false }).catch(() => {});
+      router.replace('/');
+    }
+  };
+
+  const onDateChange = (event, date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    if (date) {
+      setSelectedDate(date);
+    }
+  };
+
+  const isNextDisabled = () => {
+    if (currentPage === 1) {
+      return !fullName || fullName.trim().length < 2;
+    } else if (currentPage === 2) {
+      return !selectedDate;
+    } else if (currentPage === 3) {
+      return !username || username.trim().length < 5 || username.trim().length > 20;
+    } else if (currentPage === 4) {
+      return !gender || isLoading;
+    }
+    return false;
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: Colors.WHITE }}
@@ -313,148 +376,218 @@ export default function UsernameSetup() {
             {/* Back Button */}
             <TouchableOpacity
               style={{ padding: 5, marginBottom: 20, alignSelf: 'flex-start' }}
-              onPress={async () => {
-                try {
-                  await Auth.signOut({ global: false });
-                } catch (e) {}
-                router.replace('/');
-              }}
+              onPress={handleBack}
             >
               <Ionicons name="arrow-back" size={40} color="black" />
             </TouchableOpacity>
 
-            <Text style={styles.title}>Complete Your Profile</Text>
+            {/* Page 1: Full Name */}
+            {currentPage === 1 && (
+              <>
+                <Text style={styles.title}>What's your Name?</Text>
+                <Text style={styles.subtitle}>
+                  This is how your friends can find you on Atelic.
+                </Text>
 
-            {/* Full Name Field - Show for Google users only (Apple users per Apple guidelines) */}
-            {isGoogleUser && (
-              <View style={{ marginTop: 40 }}>
-                <Text style={styles.label}>Full Name</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder='Enter your full name'
-                  value={fullName}
-                  onChangeText={(value) => setFullName(value)}
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                  spellCheck={false}
-                  autoFocus={true}
-                  editable={!isLoading}
-                />
-              </View>
+                <View style={{ marginTop: 40 }}>
+                  <Text style={styles.label}>Full Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter your full name"
+                    value={fullName}
+                    onChangeText={(value) => setFullName(value)}
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                    spellCheck={false}
+                    autoFocus={true}
+                    editable={!isLoading}
+                  />
+                </View>
+              </>
             )}
 
-            <View style={{ marginTop: isGoogleUser ? 20 : 40 }}>
-              <Text style={styles.label}>Username</Text>
-              <TextInput
-                style={styles.input}
-                placeholder='Enter Username (5-20 characters)'
-                value={username}
-                onChangeText={(value) => setUsername(value)}
-                autoCapitalize="none"
-                autoCorrect={false}
-                spellCheck={false}
-                autoFocus={!isGoogleUser}
-                editable={!isLoading}
-              />
-              {username.length > 0 && (username.length < 5 || username.length > 20) && (
-                <Text style={{ color: 'red', marginTop: 5, fontFamily: 'outfit', fontSize: 14 }}>
-                  Username must be between 5-20 characters
+            {/* Page 2: Birthday */}
+            {currentPage === 2 && (
+              <>
+                <Text style={styles.title}>
+                  Welcome {getFirstName()}! When's your birthday?
                 </Text>
-              )}
-            </View>
+                <Text style={styles.subtitle}>
+                  We'll use this for activity recommendations, performance analytics, and to keep younger users safe.
+                </Text>
 
-            {/* Age Field */}
-            <View style={{ marginTop: 20, marginBottom: 5 }}>
-              <Text style={styles.label}>Age</Text>
-              <TextInput
-                style={styles.input}
-                placeholder='Enter your age'
-                value={age}
-                onChangeText={handleAgeChange}
-                onBlur={handleAgeBlur}
-                keyboardType="number-pad"
-                autoCorrect={false}
-                spellCheck={false}
-                editable={!isLoading}
-              />
-              {ageError ? (
-                <Text style={{ color: 'red', marginTop: 5, fontFamily: 'outfit', fontSize: 14 }}>{ageError}</Text>
-              ) : null}
-            </View>
+                <View style={{ marginTop: 40 }}>
+                  <Text style={styles.label}>Birthday</Text>
+                  <TouchableOpacity
+                    style={styles.dateInputField}
+                    onPress={() => setShowDatePicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.dateInputText}>
+                      {formatDate(selectedDate)}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={24} color={Colors.GRAY} />
+                  </TouchableOpacity>
 
-            {/* Gender Field */}
-            <View style={{ marginTop: 20, marginBottom: 5 }}>
-              <Text style={styles.label}>Gender</Text>
-              <View style={{ marginTop: 5, alignItems: 'center', justifyContent: 'center' }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-                  <TouchableOpacity
-                    style={[styles.genderButton, gender === 'male' && styles.genderButtonSelected]}
-                    onPress={() => setGender('male')}
+                  <Text style={styles.helperText}>
+                    Your birthday or age will not appear on your profile.
+                  </Text>
+
+                  <Modal
+                    visible={showDatePicker}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowDatePicker(false)}
                   >
-                    <Text style={{ color: gender === 'male' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Male</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.genderButton, gender === 'female' && styles.genderButtonSelected]}
-                    onPress={() => setGender('female')}
-                  >
-                    <Text style={{ color: gender === 'female' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Female</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.genderButton, gender === 'other' && styles.genderButtonSelected]}
-                    onPress={() => setGender('other')}
-                  >
-                    <Text style={{ color: gender === 'other' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Other</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.modalOverlay}
+                      activeOpacity={1}
+                      onPress={() => setShowDatePicker(false)}
+                    >
+                      <TouchableOpacity
+                        activeOpacity={1}
+                        onPress={(e) => e.stopPropagation()}
+                      >
+                        <View style={styles.datePickerContainer}>
+                          <Text style={styles.datePickerTitle}>Choose Date of Birth</Text>
+                          <DateTimePicker
+                            value={selectedDate}
+                            mode="date"
+                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            onChange={onDateChange}
+                            maximumDate={new Date()}
+                            minimumDate={new Date(new Date().setFullYear(new Date().getFullYear() - 100))}
+                            textColor={Colors.BLACK}
+                            themeVariant="light"
+                            style={styles.datePicker}
+                          />
+                          <TouchableOpacity
+                            style={styles.datePickerOkButton}
+                            onPress={() => setShowDatePicker(false)}
+                          >
+                            <Text style={styles.datePickerOkText}>Done</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  </Modal>
                 </View>
-              </View>
-            </View>
+              </>
+            )}
+
+            {/* Page 3: Username */}
+            {currentPage === 3 && (
+              <>
+                <Text style={styles.title}>Choose a Username</Text>
+                <Text style={styles.subtitle}>
+                  Your username will be visible to other Atelic users.
+                </Text>
+
+                <View style={{ marginTop: 40 }}>
+                  <Text style={styles.label}>Username</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter Username (5-20 characters)"
+                    value={username}
+                    onChangeText={(value) => setUsername(value)}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    spellCheck={false}
+                    autoFocus={true}
+                    editable={!isLoading}
+                  />
+                  {username.length > 0 && (username.length < 5 || username.length > 20) && (
+                    <Text style={styles.validationText}>
+                      Username must be between 5-20 characters
+                    </Text>
+                  )}
+                </View>
+              </>
+            )}
+
+            {/* Page 4: Gender */}
+            {currentPage === 4 && (
+              <>
+                <Text style={styles.title}>What's your gender?</Text>
+                <Text style={styles.subtitle}>
+                  This helps us personalize your experience.
+                </Text>
+
+                <View style={{ marginTop: 40 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
+                    <TouchableOpacity
+                      style={[styles.genderButton, gender === 'male' && styles.genderButtonSelected]}
+                      onPress={() => setGender('male')}
+                    >
+                      <Text style={{ color: gender === 'male' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Male</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.genderButton, gender === 'female' && styles.genderButtonSelected]}
+                      onPress={() => setGender('female')}
+                    >
+                      <Text style={{ color: gender === 'female' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Female</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.genderButton, gender === 'other' && styles.genderButtonSelected]}
+                      onPress={() => setGender('other')}
+                    >
+                      <Text style={{ color: gender === 'other' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Other</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </>
+            )}
 
             {error ? (
               <Text style={styles.errorText}>{error}</Text>
             ) : null}
 
             <TouchableOpacity
-              onPress={handleContinue}
-              disabled={isLoading || username.length < 5 || !gender || !age || (isGoogleUser && !fullName)}
+              onPress={handleNext}
+              disabled={isNextDisabled()}
               style={[
                 styles.button,
                 {
-                  opacity: (username.length >= 5 && gender && age && (!isGoogleUser || fullName) && !isLoading) ? 1 : 0.3
+                  opacity: isNextDisabled() ? 0.3 : 1
                 }
               ]}
             >
               {isLoading ? (
                 <ActivityIndicator color={Colors.WHITE} />
               ) : (
-                <Text style={styles.buttonText}>Next</Text>
+                <Text style={styles.buttonText}>
+                  {currentPage === 4 ? 'Complete' : 'Next'}
+                </Text>
               )}
             </TouchableOpacity>
 
-            {/* Terms and Privacy Policy - Inside ScrollView */}
-            <View style={{ marginTop: 40, paddingHorizontal: 0 }}>
-              <Text style={{
-                fontFamily: 'outfit',
-                fontSize: 12,
-                color: Colors.GRAY,
-                textAlign: 'center',
-                lineHeight: 20
-              }}>
-                By continuing you agree to Atelic's{' '}
-                <Text
-                  style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-                  onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
-                >
-                  Terms of Service
+            {/* Terms and Privacy Policy - Show on last page */}
+            {currentPage === 4 && (
+              <View style={{ marginTop: 40, paddingHorizontal: 0 }}>
+                <Text style={{
+                  fontFamily: 'outfit',
+                  fontSize: 12,
+                  color: Colors.GRAY,
+                  textAlign: 'center',
+                  lineHeight: 20
+                }}>
+                  By continuing you agree to Atelic's{' '}
+                  <Text
+                    style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+                    onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
+                  >
+                    Terms of Service
+                  </Text>
+                  {' '}and acknowledge you've read our{' '}
+                  <Text
+                    style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+                    onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
+                  >
+                    Privacy Policy
+                  </Text>
                 </Text>
-                {' '}and acknowledge you've read our{' '}
-                <Text
-                  style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-                  onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
-                >
-                  Privacy Policy
-                </Text>
-              </Text>
-            </View>
+              </View>
+            )}
 
           </View>
         </View>
@@ -473,18 +606,19 @@ const styles = StyleSheet.create({
   content: {
     width: '100%',
   },
-  backButton: {
-    position: 'absolute',
-    top: -75,
-    left: 0,
-    zIndex: 1,
-    padding: 5,
-  },
   title: {
     fontFamily: 'outfit-bold',
     fontSize: 32,
     color: Colors.BLACK,
     textAlign: 'center',
+  },
+  subtitle: {
+    fontFamily: 'outfit',
+    fontSize: 16,
+    color: Colors.GRAY,
+    textAlign: 'center',
+    marginTop: 10,
+    lineHeight: 24,
   },
   label: {
     fontFamily: 'outfit-medium',
@@ -499,6 +633,77 @@ const styles = StyleSheet.create({
     borderColor: Colors.GRAY,
     fontFamily: 'outfit',
     fontSize: 16,
+  },
+  dateInputField: {
+    padding: 15,
+    borderWidth: 1,
+    borderRadius: 15,
+    borderColor: Colors.GRAY,
+    fontFamily: 'outfit',
+    fontSize: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dateInputText: {
+    fontFamily: 'outfit',
+    fontSize: 16,
+    color: Colors.BLACK,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  datePickerContainer: {
+    backgroundColor: Colors.WHITE,
+    borderRadius: 15,
+    padding: 20,
+    marginHorizontal: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  datePickerTitle: {
+    fontFamily: 'outfit-bold',
+    fontSize: 20,
+    color: Colors.BLACK,
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  datePicker: {
+    width: 320,
+    height: 200,
+  },
+  datePickerOkButton: {
+    width: '100%',
+    padding: 15,
+    borderRadius: 15,
+    backgroundColor: '#F36406',
+    alignItems: 'center',
+    marginTop: 15,
+  },
+  datePickerOkText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    color: Colors.WHITE,
+  },
+  helperText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  validationText: {
+    color: 'red',
+    marginTop: 5,
+    fontFamily: 'outfit',
+    fontSize: 14,
   },
   errorText: {
     color: 'red',
