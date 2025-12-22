@@ -30,7 +30,10 @@
       "Bash(find:*)",
       "Bash(npm run ios:*)",
       "Bash(node -e:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(dig:*)",
+      "Bash(nslookup:*)",
+      "Bash(host:*)"
     ],
     "deny": [],
     "ask": [],
