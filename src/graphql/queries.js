@@ -497,6 +497,8 @@ export const getUserProfile = /* GraphQL */ `
       deviceType
       modelName
       osVersion
+      activityPreferences
+      selectedUseCases
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate

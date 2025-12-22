@@ -182,6 +182,10 @@ type DeleteAccountResult {
    modelName: String
    osVersion: String
 
+   # Onboarding preferences
+   activityPreferences: [String]
+   selectedUseCases: [String]
+
    # Subscription info
    subscriptionTier: String!
    subscriptionStartDate: String

@@ -583,6 +583,8 @@ export const updateUserProfile = /* GraphQL */ `
       deviceType
       modelName
       osVersion
+      activityPreferences
+      selectedUseCases
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate

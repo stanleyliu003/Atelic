@@ -59,7 +59,7 @@ export default function UsernameSetup() {
   const [isExternalProvider, setIsExternalProvider] = useState(false);
   const [isAppleUser, setIsAppleUser] = useState(false);
   const [isGoogleUser, setIsGoogleUser] = useState(false);
-  const [selectedActivities, setSelectedActivities] = useState([]);
+  const [activityPreferences, setActivityPreferences] = useState([]);
   const [selectedUseCases, setSelectedUseCases] = useState([]);
 
   const activityOptions = [
@@ -78,23 +78,28 @@ export default function UsernameSetup() {
   const useCaseOptions = [
     {
       label: 'Collaborate with friends',
-      description: 'Invite your friends and family to join your trip and plan special memories together.'
+      description: 'Invite your friends and family to join your trip and plan special memories together.',
+      value: 'collaborate'
     },
     {
       label: 'Organize my itinerary',
-      description: 'Build the perfect itinerary customized to your schedule. Get directions, time estimates, and add notes about each place.'
+      description: 'Build the perfect itinerary customized to your schedule. Get directions, time estimates, and add notes about each place.',
+      value: 'organize_itinerary'
     },
     {
-      label: 'Find unique things to do',
-      description: 'Receive activity recommendations personalized to your interests.'
+      label: 'Discover unique places and activities',
+      description: 'Receive activity recommendations personalized to your interests.',
+      value: 'discovery'
     },
     {
       label: 'Manage trip expenses',
-      description: 'Track costs of each travel expenses to stay within your travel budget.'
+      description: 'Track costs of each travel expenses to stay within your travel budget.',
+      value: 'manage_expenses'
     },
     {
       label: 'Keep all my bookings in one place',
-      description: 'Import your flight, hotel, reservations, and ticket details into your itinerary.'
+      description: 'Import your flight, hotel, reservations, and ticket details into your itinerary.',
+      value: 'organize_bookings'
     },
   ];
 
@@ -192,19 +197,19 @@ export default function UsernameSetup() {
 
   // Toggle activity selection
   const toggleActivity = (value) => {
-    if (selectedActivities.includes(value)) {
-      setSelectedActivities(selectedActivities.filter(item => item !== value));
+    if (activityPreferences.includes(value)) {
+      setActivityPreferences(activityPreferences.filter(item => item !== value));
     } else {
-      setSelectedActivities([...selectedActivities, value]);
+      setActivityPreferences([...activityPreferences, value]);
     }
   };
 
   // Toggle use case selection
-  const toggleUseCase = (label) => {
-    if (selectedUseCases.includes(label)) {
-      setSelectedUseCases(selectedUseCases.filter(item => item !== label));
+  const toggleUseCase = (value) => {
+    if (selectedUseCases.includes(value)) {
+      setSelectedUseCases(selectedUseCases.filter(item => item !== value));
     } else {
-      setSelectedUseCases([...selectedUseCases, label]);
+      setSelectedUseCases([...selectedUseCases, value]);
     }
   };
 
@@ -331,7 +336,9 @@ export default function UsernameSetup() {
               appVersion,
               deviceType: osName,
               modelName,
-              osVersion
+              osVersion,
+              activityPreferences,
+              selectedUseCases
             })
           },
           authMode: 'AMAZON_COGNITO_USER_POOLS'
@@ -699,7 +706,7 @@ export default function UsernameSetup() {
                 <View style={{ marginTop: 40 }}>
                   <View style={styles.activityGrid}>
                     {activityOptions.map((activity) => {
-                      const isSelected = selectedActivities.includes(activity.value);
+                      const isSelected = activityPreferences.includes(activity.value);
                       return (
                         <TouchableOpacity
                           key={activity.value}
@@ -735,15 +742,15 @@ export default function UsernameSetup() {
                 <View style={{ marginTop: 40 }}>
                   <View style={{ gap: 15 }}>
                     {useCaseOptions.map((useCase) => {
-                      const isSelected = selectedUseCases.includes(useCase.label);
+                      const isSelected = selectedUseCases.includes(useCase.value);
                       return (
                         <TouchableOpacity
-                          key={useCase.label}
+                          key={useCase.value}
                           style={[
                             styles.useCaseButton,
                             isSelected && styles.useCaseButtonSelected
                           ]}
-                          onPress={() => toggleUseCase(useCase.label)}
+                          onPress={() => toggleUseCase(useCase.value)}
                         >
                           <Text style={[
                             styles.useCaseLabel,

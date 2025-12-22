@@ -161,6 +161,10 @@ async function createInitialProfile(username, userID) {
     modelName: null,
     osVersion: null,
 
+    // Onboarding preferences
+    activityPreferences: [],
+    selectedUseCases: [],
+
     // Subscription info
     subscriptionTier: 'free',
     subscriptionStartDate: now,
