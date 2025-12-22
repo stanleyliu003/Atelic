@@ -53,6 +53,8 @@ export default function UsernameSetup() {
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().setFullYear(new Date().getFullYear() - 25)));
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [gender, setGender] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [fullName, setFullName] = useState('');
   const [isExternalProvider, setIsExternalProvider] = useState(false);
   const [isAppleUser, setIsAppleUser] = useState(false);
@@ -131,13 +133,20 @@ export default function UsernameSetup() {
 
             if (nameAttr && nameAttr.Value) {
               console.log(`${isApple ? 'Apple' : 'Google'} user name found:`, nameAttr.Value);
+              const nameParts = nameAttr.Value.trim().split(' ');
+              setFirstName(nameParts[0] || '');
+              setLastName(nameParts.slice(1).join(' ') || '');
               setFullName(nameAttr.Value);
             } else if (givenNameAttr && familyNameAttr) {
+              console.log(`${isApple ? 'Apple' : 'Google'} user name constructed from given_name + family_name`);
+              setFirstName(givenNameAttr.Value || '');
+              setLastName(familyNameAttr.Value || '');
               const fullName = `${givenNameAttr.Value} ${familyNameAttr.Value}`.trim();
-              console.log(`${isApple ? 'Apple' : 'Google'} user name constructed from given_name + family_name:`, fullName);
               setFullName(fullName);
             } else if (givenNameAttr && givenNameAttr.Value) {
               console.log(`${isApple ? 'Apple' : 'Google'} user given name only:`, givenNameAttr.Value);
+              setFirstName(givenNameAttr.Value);
+              setLastName('');
               setFullName(givenNameAttr.Value);
             } else {
               console.log(`${isApple ? 'Apple' : 'Google'} user name not found in attributes`);
@@ -206,6 +215,18 @@ export default function UsernameSetup() {
     // Validate all fields first
     if (!username || username.trim().length < 5) {
       setError('Username must be at least 5 characters long.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!firstName || firstName.trim().length < 1) {
+      setError('Please enter your first name.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!lastName || lastName.trim().length < 1) {
+      setError('Please enter your last name.');
       setIsLoading(false);
       return;
     }
@@ -347,9 +368,13 @@ export default function UsernameSetup() {
     setError('');
 
     if (currentPage === 1) {
-      // Validate full name
-      if (!fullName || fullName.trim().length < 2) {
-        setError('Please enter your full name.');
+      // Validate first name and last name
+      if (!firstName || firstName.trim().length < 1) {
+        setError('Please enter your first name.');
+        return;
+      }
+      if (!lastName || lastName.trim().length < 1) {
+        setError('Please enter your last name.');
         return;
       }
       setCurrentPage(2);
@@ -366,6 +391,13 @@ export default function UsernameSetup() {
       }
       setCurrentPage(3);
     } else if (currentPage === 3) {
+      // Validate gender
+      if (!gender) {
+        setError('Please select your gender.');
+        return;
+      }
+      setCurrentPage(4);
+    } else if (currentPage === 4) {
       // Validate username
       if (!username || username.trim().length < 5) {
         setError('Username must be at least 5 characters long.');
@@ -376,19 +408,12 @@ export default function UsernameSetup() {
         setError('Username must be 5-20 characters and contain only letters, numbers, and underscores.');
         return;
       }
-      setCurrentPage(4);
-    } else if (currentPage === 4) {
-      // Validate gender
-      if (!gender) {
-        setError('Please select your gender.');
-        return;
-      }
       setCurrentPage(5);
     } else if (currentPage === 5) {
-      // Activities page - no validation required
+      // Good company page - no validation required
       setCurrentPage(6);
     } else if (currentPage === 6) {
-      // Good company page - no validation required
+      // Activities page - no validation required
       setCurrentPage(7);
     } else if (currentPage === 7) {
       // Use cases page - no validation required
@@ -421,17 +446,17 @@ export default function UsernameSetup() {
 
   const isNextDisabled = () => {
     if (currentPage === 1) {
-      return !fullName || fullName.trim().length < 2;
+      return !firstName || firstName.trim().length < 1 || !lastName || lastName.trim().length < 1;
     } else if (currentPage === 2) {
       return !selectedDate;
     } else if (currentPage === 3) {
-      return !username || username.trim().length < 5 || username.trim().length > 20;
-    } else if (currentPage === 4) {
       return !gender;
+    } else if (currentPage === 4) {
+      return !username || username.trim().length < 5 || username.trim().length > 20;
     } else if (currentPage === 5) {
-      return false; // Activities page - optional
-    } else if (currentPage === 6) {
       return false; // Good company page - no validation
+    } else if (currentPage === 6) {
+      return false; // Activities page - optional
     } else if (currentPage === 7) {
       return false; // Use cases page - optional
     } else if (currentPage === 8) {
@@ -461,7 +486,7 @@ export default function UsernameSetup() {
               <Ionicons name="arrow-back" size={40} color="black" />
             </TouchableOpacity>
 
-            {/* Page 1: Full Name */}
+            {/* Page 1: First Name and Last Name */}
             {currentPage === 1 && (
               <>
                 <Text style={styles.title}>What's your Name?</Text>
@@ -469,19 +494,41 @@ export default function UsernameSetup() {
                   This is how your friends can find you on Atelic.
                 </Text>
 
-                <View style={{ marginTop: 40 }}>
-                  <Text style={styles.label}>Full Name</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter your full name"
-                    value={fullName}
-                    onChangeText={(value) => setFullName(value)}
-                    autoCapitalize="words"
-                    autoCorrect={false}
-                    spellCheck={false}
-                    autoFocus={true}
-                    editable={!isLoading}
-                  />
+                <View style={{ marginTop: 40, gap: 20 }}>
+                  <View>
+                    <Text style={styles.label}>First Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter your first name"
+                      value={firstName}
+                      onChangeText={(value) => {
+                        setFirstName(value);
+                        setFullName(`${value} ${lastName}`.trim());
+                      }}
+                      autoCapitalize="words"
+                      autoCorrect={false}
+                      spellCheck={false}
+                      autoFocus={true}
+                      editable={!isLoading}
+                    />
+                  </View>
+
+                  <View>
+                    <Text style={styles.label}>Last Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter your last name"
+                      value={lastName}
+                      onChangeText={(value) => {
+                        setLastName(value);
+                        setFullName(`${firstName} ${value}`.trim());
+                      }}
+                      autoCapitalize="words"
+                      autoCorrect={false}
+                      spellCheck={false}
+                      editable={!isLoading}
+                    />
+                  </View>
                 </View>
               </>
             )}
@@ -555,38 +602,8 @@ export default function UsernameSetup() {
               </>
             )}
 
-            {/* Page 3: Username */}
+            {/* Page 3: Gender */}
             {currentPage === 3 && (
-              <>
-                <Text style={styles.title}>Choose a Username</Text>
-                <Text style={styles.subtitle}>
-                  Your username will be visible to other Atelic users.
-                </Text>
-
-                <View style={{ marginTop: 40 }}>
-                  <Text style={styles.label}>Username</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter Username (5-20 characters)"
-                    value={username}
-                    onChangeText={(value) => setUsername(value)}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    spellCheck={false}
-                    autoFocus={true}
-                    editable={!isLoading}
-                  />
-                  {username.length > 0 && (username.length < 5 || username.length > 20) && (
-                    <Text style={styles.validationText}>
-                      Username must be between 5-20 characters
-                    </Text>
-                  )}
-                </View>
-              </>
-            )}
-
-            {/* Page 4: Gender */}
-            {currentPage === 4 && (
               <>
                 <Text style={styles.title}>What's your gender?</Text>
                 <Text style={styles.subtitle}>
@@ -628,8 +645,51 @@ export default function UsernameSetup() {
               </>
             )}
 
-            {/* Page 5: Activity Preferences */}
+            {/* Page 4: Username */}
+            {currentPage === 4 && (
+              <>
+                <Text style={styles.title}>Choose a Username</Text>
+                <Text style={styles.subtitle}>
+                  Your username will be visible to other Atelic users.
+                </Text>
+
+                <View style={{ marginTop: 40 }}>
+                  <Text style={styles.label}>Username</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter Username (5-20 characters)"
+                    value={username}
+                    onChangeText={(value) => setUsername(value)}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    spellCheck={false}
+                    autoFocus={true}
+                    editable={!isLoading}
+                  />
+                  {username.length > 0 && (username.length < 5 || username.length > 20) && (
+                    <Text style={styles.validationText}>
+                      Username must be between 5-20 characters
+                    </Text>
+                  )}
+                </View>
+              </>
+            )}
+
+            {/* Page 5: Good Company */}
             {currentPage === 5 && (
+              <>
+                <Text style={styles.imageTitle}>You're in good company</Text>
+                <Text style={styles.imageSubtitle}>Hundreds of travelers plan their trip with Atelic</Text>
+                <ImageBackground
+                  source={require('../../assets/images/friends_traveling3.jpeg')}
+                  style={styles.imageBackground}
+                  imageStyle={styles.backgroundImage}
+                />
+              </>
+            )}
+
+            {/* Page 6: Activity Preferences */}
+            {currentPage === 6 && (
               <>
                 <Text style={styles.title}>What types of activities do you enjoy?</Text>
                 <Text style={styles.subtitle}>
@@ -661,19 +721,6 @@ export default function UsernameSetup() {
                     })}
                   </View>
                 </View>
-              </>
-            )}
-
-            {/* Page 6: Good Company */}
-            {currentPage === 6 && (
-              <>
-                <Text style={styles.imageTitle}>You're in good company</Text>
-                <Text style={styles.imageSubtitle}>Hundreds of travelers plan their trip with Atelic</Text>
-                <ImageBackground
-                  source={require('../../assets/images/friends_traveling3.jpeg')}
-                  style={styles.imageBackground}
-                  imageStyle={styles.backgroundImage}
-                />
               </>
             )}
 
@@ -744,7 +791,7 @@ export default function UsernameSetup() {
                 styles.button,
                 {
                   opacity: isNextDisabled() ? 0.3 : 1,
-                  marginTop: currentPage === 5 ? 0 : 30
+                  marginTop: currentPage === 6 ? 0 : 35
                 }
               ]}
             >
