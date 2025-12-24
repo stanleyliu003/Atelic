@@ -34,7 +34,8 @@
       "Bash(chmod:*)",
       "Bash(/Users/stanleycliu/Desktop/Atelic_App_Dev/Atelic_Stable/clear-all-caches.sh)",
       "Bash(find:*)",
-      "Bash(dig:*)"
+      "Bash(dig:*)",
+      "Bash(aws dynamodb list-tables:*)"
     ],
     "deny": [],
     "ask": [],

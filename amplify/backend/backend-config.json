@@ -375,6 +375,15 @@
             "StreamArn"
           ],
           "category": "storage",
+          "resourceName": "TripOperationsStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
           "resourceName": "TripStorage"
         }
       ],
