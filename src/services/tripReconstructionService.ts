@@ -97,9 +97,25 @@ function applyAddOperation(
   }
 
   // Normal case: Adding activities
-  const activitiesToAdd = Array.isArray(operation.data) ? operation.data : [operation.data];
+  // Check if data has the new shape: { activities: [...], insertAfter: instanceId }
+  const isNewShape = operation.data && typeof operation.data === 'object' && !Array.isArray(operation.data) && operation.data.activities;
+  const activitiesToAdd = isNewShape ? operation.data.activities : (Array.isArray(operation.data) ? operation.data : [operation.data]);
+  const insertAfter = isNewShape ? operation.data.insertAfter : undefined;
 
   if (operation.target === 'wishlist') {
+    // If insertAfter is specified, insert after that activity
+    if (insertAfter) {
+      const insertIndex = state.wishlist.findIndex(a => a.instanceId === insertAfter);
+      if (insertIndex >= 0) {
+        const newWishlist = [...state.wishlist];
+        newWishlist.splice(insertIndex + 1, 0, ...activitiesToAdd);
+        return {
+          ...state,
+          wishlist: newWishlist,
+        };
+      }
+    }
+    // Default: append to end
     return {
       ...state,
       wishlist: [...state.wishlist, ...activitiesToAdd],
@@ -112,6 +128,26 @@ function applyAddOperation(
       encodedPolyline: undefined,
     };
 
+    // If insertAfter is specified, insert after that activity
+    if (insertAfter) {
+      const insertIndex = existingDay.activities.findIndex(a => a.instanceId === insertAfter);
+      if (insertIndex >= 0) {
+        const newActivities = [...existingDay.activities];
+        newActivities.splice(insertIndex + 1, 0, ...activitiesToAdd);
+        return {
+          ...state,
+          dayActivities: {
+            ...state.dayActivities,
+            [dayNumber]: {
+              ...existingDay,
+              activities: newActivities,
+            },
+          },
+        };
+      }
+    }
+
+    // Default: append to end
     return {
       ...state,
       dayActivities: {

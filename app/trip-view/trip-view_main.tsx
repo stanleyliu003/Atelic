@@ -963,7 +963,11 @@ export default function TripViewMain() {
             );
 
             // ✨ NEW: Track operation: add duplicated activity to day
-            const op = createOperation('add', 'day', [duplicatedActivity], targetDayNumber);
+            // Include insertAfter to preserve position (insert after original activity)
+            const op = createOperation('add', 'day', {
+                activities: [duplicatedActivity],
+                insertAfter: activity.instanceId // Insert after this instanceId
+            }, targetDayNumber);
             queueSave(op);
         } else {
             // Duplicate within wishlist – insert directly after the original
@@ -993,7 +997,11 @@ export default function TripViewMain() {
             console.log('[trip-view_main] Activity duplicated in wishlist with instanceId:', duplicatedActivity.instanceId);
 
             // ✨ NEW: Track operation: add duplicated activity to wishlist
-            const op = createOperation('add', 'wishlist', [duplicatedActivity]);
+            // Include insertAfter to preserve position (insert after original activity)
+            const op = createOperation('add', 'wishlist', {
+                activities: [duplicatedActivity],
+                insertAfter: activity.instanceId // Insert after this instanceId
+            });
             queueSave(op);
         }
     }, [getDayActivities, reorderDayActivities, updateActivities, createOperation, queueSave]);
