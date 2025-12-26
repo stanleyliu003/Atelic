@@ -407,11 +407,13 @@ export default function TripViewMain() {
                         addActivitiesToWishlist(transferredActivities, true);
 
                         // ✨ NEW: Track operation: move activities to wishlist (atomic shape)
-                        transferredActivities.forEach(activity => {
+                        // Include insertIndex to preserve order during reconstruction
+                        transferredActivities.forEach((activity, index) => {
                             const op = createOperation('move', 'wishlist', {
                                 activity: activity,
                                 fromLocation: sourceLocation,
-                                toLocation: 'wishlist'
+                                toLocation: 'wishlist',
+                                insertIndex: index // Position in the transferred batch (0-based)
                             });
                             queueSave(op);
                         });
@@ -1278,11 +1280,13 @@ export default function TripViewMain() {
                 updateActivities(deduplicatedActivities);
 
                 // ✨ NEW: Track moving activities back to wishlist (using atomic shape with full activity)
-                deletedDayActivities.forEach((activity: Activity) => {
+                // Include insertIndex to preserve order during reconstruction
+                deletedDayActivities.forEach((activity: Activity, index: number) => {
                     const op = createOperation('move', 'wishlist', {
                         activity: activity,
                         fromLocation: dayToDelete,
-                        toLocation: 'wishlist'
+                        toLocation: 'wishlist',
+                        insertIndex: index // Position in the deleted day's activity list (0-based)
                     });
                     queueSave(op);
                 });

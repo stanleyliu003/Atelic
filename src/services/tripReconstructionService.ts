@@ -381,7 +381,8 @@ function applyMoveOperation(
     curState: ReconstructedTripState,
     activity: Activity,
     fromLocation: 'wishlist' | number,
-    toLocation: 'wishlist' | number
+    toLocation: 'wishlist' | number,
+    insertIndex?: number
   ): ReconstructedTripState => {
     let newState: ReconstructedTripState = {
       wishlist: [...curState.wishlist],
@@ -414,8 +415,16 @@ function applyMoveOperation(
         (act) => act.instanceId === activity.instanceId
       );
       if (!existsInWishlist) {
-        // Prepend to top of wishlist when transferring from days
-        newState.wishlist = [activity, ...newState.wishlist];
+        // If insertIndex is provided, insert at that specific position
+        // This preserves order when multiple activities are moved as a batch
+        if (insertIndex !== undefined) {
+          const newWishlist = [...newState.wishlist];
+          newWishlist.splice(insertIndex, 0, activity);
+          newState.wishlist = newWishlist;
+        } else {
+          // No index specified - prepend to top (default behavior)
+          newState.wishlist = [activity, ...newState.wishlist];
+        }
       }
     } else {
       const toDay = newState.dayActivities[toLocation] || {
@@ -444,7 +453,7 @@ function applyMoveOperation(
 
   // NEW SHAPE: activity + fromLocation/toLocation present
   if (data && data.activity && data.fromLocation !== undefined && data.toLocation !== undefined) {
-    return moveActivity(state, data.activity, data.fromLocation, data.toLocation);
+    return moveActivity(state, data.activity, data.fromLocation, data.toLocation, data.insertIndex);
   }
 
   // LEGACY SHAPE: instanceId + fromDay/fromWishlist
@@ -511,7 +520,7 @@ function applyMoveOperation(
     return state;
   }
 
-  return moveActivity(state, activity, fromLocation, toLocation);
+  return moveActivity(state, activity, fromLocation, toLocation, undefined);
 }
 
 /**
