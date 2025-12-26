@@ -414,7 +414,8 @@ function applyMoveOperation(
         (act) => act.instanceId === activity.instanceId
       );
       if (!existsInWishlist) {
-        newState.wishlist = [...newState.wishlist, activity];
+        // Prepend to top of wishlist when transferring from days
+        newState.wishlist = [activity, ...newState.wishlist];
       }
     } else {
       const toDay = newState.dayActivities[toLocation] || {

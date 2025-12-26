@@ -89,7 +89,6 @@ export default function TripViewMain() {
         cityCategories,
         generateActivitiesForCategory,
         categoryActivities,
-        addToWishlist,
         recentSearches,
         selectedCityLocation,
     } = useCreateTrip();
@@ -214,6 +213,9 @@ export default function TripViewMain() {
 
     // Track if we're currently syncing operations (prevent concurrent syncs)
     const isSyncingOperationsRef = useRef<boolean>(false);
+
+    // Track if a sync was requested while another sync was in progress
+    const pendingSyncRef = useRef<boolean>(false);
 
     // Track if we're applying remote operations (disable autosave during sync)
     const isApplyingRemoteOperationsRef = useRef<boolean>(false);
@@ -384,28 +386,32 @@ export default function TripViewMain() {
             const selectedActivitiesList = getSelectedActivities(getActivitiesForTab(activeTab));
 
             if (selectedActivitiesList.length > 0) {
+                // Determine source location (for move operations)
+                let sourceLocation: 'wishlist' | number = 'wishlist';
+                if (activeTab.startsWith('day')) {
+                    sourceLocation = parseInt(activeTab.replace('day', ''));
+                }
+
                 // Transfer to the selected tab
                 if (tab === 'wishlist') {
                     // Transfer to wishlist from the current day
-                    let currentDayNumber = 1;
-                    if (activeTab.startsWith('day')) {
-                        currentDayNumber = parseInt(activeTab.replace('day', ''));
-                    }
+                    const currentDayNumber = typeof sourceLocation === 'number' ? sourceLocation : 1;
                     const activityIds = selectedActivitiesList
                         .map(a => a.instanceId)
                         .filter((id): id is string => typeof id === 'string');
 
                     const transferredActivities = transferActivitiesToWishlist(activityIds, currentDayNumber);
 
-                    // Add the transferred activities back to the wishlist
+                    // Add the transferred activities back to the wishlist (prepend to top)
                     if (transferredActivities.length > 0) {
-                        addActivitiesToWishlist(transferredActivities);
+                        addActivitiesToWishlist(transferredActivities, true);
 
-                        // ✨ NEW: Track operation: move activities to wishlist
+                        // ✨ NEW: Track operation: move activities to wishlist (atomic shape)
                         transferredActivities.forEach(activity => {
                             const op = createOperation('move', 'wishlist', {
-                                instanceId: activity.instanceId,
-                                fromDay: currentDayNumber
+                                activity: activity,
+                                fromLocation: sourceLocation,
+                                toLocation: 'wishlist'
                             });
                             queueSave(op);
                         });
@@ -415,11 +421,12 @@ export default function TripViewMain() {
                     const dayNumber = parseInt(tab.replace('day', ''));
                     transferActivitiesToDay(selectedActivitiesList, dayNumber);
 
-                    // ✨ NEW: Track operation: move activities to day
+                    // ✨ NEW: Track operation: move activities to day (atomic shape)
                     selectedActivitiesList.forEach((activity: Activity) => {
                         const op = createOperation('move', 'day', {
-                            instanceId: activity.instanceId,
-                            fromWishlist: activeTab === 'wishlist'
+                            activity: activity,
+                            fromLocation: sourceLocation,
+                            toLocation: dayNumber
                         }, dayNumber);
                         queueSave(op);
                     });
@@ -697,7 +704,8 @@ export default function TripViewMain() {
      */
     const syncNewOperations = useCallback(async () => {
         if (isSyncingOperationsRef.current) {
-            console.log('[syncNewOperations] Already syncing - skipping');
+            console.log('[syncNewOperations] Already syncing - marking pending sync');
+            pendingSyncRef.current = true;
             return;
         }
 
@@ -712,6 +720,7 @@ export default function TripViewMain() {
         }
 
         isSyncingOperationsRef.current = true;
+        pendingSyncRef.current = false; // Clear pending flag as we're starting a sync
         const syncStartTime = Date.now();
 
         try {
@@ -734,8 +743,23 @@ export default function TripViewMain() {
             );
 
             if (newOperations.length === 0) {
+                // Debug: check why no operations passed the filter
+                const newerOps = allOperations.filter(op => op.timestamp > lastProcessedOperationTimestampRef.current);
+                const ownOpsFiltered = newerOps.filter(op => op.userId === currentUserID);
+                const alreadyApplied = newerOps.filter(op => op.userId !== currentUserID && appliedOperationIdsRef.current.has(op.opId));
                 console.log('[syncNewOperations] ✅ No new operations to sync');
+                console.log('[syncNewOperations] Debug - newer ops:', newerOps.length, 'own ops filtered:', ownOpsFiltered.length, 'already applied:', alreadyApplied.length);
                 isSyncingOperationsRef.current = false;
+
+                // Check if there's a pending sync request
+                if (pendingSyncRef.current) {
+                    console.log('[syncNewOperations] Pending sync detected after no-op - triggering now');
+                    pendingSyncRef.current = false;
+                    // Use setTimeout to avoid recursion and let the call stack clear
+                    setTimeout(() => {
+                        syncNewOperations();
+                    }, 0);
+                }
                 return;
             }
 
@@ -772,6 +796,11 @@ export default function TripViewMain() {
 
             console.log('[syncNewOperations] Updated state - wishlist:', updatedState.wishlist.length, 'days:', Object.keys(updatedState.dayActivities).length);
 
+            // Check if any day deletions occurred that affect the current active tab
+            const dayDeletions = newOperations.filter(
+                op => op.type === 'remove' && op.target === 'day' && (op.data as any)?.action === 'deleteDay'
+            );
+
             // 5. Update local state with reconstructed data
             // CRITICAL: Set flag to prevent createOperation from firing during state updates
             isApplyingRemoteOperationsRef.current = true;
@@ -791,6 +820,45 @@ export default function TripViewMain() {
                     );
                     // Replace the entire dayActivities map to ensure deletes/renumbering are applied
                     setDayActivities(updatedState.dayActivities as any);
+
+                    // Handle tab switching if days were deleted
+                    if (dayDeletions.length > 0 && activeTab.startsWith('day')) {
+                        const currentDayNumber = parseInt(activeTab.replace('day', ''));
+
+                        // Find if any deleted day affects our current tab
+                        // Days are deleted in order, and subsequent days are renumbered
+                        let deletedDaysBefore = 0;
+                        let currentDayWasDeleted = false;
+
+                        dayDeletions.forEach(delOp => {
+                            const deletedDayNum = delOp.dayNumber;
+                            if (deletedDayNum === currentDayNumber) {
+                                currentDayWasDeleted = true;
+                            } else if (deletedDayNum && deletedDayNum < currentDayNumber) {
+                                deletedDaysBefore++;
+                            }
+                        });
+
+                        const remainingDays = Object.keys(updatedState.dayActivities).length;
+
+                        if (currentDayWasDeleted) {
+                            // Our current day was deleted - switch to appropriate tab
+                            console.log('[syncNewOperations] Current day', currentDayNumber, 'was deleted - switching tab');
+
+                            if (remainingDays === 0 || currentDayNumber === 1) {
+                                // If no days left or day 1 was deleted, go to wishlist
+                                setActiveTab('wishlist');
+                            } else {
+                                // Go to the previous day (after renumbering)
+                                setActiveTab(`day${currentDayNumber - 1}`);
+                            }
+                        } else if (deletedDaysBefore > 0) {
+                            // Days before us were deleted, so we've been renumbered
+                            const newDayNumber = currentDayNumber - deletedDaysBefore;
+                            console.log('[syncNewOperations] Current day renumbered from', currentDayNumber, 'to', newDayNumber);
+                            setActiveTab(`day${newDayNumber}`);
+                        }
+                    }
                 }
 
             } finally {
@@ -816,13 +884,24 @@ export default function TripViewMain() {
             console.error('[syncNewOperations] ❌ Sync failed:', error);
         } finally {
             isSyncingOperationsRef.current = false;
+
+            // If a sync was requested while we were processing, trigger it now
+            if (pendingSyncRef.current) {
+                console.log('[syncNewOperations] Pending sync detected - triggering now');
+                // Use setTimeout to avoid recursion and let the call stack clear
+                setTimeout(() => {
+                    syncNewOperations();
+                }, 0);
+            }
         }
     }, [tripId, currentUserID, activities, dayActivities, updateActivities]);
 
     // Function to add activities back to the wishlist
-    const addActivitiesToWishlist = (newActivities: Activity[]) => {
-        // Combine existing activities first, then new ones (append to end - matches remote behavior)
-        const combinedActivities = [...(activities || []), ...newActivities];
+    const addActivitiesToWishlist = (newActivities: Activity[], prependToTop: boolean = false) => {
+        // Combine activities - prepend to top if transferring from days, append to end if adding new
+        const combinedActivities = prependToTop
+            ? [...newActivities, ...(activities || [])]
+            : [...(activities || []), ...newActivities];
         const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
             // Use instanceId for deduplication (allows duplicate places with different instanceIds)
             if (!activity.instanceId) return true; // Keep activities without instanceId (backward compat)
@@ -1184,9 +1263,10 @@ export default function TripViewMain() {
             // Delete the day and get its activities to move back to wishlist
             const deletedDayActivities = deleteDayAndRenumber(dayToDelete);
 
-            // Add deleted day activities back to wishlist (with deduplication)
+            // Add deleted day activities back to wishlist at the top (with deduplication)
             if (deletedDayActivities.length > 0) {
-                const combinedActivities = [...(activities || []), ...deletedDayActivities];
+                // Prepend to top of wishlist
+                const combinedActivities = [...deletedDayActivities, ...(activities || [])];
 
                 // Remove duplicates based on instanceId
                 const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
@@ -1197,11 +1277,12 @@ export default function TripViewMain() {
 
                 updateActivities(deduplicatedActivities);
 
-                // ✨ NEW: Track moving activities back to wishlist
+                // ✨ NEW: Track moving activities back to wishlist (using atomic shape with full activity)
                 deletedDayActivities.forEach((activity: Activity) => {
                     const op = createOperation('move', 'wishlist', {
-                        instanceId: activity.instanceId,
-                        fromDay: dayToDelete
+                        activity: activity,
+                        fromLocation: dayToDelete,
+                        toLocation: 'wishlist'
                     });
                     queueSave(op);
                 });
@@ -1525,9 +1606,10 @@ export default function TripViewMain() {
         }
 
         // Add newly selected activities
+        // FIXED: Use addActivitiesToWishlist directly (which tracks operations)
+        // instead of context's addToWishlist (which bypasses operation tracking)
         if (selectedActivities.length > 0) {
-            addToWishlist(selectedActivities);
-            // Note: addToWishlist calls addActivitiesToWishlist which already tracks operations
+            addActivitiesToWishlist(selectedActivities);
         }
 
         setShowCategoryModal(false);

@@ -98,10 +98,10 @@ export async function saveOperation(operation: Operation): Promise<boolean> {
 }
 
 /**
- * List all operations for a trip via GraphQL
+ * List all operations for a trip via GraphQL with pagination
  * @param tripID The trip ID
- * @param limit Maximum number of operations to retrieve (default: 1000)
- * @returns Promise<Operation[]> Array of operations sorted by timestamp
+ * @param limit Maximum number of operations to retrieve per page (default: 1000)
+ * @returns Promise<Operation[]> Array of ALL operations sorted by timestamp
  */
 export async function listOperations(
   tripID: string,
@@ -110,14 +110,26 @@ export async function listOperations(
   try {
     console.log('[tripOperationsService] Listing operations for trip via GraphQL:', tripID);
 
-    const result: any = await API.graphql(
-      graphqlOperation(listOperationsByTrip, { tripID, limit })
-    );
+    let allItems: any[] = [];
+    let nextToken: string | null = null;
+    let pageCount = 0;
 
-    const items = result.data?.listOperationsByTrip?.items || [];
+    // Paginate through all results
+    do {
+      pageCount++;
+      const result: any = await API.graphql(
+        graphqlOperation(listOperationsByTrip, { tripID, limit, nextToken })
+      );
+
+      const items = result.data?.listOperationsByTrip?.items || [];
+      allItems = allItems.concat(items);
+      nextToken = result.data?.listOperationsByTrip?.nextToken || null;
+
+      console.log('[tripOperationsService] Fetched page', pageCount, ':', items.length, 'operations');
+    } while (nextToken);
 
     // Parse operationData JSON and sort by timestamp (and sequenceNumber if same timestamp)
-    const operations = items
+    const operations = allItems
       .map((item: any) => {
         try {
           return JSON.parse(item.operationData) as Operation;
@@ -136,7 +148,7 @@ export async function listOperations(
         return a.sequenceNumber - b.sequenceNumber;
       });
 
-    console.log('[tripOperationsService] ✅ Loaded', operations.length, 'operations via GraphQL');
+    console.log('[tripOperationsService] ✅ Loaded', operations.length, 'operations via GraphQL (', pageCount, 'pages)');
 
     return operations;
   } catch (error: any) {
