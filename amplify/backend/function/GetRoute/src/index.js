@@ -189,7 +189,7 @@ const getSingleModeRoute = async (waypoints, travelMode) => {
 };
 
 // Function to get route between multiple points using Google Routes API with separate polyline and distance logic
-const getRoute = async (waypoints) => {
+const getRoute = async (waypoints, requestedTravelMode = null) => {
     if (!apiKey) {
         throw new Error('GOOGLE_PLACES_API_KEY environment variable not set');
     }
@@ -198,13 +198,47 @@ const getRoute = async (waypoints) => {
         throw new Error('At least 2 waypoints are required');
     }
 
+    // If specific travel mode requested, use only that mode
+    if (requestedTravelMode) {
+        console.log(`Calculating route with specific travel mode: ${requestedTravelMode}`);
+        try {
+            const result = await getSingleModeRoute(waypoints, requestedTravelMode);
+            if (result && result.routes && result.routes.length > 0) {
+                return {
+                    ...result,
+                    usedTravelMode: requestedTravelMode,
+                    polylineTravelMode: requestedTravelMode,
+                    distanceTravelMode: requestedTravelMode
+                };
+            }
+
+            // If failed with 3+ waypoints for TRANSIT, try segment-based
+            if (requestedTravelMode === 'TRANSIT' && waypoints.length > 2) {
+                console.log('Trying segment-based route for TRANSIT with 3+ waypoints');
+                const segmentResult = await getSegmentBasedRoute(waypoints, requestedTravelMode);
+                return {
+                    ...segmentResult,
+                    usedTravelMode: requestedTravelMode,
+                    polylineTravelMode: requestedTravelMode,
+                    distanceTravelMode: requestedTravelMode
+                };
+            }
+
+            throw new Error(`Route not available for ${requestedTravelMode} mode`);
+        } catch (error) {
+            console.error(`Failed to calculate route with ${requestedTravelMode}:`, error.message);
+            throw new Error(`Route not available for ${requestedTravelMode} mode`);
+        }
+    }
+
+    // Original dual calculation logic when no specific mode requested
     console.log('Starting dual route calculation: polyline (WALK priority) and distance (DRIVE priority)');
-    
+
     let polylineResult = null;
     let distanceResult = null;
     let polylineTravelMode = null;
     let distanceTravelMode = null;
-    
+
     // Try to get polyline route (prioritizing WALK)
     try {
         polylineResult = await getRouteForPolyline(waypoints);
@@ -213,7 +247,7 @@ const getRoute = async (waypoints) => {
     } catch (polylineError) {
         console.log('Failed to get polyline route:', polylineError.message);
     }
-    
+
     // Try to get distance/time route (prioritizing DRIVE)
     try {
         distanceResult = await getRouteForDistance(waypoints);
@@ -222,12 +256,12 @@ const getRoute = async (waypoints) => {
     } catch (distanceError) {
         console.log('Failed to get distance/time route:', distanceError.message);
     }
-    
+
     // Handle fallbacks
     if (!polylineResult && !distanceResult) {
         throw new Error('Failed to calculate route with any travel mode for both polyline and distance data');
     }
-    
+
     if (!polylineResult) {
         console.log('Using distance route data for polyline fallback');
         polylineResult = distanceResult;
@@ -620,8 +654,14 @@ exports.handler = async (event) => {
             }
         }
 
+        // Extract travelMode from first waypoint if provided
+        const requestedMode = waypoints[0]?.travelMode || null;
+        if (requestedMode) {
+            console.log('Requested travel mode:', requestedMode);
+        }
+
         // Get the route
-        const routeData = await getRoute(waypoints);
+        const routeData = await getRoute(waypoints, requestedMode);
         console.log('GOOGLE ROUTES API RESPONSE:', JSON.stringify(routeData));
         
         // Extract the relevant information

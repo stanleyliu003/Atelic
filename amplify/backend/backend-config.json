@@ -375,6 +375,15 @@
             "StreamArn"
           ],
           "category": "storage",
+          "resourceName": "TripOperationsStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
           "resourceName": "TripStorage"
         }
       ],
@@ -868,6 +877,10 @@
   },
   "storage": {
     "PlacesAPIActivityStorage": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    },
+    "TripOperationsStorage": {
       "providerPlugin": "awscloudformation",
       "service": "DynamoDB"
     },
