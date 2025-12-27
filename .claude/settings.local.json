@@ -33,7 +33,12 @@
       "Bash(node:*)",
       "Bash(dig:*)",
       "Bash(nslookup:*)",
-      "Bash(host:*)"
+      "Bash(host:*)",
+      "Bash(AMPLIFY_ENV=production node:*)",
+      "Bash(chmod:*)",
+      "Bash(ls:*)",
+      "Bash(amplify/hooks/post-push.sh)",
+      "Bash(amplify/hooks/post-pull.sh)"
     ],
     "deny": [],
     "ask": [],
