@@ -1,6 +1,18 @@
 [
   {
-    "Action": [],
-    "Resource": []
+    "Action": [
+      "dynamodb:ListTables"
+    ],
+    "Resource": ["*"]
+  },
+  {
+    "Action": [
+      "dynamodb:Query",
+      "dynamodb:GetItem"
+    ],
+    "Resource": [
+      "arn:aws:dynamodb:*:*:table/TripOperation-*",
+      "arn:aws:dynamodb:*:*:table/TripOperation-*/index/byTripID"
+    ]
   }
 ]
