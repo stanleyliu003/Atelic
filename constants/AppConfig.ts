@@ -23,8 +23,8 @@ const getCurrentEnv = (): 'dev' | 'staging' | 'prod' => {
  */
 const MINIMUM_VERSIONS_BY_ENV = {
   dev: { ios: '1.0.0', android: '1.0.0' },     // No restrictions in dev
-  staging: { ios: '1.0.3', android: '1.0.3' }, // Test update flow
-  prod: { ios: '1.0.3', android: '1.0.3' },    // Enforce in production
+  staging: { ios: '1.0.4', android: '1.0.4' }, // Test update flow
+  prod: { ios: '1.0.4', android: '1.0.4' },    // Enforce in production
 };
 
 /**
