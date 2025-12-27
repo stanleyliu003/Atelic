@@ -372,6 +372,75 @@ function applyMoveOperation(state, operation) {
 }
 
 /**
+ * Validate that an activity has all required fields according to GraphQL schema
+ * @param {Object} activity - The activity to validate
+ * @returns {boolean} True if activity is valid
+ */
+function isValidActivity(activity) {
+  // According to schema.graphql line 12, 'name' is required (String!)
+  if (!activity || typeof activity.name !== 'string' || activity.name.trim() === '') {
+    console.warn('[isValidActivity] Invalid activity - missing or empty name:', activity);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Clean trip state by removing invalid activities
+ * @param {Object} state - The trip state to clean
+ * @returns {Object} Cleaned trip state
+ */
+function cleanTripState(state) {
+  const beforeWishlistCount = state.wishlist?.length || 0;
+  const beforeDaysCount = state.days?.reduce((sum, day) => sum + (day.activities?.length || 0), 0) || 0;
+
+  // Filter out invalid activities from wishlist
+  const cleanedWishlist = (state.wishlist || []).filter(activity => {
+    const valid = isValidActivity(activity);
+    if (!valid) {
+      console.warn('[cleanTripState] Removing invalid activity from wishlist:', {
+        instanceId: activity?.instanceId,
+        name: activity?.name,
+        place_id: activity?.place_id
+      });
+    }
+    return valid;
+  });
+
+  // Filter out invalid activities from days
+  const cleanedDays = (state.days || []).map(day => ({
+    ...day,
+    activities: (day.activities || []).filter(activity => {
+      const valid = isValidActivity(activity);
+      if (!valid) {
+        console.warn('[cleanTripState] Removing invalid activity from day', day.dayNumber, ':', {
+          instanceId: activity?.instanceId,
+          name: activity?.name,
+          place_id: activity?.place_id
+        });
+      }
+      return valid;
+    })
+  }));
+
+  const afterWishlistCount = cleanedWishlist.length;
+  const afterDaysCount = cleanedDays.reduce((sum, day) => sum + day.activities.length, 0);
+
+  if (beforeWishlistCount !== afterWishlistCount || beforeDaysCount !== afterDaysCount) {
+    console.log('[cleanTripState] ⚠️  Cleaned trip state:', {
+      wishlist: { before: beforeWishlistCount, after: afterWishlistCount, removed: beforeWishlistCount - afterWishlistCount },
+      days: { before: beforeDaysCount, after: afterDaysCount, removed: beforeDaysCount - afterDaysCount }
+    });
+  }
+
+  return {
+    ...state,
+    wishlist: cleanedWishlist,
+    days: cleanedDays
+  };
+}
+
+/**
  * Reconstruct trip state by applying operations on top of snapshot
  * @param {Object} snapshot - The trip snapshot from Trips table
  * @param {Array} operations - Array of operations to apply
@@ -379,7 +448,8 @@ function applyMoveOperation(state, operation) {
  */
 function reconstructTripFromOperations(snapshot, operations) {
   if (!operations || operations.length === 0) {
-    return snapshot; // No new operations, return snapshot as-is
+    // Even without operations, clean the snapshot to remove invalid activities
+    return cleanTripState(snapshot);
   }
 
   console.log('[reconstructTripFromOperations] Applying', operations.length, 'operations on top of snapshot');
@@ -395,11 +465,14 @@ function reconstructTripFromOperations(snapshot, operations) {
     state = applyOperation(state, operation);
   }
 
+  // Clean the state before merging back
+  const cleanedState = cleanTripState(state);
+
   // Merge back into snapshot structure
   return {
     ...snapshot,
-    wishlist: state.wishlist,
-    days: state.days
+    wishlist: cleanedState.wishlist,
+    days: cleanedState.days
   };
 }
 
