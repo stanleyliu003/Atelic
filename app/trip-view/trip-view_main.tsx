@@ -16,14 +16,20 @@ import { CategoryModal } from '../../src/components/explore/CategoryModal';
 import { useActivitySelection } from '../../src/hooks/use_activity_selection';
 import { useDayActivities } from '../../src/hooks/use_day_activities';
 import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
-import { fetchRoutePolyline, RouteData } from '../../src/services/getRoute_graphQL_call';
+import { fetchRoutePolyline, fetchRoutePolylineWithMode, RouteData } from '../../src/services/getRoute_graphQL_call';
 import { optimizeRouteWithHaversine } from '../../src/components/trip-view/logic/optimize_route';
-import { Activity, TabType } from '../../src/types/activity.types';
+import { Activity, TabType, TravelMode, EnhancedRouteLeg, RouteLegModeData } from '../../src/types/activity.types';
+import TransportationSettingsModal from '../../src/components/trip-view/transportation_settings_modal';
+import { decodePolyline } from '../../src/utils/polyline';
 import { API, Auth, graphqlOperation } from 'aws-amplify';
 import { createTrip } from '../../src/graphql/mutations';
+import { onCreateTripOperation } from '../../src/graphql/subscriptions';
 import { retrieveTripFromCloud } from '../../src/services/lambdaService';
 import Entypo from '@expo/vector-icons/Entypo';
 import { duplicateActivity } from '../../src/utils/activityInstanceId';
+import { Operation } from '../../src/types/operation.types';
+import { saveOperation, listOperations } from '../../src/services/tripOperationsService';
+import { verifyStateReconstruction, applyOperation, ReconstructedTripState } from '../../src/services/tripReconstructionService';
 
 // GraphQL subscription for real-time trip updates
 const onTripUpdated = /* GraphQL */ `
@@ -36,6 +42,7 @@ const onTripUpdated = /* GraphQL */ `
             collaborators {
                 email
                 fullName
+                username
                 userID
                 role
                 addedBy
@@ -57,9 +64,11 @@ export default function TripViewMain() {
         tripId,
         wishlistText,
         dayPolylines,
+        dayTravelModes,
         updateActivities,
         setTripId,
         restoreTripFromObject,
+        setDayActivities,
         createdAt,
         setCreatedAt,
         startDate,
@@ -83,7 +92,6 @@ export default function TripViewMain() {
         cityCategories,
         generateActivitiesForCategory,
         categoryActivities,
-        addToWishlist,
         recentSearches,
         selectedCityLocation,
     } = useCreateTrip();
@@ -124,6 +132,12 @@ export default function TripViewMain() {
     const [dayScrollPositions, setDayScrollPositions] = useState<{ [key: number]: number }>({});
     const [shouldRestoreScrollPositions, setShouldRestoreScrollPositions] = useState<{ [key: number]: boolean }>({});
 
+    // State for transportation settings modal
+    const [settingsModalVisible, setSettingsModalVisible] = useState(false);
+    const [selectedLegIndex, setSelectedLegIndex] = useState<number | null>(null);
+    const [modalOriginActivity, setModalOriginActivity] = useState<Activity | undefined>(undefined);
+    const [modalDestinationActivity, setModalDestinationActivity] = useState<Activity | undefined>(undefined);
+
     // State for draggable bottom section with 3 discrete states
     const screenHeight = Dimensions.get('window').height;
     const MIN_HEIGHT = 0.30; // 30% of screen height (minimum)
@@ -160,26 +174,63 @@ export default function TripViewMain() {
     // Ref for immediate tripID access (avoids async state update issues)
     const tripIdRef = useRef(tripId);
 
-    // Version ref for immediate access (avoids async state issues)
-    const versionRef = useRef<number>(version);
+    // ===== REMOVED: Version-based autosave refs =====
+    // - versionRef: No longer using optimistic locking
+    // - autosaveIntervalRef: Removed 5-minute periodic autosave
+    // - saveDebounceTimeoutRef: Not needed with operation-based saves
 
-    // Autosave interval ref
-    const autosaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-    // Track last save time to prevent duplicate rapid-fire saves
+    // Track last save time to prevent duplicate rapid-fire saves (still used for background save)
     const lastSaveTimeRef = useRef<number>(0);
 
-    // Minimum time between autosaves (in milliseconds) - 5 seconds
+    // Minimum time between autosaves (in milliseconds) - 5 seconds (still used for background save)
     const MIN_AUTOSAVE_INTERVAL = 5000;
-
-    // Debounce timeout for state-change-triggered saves
-    const saveDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Track if currently reloading from subscription to prevent autosave
     const isReloadingRef = useRef(false);
 
     // Track screen focus state for subscription management
     const [isScreenFocused, setIsScreenFocused] = useState(true);
+
+    // ===== OPERATION TRACKING STATE (Stage 1) =====
+    // Operation log for tracking changes
+    const operationLogRef = useRef<Operation[]>([]);
+
+    // Sequence counter for deterministic ordering
+    const operationSequenceRef = useRef<number>(0);
+
+    // Maximum operation log size to prevent memory exhaustion
+    const MAX_OPERATION_LOG_SIZE = 1000;
+    const MAX_APPLIED_OPERATIONS = 100;
+
+    // Save queue for batching operations (100-300ms coalescing)
+    const saveQueueRef = useRef<{
+        operations: Operation[];
+        timeoutId: NodeJS.Timeout | null;
+        isProcessing: boolean;
+    }>({
+        operations: [],
+        timeoutId: null,
+        isProcessing: false,
+    });
+
+    // Track if we're currently capturing operations (prevent during restore)
+    const isCapturingOperations = useRef(true);
+
+    // ===== OPERATION SYNC STATE (Stage 3) =====
+    // Track last operation timestamp we've processed from other users
+    const lastProcessedOperationTimestampRef = useRef<number>(0);
+
+    // Track if we're currently syncing operations (prevent concurrent syncs)
+    const isSyncingOperationsRef = useRef<boolean>(false);
+
+    // Track if a sync was requested while another sync was in progress
+    const pendingSyncRef = useRef<boolean>(false);
+
+    // Track if we're applying remote operations (disable autosave during sync)
+    const isApplyingRemoteOperationsRef = useRef<boolean>(false);
+
+    // Track which remote operations we've already applied (per opId) to prevent duplicates
+    const appliedOperationIdsRef = useRef<Set<string>>(new Set());
 
     // Keep tripIdRef in sync with tripId state
     useEffect(() => {
@@ -212,11 +263,8 @@ export default function TripViewMain() {
         }, [])
     );
 
-    // Keep versionRef in sync with context version
-    useEffect(() => {
-        versionRef.current = version;
-        console.log('[trip-view_main] Version ref synced:', version);
-    }, [version]);
+    // ===== REMOVED: versionRef sync =====
+    // No longer tracking versions - using operation-based architecture
 
     // Handler for scroll position changes
     const handleScrollPositionChange = (dayNumber: number, position: number) => {
@@ -302,6 +350,7 @@ export default function TripViewMain() {
         activities,
         dayActivities,
         dayPolylines,
+        dayTravelModes,
         tripLength,
         selectedCity,
         tripPhotoReference,
@@ -315,13 +364,14 @@ export default function TripViewMain() {
             activities,
             dayActivities,
             dayPolylines,
+            dayTravelModes,
             tripLength,
             selectedCity,
             tripPhotoReference,
             createdAt,
             recentSearches,
         };
-    }, [activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt, recentSearches]);
+    }, [activities, dayActivities, dayPolylines, dayTravelModes, tripLength, selectedCity, tripPhotoReference, createdAt, recentSearches]);
 
     // Initialize days based on tripLength (only for new trips, not existing ones)
     const [hasInitialized, setHasInitialized] = useState(false);
@@ -347,27 +397,52 @@ export default function TripViewMain() {
             const selectedActivitiesList = getSelectedActivities(getActivitiesForTab(activeTab));
 
             if (selectedActivitiesList.length > 0) {
+                // Determine source location (for move operations)
+                let sourceLocation: 'wishlist' | number = 'wishlist';
+                if (activeTab.startsWith('day')) {
+                    sourceLocation = parseInt(activeTab.replace('day', ''));
+                }
+
                 // Transfer to the selected tab
                 if (tab === 'wishlist') {
                     // Transfer to wishlist from the current day
-                    let currentDayNumber = 1;
-                    if (activeTab.startsWith('day')) {
-                        currentDayNumber = parseInt(activeTab.replace('day', ''));
-                    }
+                    const currentDayNumber = typeof sourceLocation === 'number' ? sourceLocation : 1;
                     const activityIds = selectedActivitiesList
                         .map(a => a.instanceId)
                         .filter((id): id is string => typeof id === 'string');
 
                     const transferredActivities = transferActivitiesToWishlist(activityIds, currentDayNumber);
 
-                    // Add the transferred activities back to the wishlist
+                    // Add the transferred activities back to the wishlist (prepend to top)
                     if (transferredActivities.length > 0) {
-                        addActivitiesToWishlist(transferredActivities);
+                        addActivitiesToWishlist(transferredActivities, true);
+
+                        // ✨ NEW: Track operation: move activities to wishlist (atomic shape)
+                        // Include insertIndex to preserve order during reconstruction
+                        transferredActivities.forEach((activity, index) => {
+                            const op = createOperation('move', 'wishlist', {
+                                activity: activity,
+                                fromLocation: sourceLocation,
+                                toLocation: 'wishlist',
+                                insertIndex: index // Position in the transferred batch (0-based)
+                            });
+                            queueSave(op);
+                        });
                     }
                 } else if (tab.startsWith('day')) {
                     // Transfer to the selected day
                     const dayNumber = parseInt(tab.replace('day', ''));
                     transferActivitiesToDay(selectedActivitiesList, dayNumber);
+
+                    // ✨ NEW: Track operation: move activities to day (atomic shape)
+                    selectedActivitiesList.forEach((activity: Activity) => {
+                        const op = createOperation('move', 'day', {
+                            activity: activity,
+                            fromLocation: sourceLocation,
+                            toLocation: dayNumber
+                        }, dayNumber);
+                        queueSave(op);
+                    });
                 }
 
                 // Clear selection after transfer
@@ -428,18 +503,430 @@ export default function TripViewMain() {
         }
     };
 
+    // ===== OPERATION TRACKING FUNCTIONS (Stage 1) =====
+
+    /**
+     * Create a new operation with validation
+     */
+    const createOperation = useCallback((
+        type: Operation['type'],
+        target: Operation['target'],
+        data: any,
+        dayNumber?: number
+    ): Operation | null => {
+        // Guard: Don't track operations if capturing is disabled (e.g., during restore)
+        if (!isCapturingOperations.current) {
+            console.log('[createOperation] Skipping - not capturing');
+            return null;
+        }
+
+        // Guard: Don't track when applying remote operations (Stage 3)
+        if (isApplyingRemoteOperationsRef.current) {
+            console.log('[createOperation] Skipping - applying remote operations');
+            return null;
+        }
+
+        // Guard: Don't track for viewers
+        if (currentUserRole === 'viewer') {
+            console.log('[createOperation] Skipping - viewer role');
+            return null;
+        }
+
+        // Guard: Must have a tripId
+        if (!tripIdRef.current) {
+            console.log('[createOperation] Skipping - no tripId');
+            return null;
+        }
+
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(7);
+
+        // Increment sequence number for deterministic ordering
+        operationSequenceRef.current += 1;
+        const sequenceNumber = operationSequenceRef.current;
+
+        const opId = `${currentUserID}_${type}_${target}_${dayNumber || 'none'}_${timestamp}_${random}`;
+
+        const operation: Operation = {
+            tripID: tripIdRef.current,
+            timestamp,
+            opId,
+            userId: currentUserID,
+            sequenceNumber,
+            type,
+            target,
+            dayNumber,
+            data,
+            applied: false,
+        };
+
+        console.log('[createOperation] Created:', type, target, dayNumber || '');
+
+        return operation;
+    }, [currentUserID, currentUserRole]);
+
+    /**
+     * Queue an operation and trigger coalesced save
+     */
+    const queueSave = useCallback((operation: Operation | null) => {
+        if (!operation) {
+            return;
+        }
+
+        // Validate operation belongs to current trip
+        if (operation.tripID !== tripIdRef.current) {
+            console.error('[queueSave] Operation tripId mismatch!');
+            return;
+        }
+
+        console.log('[queueSave] Queuing operation:', operation.type, operation.target);
+
+        // Add to operation log
+        operationLogRef.current.push(operation);
+
+        // Enforce max operation log size
+        if (operationLogRef.current.length > MAX_OPERATION_LOG_SIZE) {
+            console.log('[queueSave] Cleaning operation log (exceeds', MAX_OPERATION_LOG_SIZE, ')');
+
+            // Keep unapplied operations (critical - not saved yet)
+            const unapplied = operationLogRef.current.filter(op => !op.applied);
+
+            // Keep most recent applied operations from THIS user only
+            const applied = operationLogRef.current
+                .filter(op => op.applied && op.userId === currentUserID)
+                .sort((a, b) => b.timestamp - a.timestamp)
+                .slice(0, MAX_APPLIED_OPERATIONS);
+
+            operationLogRef.current = [...unapplied, ...applied];
+
+            console.log('[queueSave] Cleaned:', {
+                unapplied: unapplied.length,
+                applied: applied.length,
+                total: operationLogRef.current.length
+            });
+        }
+
+        // Add to save queue
+        saveQueueRef.current.operations.push(operation);
+
+        // Clear existing timeout
+        if (saveQueueRef.current.timeoutId) {
+            clearTimeout(saveQueueRef.current.timeoutId);
+        }
+
+        // Coalescing delay:
+        // - 100ms if first operation (feels instant)
+        // - 300ms if batching (allow time for more changes)
+        const delay = saveQueueRef.current.operations.length === 1 ? 100 : 300;
+
+        saveQueueRef.current.timeoutId = setTimeout(() => {
+            processSaveQueue();
+        }, delay);
+    }, [currentUserID]);
+
+    /**
+     * Process queued operations and save to DynamoDB
+     */
+    const processSaveQueue = useCallback(async () => {
+        // Already processing or nothing to save
+        if (saveQueueRef.current.isProcessing || saveQueueRef.current.operations.length === 0) {
+            return;
+        }
+
+        // Don't save during reload
+        if (isReloadingRef.current) {
+            console.log('[processSaveQueue] Skipping (reloading)');
+            setTimeout(() => processSaveQueue(), 1000);
+            return;
+        }
+
+        saveQueueRef.current.isProcessing = true;
+        const opsToSave = [...saveQueueRef.current.operations];
+        saveQueueRef.current.operations = []; // Clear queue
+
+        console.log(`[processSaveQueue] Saving ${opsToSave.length} operations`);
+
+        try {
+            // Save all operations in parallel (append-only - no conflicts!)
+            const results = await Promise.allSettled(
+                opsToSave.map(op => saveOperation(op))
+            );
+
+            // Check results
+            const succeeded = results.filter(r => r.status === 'fulfilled' && r.value).length;
+            const failed = results.filter(r => r.status === 'rejected' || !r.value).length;
+
+            console.log(`[processSaveQueue] Saved ${succeeded}/${opsToSave.length} operations`);
+
+            // Mark successful operations as applied
+            opsToSave.forEach((op, i) => {
+                const result = results[i];
+                if (result.status === 'fulfilled' && result.value) {
+                    op.applied = true;
+                }
+            });
+
+            if (failed > 0) {
+                console.warn(`[processSaveQueue] ${failed} operations failed - will retry`);
+
+                // Put failed operations back in queue
+                const failedOps = opsToSave.filter((op, i) => {
+                    const result = results[i];
+                    return result.status === 'rejected' || !result.value;
+                });
+
+                saveQueueRef.current.operations.unshift(...failedOps);
+
+                // Retry after delay
+                setTimeout(() => processSaveQueue(), 2000);
+            }
+
+            // STAGE 2 NOTE: Automatic verification disabled for the user making changes
+            // Verification should run on the RECEIVING end (User Y/Z), not the sending end (User X)
+            // The user making changes already has the correct state
+            // Use global.verifyTrip() to manually test reconstruction logic during development
+
+        } catch (error: any) {
+            console.error('[processSaveQueue] Unexpected error:', error);
+
+            // Put operations back in queue
+            saveQueueRef.current.operations.unshift(...opsToSave);
+
+            // Retry
+            setTimeout(() => processSaveQueue(), 2000);
+
+        } finally {
+            saveQueueRef.current.isProcessing = false;
+        }
+    }, []);
+
+    // Cleanup save queue on unmount
+    useEffect(() => {
+        return () => {
+            if (saveQueueRef.current.timeoutId) {
+                clearTimeout(saveQueueRef.current.timeoutId);
+            }
+        };
+    }, []);
+
+    // ===== OPERATION SYNC FUNCTIONS (Stage 3) =====
+
+    /**
+     * Sync new operations from other users
+     * Fetches operations with timestamp > lastProcessedTimestamp and applies them incrementally
+     */
+    const syncNewOperations = useCallback(async () => {
+        if (isSyncingOperationsRef.current) {
+            console.log('[syncNewOperations] Already syncing - marking pending sync');
+            pendingSyncRef.current = true;
+            return;
+        }
+
+        if (!tripId) {
+            console.log('[syncNewOperations] No tripId - skipping');
+            return;
+        }
+
+        if (!currentUserID) {
+            console.log('[syncNewOperations] No currentUserID - skipping');
+            return;
+        }
+
+        isSyncingOperationsRef.current = true;
+        pendingSyncRef.current = false; // Clear pending flag as we're starting a sync
+        const syncStartTime = Date.now();
+
+        try {
+            console.log('[syncNewOperations] 🔄 Starting sync for trip:', tripId);
+            console.log('[syncNewOperations] Last processed timestamp:', lastProcessedOperationTimestampRef.current);
+
+            // 1. Fetch ALL operations for this trip
+            const allOperations = await listOperations(tripId);
+            console.log('[syncNewOperations] Fetched', allOperations.length, 'total operations');
+
+            // 2. Filter to only NEW operations:
+            //    - timestamp > lastProcessed
+            //    - not our own userId
+            //    - not already applied (by opId)
+            const newOperations = allOperations.filter(
+                op =>
+                    op.timestamp > lastProcessedOperationTimestampRef.current &&
+                    op.userId !== currentUserID && // Skip our own operations
+                    !appliedOperationIdsRef.current.has(op.opId) // Skip ops we've already applied
+            );
+
+            if (newOperations.length === 0) {
+                // Debug: check why no operations passed the filter
+                const newerOps = allOperations.filter(op => op.timestamp > lastProcessedOperationTimestampRef.current);
+                const ownOpsFiltered = newerOps.filter(op => op.userId === currentUserID);
+                const alreadyApplied = newerOps.filter(op => op.userId !== currentUserID && appliedOperationIdsRef.current.has(op.opId));
+                console.log('[syncNewOperations] ✅ No new operations to sync');
+                console.log('[syncNewOperations] Debug - newer ops:', newerOps.length, 'own ops filtered:', ownOpsFiltered.length, 'already applied:', alreadyApplied.length);
+                isSyncingOperationsRef.current = false;
+
+                // Check if there's a pending sync request
+                if (pendingSyncRef.current) {
+                    console.log('[syncNewOperations] Pending sync detected after no-op - triggering now');
+                    pendingSyncRef.current = false;
+                    // Use setTimeout to avoid recursion and let the call stack clear
+                    setTimeout(() => {
+                        syncNewOperations();
+                    }, 0);
+                }
+                return;
+            }
+
+            console.log('[syncNewOperations] 🆕 Found', newOperations.length, 'new operations from other users');
+
+            // 3. Get current state from context
+            // Calculate wishlist (activities not assigned to any day) using instanceId membership
+            const dayActivityInstanceIds = Object.values(dayActivities || {})
+                .flatMap((day: any) =>
+                    Array.isArray(day.activities)
+                        ? day.activities.map((a: Activity) => a.instanceId)
+                        : []
+                )
+                .filter((id): id is string => Boolean(id));
+
+            const wishlistActivities =
+                (activities || []).filter(
+                    (a: Activity) =>
+                        !a.instanceId || !dayActivityInstanceIds.includes(a.instanceId)
+                ) || [];
+            const currentState: ReconstructedTripState = {
+                wishlist: wishlistActivities,
+                dayActivities: dayActivities || {}
+            };
+
+            console.log('[syncNewOperations] Current state - wishlist:', currentState.wishlist.length, 'days:', Object.keys(currentState.dayActivities).length);
+
+            // 4. Apply new operations incrementally using reduce
+            const updatedState = newOperations.reduce((state, operation) => {
+                console.log('[syncNewOperations] Applying:', operation.type, operation.opId);
+                // Cast to AnyOperation to satisfy applyOperation's type without changing runtime shape
+                return applyOperation(state, operation as any);
+            }, currentState);
+
+            console.log('[syncNewOperations] Updated state - wishlist:', updatedState.wishlist.length, 'days:', Object.keys(updatedState.dayActivities).length);
+
+            // Check if any day deletions occurred that affect the current active tab
+            const dayDeletions = newOperations.filter(
+                op => op.type === 'remove' && op.target === 'day' && (op.data as any)?.action === 'deleteDay'
+            );
+
+            // 5. Update local state with reconstructed data
+            // CRITICAL: Set flag to prevent createOperation from firing during state updates
+            isApplyingRemoteOperationsRef.current = true;
+
+            try {
+                // Update wishlist
+                if (JSON.stringify(currentState.wishlist) !== JSON.stringify(updatedState.wishlist)) {
+                    console.log('[syncNewOperations] Updating wishlist...');
+                    updateActivities(updatedState.wishlist);
+                }
+
+                // Update all day activities if they differ from current state
+                if (JSON.stringify(currentState.dayActivities) !== JSON.stringify(updatedState.dayActivities)) {
+                    console.log(
+                        '[syncNewOperations] Updating dayActivities from remote operations. Days:',
+                        Object.keys(updatedState.dayActivities).length
+                    );
+                    // Replace the entire dayActivities map to ensure deletes/renumbering are applied
+                    setDayActivities(updatedState.dayActivities as any);
+
+                    // Handle tab switching if days were deleted
+                    if (dayDeletions.length > 0 && activeTab.startsWith('day')) {
+                        const currentDayNumber = parseInt(activeTab.replace('day', ''));
+
+                        // Find if any deleted day affects our current tab
+                        // Days are deleted in order, and subsequent days are renumbered
+                        let deletedDaysBefore = 0;
+                        let currentDayWasDeleted = false;
+
+                        dayDeletions.forEach(delOp => {
+                            const deletedDayNum = delOp.dayNumber;
+                            if (deletedDayNum === currentDayNumber) {
+                                currentDayWasDeleted = true;
+                            } else if (deletedDayNum && deletedDayNum < currentDayNumber) {
+                                deletedDaysBefore++;
+                            }
+                        });
+
+                        const remainingDays = Object.keys(updatedState.dayActivities).length;
+
+                        if (currentDayWasDeleted) {
+                            // Our current day was deleted - switch to appropriate tab
+                            console.log('[syncNewOperations] Current day', currentDayNumber, 'was deleted - switching tab');
+
+                            if (remainingDays === 0 || currentDayNumber === 1) {
+                                // If no days left or day 1 was deleted, go to wishlist
+                                setActiveTab('wishlist');
+                            } else {
+                                // Go to the previous day (after renumbering)
+                                setActiveTab(`day${currentDayNumber - 1}`);
+                            }
+                        } else if (deletedDaysBefore > 0) {
+                            // Days before us were deleted, so we've been renumbered
+                            const newDayNumber = currentDayNumber - deletedDaysBefore;
+                            console.log('[syncNewOperations] Current day renumbered from', currentDayNumber, 'to', newDayNumber);
+                            setActiveTab(`day${newDayNumber}`);
+                        }
+                    }
+                }
+
+            } finally {
+                // Re-enable operation tracking after state settles
+                setTimeout(() => {
+                    isApplyingRemoteOperationsRef.current = false;
+                    console.log('[syncNewOperations] ✅ Remote operations applied, operation tracking re-enabled');
+                }, 150);
+            }
+
+            // 6. Mark operations as applied and update last processed timestamp
+            newOperations.forEach((op) => {
+                appliedOperationIdsRef.current.add(op.opId);
+            });
+            const latestTimestamp = Math.max(...newOperations.map(op => op.timestamp));
+            lastProcessedOperationTimestampRef.current = latestTimestamp;
+            console.log('[syncNewOperations] Updated lastProcessedTimestamp to:', latestTimestamp);
+
+            const syncDuration = Date.now() - syncStartTime;
+            console.log('[syncNewOperations] ✅ Sync complete in', syncDuration, 'ms');
+
+        } catch (error) {
+            console.error('[syncNewOperations] ❌ Sync failed:', error);
+        } finally {
+            isSyncingOperationsRef.current = false;
+
+            // If a sync was requested while we were processing, trigger it now
+            if (pendingSyncRef.current) {
+                console.log('[syncNewOperations] Pending sync detected - triggering now');
+                // Use setTimeout to avoid recursion and let the call stack clear
+                setTimeout(() => {
+                    syncNewOperations();
+                }, 0);
+            }
+        }
+    }, [tripId, currentUserID, activities, dayActivities, updateActivities]);
+
     // Function to add activities back to the wishlist
-    const addActivitiesToWishlist = (newActivities: Activity[]) => {
-        // Combine new activities first, then existing ones, to prioritize new data
-        const combinedActivities = [...newActivities, ...(activities || [])];
+    const addActivitiesToWishlist = (newActivities: Activity[], prependToTop: boolean = false) => {
+        // Combine activities - prepend to top if transferring from days, append to end if adding new
+        const combinedActivities = prependToTop
+            ? [...newActivities, ...(activities || [])]
+            : [...(activities || []), ...newActivities];
         const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
             // Use instanceId for deduplication (allows duplicate places with different instanceIds)
             if (!activity.instanceId) return true; // Keep activities without instanceId (backward compat)
-            // Keep only the first occurrence of each instanceId (now from newActivities)
+            // Keep only the first occurrence of each instanceId
             return arr.findIndex(a => a.instanceId === activity.instanceId) === index;
         });
 
         updateActivities(deduplicatedActivities);
+
+        // Track operation: add activities to wishlist
+        const op = createOperation('add', 'wishlist', newActivities);
+        queueSave(op);
     };
 
     // Handler for duplicating an activity
@@ -485,6 +972,14 @@ export default function TripViewMain() {
                 'with instanceId:',
                 duplicatedActivity.instanceId
             );
+
+            // ✨ NEW: Track operation: add duplicated activity to day
+            // Include insertAfter to preserve position (insert after original activity)
+            const op = createOperation('add', 'day', {
+                activities: [duplicatedActivity],
+                insertAfter: activity.instanceId // Insert after this instanceId
+            }, targetDayNumber);
+            queueSave(op);
         } else {
             // Duplicate within wishlist – insert directly after the original
             updateActivities((prev: Activity[]) => {
@@ -511,8 +1006,16 @@ export default function TripViewMain() {
                 return nextActivities;
             });
             console.log('[trip-view_main] Activity duplicated in wishlist with instanceId:', duplicatedActivity.instanceId);
+
+            // ✨ NEW: Track operation: add duplicated activity to wishlist
+            // Include insertAfter to preserve position (insert after original activity)
+            const op = createOperation('add', 'wishlist', {
+                activities: [duplicatedActivity],
+                insertAfter: activity.instanceId // Insert after this instanceId
+            });
+            queueSave(op);
         }
-    }, [getDayActivities, reorderDayActivities, updateActivities]);
+    }, [getDayActivities, reorderDayActivities, updateActivities, createOperation, queueSave]);
 
     // Handler for deleting a single activity
     const handleDeleteActivity = useCallback((activity: Activity, targetDayNumber?: number) => {
@@ -535,6 +1038,10 @@ export default function TripViewMain() {
 
             reorderDayActivities(targetDayNumber, newOrder);
             console.log('[trip-view_main] Activity deleted from day', targetDayNumber);
+
+            // Track operation: remove from day
+            const op = createOperation('remove', 'day', activity.instanceId, targetDayNumber);
+            queueSave(op);
         } else {
             // Delete from wishlist
             updateActivities((prev: Activity[]) => {
@@ -551,8 +1058,12 @@ export default function TripViewMain() {
                 });
             });
             console.log('[trip-view_main] Activity deleted from wishlist');
+
+            // Track operation: remove from wishlist
+            const op = createOperation('remove', 'wishlist', activity.instanceId);
+            queueSave(op);
         }
-    }, [getDayActivities, reorderDayActivities, updateActivities]);
+    }, [getDayActivities, reorderDayActivities, updateActivities, createOperation, queueSave]);
 
     // Remove local state and handlers for transfer modal and related logic
     // Use the custom hook for all transfer modal and activity transfer logic
@@ -615,7 +1126,30 @@ export default function TripViewMain() {
                 }
                 return;
             }
-            const newRouteData = await fetchRoutePolyline(currentTabActivities);
+            // Fetch initial route with DRIVE mode (default)
+            const basicRouteData = await fetchRoutePolyline(currentTabActivities);
+
+            // Transform legs into EnhancedRouteLeg structure with DRIVE data only
+            const enhancedLegs: EnhancedRouteLeg[] = basicRouteData.legs.map((leg: any) => ({
+                modeData: {
+                    DRIVE: {
+                        distance: leg.distance,
+                        duration: leg.duration,
+                        polyline: leg.polyline
+                    }
+                },
+                selectedMode: 'DRIVE' as TravelMode,
+                loadingModes: []
+            }));
+
+            const newRouteData: RouteData = {
+                polyline: basicRouteData.polyline,
+                legs: enhancedLegs,
+                totalDistance: basicRouteData.totalDistance,
+                totalDuration: basicRouteData.totalDuration,
+                travelMode: 'DRIVE'
+            };
+
             setRouteData(newRouteData);
             // Update cache
             routeCache.current[activeTab] = {
@@ -696,8 +1230,40 @@ export default function TripViewMain() {
             }));
             // 5. Update the activities for this day
             reorderDayActivities(dayNumber, reorderedFull);
+
+            // ✨ NEW: Track operation: reorder after optimization
+            const reorderTimestamp = Date.now();
+            const op = createOperation('reorder', 'day', {
+                reorderedIds: reorderedFull.map(a => a.instanceId),
+                lastReordered: reorderTimestamp,
+                optimized: true // Flag to indicate this was from route optimization
+            }, dayNumber);
+            queueSave(op);
+
             // 6. Call getRoute Lambda via GraphQL for the new order
-            const newRouteData = await fetchRoutePolyline(reorderedFull);
+            const basicRouteData = await fetchRoutePolyline(reorderedFull);
+
+            // Transform legs into EnhancedRouteLeg structure with DRIVE data only
+            const enhancedLegs: EnhancedRouteLeg[] = basicRouteData.legs.map((leg: any) => ({
+                modeData: {
+                    DRIVE: {
+                        distance: leg.distance,
+                        duration: leg.duration,
+                        polyline: leg.polyline
+                    }
+                },
+                selectedMode: 'DRIVE' as TravelMode,
+                loadingModes: []
+            }));
+
+            const newRouteData: RouteData = {
+                polyline: basicRouteData.polyline,
+                legs: enhancedLegs,
+                totalDistance: basicRouteData.totalDistance,
+                totalDuration: basicRouteData.totalDuration,
+                travelMode: 'DRIVE'
+            };
+
             // 7. Update the route cache for this day regardless of active tab
             const dayTab = `day${dayNumber}`;
             const activitiesHash = hashActivities(reorderedFull);
@@ -726,6 +1292,14 @@ export default function TripViewMain() {
         const newDayNumber = addNewDay();
         // Update tripLength to reflect the new day count
         setTripLength(getDayCount());
+
+        // ✨ NEW: Track operation: add day
+        // Pass newDayNumber as 4th argument so operation has dayNumber field set
+        const op = createOperation('add', 'day', {
+            action: 'addDay'
+        }, newDayNumber);
+        queueSave(op);
+
         // Switch to the newly created day
         setActiveTab(`day${newDayNumber}`);
         // Trigger auto-scroll to the new day
@@ -744,12 +1318,21 @@ export default function TripViewMain() {
 
         // Function to perform the deletion
         const performDeletion = () => {
+            // ✨ NEW: Track operation: delete day BEFORE performing deletion
+            // Pass dayToDelete as 4th argument so operation has dayNumber field set
+            const op = createOperation('remove', 'day', {
+                action: 'deleteDay',
+                hadActivities: hasActivities
+            }, dayToDelete);
+            queueSave(op);
+
             // Delete the day and get its activities to move back to wishlist
             const deletedDayActivities = deleteDayAndRenumber(dayToDelete);
 
-            // Add deleted day activities back to wishlist (with deduplication)
+            // Add deleted day activities back to wishlist at the top (with deduplication)
             if (deletedDayActivities.length > 0) {
-                const combinedActivities = [...(activities || []), ...deletedDayActivities];
+                // Prepend to top of wishlist
+                const combinedActivities = [...deletedDayActivities, ...(activities || [])];
 
                 // Remove duplicates based on instanceId
                 const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
@@ -759,6 +1342,18 @@ export default function TripViewMain() {
                 });
 
                 updateActivities(deduplicatedActivities);
+
+                // ✨ NEW: Track moving activities back to wishlist (using atomic shape with full activity)
+                // Include insertIndex to preserve order during reconstruction
+                deletedDayActivities.forEach((activity: Activity, index: number) => {
+                    const op = createOperation('move', 'wishlist', {
+                        activity: activity,
+                        fromLocation: dayToDelete,
+                        toLocation: 'wishlist',
+                        insertIndex: index // Position in the deleted day's activity list (0-based)
+                    });
+                    queueSave(op);
+                });
             }
 
             // Clear route cache for days that got renumbered
@@ -827,6 +1422,25 @@ export default function TripViewMain() {
     const handleDeleteActivities = () => {
         if (selectedActivities.length === 0) return;
 
+        // ✨ NEW: Track deletion of each activity before removing
+        selectedActivities.forEach(instanceId => {
+            // Determine if activity is in wishlist or a day
+            const wishlistActivities = getActivitiesForTab('wishlist');
+            const inWishlist = wishlistActivities.some(a => a.instanceId === instanceId);
+
+            if (inWishlist) {
+                const op = createOperation('remove', 'wishlist', instanceId);
+                queueSave(op);
+            } else {
+                // Activity is in a day - find which day
+                if (activeTab.startsWith('day')) {
+                    const dayNumber = parseInt(activeTab.replace('day', ''));
+                    const op = createOperation('remove', 'day', instanceId, dayNumber);
+                    queueSave(op);
+                }
+            }
+        });
+
         // Remove from CreateTripContext (master list)
         removeActivities(selectedActivities);
 
@@ -840,8 +1454,23 @@ export default function TripViewMain() {
     // Handle reordering activities within a day via drag and drop
     const handleDayActivityReorder = async (dayNumber: number, newOrder: Activity[]) => {
         try {
+            const reorderTimestamp = Date.now();
+
+            // Add timestamp to activities for conflict resolution
+            const orderedActivities = newOrder.map(a => ({
+                ...a,
+                lastReordered: reorderTimestamp
+            }));
+
             // Update the activities for this day using the existing reorderDayActivities function
-            reorderDayActivities(dayNumber, newOrder);
+            reorderDayActivities(dayNumber, orderedActivities);
+
+            // Track operation: reorder (store IDs only, not full activities)
+            const op = createOperation('reorder', 'day', {
+                reorderedIds: orderedActivities.map(a => a.instanceId),
+                lastReordered: reorderTimestamp
+            }, dayNumber);
+            queueSave(op);
 
             // Clear the route cache for this day to trigger route recalculation
             const dayTab = `day${dayNumber}`;
@@ -850,11 +1479,33 @@ export default function TripViewMain() {
             // If this is the currently active tab, trigger route recalculation
             if (activeTab === dayTab) {
                 setRouteLoading(true);
-                const newRouteData = await fetchRoutePolyline(newOrder);
+                const basicRouteData = await fetchRoutePolyline(newOrder);
+
+                // Transform legs into EnhancedRouteLeg structure with DRIVE data only
+                const enhancedLegs: EnhancedRouteLeg[] = basicRouteData.legs.map((leg: any) => ({
+                    modeData: {
+                        DRIVE: {
+                            distance: leg.distance,
+                            duration: leg.duration,
+                            polyline: leg.polyline
+                        }
+                    },
+                    selectedMode: 'DRIVE' as TravelMode,
+                    loadingModes: []
+                }));
+
+                const newRouteData: RouteData = {
+                    polyline: basicRouteData.polyline,
+                    legs: enhancedLegs,
+                    totalDistance: basicRouteData.totalDistance,
+                    totalDuration: basicRouteData.totalDuration,
+                    travelMode: 'DRIVE'
+                };
+
                 setRouteData(newRouteData);
 
                 // Update the route cache for this day
-                const activitiesHash = hashActivities(newOrder);
+                const activitiesHash = hashActivities(orderedActivities);
                 routeCache.current[dayTab] = {
                     activitiesHash,
                     routeData: newRouteData,
@@ -871,6 +1522,172 @@ export default function TripViewMain() {
         } catch (error) {
             console.error('Error reordering activities:', error);
             setRouteLoading(false);
+        }
+    };
+
+    // Helper to parse duration string like "15m 30s" to seconds
+    const parseDuration = (durationStr: string): number => {
+        const parts = durationStr.trim().split(' ');
+        let totalSeconds = 0;
+        parts.forEach(part => {
+            if (part.endsWith('h')) {
+                totalSeconds += parseInt(part) * 3600;
+            } else if (part.endsWith('m')) {
+                totalSeconds += parseInt(part) * 60;
+            } else if (part.endsWith('s')) {
+                totalSeconds += parseInt(part);
+            }
+        });
+        return totalSeconds;
+    };
+
+    // Helper to format seconds to "Xm" or "Xh Ym" format
+    const formatDuration = (seconds: number): string => {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        if (hours > 0) {
+            return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+        }
+        return `${minutes}m`;
+    };
+
+    // Handler for opening transportation settings modal
+    const handleOpenSettings = async (legIndex: number) => {
+        if (!activeTab.startsWith('day')) return;
+
+        const currentDayNumber = parseInt(activeTab.replace('day', ''));
+        const dayActivities = getActivitiesForTab(activeTab);
+
+        if (legIndex < 0 || legIndex >= dayActivities.length - 1) return;
+
+        // Store the origin and destination activities in state
+        const origin = dayActivities[legIndex];
+        const destination = dayActivities[legIndex + 1];
+
+        console.log('[handleOpenSettings] Setting modal activities:', {
+            legIndex,
+            hasOrigin: !!origin,
+            hasDestination: !!destination,
+            originName: origin?.name,
+            destinationName: destination?.name,
+            originLat: origin?.lat,
+            originLng: origin?.lng,
+            destLat: destination?.lat,
+            destLng: destination?.lng,
+        });
+
+        setModalOriginActivity(origin);
+        setModalDestinationActivity(destination);
+        setSelectedLegIndex(legIndex);
+        setSettingsModalVisible(true);
+
+        // Get the current leg
+        const currentLeg = routeData.legs[legIndex] as EnhancedRouteLeg | undefined;
+
+        // Lazy load missing modes
+        const missingModes: TravelMode[] = [];
+        if (!currentLeg?.modeData?.WALK) missingModes.push('WALK');
+        if (!currentLeg?.modeData?.DRIVE) missingModes.push('DRIVE');
+        if (!currentLeg?.modeData?.TRANSIT) missingModes.push('TRANSIT');
+
+        if (missingModes.length > 0 && currentLeg) {
+            // Mark modes as loading
+            const updatedLegs = [...routeData.legs];
+            updatedLegs[legIndex] = {
+                ...currentLeg,
+                loadingModes: [...(currentLeg.loadingModes || []), ...missingModes]
+            };
+            setRouteData(prev => ({ ...prev, legs: updatedLegs }));
+
+            // Fetch missing modes in parallel
+            const legActivities = [dayActivities[legIndex], dayActivities[legIndex + 1]];
+            const fetchPromises = missingModes.map(async (mode) => {
+                try {
+                    const result = await fetchRoutePolylineWithMode(legActivities, mode);
+                    return { mode, data: result.legs[0] };
+                } catch (error) {
+                    console.error(`Error fetching ${mode} mode:`, error);
+                    return { mode, data: null };
+                }
+            });
+
+            const results = await Promise.all(fetchPromises);
+
+            // Update leg with fetched data
+            const updatedLeg = { ...currentLeg };
+            results.forEach(({ mode, data }) => {
+                if (data) {
+                    updatedLeg.modeData[mode] = data;
+                }
+            });
+            updatedLeg.loadingModes = [];
+
+            const finalLegs = [...routeData.legs];
+            finalLegs[legIndex] = updatedLeg;
+            setRouteData(prev => ({ ...prev, legs: finalLegs }));
+        }
+    };
+
+    // Handler for selecting a transportation mode
+    const handleSelectMode = async (mode: TravelMode) => {
+        if (!activeTab.startsWith('day') || selectedLegIndex === null) return;
+
+        const dayActivities = getActivitiesForTab(activeTab);
+        const currentDayNumber = parseInt(activeTab.replace('day', ''));
+
+        // Update the selected mode for this leg
+        const updatedLegs = [...routeData.legs];
+        const currentLeg = updatedLegs[selectedLegIndex] as EnhancedRouteLeg;
+        updatedLegs[selectedLegIndex] = {
+            ...currentLeg,
+            selectedMode: mode
+        };
+
+        // Recalculate polyline based on all selected modes
+        let newPolylineCoords: { latitude: number; longitude: number }[] = [];
+        for (let i = 0; i < updatedLegs.length; i++) {
+            const leg = updatedLegs[i] as EnhancedRouteLeg;
+            const modeData = leg.modeData[leg.selectedMode];
+            if (modeData?.polyline) {
+                const legCoords = decodePolyline(modeData.polyline);
+                newPolylineCoords = [...newPolylineCoords, ...legCoords];
+            }
+        }
+
+        // Calculate new total distance and duration
+        let totalDistance = 0;
+        let totalDurationSeconds = 0;
+        updatedLegs.forEach((leg) => {
+            const enhancedLeg = leg as EnhancedRouteLeg;
+            const modeData = enhancedLeg.modeData[enhancedLeg.selectedMode];
+            if (modeData) {
+                totalDistance += modeData.distance || 0;
+                totalDurationSeconds += parseDuration(modeData.duration || '0m');
+            }
+        });
+
+        // Update route data with new polyline and totals
+        const newRouteData = {
+            ...routeData,
+            polyline: newPolylineCoords,
+            legs: updatedLegs,
+            totalDistance,
+            totalDuration: formatDuration(totalDurationSeconds)
+        };
+
+        setRouteData(newRouteData);
+
+        // Update cache
+        const activitiesHash = hashActivities(dayActivities);
+        routeCache.current[activeTab] = {
+            activitiesHash,
+            routeData: newRouteData
+        };
+
+        // Store encoded polyline in context
+        if (newPolylineCoords.length > 1) {
+            const encoded = encodePolyline(newPolylineCoords);
+            setDayPolyline(currentDayNumber, encoded);
         }
     };
 
@@ -939,6 +1756,12 @@ export default function TripViewMain() {
             // Remove from wishlist
             removeActivities(wishlistActivityIds);
 
+            // ✨ NEW: Track removal from wishlist
+            wishlistActivityIds.forEach(instanceId => {
+                const op = createOperation('remove', 'wishlist', instanceId);
+                queueSave(op);
+            });
+
             // Add to the current tab
             if (activeTab === 'wishlist') {
                 // Already on wishlist, no need to move
@@ -949,21 +1772,37 @@ export default function TripViewMain() {
                 selectedActivities.forEach(activity => {
                     addActivityToDay(activity, dayNumber);
                 });
+
+                // ✨ NEW: Track add to day
+                const op = createOperation('add', 'day', selectedActivities, dayNumber);
+                queueSave(op);
             }
         } else {
             // Normal flow: adding new activities from search
             if (activeTab === 'wishlist') {
                 // Add to wishlist
                 updateActivities([...(activities || []), ...selectedActivities]);
+
+                // ✨ NEW: Track add to wishlist
+                const op = createOperation('add', 'wishlist', selectedActivities);
+                queueSave(op);
             } else if (activeTab.startsWith('day')) {
                 // Add to the specific day
                 const dayNumber = parseInt(activeTab.replace('day', ''));
                 selectedActivities.forEach(activity => {
                     addActivityToDay(activity, dayNumber);
                 });
+
+                // ✨ NEW: Track add to day
+                const op = createOperation('add', 'day', selectedActivities, dayNumber);
+                queueSave(op);
             } else {
                 // Fallback to wishlist
                 updateActivities([...(activities || []), ...selectedActivities]);
+
+                // ✨ NEW: Track add to wishlist
+                const op = createOperation('add', 'wishlist', selectedActivities);
+                queueSave(op);
             }
         }
 
@@ -1014,11 +1853,19 @@ export default function TripViewMain() {
         // Remove deselected wishlist activities
         if (deselectedWishlistActivityIds.length > 0) {
             removeActivities(deselectedWishlistActivityIds);
+
+            // ✨ NEW: Track removal of deselected activities
+            deselectedWishlistActivityIds.forEach(instanceId => {
+                const op = createOperation('remove', 'wishlist', instanceId);
+                queueSave(op);
+            });
         }
 
         // Add newly selected activities
+        // FIXED: Use addActivitiesToWishlist directly (which tracks operations)
+        // instead of context's addToWishlist (which bypasses operation tracking)
         if (selectedActivities.length > 0) {
-            addToWishlist(selectedActivities);
+            addActivitiesToWishlist(selectedActivities);
         }
 
         setShowCategoryModal(false);
@@ -1063,8 +1910,7 @@ export default function TripViewMain() {
                 // Restore trip data into context
                 restoreTripFromObject(updatedTrip, currentUserID);
 
-                // Update version tracking
-                versionRef.current = updatedTrip.version || 1;
+                // Note: No version tracking needed - using operation-based architecture
 
                 console.log('[trip-view_main] Trip reloaded');
             }
@@ -1167,6 +2013,7 @@ export default function TripViewMain() {
                 activities: latestActivities,
                 dayActivities: latestDayActivities,
                 dayPolylines: latestDayPolylines,
+                dayTravelModes: latestDayTravelModes,
                 selectedCity: latestSelectedCity,
                 tripPhotoReference: latestTripPhotoReference,
                 createdAt: latestCreatedAt,
@@ -1178,6 +2025,7 @@ export default function TripViewMain() {
                 dayNumber: Number(dayNumber),
                 activities: latestDayActivities[dayNumber].activities.map(sanitizeActivity),
                 encodedPolyline: latestDayPolylines[dayNumber] || null,
+                travelModes: latestDayTravelModes[dayNumber] ? JSON.stringify(latestDayTravelModes[dayNumber]) : null,
             }));
             // Gather wishlist activities (not assigned to any day) and sanitize them
             const dayActivityInstanceIds = days.flatMap(day => day.activities.map(a => a.instanceId)).filter(Boolean);
@@ -1309,17 +2157,13 @@ export default function TripViewMain() {
 
             // Add OWNER's userID and collaborators to trip data
             // This ensures we always use the owner's userID as the partition key in DynamoDB
-            const nextVersion = versionRef.current + 1;
-
-            // IMMEDIATELY update versionRef to prevent race conditions
-            // This prevents concurrent saves from using the same version number
-            versionRef.current = nextVersion;
+            // NOTE: Version field removed - operations handle conflict resolution via timestamps
 
             const tripDataWithUser = {
                 ...tripData,
                 userID: ownerUserID, // Always use owner's userID, not current user's userID
                 collaborators: collaboratorsToSave,
-                version: nextVersion,
+                // version field removed - no longer using optimistic locking
                 updatedAt: new Date().toISOString(),
                 lastUpdatedBy: currentUserEmail
             };
@@ -1331,12 +2175,10 @@ export default function TripViewMain() {
             });
 
             // Update local state after successful save
-            if (result.data?.createTrip?.version) {
-                setVersion(result.data.createTrip.version);
+            if (result.data?.createTrip) {
                 setUpdatedAt(result.data.createTrip.updatedAt);
                 setLastUpdatedBy(result.data.createTrip.lastUpdatedBy);
-                // versionRef already updated above, but sync with server response for safety
-                versionRef.current = result.data.createTrip.version;
+                // Note: No version tracking needed with operation-based architecture
             }
 
             // ALWAYS update tripId if it wasn't set (prevents duplicate generation on next save)
@@ -1361,11 +2203,7 @@ export default function TripViewMain() {
 
         } catch (error: any) {
             console.error('[trip-view_main] Error saving trip:', error);
-
-            // Rollback version on failure to maintain consistency for retry
-            // Since we optimistically incremented at line 1075, we need to decrement on failure
-            versionRef.current = versionRef.current - 1;
-
+            // Note: No version rollback needed - using operation-based architecture
             throw error;
         } finally {
             // Release save lock (both state and ref)
@@ -1374,189 +2212,121 @@ export default function TripViewMain() {
         }
     };
 
+    /**
+     * Stage 2: Verification Function
+     * Verifies that the current trip state can be reconstructed from operations
+     * This runs in "dual-write mode" - we save both the full trip AND verify reconstruction
+     */
+    const verifyTripReconstruction = async () => {
+        try {
+            const currentTripId = tripIdRef.current;
+            if (!currentTripId) {
+                console.log('[verifyTripReconstruction] No tripId - skipping verification');
+                return;
+            }
+
+            console.log('[verifyTripReconstruction] 🔍 Starting verification for trip:', currentTripId);
+
+            // Fetch all operations for this trip from DynamoDB
+            const operations = await listOperations(currentTripId);
+            console.log('[verifyTripReconstruction] Loaded', operations.length, 'operations from DynamoDB');
+
+            if (operations.length === 0) {
+                console.log('[verifyTripReconstruction] No operations yet - skipping verification');
+                return;
+            }
+
+            // Get current state
+            const {
+                activities: latestActivities,
+                dayActivities: latestDayActivities,
+            } = latestTripDataRef.current;
+
+            // Calculate wishlist (activities not assigned to any day)
+            const dayActivityInstanceIds = Object.values(latestDayActivities)
+                .flatMap((day: any) => day.activities.map((a: Activity) => a.instanceId))
+                .filter(Boolean);
+
+            const wishlist = (latestActivities || []).filter(
+                (activity: Activity) => !activity.instanceId || !dayActivityInstanceIds.includes(activity.instanceId)
+            );
+
+            // Run verification - cast operations to AnyOperation[]
+            const result = verifyStateReconstruction(wishlist, latestDayActivities, operations as any);
+
+            if (result.isMatch) {
+                console.log('[verifyTripReconstruction] ✅ VERIFICATION PASSED - Reconstruction matches actual state!');
+            } else {
+                console.error('[verifyTripReconstruction] ❌ VERIFICATION FAILED - Differences found:');
+                result.differences.forEach((diff) => console.error('  - ' + diff));
+
+                // Log detailed state comparison for debugging
+                console.log('[verifyTripReconstruction] 📊 Actual wishlist count:', result.actualState.wishlist.length);
+                console.log('[verifyTripReconstruction] 📊 Reconstructed wishlist count:', result.reconstructedState.wishlist.length);
+                console.log('[verifyTripReconstruction] 📊 Actual days:', Object.keys(result.actualState.dayActivities).length);
+                console.log('[verifyTripReconstruction] 📊 Reconstructed days:', Object.keys(result.reconstructedState.dayActivities).length);
+            }
+
+            return result;
+        } catch (error) {
+            console.error('[verifyTripReconstruction] ❌ Error during verification:', error);
+        }
+    };
+
+    /**
+     * Stage 2: Debugging utilities
+     * Exposes verification and operation inspection functions for manual testing
+     */
+    useEffect(() => {
+        // Expose debugging functions to console (dev only)
+        if (__DEV__) {
+            (global as any).verifyTrip = verifyTripReconstruction;
+            (global as any).getOperationLog = () => {
+                console.log('=== Current Operation Log ===');
+                console.log('Total operations:', operationLogRef.current.length);
+                console.log('Applied operations:', operationLogRef.current.filter(op => op.applied).length);
+                console.log('Pending operations:', operationLogRef.current.filter(op => !op.applied).length);
+                console.table(operationLogRef.current.map(op => ({
+                    type: op.type,
+                    target: op.target,
+                    dayNumber: op.dayNumber,
+                    applied: op.applied,
+                    timestamp: new Date(op.timestamp).toLocaleTimeString(),
+                })));
+                return operationLogRef.current;
+            };
+            (global as any).getSaveQueue = () => {
+                console.log('=== Current Save Queue ===');
+                console.log('Queued operations:', saveQueueRef.current.operations.length);
+                console.log('Is processing:', saveQueueRef.current.isProcessing);
+                return saveQueueRef.current.operations;
+            };
+            (global as any).syncOperations = () => {
+                console.log('=== Manually triggering operation sync ===');
+                console.log('Last processed timestamp:', lastProcessedOperationTimestampRef.current);
+                return syncNewOperations();
+            };
+            (global as any).getLastProcessedTimestamp = () => {
+                const timestamp = lastProcessedOperationTimestampRef.current;
+                console.log('Last processed timestamp:', timestamp);
+                console.log('As date:', new Date(timestamp).toLocaleString());
+                return timestamp;
+            };
+            console.log('[trip-view_main] 🛠️ Debug utilities available:');
+            console.log('  - global.verifyTrip() - Run reconstruction verification');
+            console.log('  - global.getOperationLog() - View all operations');
+            console.log('  - global.getSaveQueue() - View pending save queue');
+            console.log('  - global.syncOperations() - Manually trigger operation sync (Stage 3)');
+            console.log('  - global.getLastProcessedTimestamp() - View last synced timestamp');
+        }
+    }, []);
+
     useEffect(() => {
         navigation.setOptions({
           headerShown: false
         });
     }, []);
 
-    // AppState listener for autosave when app goes to background
-    // COMMENTED OUT - Autosave disabled
-    // useEffect(() => {
-    //     const handleAppStateChange = (nextAppState: string) => {
-    //         if (nextAppState === 'background') {
-    //             console.log('[trip-view_main] App going to background - checking autosave eligibility');
-
-    //             // Only autosave for owners and editors, NOT viewers
-    //             if (currentUserRole === 'viewer') {
-    //                 console.log('[trip-view_main] User is viewer, skipping autosave');
-    //                 return;
-    //             }
-
-    //             console.log('[trip-view_main] User has edit permissions, scheduling autosave');
-
-    //             // Clear any pending autosave
-    //             if (saveTimeoutRef.current) {
-    //                 clearTimeout(saveTimeoutRef.current);
-    //             }
-
-    //             // Debounce autosave by 500ms to prevent rapid duplicate saves
-    //             saveTimeoutRef.current = setTimeout(() => {
-    //                 // Only autosave if we have a trip with activities or days
-    //                 if (tripIdRef.current || activities.length > 0 || Object.keys(dayActivities).length > 0) {
-    //                     console.log('[trip-view_main] Executing debounced autosave');
-    //                     saveTrip().catch(error => {
-    //                         console.error('[trip-view_main] Autosave failed on app background:', error);
-    //                     });
-    //                 }
-    //             }, 500);
-    //         }
-    //     };
-
-    //     const subscription = AppState.addEventListener('change', handleAppStateChange);
-
-    //     return () => {
-    //         // Clean up timeout on unmount
-    //         if (saveTimeoutRef.current) {
-    //             clearTimeout(saveTimeoutRef.current);
-    //         }
-    //         subscription?.remove();
-    //     };
-    // }, [tripId, activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt, currentUserRole]);
-
-    // Autosave with multiple triggers
-    useEffect(() => {
-        // Only autosave for owners and editors (viewers can't edit)
-        if (currentUserRole === 'viewer') {
-            return;
-        }
-
-        // Only enable periodic autosave if we have a tripId
-        if (!tripId) {
-            return;
-        }
-
-
-        // Trigger 1: Periodic autosave every 5 minutes
-        autosaveIntervalRef.current = setInterval(() => {
-            const now = Date.now();
-            const timeSinceLastSave = now - lastSaveTimeRef.current;
-
-            // Prevent saves during reload from subscription
-            if (isReloadingRef.current) {
-                // console.log('[trip-view_main] Skipping periodic autosave (reloading)');
-                return;
-            }
-
-            // Check if already saving using ref
-            if (isSavingRef.current) {
-                // console.log('[trip-view_main] Skipping periodic autosave (save in progress)');
-                return;
-            }
-
-            // Prevent duplicate saves within MIN_AUTOSAVE_INTERVAL
-            if (timeSinceLastSave < MIN_AUTOSAVE_INTERVAL) {
-                // console.log('[trip-view_main] Skipping periodic autosave (too soon)');
-                return;
-            }
-
-            // console.log('[trip-view_main] Periodic autosave triggered');
-
-            saveTrip()
-                .then(() => {
-                    lastSaveTimeRef.current = Date.now();
-                })
-                .catch(error => {
-                    console.error('[trip-view_main] Autosave failed:', error);
-                });
-        }, 300000); // 5 minutes
-
-        return () => {
-            // Clean up periodic autosave
-            if (autosaveIntervalRef.current) {
-                clearInterval(autosaveIntervalRef.current);
-            }
-            if (saveDebounceTimeoutRef.current) {
-                clearTimeout(saveDebounceTimeoutRef.current);
-            }
-        };
-    }, [tripId, currentUserRole]); // Don't include isSaving - use refs instead
-
-    // Trigger 2: App going inactive (before background suspension) - ALWAYS enabled, even for new trips
-    useEffect(() => {
-        // Only autosave for owners and editors (viewers can't edit)
-        if (currentUserRole === 'viewer') {
-            console.log('[trip-view_main] Background autosave disabled - user is viewer');
-            return;
-        }
-
-        let inactiveSaveTimeout: NodeJS.Timeout | null = null;
-        const handleAppStateChange = (nextAppState: string) => {
-            console.log('[trip-view_main] AppState changed to:', nextAppState);
-
-            // Trigger on 'inactive' to save before full suspension
-            if (nextAppState === 'inactive') {
-                // Clear any pending save
-                if (inactiveSaveTimeout) {
-                    clearTimeout(inactiveSaveTimeout);
-                }
-
-                // Save immediately when going inactive
-                inactiveSaveTimeout = setTimeout(() => {
-                    const now = Date.now();
-                    const timeSinceLastSave = now - lastSaveTimeRef.current;
-
-                    console.log('[trip-view_main] Inactive save check - isSavingRef:', isSavingRef.current, 'isReloadingRef:', isReloadingRef.current, 'timeSinceLastSave:', timeSinceLastSave);
-
-                    if (isReloadingRef.current) {
-                        console.log('[trip-view_main] Skipping inactive save (reloading)');
-                        return;
-                    }
-
-                    if (isSavingRef.current) {
-                        console.log('[trip-view_main] Skipping inactive save (save in progress)');
-                        return;
-                    }
-
-                    // Check if there's any trip data worth saving
-                    const hasContent = tripIdRef.current ||
-                                      (latestTripDataRef.current.activities && latestTripDataRef.current.activities.length > 0) ||
-                                      Object.keys(latestTripDataRef.current.dayActivities || {}).length > 0;
-
-                    if (!hasContent) {
-                        console.log('[trip-view_main] Skipping inactive save (no trip content)');
-                        return;
-                    }
-
-                    if (timeSinceLastSave < MIN_AUTOSAVE_INTERVAL) {
-                        console.log('[trip-view_main] Skipping inactive save (too soon, last save was', timeSinceLastSave, 'ms ago)');
-                        return;
-                    }
-
-                    console.log('[trip-view_main] App going inactive - autosaving immediately...');
-
-                    saveTrip()
-                        .then(() => {
-                            lastSaveTimeRef.current = Date.now();
-                            console.log('[trip-view_main] Inactive autosave completed successfully');
-                        })
-                        .catch(error => {
-                            console.error('[trip-view_main] Inactive autosave failed:', error);
-                        });
-                }, 0);
-            }
-        };
-
-        const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
-
-        return () => {
-            // Clean up
-            if (inactiveSaveTimeout) {
-                clearTimeout(inactiveSaveTimeout);
-            }
-            appStateSubscription?.remove();
-        };
-    }, [currentUserRole]); // Only depends on user role, not tripId
 
     // Real-time subscription for trip updates
     useEffect(() => {
@@ -1584,16 +2354,18 @@ export default function TripViewMain() {
                     return;
                 }
 
-                console.log('[trip-view_main] Trip updated by another user - reloading...');
+                console.log('[trip-view_main] Trip updated by another user - syncing operations...');
 
-                // Update version tracking
-                setVersion(updatedTrip.version);
+                // Update metadata & collaborators from full trip payload
+                // Note: No version tracking needed with operation-based architecture
                 setUpdatedAt(updatedTrip.updatedAt);
                 setLastUpdatedBy(updatedTrip.lastUpdatedBy);
-                versionRef.current = updatedTrip.version;
+                if (updatedTrip.collaborators) {
+                    setCollaborators(updatedTrip.collaborators);
+                }
 
-                // Auto-reload to get latest changes
-                handleReloadTrip();
+                // STAGE 3: Use incremental operation sync instead of full reload
+                syncNewOperations();
             },
             error: (error: any) => {
                 console.error('[trip-view_main] Subscription error:', error);
@@ -1606,12 +2378,112 @@ export default function TripViewMain() {
         };
     }, [tripId, currentUserID, currentUserRole, isScreenFocused]);
 
+    // Real-time subscription for TripOperation creations (Stage 3 - operation-level events)
+    useEffect(() => {
+        // Only subscribe if we have a tripId, a current user, and the screen is focused
+        if (!tripId) {
+            console.log('[trip-view_main] Skipping operation subscription - no tripId');
+            return;
+        }
+
+        if (!currentUserID) {
+            console.log('[trip-view_main] Skipping operation subscription - no currentUserID');
+            return;
+        }
+
+        if (!isScreenFocused) {
+            console.log('[trip-view_main] Skipping operation subscription - screen not focused');
+            return;
+        }
+
+        console.log('[trip-view_main] Subscribing to TripOperation events for trip:', tripId);
+
+        const subscription = (API.graphql(
+            graphqlOperation(onCreateTripOperation, {
+                filter: {
+                    tripID: { eq: tripId }
+                }
+            })
+        ) as any).subscribe({
+            next: ({ value }: any) => {
+                const op = value?.data?.onCreateTripOperation;
+                if (!op) {
+                    return;
+                }
+
+                // Ignore operations created by this client
+                if (op.userId === currentUserID) {
+                    return;
+                }
+
+                console.log(
+                    '[trip-view_main] TripOperation created by another user - syncing operations...',
+                    op.type,
+                    op.target,
+                    op.dayNumber
+                );
+
+                // Trigger incremental sync based on operations
+                syncNewOperations();
+            },
+            error: (error: any) => {
+                console.error('[trip-view_main] TripOperation subscription error:', error);
+            }
+        });
+
+        return () => {
+            console.log('[trip-view_main] Unsubscribing from TripOperation events');
+            subscription.unsubscribe();
+        };
+    }, [tripId, currentUserID, isScreenFocused, syncNewOperations]);
+
+    // Initialize baseline timestamp for operation sync (Stage 3)
+    useEffect(() => {
+        if (!tripId) return;
+
+        const initializeBaselineTimestamp = async () => {
+            try {
+                console.log('[trip-view_main] Initializing baseline timestamp for trip:', tripId);
+
+                // Fetch all operations for this trip
+                const allOperations = await listOperations(tripId);
+
+                if (allOperations.length > 0) {
+                    // Set baseline to the latest operation timestamp
+                    const latestTimestamp = Math.max(...allOperations.map(op => op.timestamp));
+                    lastProcessedOperationTimestampRef.current = latestTimestamp;
+                    console.log('[trip-view_main] ✅ Baseline timestamp set to:', latestTimestamp, '(' + allOperations.length + ' existing operations)');
+                } else {
+                    // No operations yet - set to current time
+                    lastProcessedOperationTimestampRef.current = Date.now();
+                    console.log('[trip-view_main] ✅ No existing operations - baseline set to current time');
+                }
+            } catch (error) {
+                console.error('[trip-view_main] ❌ Failed to initialize baseline timestamp:', error);
+                // Fallback to current time
+                lastProcessedOperationTimestampRef.current = Date.now();
+            }
+        };
+
+        initializeBaselineTimestamp();
+    }, [tripId]);
+
     // Get current user ID for collaboration features
     useEffect(() => {
         const getCurrentUser = async () => {
             try {
                 const user = await Auth.currentAuthenticatedUser();
+                // Use username (not sub) for consistency with collaborator storage
+                // For Google OAuth users, username is like 'google_110194548211753772771'
+                // For Apple OAuth users, username is like 'signinwithapple_000664.415e0f3e94404bee9a761c4921ebc4e2.2215'
+                // For native users, username is their Cognito UUID
                 const userID = user.username;
+                console.log('[trip-view_main] Setting currentUserID:', userID);
+                console.log('[trip-view_main] User details:', {
+                    sub: user.attributes.sub,
+                    username: user.username,
+                    email: user.attributes.email
+                });
                 setCurrentUserID(userID);
             } catch (error) {
                 console.error('[trip-view_main] Error getting current user:', error);
@@ -1629,7 +2501,8 @@ export default function TripViewMain() {
         if (!tripId && collaborators.length === 0) {
             try {
                 const currentUser = await Auth.currentAuthenticatedUser();
-                const currentUserID = currentUser.attributes?.sub || currentUser.username;
+                // Use username (not sub) for consistency with collaborator storage
+                const currentUserID = currentUser.username;
                 const currentUserEmail = currentUser.attributes?.email || '';
                 const currentUserName = currentUser.attributes?.name || '';
                 const currentUsername = currentUser.attributes?.preferred_username || currentUser.username || currentUserEmail.split('@')[0];
@@ -1739,7 +2612,7 @@ export default function TripViewMain() {
                         showDragIndicator={false}
                         onDuplicate={(activity) => handleDuplicateActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
                         onDelete={(activity) => handleDeleteActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
-                        userRole={currentUserRole}
+                        currentUserRole={currentUserRole}
                     />
                 ) : (
                     <>
@@ -1928,6 +2801,7 @@ export default function TripViewMain() {
                                     isAddingPlaceFromAutocomplete={isAutocompleteAddingPlace}
                                     activeTab={activeTab}
                                     currentUserRole={currentUserRole}
+                                    onOpenSettings={currentUserRole !== 'viewer' ? handleOpenSettings : undefined}
                                 />
                             );
                         })()}
@@ -2002,6 +2876,25 @@ export default function TripViewMain() {
                     currentUserID={currentUserID}
                     selectedCity={selectedCity}
                     onCollaboratorsUpdate={handleCollaboratorsUpdate}
+                />
+            )}
+
+            {/* Transportation Settings Modal */}
+            {selectedLegIndex !== null && (
+                <TransportationSettingsModal
+                    visible={settingsModalVisible}
+                    onClose={() => {
+                        setSettingsModalVisible(false);
+                        setSelectedLegIndex(null);
+                        setModalOriginActivity(undefined);
+                        setModalDestinationActivity(undefined);
+                    }}
+                    onSelectMode={handleSelectMode}
+                    currentMode={(routeData.legs[selectedLegIndex] as EnhancedRouteLeg)?.selectedMode || 'DRIVE'}
+                    modeData={(routeData.legs[selectedLegIndex] as EnhancedRouteLeg)?.modeData || {}}
+                    loadingModes={(routeData.legs[selectedLegIndex] as EnhancedRouteLeg)?.loadingModes || []}
+                    originActivity={modalOriginActivity}
+                    destinationActivity={modalDestinationActivity}
                 />
             )}
 

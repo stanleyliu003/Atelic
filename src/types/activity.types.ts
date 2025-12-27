@@ -54,6 +54,11 @@ export type Activity = {
   notes?: string;
   startTime?: string; // Format: "HH:mm" (e.g., "09:30")
   endTime?: string;   // Format: "HH:mm" (e.g., "17:45")
+
+  // Real-time collaboration timestamps
+  lastModified?: number; // Timestamp when this activity was last modified
+  modifiedBy?: string; // UserID who last modified
+  lastReordered?: number; // Timestamp when this activity was last reordered
 };
 
 // Tab type for navigation between wishlist and different days
@@ -107,4 +112,34 @@ export type TripData = {
   days: DayWithPolyline[];
   wishlist: Activity[];
   wishlistText: string;
-}; 
+};
+
+// Transportation mode types
+export type TravelMode = 'WALK' | 'DRIVE' | 'TRANSIT';
+
+export interface RouteLegModeData {
+  distance: number;
+  duration: string;
+  polyline: string;
+}
+
+export interface EnhancedRouteLeg {
+  // Cached data for all modes
+  modeData: {
+    DRIVE?: RouteLegModeData;
+    WALK?: RouteLegModeData;
+    TRANSIT?: RouteLegModeData;
+  };
+  // Currently selected mode
+  selectedMode: TravelMode;
+  // Loading states
+  loadingModes: TravelMode[];
+}
+
+export interface RouteData {
+  polyline: any[]; // Combined polyline from all legs
+  legs: EnhancedRouteLeg[];
+  totalDistance: number;
+  totalDuration: string;
+  travelMode: string; // For backward compatibility
+}

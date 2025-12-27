@@ -98,6 +98,8 @@ export const CreateTripProvider = ({ children }) => {
     const [dayPolylines, setDayPolylines] = useState({});
     // Add dayActivities state for restoring days
     const [dayActivities, setDayActivities] = useState({});
+    // Store travel modes per day per leg: { [dayNumber]: { [legIndex]: TravelMode } }
+    const [dayTravelModes, setDayTravelModes] = useState({});
 
     // Setter for a day's polyline
     const setDayPolyline = (dayNumber, encodedPolyline) => {
@@ -130,6 +132,44 @@ export const CreateTripProvider = ({ children }) => {
     // Direct setter for dayActivities (if used elsewhere)
     const setDayActivitiesWithLog = (newVal) => {
         setDayActivities(newVal);
+    };
+
+    // Setter for a specific leg's travel mode
+    const setLegTravelMode = (dayNumber, legIndex, travelMode) => {
+        setDayTravelModes(prev => ({
+            ...prev,
+            [dayNumber]: {
+                ...(prev[dayNumber] || {}),
+                [legIndex]: travelMode
+            }
+        }));
+    };
+
+    // Setter for all travel modes for a day
+    const setDayTravelModesForDay = (dayNumber, modesObj) => {
+        setDayTravelModes(prev => ({
+            ...prev,
+            [dayNumber]: modesObj
+        }));
+    };
+
+    // Setter for all day travel modes at once (for restoration from cloud)
+    const setAllDayTravelModes = (days) => {
+        const travelModesByDay = {};
+        days.forEach(day => {
+            if (day.travelModes) {
+                // Parse JSON string if it's a string, otherwise use directly
+                try {
+                    const modes = typeof day.travelModes === 'string'
+                        ? JSON.parse(day.travelModes)
+                        : day.travelModes;
+                    travelModesByDay[day.dayNumber] = modes;
+                } catch (error) {
+                    console.error('[CreateTripContext] Error parsing travelModes for day', day.dayNumber, error);
+                }
+            }
+        });
+        setDayTravelModes(travelModesByDay);
     };
 
     // Helper function to add a place to recent searches
@@ -229,6 +269,7 @@ export const CreateTripProvider = ({ children }) => {
             updateActivities(wishlistWithInstanceIds);
             setAllDayActivities(daysWithInstanceIds);
             setAllDayPolylines(daysWithInstanceIds);
+            setAllDayTravelModes(daysWithInstanceIds);
 
             // Restore city categories from cloud (if provided)
             if (trip.cityCategories) {
@@ -361,6 +402,7 @@ export const CreateTripProvider = ({ children }) => {
         setWishlistText('');
         setDayPolylines({});
         setDayActivities({});
+        setDayTravelModes({});
         setTripPhotoReference([]);
         setCollaborators([]);
         setCurrentUserRole(null);
@@ -397,6 +439,7 @@ export const CreateTripProvider = ({ children }) => {
         setWishlistText('');
         setDayPolylines({});
         setDayActivities({});
+        setDayTravelModes({});
         setSelectedCity('');
         setSelectedCityLocation(null);
         setTripLength(null);
@@ -701,6 +744,11 @@ export const CreateTripProvider = ({ children }) => {
         setAllDayActivities,
         restoreTripFromObject,
         setDayActivities: setDayActivitiesWithLog,
+        dayTravelModes,
+        setDayTravelModes,
+        setLegTravelMode,
+        setDayTravelModesForDay,
+        setAllDayTravelModes,
         resetTrip,
         completeReset,
         loadTripFromCloud,

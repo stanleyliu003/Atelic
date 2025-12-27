@@ -38,7 +38,7 @@
  * - Solution: Reanimated's scrollTo works during active gesture!
  */
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, View, StyleSheet, TouchableOpacity, Text, Linking, findNodeHandle, UIManager } from 'react-native';
+import { ActivityIndicator, ScrollView, View, StyleSheet, TouchableOpacity, Text, Linking, findNodeHandle, UIManager, Platform, ActionSheetIOS } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -54,7 +54,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RouteLeg } from '../../../services/getRoute_graphQL_call';
-import { Activity, ActivityListProps } from '../../../types/activity.types';
+import { Activity, ActivityListProps, EnhancedRouteLeg } from '../../../types/activity.types';
 import { ActivityCard } from './activity_card';
 import { NoActivities } from './no_activities';
 import { Colors } from '../../../../constants/Colors';
@@ -63,6 +63,7 @@ import { SearchBar } from '../../explore/SearchBar';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 // Helper function to get the appropriate icon based on travel mode
 const getTravelModeIcon = (travelMode?: string) => {
@@ -99,6 +100,8 @@ interface RouteInfoCardProps {
   currentActivity?: Activity;
   travelMode?: string;
   isLoading?: boolean;
+  activityIndex: number;
+  onOpenSettings: (legIndex: number) => void;
 }
 
 function RouteInfoCard({
@@ -108,69 +111,135 @@ function RouteInfoCard({
   currentActivity,
   travelMode,
   isLoading = false,
+  activityIndex,
+  onOpenSettings,
 }: RouteInfoCardProps) {
-  const handleRoutePress = () => {
-    if (!nextActivity || !currentActivity) return;
-
-    const googleMapsTravelMode = getGoogleMapsTravelMode(travelMode);
-
-    const createCoordinateUrl = () => {
-      if (currentActivity.lat && currentActivity.lng && nextActivity.lat && nextActivity.lng) {
-        const origin = `${currentActivity.lat},${currentActivity.lng}`;
-        const destination = `${nextActivity.lat},${nextActivity.lng}`;
-        return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=${googleMapsTravelMode}`;
+  const openGoogleMaps = async () => {
+    try {
+      if (!currentActivity || !nextActivity) {
+        console.error('[RouteCard] Missing origin or destination');
+        return;
       }
-      return null;
-    };
 
-    if (currentActivity.name && nextActivity.name) {
-      // Use activity names for better user experience
-      const origin = encodeURIComponent(currentActivity.name);
-      const destination = encodeURIComponent(nextActivity.name);
-      const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=${googleMapsTravelMode}`;
+      if (!currentActivity.lat || !currentActivity.lng || !nextActivity.lat || !nextActivity.lng) {
+        console.error('[RouteCard] Missing coordinates');
+        return;
+      }
 
-      Linking.openURL(url).catch(err => {
-        console.error('Error opening Google Maps:', err);
-        // Fallback to coordinates if name-based URL fails
-        const fallbackUrl = createCoordinateUrl();
-        if (fallbackUrl) {
-          Linking.openURL(fallbackUrl);
+      const googleMapsTravelMode = getGoogleMapsTravelMode(travelMode);
+      const originName = encodeURIComponent(currentActivity.name || `${currentActivity.lat},${currentActivity.lng}`);
+      const destinationName = encodeURIComponent(nextActivity.name || `${nextActivity.lat},${nextActivity.lng}`);
+
+      // Try Google Maps app first
+      const googleMapsAppUrl = `comgooglemaps://?saddr=${originName}&daddr=${destinationName}&directionsmode=${googleMapsTravelMode}`;
+      const canOpenGoogleMaps = await Linking.canOpenURL(googleMapsAppUrl);
+
+      if (canOpenGoogleMaps) {
+        await Linking.openURL(googleMapsAppUrl);
+        console.log('[RouteCard] Opened Google Maps app');
+      } else {
+        // Fallback to Google Maps web
+        let webUrl;
+        if (currentActivity.place_id && nextActivity.place_id) {
+          webUrl = `https://www.google.com/maps/dir/?api=1&origin=${originName}&origin_place_id=${currentActivity.place_id}&destination=${destinationName}&destination_place_id=${nextActivity.place_id}&travelmode=${googleMapsTravelMode}`;
+        } else {
+          webUrl = `https://www.google.com/maps/dir/?api=1&origin=${originName}&destination=${destinationName}&travelmode=${googleMapsTravelMode}`;
         }
-      });
-    } else {
-      // Use coordinates if names aren't available
-      const url = createCoordinateUrl();
-      if (url) {
-        Linking.openURL(url).catch(err => {
-          console.error('Error opening Google Maps:', err);
-        });
+        await Linking.openURL(webUrl);
+        console.log('[RouteCard] Opened Google Maps web');
       }
+    } catch (error) {
+      console.error('[RouteCard] Error opening Google Maps:', error);
     }
   };
 
+  const openAppleMaps = async () => {
+    try {
+      if (!currentActivity || !nextActivity) {
+        console.error('[RouteCard] Missing origin or destination');
+        return;
+      }
+
+      if (!currentActivity.lat || !currentActivity.lng || !nextActivity.lat || !nextActivity.lng) {
+        console.error('[RouteCard] Missing coordinates');
+        return;
+      }
+
+      const originName = encodeURIComponent(currentActivity.name || `${currentActivity.lat},${currentActivity.lng}`);
+      const destinationName = encodeURIComponent(nextActivity.name || `${nextActivity.lat},${nextActivity.lng}`);
+
+      // Convert travel mode to direction flag
+      const directionFlag = travelMode === 'DRIVE' ? 'd' : travelMode === 'WALK' ? 'w' : 'r';
+      const appleMapsUrl = `maps://?saddr=${originName}&daddr=${destinationName}&dirflg=${directionFlag}`;
+
+      await Linking.openURL(appleMapsUrl);
+      console.log('[RouteCard] Opened Apple Maps');
+    } catch (error) {
+      console.error('[RouteCard] Error opening Apple Maps:', error);
+    }
+  };
+
+  const handleRoutePress = () => {
+    if (!nextActivity || !currentActivity) return;
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Google Maps', 'Apple Maps'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            openGoogleMaps();
+          } else if (buttonIndex === 2) {
+            openAppleMaps();
+          }
+        }
+      );
+    } else {
+      // Default to Google Maps on Android
+      openGoogleMaps();
+    }
+  };
+
+  const handleSettingsPress = () => {
+    // Open the transportation mode selector modal
+    onOpenSettings(activityIndex);
+  };
+
   return (
-    <TouchableOpacity
-      style={styles.routeInfo}
-      onPress={handleRoutePress}
-      activeOpacity={0.7}
-      disabled={isLoading}
-    >
-      {isLoading ? (
-        <Text style={styles.loadingText}>Loading...</Text>
-      ) : (
-        <>
-          <View style={styles.routeInfoItem}>
-            {getTravelModeIcon(travelMode)}
-            <Text style={styles.routeInfoValue}>  {formatDuration(nextActivityDuration)}</Text>
-          </View>
-          <View style={styles.routeInfoItem}>
-            <Text style={styles.routeMidDotLabel}>· </Text>
-            <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
-          </View>
-          <FontAwesome5 name="chevron-right" size={18} color={Colors.PRIMARY} style={styles.chevronIcon} />
-        </>
+    <View style={styles.routeCard}>
+      <TouchableOpacity
+        style={styles.routeCardContent}
+        onPress={handleRoutePress}
+        activeOpacity={0.7}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <Text style={styles.loadingText}>Loading...</Text>
+        ) : (
+          <>
+            <View style={styles.routeInfoItem}>
+              {getTravelModeIcon(travelMode)}
+              <Text style={styles.routeInfoValue}>  {formatDuration(nextActivityDuration)}</Text>
+            </View>
+            <View style={styles.routeInfoItem}>
+              <Text style={styles.routeMidDotLabel}>· </Text>
+              <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
+            </View>
+          </>
+        )}
+      </TouchableOpacity>
+      {!isLoading && (
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={handleSettingsPress}
+          activeOpacity={0.7}
+        >
+          <FontAwesome5 name="chevron-right" size={18} color={Colors.PRIMARY} />
+        </TouchableOpacity>
       )}
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -189,6 +258,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   routeLoading?: boolean; // Loading state for route recalculation
   hideRouteInfo?: boolean; // Hide route info cards
   wishlistActivities?: Activity[]; // Activities already in the wishlist for "On list" tag
+  onOpenSettings?: (legIndex: number) => void; // Callback for opening transportation settings
   useInlineSelectionLayout?: boolean; // Use inline layout for wishlist (not absolute positioned)
   parentScrollViewRef?: React.RefObject<ScrollView> | AnimatedRef<Animated.ScrollView>; // External ScrollView ref for nested scroll control
   onAddPlace?: () => void; // Search bar trigger
@@ -231,7 +301,8 @@ export function ActivityList({
   isAddingPlaceFromAutocomplete = false,
   activeTab,
   hideNotesButton = false,
-  currentUserRole
+  currentUserRole,
+  onOpenSettings,
 }: EnhancedActivityListProps) {
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
@@ -463,8 +534,14 @@ export function ActivityList({
       const isSelected = activityId ? selectedActivities.includes(activityId) : false;
       const isLastActivity = index === currentActivities.length - 1;
       const routeLeg = routeLegs[index];
-      const nextActivityDistance = routeLeg?.distance;
-      const nextActivityDuration = routeLeg?.duration;
+
+      // Extract distance and duration from EnhancedRouteLeg structure
+      const enhancedLeg = routeLeg as EnhancedRouteLeg | undefined;
+      const selectedModeData = enhancedLeg?.selectedMode ? enhancedLeg.modeData[enhancedLeg.selectedMode] : undefined;
+      const nextActivityDistance = selectedModeData?.distance || (routeLeg as any)?.distance;
+      const nextActivityDuration = selectedModeData?.duration || (routeLeg as any)?.duration;
+      const legTravelMode = enhancedLeg?.selectedMode || travelMode;
+
       const nextActivity = currentActivities[index + 1];
 
       // Check if this activity is already in the wishlist
@@ -486,7 +563,7 @@ export function ActivityList({
         nextActivityDuration,
         isLastActivity,
         nextActivity,
-        travelMode,
+        travelMode: legTravelMode,
         index,
         hideRouteInfo,
         duplicateActivityIndicator: isInWishlist,
@@ -518,6 +595,7 @@ export function ActivityList({
             startAutoScroll={startAutoScroll}
             stopAutoScroll={stopAutoScroll}
             scrollViewRef={scrollViewRef}
+            onOpenSettings={onOpenSettings}
           />
         );
       }
@@ -663,6 +741,7 @@ interface DraggableActivityCardProps {
   scrollViewRef: AnimatedRef<Animated.ScrollView>; // Reference to ScrollView for scroll compensation
   activeTab?: string; // Current active tab (wishlist or day#)
   hideNotesButton?: boolean; // Hide the notes button (e.g., in CategoryModal)
+  onOpenSettings?: (legIndex: number) => void; // Callback for opening transportation settings
 }
 
 const DraggableActivityCard = React.memo(function DraggableActivityCard({
@@ -701,6 +780,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
   scrollViewRef,
   activeTab,
   hideNotesButton = false,
+  onOpenSettings,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -1111,6 +1191,8 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
             currentActivity={currentActivity}
             travelMode={travelMode}
             isLoading={isLoadingRoute}
+            activityIndex={index}
+            onOpenSettings={onOpenSettings || (() => {})}
           />
         </Animated.View>
       )}
@@ -1142,6 +1224,34 @@ const styles = StyleSheet.create({
   },
   draggableCard: {
     marginBottom: -10, // negative margin between activity card and route info
+  },
+  routeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  routeCardContent: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 6,
+  },
+  settingsButton: {
+    padding: 10,
+    paddingRight: 14,
+    paddingLeft: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   routeInfo: {
     backgroundColor: '#f8f9fa',
