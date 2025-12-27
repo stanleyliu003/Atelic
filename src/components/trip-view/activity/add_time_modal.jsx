@@ -14,22 +14,38 @@ const ITEM_HEIGHT = 40;
 
 function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, visible, enableWrap = true, disabled = false }) {
   const scrollViewRef = useRef(null);
+  const LOOP_MULTIPLIER = 3; // repeat list; we will keep the scroll position in the middle copy
+  const loopEnabled = enableWrap && Array.isArray(values) && values.length > 0;
+  const loopedValues = loopEnabled ? Array.from({ length: LOOP_MULTIPLIER }, () => values).flat() : values;
 
   const handleScrollEnd = (event) => {
     if (disabled) return; // Don't handle scroll for viewers
 
     const offset = event.nativeEvent.contentOffset.y;
-    // The middle row is at offset ITEM_HEIGHT (accounting for top spacer/wrap item)
-    // Calculate which index corresponds to the middle visible row
-    const index = Math.round(offset / ITEM_HEIGHT);
-    const selectedIndex = Math.min(Math.max(index, 0), values.length - 1);
+    // The middle row is at offset ITEM_HEIGHT (because we render one extra item above)
+    // Calculate which "raw" index corresponds to the selected value.
+    const rawIndex = Math.round(offset / ITEM_HEIGHT);
 
+    if (loopEnabled) {
+      const baseLen = values.length;
+      const selectedBaseIndex = ((rawIndex % baseLen) + baseLen) % baseLen;
+      const selected = values[selectedBaseIndex];
+
+      onValueChange(selected);
+
+      // Re-center into the middle copy so the user can keep scrolling "forever"
+      const middleStart = baseLen; // start index of the 2nd copy
+      const targetRawIndex = middleStart + selectedBaseIndex;
+      scrollViewRef.current?.scrollTo({
+        y: targetRawIndex * ITEM_HEIGHT,
+        animated: false,
+      });
+      return;
+    }
+
+    const selectedIndex = Math.min(Math.max(rawIndex, 0), values.length - 1);
     onValueChange(values[selectedIndex]);
-    // Snap to position where selected item is in the middle row
-    scrollViewRef.current?.scrollTo({
-      y: selectedIndex * ITEM_HEIGHT,
-      animated: true,
-    });
+    scrollViewRef.current?.scrollTo({ y: selectedIndex * ITEM_HEIGHT, animated: true });
   };
 
   useEffect(() => {
@@ -40,8 +56,9 @@ function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, vi
       // Use setTimeout to ensure the ScrollView is fully mounted
       // Scroll so the selected value appears in the middle row
       setTimeout(() => {
+        const y = loopEnabled ? (values.length + index) * ITEM_HEIGHT : index * ITEM_HEIGHT;
         scrollViewRef.current?.scrollTo({
-          y: index * ITEM_HEIGHT,
+          y,
           animated: false,
         });
       }, 50);
@@ -60,15 +77,15 @@ function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, vi
         nestedScrollEnabled={true}
         scrollEnabled={!disabled}
       >
-        {enableWrap ? (
+        {loopEnabled ? (
           <>
             {/* Show last value above the first (for wrapping effect) */}
             <View style={styles.pickerItem}>
               <Text style={styles.pickerText}>{values[values.length - 1]}</Text>
             </View>
 
-            {values.map((value) => (
-              <View key={value} style={styles.pickerItem}>
+            {loopedValues.map((value, idx) => (
+              <View key={`${debugLabel || 'col'}-${value}-${idx}`} style={styles.pickerItem}>
                 <Text style={styles.pickerText}>{value}</Text>
               </View>
             ))}
@@ -100,6 +117,7 @@ function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, vi
 
 export default function AddTimeModal({ visible, onClose, initialStartTime, initialEndTime, onSave, currentUserRole }) {
   const isViewer = currentUserRole === 'viewer';
+  const didUserInteractRef = useRef(false);
   // Convert 24-hour time to 12-hour format with AM/PM
   const parseTime = (time, fallback = '09:00') => {
     const effectiveTime = time || fallback;
@@ -163,6 +181,10 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
   const [endMinute, setEndMinute] = useState(initialEndParsed.minute);
   const [endPeriod, setEndPeriod] = useState(initialEndParsed.period);
 
+  const markInteracted = () => {
+    didUserInteractRef.current = true;
+  };
+
   // Whenever the modal is (re)opened, scroll to the correct default or stored times
   useEffect(() => {
     if (!visible) return;
@@ -189,34 +211,33 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
     setEndHour(recomputedEnd.hour);
     setEndMinute(recomputedEnd.minute);
     setEndPeriod(recomputedEnd.period);
+
+    // Reset interaction tracking each time the modal opens so we only enforce ordering
+    // after the user finishes scrolling.
+    didUserInteractRef.current = false;
   }, [visible, initialStartTime, initialEndTime]);
 
-  // Ensure end time is always after start time and auto-save on valid change
+  // After the user finishes scrolling, ensure end time is after start time.
+  // If not, bump end time to 1 hour after start time, then auto-save.
   useEffect(() => {
+    if (!visible || isViewer) return;
+    if (!didUserInteractRef.current) return;
+
     const startTotal = toMinutes(startHour, startMinute, startPeriod);
     const endTotal = toMinutes(endHour, endMinute, endPeriod);
 
     if (endTotal <= startTotal) {
       const adjusted = minutesToTime(startTotal + 60);
-
-      if (adjusted.hour !== endHour) {
-        setEndHour(adjusted.hour);
-      }
-      if (adjusted.minute !== endMinute) {
-        setEndMinute(adjusted.minute);
-      }
-      if (adjusted.period !== endPeriod) {
-        setEndPeriod(adjusted.period);
-      }
+      if (adjusted.hour !== endHour) setEndHour(adjusted.hour);
+      if (adjusted.minute !== endMinute) setEndMinute(adjusted.minute);
+      if (adjusted.period !== endPeriod) setEndPeriod(adjusted.period);
       return;
     }
 
-    if (visible && !isViewer) {
-      const startTime24 = to24Hour(startHour, startMinute, startPeriod);
-      const endTime24 = to24Hour(endHour, endMinute, endPeriod);
-      onSave(startTime24, endTime24);
-    }
-  }, [startHour, startMinute, startPeriod, endHour, endMinute, endPeriod, visible]);
+    const startTime24 = to24Hour(startHour, startMinute, startPeriod);
+    const endTime24 = to24Hour(endHour, endMinute, endPeriod);
+    onSave(startTime24, endTime24);
+  }, [startHour, startMinute, startPeriod, endHour, endMinute, endPeriod, visible, isViewer]);
 
   if (!visible) return null;
 
@@ -239,7 +260,10 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                 <TimePickerColumn
                   values={HOURS}
                   selectedValue={startHour}
-                  onValueChange={setStartHour}
+                  onValueChange={(v) => {
+                    markInteracted();
+                    setStartHour(v);
+                  }}
                   debugLabel="start-hour"
                   visible={visible}
                   disabled={isViewer}
@@ -247,7 +271,10 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                 <TimePickerColumn
                   values={MINUTES}
                   selectedValue={startMinute}
-                  onValueChange={setStartMinute}
+                  onValueChange={(v) => {
+                    markInteracted();
+                    setStartMinute(v);
+                  }}
                   debugLabel="start-minute"
                   visible={visible}
                   disabled={isViewer}
@@ -255,7 +282,10 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                 <TimePickerColumn
                   values={PERIODS}
                   selectedValue={startPeriod}
-                  onValueChange={setStartPeriod}
+                  onValueChange={(v) => {
+                    markInteracted();
+                    setStartPeriod(v);
+                  }}
                   debugLabel="start-period"
                   visible={visible}
                   enableWrap={false}
@@ -277,7 +307,10 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                 <TimePickerColumn
                   values={HOURS}
                   selectedValue={endHour}
-                  onValueChange={setEndHour}
+                  onValueChange={(v) => {
+                    markInteracted();
+                    setEndHour(v);
+                  }}
                   debugLabel="end-hour"
                   visible={visible}
                   disabled={isViewer}
@@ -285,7 +318,10 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                 <TimePickerColumn
                   values={MINUTES}
                   selectedValue={endMinute}
-                  onValueChange={setEndMinute}
+                  onValueChange={(v) => {
+                    markInteracted();
+                    setEndMinute(v);
+                  }}
                   debugLabel="end-minute"
                   visible={visible}
                   disabled={isViewer}
@@ -293,7 +329,10 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                 <TimePickerColumn
                   values={PERIODS}
                   selectedValue={endPeriod}
-                  onValueChange={setEndPeriod}
+                  onValueChange={(v) => {
+                    markInteracted();
+                    setEndPeriod(v);
+                  }}
                   debugLabel="end-period"
                   visible={visible}
                   enableWrap={false}

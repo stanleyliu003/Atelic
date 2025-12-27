@@ -91,6 +91,8 @@ exports.handler = async (event) => {
 async function findTripById(tripId, tableName) {
   const { ScanCommand } = require('@aws-sdk/lib-dynamodb');
 
+  console.log('🔍 Searching for trip:', tripId, 'in table:', tableName);
+
   const params = {
     TableName: tableName,
     FilterExpression: 'tripID = :tripId',
@@ -99,8 +101,38 @@ async function findTripById(tripId, tableName) {
     }
   };
 
-  const result = await docClient.send(new ScanCommand(params));
-  return result.Items && result.Items.length > 0 ? result.Items[0] : null;
+  let allItems = [];
+  let lastEvaluatedKey = null;
+  let scanCount = 0;
+
+  // Handle pagination - DynamoDB Scan only returns 1MB at a time
+  do {
+    scanCount++;
+    if (lastEvaluatedKey) {
+      params.ExclusiveStartKey = lastEvaluatedKey;
+    }
+
+    console.log(`📊 Scan attempt ${scanCount}, LastKey:`, lastEvaluatedKey ? 'exists' : 'none');
+    const result = await docClient.send(new ScanCommand(params));
+
+    console.log(`📦 Scan ${scanCount} results: ${result.Items?.length || 0} items, ScannedCount: ${result.ScannedCount}, HasMore: ${!!result.LastEvaluatedKey}`);
+
+    if (result.Items && result.Items.length > 0) {
+      allItems = allItems.concat(result.Items);
+
+      // Check if we found the trip in this batch
+      const foundTrip = result.Items.find(item => item.tripID === tripId);
+      if (foundTrip) {
+        console.log('✅ Trip found in scan batch', scanCount, '- Total items scanned:', result.ScannedCount);
+        return foundTrip;
+      }
+    }
+
+    lastEvaluatedKey = result.LastEvaluatedKey;
+  } while (lastEvaluatedKey);
+
+  console.log('❌ Trip NOT found after', scanCount, 'scan(s). Total items collected:', allItems.length);
+  return null;
 }
 
 // Helper function to get user's role in trip

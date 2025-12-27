@@ -8,6 +8,7 @@ export const onTripUpdated = /* GraphQL */ `
       days {
         dayNumber
         encodedPolyline
+        travelModes
         __typename
       }
       wishlist {

@@ -50,6 +50,7 @@ export const createTrip = /* GraphQL */ `
       days {
         dayNumber
         encodedPolyline
+        travelModes
         __typename
       }
       wishlist {
@@ -166,6 +167,7 @@ export const addCollaborator = /* GraphQL */ `
       days {
         dayNumber
         encodedPolyline
+        travelModes
         __typename
       }
       wishlist {
@@ -241,6 +243,7 @@ export const removeCollaborator = /* GraphQL */ `
       days {
         dayNumber
         encodedPolyline
+        travelModes
         __typename
       }
       wishlist {
@@ -320,6 +323,7 @@ export const updateCollaboratorRole = /* GraphQL */ `
       days {
         dayNumber
         encodedPolyline
+        travelModes
         __typename
       }
       wishlist {
@@ -648,6 +652,8 @@ export const updateUserProfile = /* GraphQL */ `
       deviceType
       modelName
       osVersion
+      activityPreferences
+      selectedUseCases
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate

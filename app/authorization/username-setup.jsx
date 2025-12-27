@@ -2,9 +2,10 @@ import { Colors } from '../../constants/Colors';
 import { Auth, API } from 'aws-amplify';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView, Modal, ImageBackground } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DeviceInfo from 'react-native-device-info';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const updateUserProfileMutation = /* GraphQL */ `
   mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
@@ -45,17 +46,62 @@ const searchUsers = /* GraphQL */ `
 
 export default function UsernameSetup() {
   const router = useRouter();
+  const [currentPage, setCurrentPage] = useState(1);
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [age, setAge] = useState('');
-  const [ageError, setAgeError] = useState('');
-  const [ageTouched, setAgeTouched] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date(new Date().setFullYear(new Date().getFullYear() - 25)));
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [gender, setGender] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [fullName, setFullName] = useState('');
   const [isExternalProvider, setIsExternalProvider] = useState(false);
   const [isAppleUser, setIsAppleUser] = useState(false);
   const [isGoogleUser, setIsGoogleUser] = useState(false);
+  const [activityPreferences, setActivityPreferences] = useState([]);
+  const [selectedUseCases, setSelectedUseCases] = useState([]);
+
+  const activityOptions = [
+    { label: 'History', emoji: '🏛️', value: 'history' },
+    { label: 'Foodie', emoji: '🍜', value: 'foodie' },
+    { label: 'Art', emoji: '🎨', value: 'art' },
+    { label: 'Hidden Gems', emoji: '✨', value: 'hidden-gems' },
+    { label: 'Relaxation', emoji: '🧘‍♀️', value: 'relaxation' },
+    { label: 'Outdoors', emoji: '🌲', value: 'outdoors' },
+    { label: 'Nightlife', emoji: '🍸', value: 'nightlife' },
+    { label: 'Luxury', emoji: '💎', value: 'luxury' },
+    { label: 'Budget', emoji: '🎒', value: 'budget' },
+    { label: 'Kid Friendly', emoji: '🧸', value: 'kid-friendly' },
+  ];
+
+  const useCaseOptions = [
+    {
+      label: 'Collaborate with friends',
+      description: 'Invite your friends and family to join your trip and plan special memories together.',
+      value: 'collaborate'
+    },
+    {
+      label: 'Organize my itinerary',
+      description: 'Build the perfect itinerary customized to your schedule. Get directions, time estimates, and add notes about each place.',
+      value: 'organize_itinerary'
+    },
+    {
+      label: 'Discover unique places and activities',
+      description: 'Receive activity recommendations personalized to your interests.',
+      value: 'discovery'
+    },
+    {
+      label: 'Manage trip expenses',
+      description: 'Track costs of each travel expenses to stay within your travel budget.',
+      value: 'manage_expenses'
+    },
+    {
+      label: 'Keep all my bookings in one place',
+      description: 'Import your flight, hotel, reservations, and ticket details into your itinerary.',
+      value: 'organize_bookings'
+    },
+  ];
 
   useEffect(() => {
     // Check if user signed in with external provider (Apple or Google)
@@ -64,7 +110,7 @@ export default function UsernameSetup() {
         const user = await Auth.currentAuthenticatedUser();
         const attributes = await Auth.userAttributes(user);
 
-        console.log('User attributes:', attributes); // Debug log to see what's available
+        console.log('User attributes:', attributes);
 
         // Check if user has identities attribute indicating external provider sign-in
         const identitiesAttr = attributes.find(attr => attr.Name === 'identities');
@@ -79,27 +125,33 @@ export default function UsernameSetup() {
             identity.userId?.startsWith('google_')
           );
           const isExternal = isApple || isGoogle;
-          
+
           setIsExternalProvider(isExternal);
           setIsAppleUser(isApple);
           setIsGoogleUser(isGoogle);
 
           // For external users, check if name is already available
           if (isExternal) {
-            // Check for both 'name' attribute and separate given_name/family_name attributes
             const nameAttr = attributes.find(attr => attr.Name === 'name');
             const givenNameAttr = attributes.find(attr => attr.Name === 'given_name');
             const familyNameAttr = attributes.find(attr => attr.Name === 'family_name');
-            
+
             if (nameAttr && nameAttr.Value) {
               console.log(`${isApple ? 'Apple' : 'Google'} user name found:`, nameAttr.Value);
+              const nameParts = nameAttr.Value.trim().split(' ');
+              setFirstName(nameParts[0] || '');
+              setLastName(nameParts.slice(1).join(' ') || '');
               setFullName(nameAttr.Value);
             } else if (givenNameAttr && familyNameAttr) {
+              console.log(`${isApple ? 'Apple' : 'Google'} user name constructed from given_name + family_name`);
+              setFirstName(givenNameAttr.Value || '');
+              setLastName(familyNameAttr.Value || '');
               const fullName = `${givenNameAttr.Value} ${familyNameAttr.Value}`.trim();
-              console.log(`${isApple ? 'Apple' : 'Google'} user name constructed from given_name + family_name:`, fullName);
               setFullName(fullName);
             } else if (givenNameAttr && givenNameAttr.Value) {
               console.log(`${isApple ? 'Apple' : 'Google'} user given name only:`, givenNameAttr.Value);
+              setFirstName(givenNameAttr.Value);
+              setLastName('');
               setFullName(givenNameAttr.Value);
             } else {
               console.log(`${isApple ? 'Apple' : 'Google'} user name not found in attributes`);
@@ -117,34 +169,52 @@ export default function UsernameSetup() {
     checkUserProvider();
   }, []);
 
-  const validateAge = (ageValue) => {
-    if (!ageValue) {
-      setAgeError('');
-      return;
+  // Extract first name from full name
+  const getFirstName = () => {
+    if (!fullName) return '';
+    return fullName.trim().split(' ')[0];
+  };
+
+  // Calculate age from birthdate
+  const calculateAge = (birthdate) => {
+    if (!birthdate) return null;
+    const today = new Date();
+    const birthDate = new Date(birthdate);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
     }
-    const ageNum = parseInt(ageValue);
-    if (isNaN(ageNum) || ageNum < 4 || ageNum > 100) {
-      setAgeError('Age must be a valid number between 4 and 100.');
+    return age;
+  };
+
+  // Format date for display
+  const formatDate = (date) => {
+    if (!date) return '';
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+  };
+
+  // Toggle activity selection
+  const toggleActivity = (value) => {
+    if (activityPreferences.includes(value)) {
+      setActivityPreferences(activityPreferences.filter(item => item !== value));
     } else {
-      setAgeError('');
+      setActivityPreferences([...activityPreferences, value]);
     }
   };
 
-  const handleAgeChange = (value) => {
-    setAge(value);
-    if (ageTouched) {
-      validateAge(value);
+  // Toggle use case selection
+  const toggleUseCase = (value) => {
+    if (selectedUseCases.includes(value)) {
+      setSelectedUseCases(selectedUseCases.filter(item => item !== value));
+    } else {
+      setSelectedUseCases([...selectedUseCases, value]);
     }
-  };
-
-  const handleAgeBlur = () => {
-    setAgeTouched(true);
-    validateAge(age);
   };
 
   const handleContinue = async () => {
     setError('');
-    setAgeError('');
     setIsLoading(true);
 
     // Validate all fields first
@@ -154,8 +224,19 @@ export default function UsernameSetup() {
       return;
     }
 
-    // Validate full name for Google users (Apple users don't need to provide it per Apple guidelines)
-    if (isGoogleUser && (!fullName || fullName.trim().length < 2)) {
+    if (!firstName || firstName.trim().length < 1) {
+      setError('Please enter your first name.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!lastName || lastName.trim().length < 1) {
+      setError('Please enter your last name.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!fullName || fullName.trim().length < 2) {
       setError('Please enter your full name.');
       setIsLoading(false);
       return;
@@ -167,16 +248,16 @@ export default function UsernameSetup() {
       return;
     }
 
-    if (!age) {
-      setAgeError('Please enter your age.');
+    if (!selectedDate) {
+      setError('Please select your birthday.');
       setIsLoading(false);
       return;
     }
 
-    // Validate age is a number between 4 and 100
-    const ageNum = parseInt(age);
-    if (isNaN(ageNum) || ageNum < 4 || ageNum > 100) {
-      setAgeError('Age must be a valid number between 4 and 100.');
+    // Validate age is between 4 and 100
+    const age = calculateAge(selectedDate);
+    if (!age || age < 4 || age > 100) {
+      setError('Age must be between 4 and 100.');
       setIsLoading(false);
       return;
     }
@@ -215,28 +296,19 @@ export default function UsernameSetup() {
       // Step 2: Username is available, update the user's preferred_username
       const user = await Auth.currentAuthenticatedUser();
 
-      // Convert age to birthdate format (YYYY-MM-DD) for Cognito
-      // Cognito requires birthdate to be at least 10 characters
-      const currentYear = new Date().getFullYear();
-      const birthYear = currentYear - ageNum;
-      const birthdate = `${birthYear}-01-01`;
+      // Format birthdate as YYYY-MM-DD for Cognito
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const birthdate = `${year}-${month}-${day}`;
 
       // Prepare attributes to update
       const attributesToUpdate = {
         'preferred_username': username.trim(),
         'gender': gender,
-        'birthdate': birthdate
+        'birthdate': birthdate,
+        'name': fullName.trim()
       };
-
-      // Add name attribute for external provider users
-      // Apple users: combine given_name + family_name into name attribute
-      // Google users: use the fullName from user input
-      if ((isAppleUser || isGoogleUser) && fullName.trim()) {
-        attributesToUpdate['name'] = fullName.trim();
-      } else {
-        // Fallback: use username as fullName if no fullName is available
-        attributesToUpdate['name'] = username.trim();
-      }
 
       // Update user attributes
       await Auth.updateUserAttributes(user, attributesToUpdate);
@@ -250,7 +322,7 @@ export default function UsernameSetup() {
         const prefUsername = prefUsernameAttr?.Value || username.trim();
         const cognitoUserId = current.username;
         const appVersion = DeviceInfo.getVersion() || null;
-        const osName = DeviceInfo.getSystemName() || null;       // maps to deviceType
+        const osName = DeviceInfo.getSystemName() || null;
         const osVersion = DeviceInfo.getSystemVersion() || null;
         const modelName = DeviceInfo.getModel() || null;
         await API.graphql({
@@ -264,12 +336,14 @@ export default function UsernameSetup() {
               appVersion,
               deviceType: osName,
               modelName,
-              osVersion
+              osVersion,
+              activityPreferences,
+              selectedUseCases
             })
           },
           authMode: 'AMAZON_COGNITO_USER_POOLS'
         });
-        // Best-effort read after write (authorized via Query @auth)
+        // Best-effort read after write
         try {
           await API.graphql({
             query: getUserProfileQuery,
@@ -297,6 +371,107 @@ export default function UsernameSetup() {
     }
   };
 
+  const handleNext = () => {
+    setError('');
+
+    if (currentPage === 1) {
+      // Validate first name and last name
+      if (!firstName || firstName.trim().length < 1) {
+        setError('Please enter your first name.');
+        return;
+      }
+      if (!lastName || lastName.trim().length < 1) {
+        setError('Please enter your last name.');
+        return;
+      }
+      setCurrentPage(2);
+    } else if (currentPage === 2) {
+      // Validate birthday
+      if (!selectedDate) {
+        setError('Please select your birthday.');
+        return;
+      }
+      const age = calculateAge(selectedDate);
+      if (!age || age < 4 || age > 100) {
+        setError('Age must be between 4 and 100.');
+        return;
+      }
+      setCurrentPage(3);
+    } else if (currentPage === 3) {
+      // Validate gender
+      if (!gender) {
+        setError('Please select your gender.');
+        return;
+      }
+      setCurrentPage(4);
+    } else if (currentPage === 4) {
+      // Validate username
+      if (!username || username.trim().length < 5) {
+        setError('Username must be at least 5 characters long.');
+        return;
+      }
+      const usernameRegex = /^[a-zA-Z0-9_]{5,20}$/;
+      if (!usernameRegex.test(username)) {
+        setError('Username must be 5-20 characters and contain only letters, numbers, and underscores.');
+        return;
+      }
+      setCurrentPage(5);
+    } else if (currentPage === 5) {
+      // Good company page - no validation required
+      setCurrentPage(6);
+    } else if (currentPage === 6) {
+      // Activities page - no validation required
+      setCurrentPage(7);
+    } else if (currentPage === 7) {
+      // Use cases page - no validation required
+      setCurrentPage(8);
+    } else if (currentPage === 8) {
+      // Final welcome page - submit
+      handleContinue();
+    }
+  };
+
+  const handleBack = () => {
+    setError('');
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    } else {
+      // Sign out and go back to login
+      Auth.signOut({ global: false }).catch(() => {});
+      router.replace('/');
+    }
+  };
+
+  const onDateChange = (event, date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    if (date) {
+      setSelectedDate(date);
+    }
+  };
+
+  const isNextDisabled = () => {
+    if (currentPage === 1) {
+      return !firstName || firstName.trim().length < 1 || !lastName || lastName.trim().length < 1;
+    } else if (currentPage === 2) {
+      return !selectedDate;
+    } else if (currentPage === 3) {
+      return !gender;
+    } else if (currentPage === 4) {
+      return !username || username.trim().length < 5 || username.trim().length > 20;
+    } else if (currentPage === 5) {
+      return false; // Good company page - no validation
+    } else if (currentPage === 6) {
+      return false; // Activities page - optional
+    } else if (currentPage === 7) {
+      return false; // Use cases page - optional
+    } else if (currentPage === 8) {
+      return isLoading;
+    }
+    return false;
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: Colors.WHITE }}
@@ -312,149 +487,357 @@ export default function UsernameSetup() {
           <View style={styles.content}>
             {/* Back Button */}
             <TouchableOpacity
-              style={{ padding: 5, marginBottom: 20, alignSelf: 'flex-start' }}
-              onPress={async () => {
-                try {
-                  await Auth.signOut({ global: false });
-                } catch (e) {}
-                router.replace('/');
-              }}
+              style={{ padding: 5, marginBottom: 10, alignSelf: 'flex-start' }}
+              onPress={handleBack}
             >
               <Ionicons name="arrow-back" size={40} color="black" />
             </TouchableOpacity>
 
-            <Text style={styles.title}>Complete Your Profile</Text>
+            {/* Page 1: First Name and Last Name */}
+            {currentPage === 1 && (
+              <>
+                <Text style={styles.title}>What's your Name?</Text>
+                <Text style={styles.subtitle}>
+                  This is how your friends can find you on Atelic.
+                </Text>
 
-            {/* Full Name Field - Show for Google users only (Apple users per Apple guidelines) */}
-            {isGoogleUser && (
-              <View style={{ marginTop: 40 }}>
-                <Text style={styles.label}>Full Name</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder='Enter your full name'
-                  value={fullName}
-                  onChangeText={(value) => setFullName(value)}
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                  spellCheck={false}
-                  autoFocus={true}
-                  editable={!isLoading}
-                />
-              </View>
+                <View style={{ marginTop: 40, gap: 20 }}>
+                  <View>
+                    <Text style={styles.label}>First Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter your first name"
+                      value={firstName}
+                      onChangeText={(value) => {
+                        setFirstName(value);
+                        setFullName(`${value} ${lastName}`.trim());
+                      }}
+                      autoCapitalize="words"
+                      autoCorrect={false}
+                      spellCheck={false}
+                      autoFocus={true}
+                      editable={!isLoading}
+                    />
+                  </View>
+
+                  <View>
+                    <Text style={styles.label}>Last Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter your last name"
+                      value={lastName}
+                      onChangeText={(value) => {
+                        setLastName(value);
+                        setFullName(`${firstName} ${value}`.trim());
+                      }}
+                      autoCapitalize="words"
+                      autoCorrect={false}
+                      spellCheck={false}
+                      editable={!isLoading}
+                    />
+                  </View>
+                </View>
+              </>
             )}
 
-            <View style={{ marginTop: isGoogleUser ? 20 : 40 }}>
-              <Text style={styles.label}>Username</Text>
-              <TextInput
-                style={styles.input}
-                placeholder='Enter Username (5-20 characters)'
-                value={username}
-                onChangeText={(value) => setUsername(value)}
-                autoCapitalize="none"
-                autoCorrect={false}
-                spellCheck={false}
-                autoFocus={!isGoogleUser}
-                editable={!isLoading}
-              />
-              {username.length > 0 && (username.length < 5 || username.length > 20) && (
-                <Text style={{ color: 'red', marginTop: 5, fontFamily: 'outfit', fontSize: 14 }}>
-                  Username must be between 5-20 characters
+            {/* Page 2: Birthday */}
+            {currentPage === 2 && (
+              <>
+                <Text style={styles.title}>
+                  Welcome {getFirstName()}! When's your birthday?
                 </Text>
-              )}
-            </View>
+                <Text style={styles.subtitle}>
+                  We'll use this for activity recommendations and to keep younger users safe.
+                </Text>
 
-            {/* Age Field */}
-            <View style={{ marginTop: 20, marginBottom: 5 }}>
-              <Text style={styles.label}>Age</Text>
-              <TextInput
-                style={styles.input}
-                placeholder='Enter your age'
-                value={age}
-                onChangeText={handleAgeChange}
-                onBlur={handleAgeBlur}
-                keyboardType="number-pad"
-                autoCorrect={false}
-                spellCheck={false}
-                editable={!isLoading}
-              />
-              {ageError ? (
-                <Text style={{ color: 'red', marginTop: 5, fontFamily: 'outfit', fontSize: 14 }}>{ageError}</Text>
-              ) : null}
-            </View>
+                <View style={{ marginTop: 40 }}>
+                  <Text style={styles.label}>Birthday</Text>
+                  <TouchableOpacity
+                    style={styles.dateInputField}
+                    onPress={() => setShowDatePicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.dateInputText}>
+                      {formatDate(selectedDate)}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={24} color={Colors.GRAY} />
+                  </TouchableOpacity>
 
-            {/* Gender Field */}
-            <View style={{ marginTop: 20, marginBottom: 5 }}>
-              <Text style={styles.label}>Gender</Text>
-              <View style={{ marginTop: 5, alignItems: 'center', justifyContent: 'center' }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-                  <TouchableOpacity
-                    style={[styles.genderButton, gender === 'male' && styles.genderButtonSelected]}
-                    onPress={() => setGender('male')}
+                  <Text style={styles.helperText}>
+                    Your birthday or age will not appear on your profile.
+                  </Text>
+
+                  <Modal
+                    visible={showDatePicker}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowDatePicker(false)}
                   >
-                    <Text style={{ color: gender === 'male' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Male</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.genderButton, gender === 'female' && styles.genderButtonSelected]}
-                    onPress={() => setGender('female')}
-                  >
-                    <Text style={{ color: gender === 'female' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Female</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.genderButton, gender === 'other' && styles.genderButtonSelected]}
-                    onPress={() => setGender('other')}
-                  >
-                    <Text style={{ color: gender === 'other' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Other</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.modalOverlay}
+                      activeOpacity={1}
+                      onPress={() => setShowDatePicker(false)}
+                    >
+                      <TouchableOpacity
+                        activeOpacity={1}
+                        onPress={(e) => e.stopPropagation()}
+                      >
+                        <View style={styles.datePickerContainer}>
+                          <Text style={styles.datePickerTitle}>Choose Date of Birth</Text>
+                          <DateTimePicker
+                            value={selectedDate}
+                            mode="date"
+                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            onChange={onDateChange}
+                            maximumDate={new Date()}
+                            minimumDate={new Date(new Date().setFullYear(new Date().getFullYear() - 100))}
+                            textColor={Colors.BLACK}
+                            themeVariant="light"
+                            style={styles.datePicker}
+                          />
+                          <TouchableOpacity
+                            style={styles.datePickerOkButton}
+                            onPress={() => setShowDatePicker(false)}
+                          >
+                            <Text style={styles.datePickerOkText}>Done</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  </Modal>
                 </View>
-              </View>
-            </View>
+              </>
+            )}
+
+            {/* Page 3: Gender */}
+            {currentPage === 3 && (
+              <>
+                <Text style={styles.title}>What's your gender?</Text>
+                <Text style={styles.subtitle}>
+                  This helps us personalize your experience.
+                </Text>
+
+                <View style={{ marginTop: 40 }}>
+                  <View style={{ gap: 15 }}>
+                    <TouchableOpacity
+                      style={[styles.genderButtonFull, gender === 'man' && styles.genderButtonSelected]}
+                      onPress={() => setGender('man')}
+                    >
+                      <Text style={{ color: gender === 'man' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Man</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.genderButtonFull, gender === 'woman' && styles.genderButtonSelected]}
+                      onPress={() => setGender('woman')}
+                    >
+                      <Text style={{ color: gender === 'woman' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Woman</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.genderButtonFull, gender === 'non-binary' && styles.genderButtonSelected]}
+                      onPress={() => setGender('non-binary')}
+                    >
+                      <Text style={{ color: gender === 'non-binary' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Non-Binary</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.genderButtonFull, gender === 'prefer-not-to-say' && styles.genderButtonSelected]}
+                      onPress={() => setGender('prefer-not-to-say')}
+                    >
+                      <Text style={{ color: gender === 'prefer-not-to-say' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Prefer not to say</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={styles.helperText}>
+                    Your gender will not appear on your profile.
+                  </Text>
+                </View>
+              </>
+            )}
+
+            {/* Page 4: Username */}
+            {currentPage === 4 && (
+              <>
+                <Text style={styles.title}>Choose a Username</Text>
+                <Text style={styles.subtitle}>
+                  Your username will be visible to other Atelic users.
+                </Text>
+
+                <View style={{ marginTop: 40 }}>
+                  <Text style={styles.label}>Username</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter Username (5-20 characters)"
+                    value={username}
+                    onChangeText={(value) => setUsername(value)}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    spellCheck={false}
+                    autoFocus={true}
+                    editable={!isLoading}
+                  />
+                  {username.length > 0 && (username.length < 5 || username.length > 20) && (
+                    <Text style={styles.validationText}>
+                      Username must be between 5-20 characters
+                    </Text>
+                  )}
+                </View>
+              </>
+            )}
+
+            {/* Page 5: Good Company */}
+            {currentPage === 5 && (
+              <>
+                <Text style={styles.imageTitle}>You're in good company</Text>
+                <Text style={styles.imageSubtitle}>Hundreds of travelers plan their trip with Atelic</Text>
+                <ImageBackground
+                  source={require('../../assets/images/friends_traveling3.jpeg')}
+                  style={styles.imageBackground}
+                  imageStyle={styles.backgroundImage}
+                />
+              </>
+            )}
+
+            {/* Page 6: Activity Preferences */}
+            {currentPage === 6 && (
+              <>
+                <Text style={styles.title}>What types of activities do you enjoy?</Text>
+                <Text style={styles.subtitle}>
+                  When you create a trip, Atelic recommends activities personalized to your interests.
+                </Text>
+
+                <View style={{ marginTop: 40 }}>
+                  <View style={styles.activityGrid}>
+                    {activityOptions.map((activity) => {
+                      const isSelected = activityPreferences.includes(activity.value);
+                      return (
+                        <TouchableOpacity
+                          key={activity.value}
+                          style={[
+                            styles.activityBox,
+                            isSelected && styles.activityBoxSelected
+                          ]}
+                          onPress={() => toggleActivity(activity.value)}
+                        >
+                          <Text style={styles.activityEmoji}>{activity.emoji}</Text>
+                          <Text style={[
+                            styles.activityLabel,
+                            { color: isSelected ? Colors.WHITE : Colors.BLACK }
+                          ]}>
+                            {activity.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* Page 7: Use Cases */}
+            {currentPage === 7 && (
+              <>
+                <Text style={styles.title}>What do you plan to use Atelic for?</Text>
+                <Text style={styles.subtitle}>
+                  Choose as many as apply.
+                </Text>
+
+                <View style={{ marginTop: 40 }}>
+                  <View style={{ gap: 15 }}>
+                    {useCaseOptions.map((useCase) => {
+                      const isSelected = selectedUseCases.includes(useCase.value);
+                      return (
+                        <TouchableOpacity
+                          key={useCase.value}
+                          style={[
+                            styles.useCaseButton,
+                            isSelected && styles.useCaseButtonSelected
+                          ]}
+                          onPress={() => toggleUseCase(useCase.value)}
+                        >
+                          <Text style={[
+                            styles.useCaseLabel,
+                            { color: isSelected ? Colors.WHITE : Colors.BLACK }
+                          ]}>
+                            {useCase.label}
+                          </Text>
+                          {isSelected && (
+                            <Text style={[
+                              styles.useCaseDescription,
+                              { color: Colors.WHITE }
+                            ]}>
+                              {useCase.description}
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* Page 8: Welcome */}
+            {currentPage === 8 && (
+              <>
+                <Text style={styles.imageTitle}>Welcome {getFirstName()}</Text>
+                <Text style={styles.imageSubtitle}>You're all set. Start your first itinerary, invite your travel buddies, and create your dream trip!</Text>
+                <ImageBackground
+                  source={require('../../assets/images/freinds_traveling4.png')}
+                  style={styles.imageBackground}
+                  imageStyle={styles.backgroundImage}
+                />
+              </>
+            )}
 
             {error ? (
               <Text style={styles.errorText}>{error}</Text>
             ) : null}
 
             <TouchableOpacity
-              onPress={handleContinue}
-              disabled={isLoading || username.length < 5 || !gender || !age || (isGoogleUser && !fullName)}
+              onPress={handleNext}
+              disabled={isNextDisabled()}
               style={[
                 styles.button,
                 {
-                  opacity: (username.length >= 5 && gender && age && (!isGoogleUser || fullName) && !isLoading) ? 1 : 0.3
+                  opacity: isNextDisabled() ? 0.3 : 1,
+                  marginTop: currentPage === 6 ? 0 : 35
                 }
               ]}
             >
               {isLoading ? (
                 <ActivityIndicator color={Colors.WHITE} />
               ) : (
-                <Text style={styles.buttonText}>Next</Text>
+                <Text style={styles.buttonText}>
+                  {currentPage === 8 ? 'Start planning' : 'Continue'}
+                </Text>
               )}
             </TouchableOpacity>
 
-            {/* Terms and Privacy Policy - Inside ScrollView */}
-            <View style={{ marginTop: 40, paddingHorizontal: 0 }}>
-              <Text style={{
-                fontFamily: 'outfit',
-                fontSize: 12,
-                color: Colors.GRAY,
-                textAlign: 'center',
-                lineHeight: 20
-              }}>
-                By continuing you agree to Atelic's{' '}
-                <Text
-                  style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-                  onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
-                >
-                  Terms of Service
+            {/* Terms and Privacy Policy - Show on use cases page */}
+            {currentPage === 7 && (
+              <View style={{ marginTop: 40, paddingHorizontal: 0 }}>
+                <Text style={{
+                  fontFamily: 'outfit',
+                  fontSize: 12,
+                  color: Colors.GRAY,
+                  textAlign: 'center',
+                  lineHeight: 20
+                }}>
+                  By continuing you agree to Atelic's{' '}
+                  <Text
+                    style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+                    onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
+                  >
+                    Terms of Service
+                  </Text>
+                  {' '}and acknowledge you've read our{' '}
+                  <Text
+                    style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+                    onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
+                  >
+                    Privacy Policy
+                  </Text>
                 </Text>
-                {' '}and acknowledge you've read our{' '}
-                <Text
-                  style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-                  onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
-                >
-                  Privacy Policy
-                </Text>
-              </Text>
-            </View>
+              </View>
+            )}
 
           </View>
         </View>
@@ -473,18 +856,19 @@ const styles = StyleSheet.create({
   content: {
     width: '100%',
   },
-  backButton: {
-    position: 'absolute',
-    top: -75,
-    left: 0,
-    zIndex: 1,
-    padding: 5,
-  },
   title: {
     fontFamily: 'outfit-bold',
     fontSize: 32,
     color: Colors.BLACK,
     textAlign: 'center',
+  },
+  subtitle: {
+    fontFamily: 'outfit',
+    fontSize: 16,
+    color: Colors.GRAY,
+    textAlign: 'center',
+    marginTop: 10,
+    lineHeight: 24,
   },
   label: {
     fontFamily: 'outfit-medium',
@@ -499,6 +883,77 @@ const styles = StyleSheet.create({
     borderColor: Colors.GRAY,
     fontFamily: 'outfit',
     fontSize: 16,
+  },
+  dateInputField: {
+    padding: 15,
+    borderWidth: 1,
+    borderRadius: 15,
+    borderColor: Colors.GRAY,
+    fontFamily: 'outfit',
+    fontSize: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dateInputText: {
+    fontFamily: 'outfit',
+    fontSize: 16,
+    color: Colors.BLACK,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  datePickerContainer: {
+    backgroundColor: Colors.WHITE,
+    borderRadius: 15,
+    padding: 20,
+    marginHorizontal: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  datePickerTitle: {
+    fontFamily: 'outfit-bold',
+    fontSize: 20,
+    color: Colors.BLACK,
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  datePicker: {
+    width: 320,
+    height: 200,
+  },
+  datePickerOkButton: {
+    width: '100%',
+    padding: 15,
+    borderRadius: 15,
+    backgroundColor: '#F36406',
+    alignItems: 'center',
+    marginTop: 15,
+  },
+  datePickerOkText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    color: Colors.WHITE,
+  },
+  helperText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  validationText: {
+    color: 'red',
+    marginTop: 5,
+    fontFamily: 'outfit',
+    fontSize: 14,
   },
   errorText: {
     color: 'red',
@@ -530,7 +985,88 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.WHITE,
     alignItems: 'center',
   },
+  genderButtonFull: {
+    width: '100%',
+    padding: 18,
+    borderRadius: 15,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+  },
   genderButtonSelected: {
-    backgroundColor: '#F36406',
+    backgroundColor: '#000000',
+  },
+  activityGrid: {
+    marginTop: -10,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  activityBox: {
+    width: '48%',
+    aspectRatio: 1.43,
+    padding: 15,
+    borderRadius: 15,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activityBoxSelected: {
+    backgroundColor: '#000000',
+  },
+  activityEmoji: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  activityLabel: {
+    fontFamily: 'outfit',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  useCaseButton: {
+    width: '100%',
+    padding: 18,
+    borderRadius: 15,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+  },
+  useCaseButtonSelected: {
+    backgroundColor: '#000000',
+  },
+  useCaseLabel: {
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  useCaseDescription: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    textAlign: 'left',
+    marginTop: 8,
+    paddingHorizontal: 10,
+    lineHeight: 20,
+  },
+  imageBackground: {
+    width: '100%',
+    height: 430,
+    marginTop: 20,
+  },
+  backgroundImage: {
+    borderRadius: 20,
+  },
+  imageTitle: {
+    fontFamily: 'outfit-bold',
+    fontSize: 32,
+    color: Colors.BLACK,
+    textAlign: 'center',
+  },
+  imageSubtitle: {
+    fontFamily: 'outfit',
+    fontSize: 16,
+    color: Colors.GRAY,
+    textAlign: 'center',
+    marginTop: 10,
+    lineHeight: 24,
   },
 });

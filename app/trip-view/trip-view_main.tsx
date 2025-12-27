@@ -16,9 +16,11 @@ import { CategoryModal } from '../../src/components/explore/CategoryModal';
 import { useActivitySelection } from '../../src/hooks/use_activity_selection';
 import { useDayActivities } from '../../src/hooks/use_day_activities';
 import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
-import { fetchRoutePolyline, RouteData } from '../../src/services/getRoute_graphQL_call';
+import { fetchRoutePolyline, fetchRoutePolylineWithMode, RouteData } from '../../src/services/getRoute_graphQL_call';
 import { optimizeRouteWithHaversine } from '../../src/components/trip-view/logic/optimize_route';
-import { Activity, TabType } from '../../src/types/activity.types';
+import { Activity, TabType, TravelMode, EnhancedRouteLeg, RouteLegModeData } from '../../src/types/activity.types';
+import TransportationSettingsModal from '../../src/components/trip-view/transportation_settings_modal';
+import { decodePolyline } from '../../src/utils/polyline';
 import { API, Auth, graphqlOperation } from 'aws-amplify';
 import { createTrip } from '../../src/graphql/mutations';
 import { onCreateTripOperation } from '../../src/graphql/subscriptions';
@@ -62,6 +64,7 @@ export default function TripViewMain() {
         tripId,
         wishlistText,
         dayPolylines,
+        dayTravelModes,
         updateActivities,
         setTripId,
         restoreTripFromObject,
@@ -128,6 +131,12 @@ export default function TripViewMain() {
     // State for scroll positions per day
     const [dayScrollPositions, setDayScrollPositions] = useState<{ [key: number]: number }>({});
     const [shouldRestoreScrollPositions, setShouldRestoreScrollPositions] = useState<{ [key: number]: boolean }>({});
+
+    // State for transportation settings modal
+    const [settingsModalVisible, setSettingsModalVisible] = useState(false);
+    const [selectedLegIndex, setSelectedLegIndex] = useState<number | null>(null);
+    const [modalOriginActivity, setModalOriginActivity] = useState<Activity | undefined>(undefined);
+    const [modalDestinationActivity, setModalDestinationActivity] = useState<Activity | undefined>(undefined);
 
     // State for draggable bottom section with 3 discrete states
     const screenHeight = Dimensions.get('window').height;
@@ -341,6 +350,7 @@ export default function TripViewMain() {
         activities,
         dayActivities,
         dayPolylines,
+        dayTravelModes,
         tripLength,
         selectedCity,
         tripPhotoReference,
@@ -354,13 +364,14 @@ export default function TripViewMain() {
             activities,
             dayActivities,
             dayPolylines,
+            dayTravelModes,
             tripLength,
             selectedCity,
             tripPhotoReference,
             createdAt,
             recentSearches,
         };
-    }, [activities, dayActivities, dayPolylines, tripLength, selectedCity, tripPhotoReference, createdAt, recentSearches]);
+    }, [activities, dayActivities, dayPolylines, dayTravelModes, tripLength, selectedCity, tripPhotoReference, createdAt, recentSearches]);
 
     // Initialize days based on tripLength (only for new trips, not existing ones)
     const [hasInitialized, setHasInitialized] = useState(false);
@@ -1115,7 +1126,30 @@ export default function TripViewMain() {
                 }
                 return;
             }
-            const newRouteData = await fetchRoutePolyline(currentTabActivities);
+            // Fetch initial route with DRIVE mode (default)
+            const basicRouteData = await fetchRoutePolyline(currentTabActivities);
+
+            // Transform legs into EnhancedRouteLeg structure with DRIVE data only
+            const enhancedLegs: EnhancedRouteLeg[] = basicRouteData.legs.map((leg: any) => ({
+                modeData: {
+                    DRIVE: {
+                        distance: leg.distance,
+                        duration: leg.duration,
+                        polyline: leg.polyline
+                    }
+                },
+                selectedMode: 'DRIVE' as TravelMode,
+                loadingModes: []
+            }));
+
+            const newRouteData: RouteData = {
+                polyline: basicRouteData.polyline,
+                legs: enhancedLegs,
+                totalDistance: basicRouteData.totalDistance,
+                totalDuration: basicRouteData.totalDuration,
+                travelMode: 'DRIVE'
+            };
+
             setRouteData(newRouteData);
             // Update cache
             routeCache.current[activeTab] = {
@@ -1207,7 +1241,29 @@ export default function TripViewMain() {
             queueSave(op);
 
             // 6. Call getRoute Lambda via GraphQL for the new order
-            const newRouteData = await fetchRoutePolyline(reorderedFull);
+            const basicRouteData = await fetchRoutePolyline(reorderedFull);
+
+            // Transform legs into EnhancedRouteLeg structure with DRIVE data only
+            const enhancedLegs: EnhancedRouteLeg[] = basicRouteData.legs.map((leg: any) => ({
+                modeData: {
+                    DRIVE: {
+                        distance: leg.distance,
+                        duration: leg.duration,
+                        polyline: leg.polyline
+                    }
+                },
+                selectedMode: 'DRIVE' as TravelMode,
+                loadingModes: []
+            }));
+
+            const newRouteData: RouteData = {
+                polyline: basicRouteData.polyline,
+                legs: enhancedLegs,
+                totalDistance: basicRouteData.totalDistance,
+                totalDuration: basicRouteData.totalDuration,
+                travelMode: 'DRIVE'
+            };
+
             // 7. Update the route cache for this day regardless of active tab
             const dayTab = `day${dayNumber}`;
             const activitiesHash = hashActivities(reorderedFull);
@@ -1423,7 +1479,29 @@ export default function TripViewMain() {
             // If this is the currently active tab, trigger route recalculation
             if (activeTab === dayTab) {
                 setRouteLoading(true);
-                const newRouteData = await fetchRoutePolyline(orderedActivities);
+                const basicRouteData = await fetchRoutePolyline(newOrder);
+
+                // Transform legs into EnhancedRouteLeg structure with DRIVE data only
+                const enhancedLegs: EnhancedRouteLeg[] = basicRouteData.legs.map((leg: any) => ({
+                    modeData: {
+                        DRIVE: {
+                            distance: leg.distance,
+                            duration: leg.duration,
+                            polyline: leg.polyline
+                        }
+                    },
+                    selectedMode: 'DRIVE' as TravelMode,
+                    loadingModes: []
+                }));
+
+                const newRouteData: RouteData = {
+                    polyline: basicRouteData.polyline,
+                    legs: enhancedLegs,
+                    totalDistance: basicRouteData.totalDistance,
+                    totalDuration: basicRouteData.totalDuration,
+                    travelMode: 'DRIVE'
+                };
+
                 setRouteData(newRouteData);
 
                 // Update the route cache for this day
@@ -1444,6 +1522,172 @@ export default function TripViewMain() {
         } catch (error) {
             console.error('Error reordering activities:', error);
             setRouteLoading(false);
+        }
+    };
+
+    // Helper to parse duration string like "15m 30s" to seconds
+    const parseDuration = (durationStr: string): number => {
+        const parts = durationStr.trim().split(' ');
+        let totalSeconds = 0;
+        parts.forEach(part => {
+            if (part.endsWith('h')) {
+                totalSeconds += parseInt(part) * 3600;
+            } else if (part.endsWith('m')) {
+                totalSeconds += parseInt(part) * 60;
+            } else if (part.endsWith('s')) {
+                totalSeconds += parseInt(part);
+            }
+        });
+        return totalSeconds;
+    };
+
+    // Helper to format seconds to "Xm" or "Xh Ym" format
+    const formatDuration = (seconds: number): string => {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        if (hours > 0) {
+            return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+        }
+        return `${minutes}m`;
+    };
+
+    // Handler for opening transportation settings modal
+    const handleOpenSettings = async (legIndex: number) => {
+        if (!activeTab.startsWith('day')) return;
+
+        const currentDayNumber = parseInt(activeTab.replace('day', ''));
+        const dayActivities = getActivitiesForTab(activeTab);
+
+        if (legIndex < 0 || legIndex >= dayActivities.length - 1) return;
+
+        // Store the origin and destination activities in state
+        const origin = dayActivities[legIndex];
+        const destination = dayActivities[legIndex + 1];
+
+        console.log('[handleOpenSettings] Setting modal activities:', {
+            legIndex,
+            hasOrigin: !!origin,
+            hasDestination: !!destination,
+            originName: origin?.name,
+            destinationName: destination?.name,
+            originLat: origin?.lat,
+            originLng: origin?.lng,
+            destLat: destination?.lat,
+            destLng: destination?.lng,
+        });
+
+        setModalOriginActivity(origin);
+        setModalDestinationActivity(destination);
+        setSelectedLegIndex(legIndex);
+        setSettingsModalVisible(true);
+
+        // Get the current leg
+        const currentLeg = routeData.legs[legIndex] as EnhancedRouteLeg | undefined;
+
+        // Lazy load missing modes
+        const missingModes: TravelMode[] = [];
+        if (!currentLeg?.modeData?.WALK) missingModes.push('WALK');
+        if (!currentLeg?.modeData?.DRIVE) missingModes.push('DRIVE');
+        if (!currentLeg?.modeData?.TRANSIT) missingModes.push('TRANSIT');
+
+        if (missingModes.length > 0 && currentLeg) {
+            // Mark modes as loading
+            const updatedLegs = [...routeData.legs];
+            updatedLegs[legIndex] = {
+                ...currentLeg,
+                loadingModes: [...(currentLeg.loadingModes || []), ...missingModes]
+            };
+            setRouteData(prev => ({ ...prev, legs: updatedLegs }));
+
+            // Fetch missing modes in parallel
+            const legActivities = [dayActivities[legIndex], dayActivities[legIndex + 1]];
+            const fetchPromises = missingModes.map(async (mode) => {
+                try {
+                    const result = await fetchRoutePolylineWithMode(legActivities, mode);
+                    return { mode, data: result.legs[0] };
+                } catch (error) {
+                    console.error(`Error fetching ${mode} mode:`, error);
+                    return { mode, data: null };
+                }
+            });
+
+            const results = await Promise.all(fetchPromises);
+
+            // Update leg with fetched data
+            const updatedLeg = { ...currentLeg };
+            results.forEach(({ mode, data }) => {
+                if (data) {
+                    updatedLeg.modeData[mode] = data;
+                }
+            });
+            updatedLeg.loadingModes = [];
+
+            const finalLegs = [...routeData.legs];
+            finalLegs[legIndex] = updatedLeg;
+            setRouteData(prev => ({ ...prev, legs: finalLegs }));
+        }
+    };
+
+    // Handler for selecting a transportation mode
+    const handleSelectMode = async (mode: TravelMode) => {
+        if (!activeTab.startsWith('day') || selectedLegIndex === null) return;
+
+        const dayActivities = getActivitiesForTab(activeTab);
+        const currentDayNumber = parseInt(activeTab.replace('day', ''));
+
+        // Update the selected mode for this leg
+        const updatedLegs = [...routeData.legs];
+        const currentLeg = updatedLegs[selectedLegIndex] as EnhancedRouteLeg;
+        updatedLegs[selectedLegIndex] = {
+            ...currentLeg,
+            selectedMode: mode
+        };
+
+        // Recalculate polyline based on all selected modes
+        let newPolylineCoords: { latitude: number; longitude: number }[] = [];
+        for (let i = 0; i < updatedLegs.length; i++) {
+            const leg = updatedLegs[i] as EnhancedRouteLeg;
+            const modeData = leg.modeData[leg.selectedMode];
+            if (modeData?.polyline) {
+                const legCoords = decodePolyline(modeData.polyline);
+                newPolylineCoords = [...newPolylineCoords, ...legCoords];
+            }
+        }
+
+        // Calculate new total distance and duration
+        let totalDistance = 0;
+        let totalDurationSeconds = 0;
+        updatedLegs.forEach((leg) => {
+            const enhancedLeg = leg as EnhancedRouteLeg;
+            const modeData = enhancedLeg.modeData[enhancedLeg.selectedMode];
+            if (modeData) {
+                totalDistance += modeData.distance || 0;
+                totalDurationSeconds += parseDuration(modeData.duration || '0m');
+            }
+        });
+
+        // Update route data with new polyline and totals
+        const newRouteData = {
+            ...routeData,
+            polyline: newPolylineCoords,
+            legs: updatedLegs,
+            totalDistance,
+            totalDuration: formatDuration(totalDurationSeconds)
+        };
+
+        setRouteData(newRouteData);
+
+        // Update cache
+        const activitiesHash = hashActivities(dayActivities);
+        routeCache.current[activeTab] = {
+            activitiesHash,
+            routeData: newRouteData
+        };
+
+        // Store encoded polyline in context
+        if (newPolylineCoords.length > 1) {
+            const encoded = encodePolyline(newPolylineCoords);
+            setDayPolyline(currentDayNumber, encoded);
         }
     };
 
@@ -1769,6 +2013,7 @@ export default function TripViewMain() {
                 activities: latestActivities,
                 dayActivities: latestDayActivities,
                 dayPolylines: latestDayPolylines,
+                dayTravelModes: latestDayTravelModes,
                 selectedCity: latestSelectedCity,
                 tripPhotoReference: latestTripPhotoReference,
                 createdAt: latestCreatedAt,
@@ -1780,6 +2025,7 @@ export default function TripViewMain() {
                 dayNumber: Number(dayNumber),
                 activities: latestDayActivities[dayNumber].activities.map(sanitizeActivity),
                 encodedPolyline: latestDayPolylines[dayNumber] || null,
+                travelModes: latestDayTravelModes[dayNumber] ? JSON.stringify(latestDayTravelModes[dayNumber]) : null,
             }));
             // Gather wishlist activities (not assigned to any day) and sanitize them
             const dayActivityInstanceIds = days.flatMap(day => day.activities.map(a => a.instanceId)).filter(Boolean);
@@ -2555,6 +2801,7 @@ export default function TripViewMain() {
                                     isAddingPlaceFromAutocomplete={isAutocompleteAddingPlace}
                                     activeTab={activeTab}
                                     currentUserRole={currentUserRole}
+                                    onOpenSettings={currentUserRole !== 'viewer' ? handleOpenSettings : undefined}
                                 />
                             );
                         })()}
@@ -2629,6 +2876,25 @@ export default function TripViewMain() {
                     currentUserID={currentUserID}
                     selectedCity={selectedCity}
                     onCollaboratorsUpdate={handleCollaboratorsUpdate}
+                />
+            )}
+
+            {/* Transportation Settings Modal */}
+            {selectedLegIndex !== null && (
+                <TransportationSettingsModal
+                    visible={settingsModalVisible}
+                    onClose={() => {
+                        setSettingsModalVisible(false);
+                        setSelectedLegIndex(null);
+                        setModalOriginActivity(undefined);
+                        setModalDestinationActivity(undefined);
+                    }}
+                    onSelectMode={handleSelectMode}
+                    currentMode={(routeData.legs[selectedLegIndex] as EnhancedRouteLeg)?.selectedMode || 'DRIVE'}
+                    modeData={(routeData.legs[selectedLegIndex] as EnhancedRouteLeg)?.modeData || {}}
+                    loadingModes={(routeData.legs[selectedLegIndex] as EnhancedRouteLeg)?.loadingModes || []}
+                    originActivity={modalOriginActivity}
+                    destinationActivity={modalDestinationActivity}
                 />
             )}
 

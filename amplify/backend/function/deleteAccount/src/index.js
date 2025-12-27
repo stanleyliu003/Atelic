@@ -329,7 +329,7 @@ async function removeUserFromSharedTripDirect(tripId, userID) {
 }
 
 /**
- * Find a trip by ID using DynamoDB scan
+ * Find a trip by ID using DynamoDB scan with pagination
  */
 async function findTripByIdDirect(tripId) {
     try {
@@ -341,13 +341,46 @@ async function findTripByIdDirect(tripId) {
             }
         };
 
-        const result = await docClient.send(new ScanCommand(scanParams));
-        
-        if (!result.Items || result.Items.length === 0) {
-            return null;
-        }
+        // Handle pagination to scan the entire table
+        let allItems = [];
+        let lastEvaluatedKey = null;
+        let scanCount = 0;
 
-        return result.Items[0];
+        do {
+            scanCount++;
+            const currentParams = { ...scanParams };
+            if (lastEvaluatedKey) {
+                currentParams.ExclusiveStartKey = lastEvaluatedKey;
+            }
+
+            console.log(`[findTripByIdDirect Scan ${scanCount}] Searching for trip ${tripId}...`);
+            const result = await docClient.send(new ScanCommand(currentParams));
+
+            console.log(`[findTripByIdDirect Scan ${scanCount}] Found ${result.Items?.length || 0} items in this batch`);
+
+            if (result.Items && result.Items.length > 0) {
+                allItems = allItems.concat(result.Items);
+
+                // Check if we found the trip in this batch
+                const foundTrip = result.Items.find(item => item.tripID === tripId);
+                if (foundTrip) {
+                    console.log(`[findTripByIdDirect] Trip ${tripId} found in batch ${scanCount}!`);
+                    return foundTrip;
+                }
+            }
+
+            lastEvaluatedKey = result.LastEvaluatedKey;
+
+            if (lastEvaluatedKey) {
+                console.log(`[findTripByIdDirect Scan ${scanCount}] More results available, continuing pagination...`);
+            } else {
+                console.log(`[findTripByIdDirect Scan ${scanCount}] No more results, pagination complete`);
+            }
+
+        } while (lastEvaluatedKey);
+
+        console.log(`[findTripByIdDirect] Trip ${tripId} not found after scanning ${scanCount} batch(es)`);
+        return null;
 
     } catch (error) {
         console.error(`Error finding trip ${tripId}:`, error);

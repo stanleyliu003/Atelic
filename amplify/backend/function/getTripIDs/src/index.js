@@ -41,6 +41,7 @@ exports.handler = async (event) => {
     // 2. Scan for trips where user is a collaborator
     // Note: DynamoDB FilterExpression can't easily search nested arrays, so we'll scan all trips
     // and filter in JavaScript code below
+    // IMPORTANT: Handle pagination to ensure we scan ALL trips in the table
     const collaboratedTripsParams = {
       TableName: process.env.STORAGE_TRIPSTORAGE_NAME,
       FilterExpression: 'attribute_exists(collaborators) AND userID <> :userID',
@@ -50,10 +51,40 @@ exports.handler = async (event) => {
       ProjectionExpression: 'tripID, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators, userID'
     };
 
-    console.log('Scanning for collaborated trips:', JSON.stringify(collaboratedTripsParams));
-    const collaboratedTripsResult = await docClient.send(new ScanCommand(collaboratedTripsParams));
+    console.log('Scanning for collaborated trips with pagination...');
 
-    console.log('Raw collaborated trips scan results:', JSON.stringify(collaboratedTripsResult.Items, null, 2));
+    // Collect all items across paginated scan results
+    let allCollaboratedItems = [];
+    let lastEvaluatedKey = null;
+    let scanCount = 0;
+
+    do {
+      scanCount++;
+      const scanParams = { ...collaboratedTripsParams };
+      if (lastEvaluatedKey) {
+        scanParams.ExclusiveStartKey = lastEvaluatedKey;
+      }
+
+      console.log(`[Scan ${scanCount}] Fetching batch...`);
+      const collaboratedTripsResult = await docClient.send(new ScanCommand(scanParams));
+
+      console.log(`[Scan ${scanCount}] Found ${collaboratedTripsResult.Items?.length || 0} items in this batch, ScannedCount: ${collaboratedTripsResult.ScannedCount}`);
+
+      if (collaboratedTripsResult.Items && collaboratedTripsResult.Items.length > 0) {
+        allCollaboratedItems = allCollaboratedItems.concat(collaboratedTripsResult.Items);
+      }
+
+      lastEvaluatedKey = collaboratedTripsResult.LastEvaluatedKey;
+
+      if (lastEvaluatedKey) {
+        console.log(`[Scan ${scanCount}] More results available, continuing pagination...`);
+      } else {
+        console.log(`[Scan ${scanCount}] No more results, pagination complete`);
+      }
+    } while (lastEvaluatedKey);
+
+    console.log(`[Pagination Complete] Total items collected: ${allCollaboratedItems.length} after ${scanCount} scan(s)`);
+    console.log('Sample of collaborated trips scan results:', JSON.stringify(allCollaboratedItems.slice(0, 3), null, 2));
 
     // Helper function to get user's role in a trip
     const getUserRole = (trip, userId) => {
@@ -97,9 +128,9 @@ exports.handler = async (event) => {
     }));
 
     // Process collaborated trips - filter to only include trips where user is actually a collaborator
-    console.log(`[Processing] Checking ${collaboratedTripsResult.Items.length} scanned trips for collaborations`);
+    console.log(`[Processing] Checking ${allCollaboratedItems.length} scanned trips for collaborations`);
 
-    const collaboratedTripSummaries = collaboratedTripsResult.Items
+    const collaboratedTripSummaries = allCollaboratedItems
       .filter(item => {
         const role = getUserRole(item, userID);
         console.log(`[Filter] Trip ${item.tripID}: role = ${role}`);

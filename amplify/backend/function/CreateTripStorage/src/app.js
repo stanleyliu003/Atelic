@@ -83,8 +83,38 @@ app.get(path, async function(req, res) {
   };
 
   try {
-    const data = await ddbDocClient.send(new ScanCommand(params));
-    res.json(data.Items);
+    // Handle pagination to retrieve all items
+    let allItems = [];
+    let lastEvaluatedKey = null;
+    let scanCount = 0;
+
+    do {
+      scanCount++;
+      const currentParams = { ...params };
+      if (lastEvaluatedKey) {
+        currentParams.ExclusiveStartKey = lastEvaluatedKey;
+      }
+
+      console.log(`[GET list Scan ${scanCount}] Fetching batch...`);
+      const data = await ddbDocClient.send(new ScanCommand(currentParams));
+
+      console.log(`[GET list Scan ${scanCount}] Found ${data.Items?.length || 0} items in this batch`);
+
+      if (data.Items && data.Items.length > 0) {
+        allItems = allItems.concat(data.Items);
+      }
+
+      lastEvaluatedKey = data.LastEvaluatedKey;
+
+      if (lastEvaluatedKey) {
+        console.log(`[GET list Scan ${scanCount}] More results available, continuing pagination...`);
+      }
+
+    } while (lastEvaluatedKey);
+
+    console.log(`[GET list] Pagination complete. Total items: ${allItems.length} from ${scanCount} batch(es)`);
+    res.json(allItems);
+
   } catch (err) {
     res.statusCode = 500;
     res.json({error: 'Could not load items: ' + err.message});

@@ -412,6 +412,10 @@ async function ensureProfileInitialized(username, tripData, identityUserId) {
     modelName: null,
     osVersion: null,
 
+    // Onboarding preferences
+    activityPreferences: [],
+    selectedUseCases: [],
+
     // Subscription info
     subscriptionTier: 'free',
     subscriptionStartDate: null,
@@ -1333,7 +1337,16 @@ async function updateSubscription(username, data) {
  */
 async function setAccountCreatedAt(username, data) {
   const createdAt = data?.createdAt || new Date().toISOString();
-  const { appVersion, deviceType, modelName, osVersion } = data || {};
+  const { appVersion, deviceType, modelName, osVersion, activityPreferences, selectedUseCases } = data || {};
+  console.log('[SET_ACCOUNT_CREATED_AT] Received data:', {
+    username,
+    activityPreferences,
+    selectedUseCases,
+    activityPreferencesType: typeof activityPreferences,
+    selectedUseCasesType: typeof selectedUseCases,
+    activityPreferencesIsArray: Array.isArray(activityPreferences),
+    selectedUseCasesIsArray: Array.isArray(selectedUseCases)
+  });
   let current;
 
   try {
@@ -1388,15 +1401,32 @@ async function setAccountCreatedAt(username, data) {
     values[':osVersion'] = osVersion;
   }
 
+  // Add onboarding preferences if provided (including empty arrays)
+  if (Array.isArray(activityPreferences)) {
+    setDeviceParts.push('activityPreferences = :activityPreferences');
+    values[':activityPreferences'] = activityPreferences;
+    console.log('[SET_ACCOUNT_CREATED_AT] Adding activityPreferences to update:', activityPreferences);
+  }
+
+  if (Array.isArray(selectedUseCases)) {
+    setDeviceParts.push('selectedUseCases = :selectedUseCases');
+    values[':selectedUseCases'] = selectedUseCases;
+    console.log('[SET_ACCOUNT_CREATED_AT] Adding selectedUseCases to update:', selectedUseCases);
+  }
+
   if (setDeviceParts.length > 0) {
     setDeviceParts.push('lastActiveAt = :now');
+    const updateExpression = `SET ${setDeviceParts.join(', ')}`;
+    console.log('[SET_ACCOUNT_CREATED_AT] Update expression:', updateExpression);
+    console.log('[SET_ACCOUNT_CREATED_AT] Values:', JSON.stringify(values));
     const update = await docClient.send(new UpdateCommand({
       TableName: USER_PROFILES_TABLE,
       Key: { username },
-      UpdateExpression: `SET ${setDeviceParts.join(', ')}`,
+      UpdateExpression: updateExpression,
       ExpressionAttributeValues: values,
       ReturnValues: 'ALL_NEW'
     }));
+    console.log('[SET_ACCOUNT_CREATED_AT] Update successful, returning attributes');
     return update.Attributes;
   }
 

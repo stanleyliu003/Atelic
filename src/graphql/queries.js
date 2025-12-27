@@ -42,6 +42,8 @@ export const getRoute = /* GraphQL */ `
       totalDistance
       totalDuration
       travelMode
+      polylineTravelMode
+      distanceTravelMode
       legs {
         distance
         duration
@@ -289,6 +291,7 @@ export const getUserTrips = /* GraphQL */ `
       days {
         dayNumber
         encodedPolyline
+        travelModes
         __typename
       }
       wishlist {
@@ -580,6 +583,8 @@ export const getUserProfile = /* GraphQL */ `
       deviceType
       modelName
       osVersion
+      activityPreferences
+      selectedUseCases
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate

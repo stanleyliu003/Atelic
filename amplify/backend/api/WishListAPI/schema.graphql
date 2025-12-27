@@ -78,6 +78,8 @@
      totalDistance: Int
      totalDuration: String
      travelMode: String
+     polylineTravelMode: String  # Travel mode used for polyline
+     distanceTravelMode: String  # Travel mode used for distance/duration
      legs: [RouteLeg]
    }
 
@@ -179,6 +181,10 @@ type DeleteAccountResult {
    deviceType: String
    modelName: String
    osVersion: String
+
+   # Onboarding preferences
+   activityPreferences: [String]
+   selectedUseCases: [String]
 
    # Subscription info
    subscriptionTier: String!
@@ -315,6 +321,7 @@ type TripOperation
      place_id: String!
      lat: Float!
      lng: Float!
+     travelMode: String
    }
 
    type Collaborator {
@@ -372,6 +379,7 @@ type TripOperation
      dayNumber: Int!
      activities: [Activity!]!
      encodedPolyline: String
+     travelModes: AWSJSON
    }
 
  type Mutation {
@@ -423,6 +431,7 @@ type TripOperation
      dayNumber: Int!
      activities: [ActivityInput!]!
      encodedPolyline: String
+     travelModes: AWSJSON
    }
 
    input CollaboratorInput {
