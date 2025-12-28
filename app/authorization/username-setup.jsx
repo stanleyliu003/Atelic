@@ -104,13 +104,20 @@ export default function UsernameSetup() {
   ];
 
   useEffect(() => {
-    // Check if user signed in with external provider (Apple or Google)
+    // Check if user signed in with external provider (Apple or Google) OR email/password
     const checkUserProvider = async () => {
       try {
         const user = await Auth.currentAuthenticatedUser();
         const attributes = await Auth.userAttributes(user);
 
         console.log('User attributes:', attributes);
+
+        // Check if user already has a username (from email sign-up)
+        const prefUsernameAttr = attributes.find(attr => attr.Name === 'preferred_username');
+        if (prefUsernameAttr && prefUsernameAttr.Value) {
+          console.log('User already has username:', prefUsernameAttr.Value);
+          setUsername(prefUsernameAttr.Value);
+        }
 
         // Check if user has identities attribute indicating external provider sign-in
         const identitiesAttr = attributes.find(attr => attr.Name === 'identities');
@@ -403,7 +410,13 @@ export default function UsernameSetup() {
         setError('Please select your gender.');
         return;
       }
-      setCurrentPage(4);
+      // Skip page 4 (username) if user already has username (from email sign-up)
+      if (username && username.trim().length >= 5) {
+        console.log('[UsernameSetup] Skipping username page - already set:', username);
+        setCurrentPage(5); // Jump to "Good company" page
+      } else {
+        setCurrentPage(4); // Go to username page for OAuth users
+      }
     } else if (currentPage === 4) {
       // Validate username
       if (!username || username.trim().length < 5) {
@@ -434,7 +447,12 @@ export default function UsernameSetup() {
   const handleBack = () => {
     setError('');
     if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
+      // If on page 5 and username was already set (email user), skip back to page 3
+      if (currentPage === 5 && username && username.trim().length >= 5) {
+        setCurrentPage(3);
+      } else {
+        setCurrentPage(currentPage - 1);
+      }
     } else {
       // Sign out and go back to login
       Auth.signOut({ global: false }).catch(() => {});

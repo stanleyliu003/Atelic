@@ -174,10 +174,23 @@ export default function Login() {
         await Auth.currentSession(); // This triggers refresh
       }
 
-      // Check if user has a username set (important for Google OAuth users)
-      const preferredUsername = user?.attributes?.preferred_username;
+      // Check if user has complete profile (username, name, birthdate, gender)
+      // Important for both OAuth users and email sign-up users
+      const attributes = await Auth.userAttributes(user);
+      const preferredUsername = attributes.find(attr => attr.Name === 'preferred_username')?.Value;
+      const name = attributes.find(attr => attr.Name === 'name')?.Value;
+      const birthdate = attributes.find(attr => attr.Name === 'birthdate')?.Value;
+      const gender = attributes.find(attr => attr.Name === 'gender')?.Value;
 
-      if (!preferredUsername) {
+      // Redirect to username-setup if profile is incomplete
+      if (!preferredUsername || !name || !birthdate || !gender) {
+        console.log('[Login] Incomplete profile detected, redirecting to username-setup');
+        console.log('[Login] Missing fields:', {
+          hasUsername: !!preferredUsername,
+          hasName: !!name,
+          hasBirthdate: !!birthdate,
+          hasGender: !!gender
+        });
         isNavigatingRef.current = true;
         router.replace('/authorization/username-setup');
         return;

@@ -1,33 +1,9 @@
 import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Auth, API } from 'aws-amplify';
+import { Auth } from 'aws-amplify';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
-import DeviceInfo from 'react-native-device-info';
-
-const updateUserProfileMutation = /* GraphQL */ `
-  mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
-    updateUserProfile(username: $username, action: $action, tripData: $tripData) {
-      __typename
-    }
-  }
-`;
-
-const getUserProfileQuery = /* GraphQL */ `
-  query GetUserProfile($username: String) {
-    getUserProfile(username: $username) {
-      username
-      accountCreatedAt
-      lastActiveAt
-      appVersion
-      deviceType
-      modelName
-      osVersion
-      __typename
-    }
-  }
-`;
 
 export default function ConfirmSignUp() {
   const navigation = useNavigation();
@@ -62,44 +38,8 @@ export default function ConfirmSignUp() {
       // Auto sign in after confirmation
       try {
         await Auth.signIn(email, password);
-        // After successful sign-in, set accountCreatedAt once (no overwrite)
-        try {
-          const current = await Auth.currentAuthenticatedUser();
-          const attrs = await Auth.userAttributes(current);
-          const prefUsername = attrs.find(a => a.Name === 'preferred_username')?.Value || current.username;
-          const appVersion = DeviceInfo.getVersion() || null;
-          const osName = DeviceInfo.getSystemName() || null;       // maps to deviceType
-          const osVersion = DeviceInfo.getSystemVersion() || null;
-          const modelName = DeviceInfo.getModel() || null;
-          await API.graphql({
-            query: updateUserProfileMutation,
-            variables: {
-              username: prefUsername,
-              action: 'SET_ACCOUNT_CREATED_AT',
-              tripData: JSON.stringify({
-                createdAt: new Date().toISOString(),
-                appVersion,
-                deviceType: osName,
-                modelName,
-                osVersion
-              })
-            },
-            authMode: 'AMAZON_COGNITO_USER_POOLS'
-          });
-          // Best-effort read after write (authorized via Query @auth)
-          try {
-            await API.graphql({
-              query: getUserProfileQuery,
-              variables: { username: prefUsername },
-              authMode: 'AMAZON_COGNITO_USER_POOLS'
-            });
-          } catch (readErr) {
-            console.warn('[ConfirmSignUp] getUserProfile read-after-write failed:', readErr?.errors || readErr?.message || readErr);
-          }
-        } catch (e) {
-          console.warn('[ConfirmSignUp] Failed to set accountCreatedAt:', e?.errors || e?.message || e);
-        }
-        router.replace('(tabs)/create_new_trip');
+        // Redirect to username-setup to complete profile (name, birthday, gender, preferences)
+        router.replace('/authorization/username-setup');
       } catch (signInErr) {
         setError('Account confirmed, but sign in failed: ' + (signInErr.message || 'Please try again.'));
       }
@@ -113,7 +53,7 @@ export default function ConfirmSignUp() {
         // Account is already confirmed, try to sign in
         try {
           await Auth.signIn(email, password);
-          router.replace('(tabs)/create_new_trip');
+          router.replace('/authorization/username-setup');
         } catch (signInErr) {
           setError('Account is already confirmed, but sign in failed: ' + (signInErr.message || 'Please try again.'));
         }
