@@ -7,8 +7,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, App
 import { Feather, AntDesign } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import DeviceInfo from 'react-native-device-info';
-import { MINIMUM_APP_VERSION } from '../constants/AppConfig';
-import { isVersionOutdated } from '../src/utils/versionComparison';
+import { checkUpdateRequired, getCurrentAppVersion } from '../src/services/versionCheckService';
 import { UpdateRequired } from '../src/components/UpdateRequired';
 
 // Warm up the browser for better performance (recommended by Expo)
@@ -80,7 +79,7 @@ export default function Login() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showDeletedNotice, setShowDeletedNotice] = useState(false);
   const [showUpdateRequired, setShowUpdateRequired] = useState(false);
-  const [currentAppVersion, setCurrentAppVersion] = useState(null);
+  const [minimumRequiredVersion, setMinimumRequiredVersion] = useState(null);
   const isNavigatingRef = useRef(false);
 
   useEffect(() => {
@@ -135,14 +134,13 @@ export default function Login() {
 
   const checkAuthenticationState = async () => {
     // ========== VERSION CHECK (BEFORE ANYTHING ELSE) ==========
-    const appVersion = DeviceInfo.getVersion() || null;
-    setCurrentAppVersion(appVersion);
+    // Fetch minimum version from backend (DynamoDB via Lambda)
+    // This ensures version enforcement works even for users with outdated app bundles
+    const minimumVersion = await checkUpdateRequired();
 
-    const platform = Platform.OS; // 'ios' or 'android'
-    const minimumVersion = MINIMUM_APP_VERSION[platform];
-
-    if (isVersionOutdated(appVersion, minimumVersion)) {
+    if (minimumVersion) {
       console.log('[Login] App version outdated, showing update prompt');
+      setMinimumRequiredVersion(minimumVersion);
       setShowUpdateRequired(true);
       setIsCheckingAuth(false);
       return; // Block further execution - don't proceed to auth
@@ -247,11 +245,11 @@ export default function Login() {
   };
 
   // Show update required screen if app version is outdated
-  if (showUpdateRequired && currentAppVersion) {
+  if (showUpdateRequired && minimumRequiredVersion) {
     return (
       <UpdateRequired
-        currentVersion={currentAppVersion}
-        minimumVersion={MINIMUM_APP_VERSION[Platform.OS]}
+        currentVersion={getCurrentAppVersion()}
+        minimumVersion={minimumRequiredVersion}
       />
     );
   }

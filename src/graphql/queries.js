@@ -373,6 +373,18 @@ export const searchUsers = /* GraphQL */ `
     }
   }
 `;
+export const getVersionConfig = /* GraphQL */ `
+  query GetVersionConfig($platform: String!, $environment: String!) {
+    getVersionConfig(platform: $platform, environment: $environment) {
+      id
+      platform
+      minimumVersion
+      environment
+      lastUpdated
+      __typename
+    }
+  }
+`;
 export const getWishlistAnalysis = /* GraphQL */ `
   query GetWishlistAnalysis($id: ID!) {
     getWishlistAnalysis(id: $id) {

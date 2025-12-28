@@ -300,6 +300,15 @@ type TripOperation
   ttl: Int # Unix timestamp for DynamoDB TTL (auto-delete after 1 hour)
 }
 
+# App Version Configuration
+type AppVersionConfig {
+  id: String!
+  platform: String!
+  minimumVersion: String!
+  environment: String!
+  lastUpdated: AWSDateTime
+}
+
  type Query {
    analyzeWishlist(wishlist_text: String!, selectedCity: String!): WishlistAnalysisResult @function(name: "wishlistAnalyzer-dev")
    getRoute(waypoints: [WaypointInput!]!): RouteResult @function(name: "GetRoute-dev")
@@ -315,6 +324,7 @@ type TripOperation
    getUserTrips(userID: String!, tripID: String!): Trip @function(name: "getUserTrips-${env}") @auth(rules: [{ allow: public }])
    searchUsers(searchTerm: String!): [UserProfile] @function(name: "searchUsers-${env}") @auth(rules: [{ allow: public }])
    getUserProfile(username: String, userID: String): UserProfileStorage @function(name: "getUserProfile-${env}") @auth(rules: [{ allow: private }])
+   getVersionConfig(platform: String!, environment: String!): AppVersionConfig @function(name: "getVersionConfig-${env}") @auth(rules: [{ allow: public }])
  }
 
    input WaypointInput {
