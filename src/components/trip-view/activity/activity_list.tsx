@@ -209,35 +209,35 @@ function RouteInfoCard({
 
   return (
     <View style={styles.routeCard}>
-      <TouchableOpacity
-        style={styles.routeCardContent}
-        onPress={handleRoutePress}
-        activeOpacity={0.7}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <Text style={styles.loadingText}>Loading...</Text>
-        ) : (
-          <>
-            <View style={styles.routeInfoItem}>
-              {getTravelModeIcon(travelMode)}
-              <Text style={styles.routeInfoValue}>  {formatDuration(nextActivityDuration)}</Text>
-            </View>
-            <View style={styles.routeInfoItem}>
-              <Text style={styles.routeMidDotLabel}>· </Text>
-              <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
-            </View>
-          </>
-        )}
-      </TouchableOpacity>
-      {!isLoading && (
-        <TouchableOpacity
-          style={styles.settingsButton}
-          onPress={handleSettingsPress}
-          activeOpacity={0.7}
-        >
-          <FontAwesome5 name="chevron-right" size={18} color={Colors.PRIMARY} />
-        </TouchableOpacity>
+      {isLoading ? (
+        <Text style={styles.loadingText}>Loading...</Text>
+      ) : (
+        <>
+          {/* Left: Route Info + Dropdown Button */}
+          <TouchableOpacity
+            style={styles.routeMainButton}
+            onPress={handleSettingsPress}
+            activeOpacity={0.7}
+          >
+            {getTravelModeIcon(travelMode)}
+            <Text style={styles.routeInfoValue}>{formatDuration(nextActivityDuration)}</Text>
+            <Text style={styles.routeMidDotLabel}>•</Text>
+            <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
+            <FontAwesome5 name="chevron-down" size={14} color="#8E8E93" style={styles.chevronIcon} />
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.routeDivider} />
+
+          {/* Right: Directions Button */}
+          <TouchableOpacity
+            style={styles.directionsButton}
+            onPress={handleRoutePress}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.directionsText}>Directions</Text>
+          </TouchableOpacity>
+        </>
       )}
     </View>
   );
@@ -1228,30 +1228,42 @@ const styles = StyleSheet.create({
   routeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    marginTop: 4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    marginTop: 6,
+    marginBottom: 2,
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: '#E5E5E7',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+    overflow: 'hidden',
   },
-  routeCardContent: {
+  routeMainButton: {
     flex: 1,
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: 6,
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
-  settingsButton: {
-    padding: 10,
-    paddingRight: 14,
-    paddingLeft: 8,
+  routeDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#E5E5E7',
+  },
+  directionsButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  directionsText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 14,
+    color: '#007AFF',
   },
   routeInfo: {
     backgroundColor: '#f8f9fa',
@@ -1272,21 +1284,21 @@ const styles = StyleSheet.create({
   routeInfoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 9,
   },
   routeMidDotLabel: {
     fontFamily: 'outfit',
-    fontSize: 24,
-    color: Colors.PRIMARY,
-    marginLeft: -2,
+    fontSize: 13,
+    color: '#8E8E93',
+    marginHorizontal: 6,
   },
   routeInfoValue: {
-    fontFamily: 'outfit-medium',
-    fontSize: 13,
-    color: Colors.PRIMARY,
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: '#1C1C1E',
+    marginLeft: 4,
   },
   chevronIcon: {
-    marginLeft: 8,
+    marginLeft: 10,
   },
   loadingText: {
     fontFamily: 'outfit',
