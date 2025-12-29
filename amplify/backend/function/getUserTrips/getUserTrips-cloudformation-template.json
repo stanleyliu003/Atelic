@@ -27,6 +27,18 @@
     "storageTripStorageStreamArn": {
       "Type": "String",
       "Default": "storageTripStorageStreamArn"
+    },
+    "storageTripOperationsStorageName": {
+      "Type": "String",
+      "Default": "storageTripOperationsStorageName"
+    },
+    "storageTripOperationsStorageArn": {
+      "Type": "String",
+      "Default": "storageTripOperationsStorageArn"
+    },
+    "storageTripOperationsStorageStreamArn": {
+      "Type": "String",
+      "Default": "storageTripOperationsStorageStreamArn"
     }
   },
   "Conditions": {
@@ -90,6 +102,15 @@
             },
             "STORAGE_TRIPSTORAGE_STREAMARN": {
               "Ref": "storageTripStorageStreamArn"
+            },
+            "STORAGE_TRIPOPERATIONSSTORAGE_NAME": {
+              "Ref": "storageTripOperationsStorageName"
+            },
+            "STORAGE_TRIPOPERATIONSSTORAGE_ARN": {
+              "Ref": "storageTripOperationsStorageArn"
+            },
+            "STORAGE_TRIPOPERATIONSSTORAGE_STREAMARN": {
+              "Ref": "storageTripOperationsStorageStreamArn"
             }
           }
         },
@@ -204,6 +225,43 @@
             {
               "Effect": "Allow",
               "Action": [
+                "dynamodb:Put*",
+                "dynamodb:Create*",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PartiQLInsert",
+                "dynamodb:Get*",
+                "dynamodb:BatchGetItem",
+                "dynamodb:List*",
+                "dynamodb:Describe*",
+                "dynamodb:Scan",
+                "dynamodb:Query",
+                "dynamodb:PartiQLSelect",
+                "dynamodb:Update*",
+                "dynamodb:RestoreTable*",
+                "dynamodb:PartiQLUpdate",
+                "dynamodb:Delete*",
+                "dynamodb:PartiQLDelete"
+              ],
+              "Resource": [
+                {
+                  "Ref": "storageTripOperationsStorageArn"
+                },
+                {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      {
+                        "Ref": "storageTripOperationsStorageArn"
+                      },
+                      "index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
                 "dynamodb:Get*",
                 "dynamodb:BatchGetItem",
                 "dynamodb:List*",
@@ -232,6 +290,43 @@
           ]
         }
       }
+    },
+    "CustomLambdaExecutionPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "custom-lambda-execution-policy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "dynamodb:ListTables"
+              ],
+              "Resource": [
+                "*"
+              ],
+              "Effect": "Allow"
+            },
+            {
+              "Action": [
+                "dynamodb:Query",
+                "dynamodb:GetItem"
+              ],
+              "Resource": [
+                "arn:aws:dynamodb:*:*:table/TripOperation-*",
+                "arn:aws:dynamodb:*:*:table/TripOperation-*/index/byTripID"
+              ],
+              "Effect": "Allow"
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "LambdaExecutionRole"
+          }
+        ]
+      },
+      "DependsOn": "LambdaExecutionRole"
     }
   },
   "Outputs": {

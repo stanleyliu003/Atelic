@@ -28,7 +28,12 @@
       "Bash(node test_version_check.js)",
       "Bash(node test_app_version.js)",
       "Bash(find:*)",
-      "Bash(npm run ios:*)"
+      "Bash(npm run ios:*)",
+      "Bash(node -e:*)",
+      "Bash(node:*)",
+      "Bash(dig:*)",
+      "Bash(nslookup:*)",
+      "Bash(host:*)"
     ],
     "deny": [],
     "ask": [],

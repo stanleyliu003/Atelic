@@ -37,24 +37,35 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Search users in Cognito User Pool
+    // Search users in Cognito User Pool with pagination
     // Note: Cognito listUsers doesn't support partial matching well,
-    // so we'll get all users and filter on the Lambda side for now
-    const params = {
-      UserPoolId: userPoolId,
-      Limit: 60 // Get more users to have better filtering results
-      // Don't use AttributesToGet - it doesn't support preferred_username
-      // Instead, fetch all attributes and filter on Lambda side
-    };
+    // so we'll get all users and filter on the Lambda side
+    let allUsers = [];
+    let paginationToken = undefined;
 
-    console.log('Cognito listUsers params:', JSON.stringify(params));
-    const result = await client.send(new ListUsersCommand(params));
+    // Fetch ALL users across all pages (no limit to ensure complete database scan)
+    do {
+      const params = {
+        UserPoolId: userPoolId,
+        // Don't use AttributesToGet - it doesn't support preferred_username
+        // Instead, fetch all attributes and filter on Lambda side
+        ...(paginationToken && { PaginationToken: paginationToken })
+      };
 
-    console.log(`Found ${result.Users.length} total users`);
+      console.log('Cognito listUsers params:', JSON.stringify(params));
+      const result = await client.send(new ListUsersCommand(params));
+
+      allUsers.push(...result.Users);
+      paginationToken = result.PaginationToken;
+
+      console.log(`Fetched ${result.Users.length} users, total so far: ${allUsers.length}`);
+    } while (paginationToken);
+
+    console.log(`Found ${allUsers.length} total users across all pages`);
 
     // Filter users based on search term (case-insensitive partial matching)
     const searchTermLower = searchTerm.toLowerCase().trim();
-    const filteredUsers = result.Users
+    const filteredUsers = allUsers
       .filter(user => {
         // Get email, name, and username attributes
         const emailAttr = user.Attributes.find(attr => attr.Name === 'email');

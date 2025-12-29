@@ -17,6 +17,8 @@ import { runOnJS } from 'react-native-reanimated';
 import { Colors } from '../../../../constants/Colors';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useCreateTrip } from '../../../../context/CreateTripContext';
+import { Auth } from 'aws-amplify';
+import { saveOperation } from '../../../services/tripOperationsService';
 import AddTimeModal from './add_time_modal';
 
 // Helper function to convert 24-hour time to 12-hour format with AM/PM
@@ -30,7 +32,7 @@ const format12Hour = (time24) => {
 };
 
 export function AddNotesModal({ visible, onClose, activity, activeTab, currentUserRole }) {
-  const { updateActivityNotes } = useCreateTrip();
+  const { updateActivityNotes, tripId } = useCreateTrip();
   const [notes, setNotes] = useState(activity.notes || '');
   const isWishlist = activeTab === 'wishlist';
   const [startTime, setStartTime] = useState(isWishlist ? '' : (activity.startTime || ''));
@@ -39,6 +41,15 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const notesInputRef = useRef(null);
   const isViewer = currentUserRole === 'viewer';
+
+  // Sync local state with activity prop changes (from TripOperations updates)
+  useEffect(() => {
+    setNotes(activity.notes || '');
+    if (!isWishlist) {
+      setStartTime(activity.startTime || '');
+      setEndTime(activity.endTime || '');
+    }
+  }, [activity.notes, activity.startTime, activity.endTime, isWishlist]);
 
   // Track keyboard visibility
   useEffect(() => {
@@ -74,11 +85,34 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
   const handleSave = () => {
     // Only save if user is not a viewer
     if (!isViewer) {
-      updateActivityNotes(activity.instanceId, {
-        notes: notes.trim(),
-        startTime: isWishlist ? '' : startTime,
-        endTime: isWishlist ? '' : endTime,
-      });
+      const nextNotes = notes.trim();
+      const nextStartTime = isWishlist ? '' : startTime;
+      const nextEndTime = isWishlist ? '' : endTime;
+
+      const prevNotes = activity.notes || '';
+      const prevStartTime = activity.startTime || '';
+      const prevEndTime = activity.endTime || '';
+
+      const hasChanged =
+        prevNotes !== nextNotes ||
+        prevStartTime !== nextStartTime ||
+        prevEndTime !== nextEndTime;
+
+      if (hasChanged) {
+        const updates = {
+          notes: nextNotes,
+          startTime: nextStartTime,
+          endTime: nextEndTime,
+        };
+
+        // Update local state
+        updateActivityNotes(activity.instanceId, updates);
+
+        // Track as OperationModify for real-time sync
+        trackModifyOperation(activity, activeTab, updates).catch((err) => {
+          console.error('[AddNotesModal] Failed to save modify operation:', err);
+        });
+      }
     }
     onClose();
   };
@@ -86,11 +120,34 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
   const handleClose = () => {
     // Only save changes when closing via backdrop if user is not a viewer
     if (!isViewer) {
-      updateActivityNotes(activity.instanceId, {
-        notes: notes.trim(),
-        startTime: isWishlist ? '' : startTime,
-        endTime: isWishlist ? '' : endTime,
-      });
+      const nextNotes = notes.trim();
+      const nextStartTime = isWishlist ? '' : startTime;
+      const nextEndTime = isWishlist ? '' : endTime;
+
+      const prevNotes = activity.notes || '';
+      const prevStartTime = activity.startTime || '';
+      const prevEndTime = activity.endTime || '';
+
+      const hasChanged =
+        prevNotes !== nextNotes ||
+        prevStartTime !== nextStartTime ||
+        prevEndTime !== nextEndTime;
+
+      if (hasChanged) {
+        const updates = {
+          notes: nextNotes,
+          startTime: nextStartTime,
+          endTime: nextEndTime,
+        };
+
+        // Update local state
+        updateActivityNotes(activity.instanceId, updates);
+
+        // Track as OperationModify for real-time sync
+        trackModifyOperation(activity, activeTab, updates).catch((err) => {
+          console.error('[AddNotesModal] Failed to save modify operation:', err);
+        });
+      }
     }
     onClose();
   };
@@ -98,6 +155,58 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
   const handleTimeUpdate = (start, end) => {
     setStartTime(start);
     setEndTime(end);
+  };
+
+  const trackModifyOperation = async (activity, activeTabValue, updates) => {
+    try {
+      // Require tripId and instanceId to track operation
+      if (!tripId || !activity?.instanceId) {
+        return;
+      }
+
+      const user = await Auth.currentAuthenticatedUser();
+      const userId = user.attributes?.sub || user.username;
+
+      // Determine target and dayNumber from activeTab
+      let target = 'wishlist';
+      let dayNumber = undefined;
+
+      if (activeTabValue && typeof activeTabValue === 'string' && activeTabValue.startsWith('day')) {
+        target = 'day';
+        const parsed = parseInt(activeTabValue.replace('day', ''), 10);
+        if (!isNaN(parsed)) {
+          dayNumber = parsed;
+        }
+      }
+
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(7);
+
+      const operation = {
+        tripID: tripId,
+        timestamp,
+        opId: `${userId}_modify_${target}_${dayNumber || 'none'}_${timestamp}_${random}`,
+        userId,
+        sequenceNumber: 0,
+        type: 'modify',
+        target,
+        dayNumber,
+        data: {
+          instanceId: activity.instanceId,
+          updates: {
+            ...updates,
+            lastModified: timestamp,
+            modifiedBy: userId,
+          },
+          lastModified: timestamp,
+        },
+        applied: false,
+      };
+
+      await saveOperation(operation);
+    } catch (error) {
+      console.error('[AddNotesModal] Error creating modify operation:', error);
+    }
   };
 
   // Swipe down gesture to close

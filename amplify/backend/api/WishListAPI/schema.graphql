@@ -182,6 +182,10 @@ type DeleteAccountResult {
    modelName: String
    osVersion: String
 
+   # Onboarding preferences
+   activityPreferences: [String]
+   selectedUseCases: [String]
+
    # Subscription info
    subscriptionTier: String!
    subscriptionStartDate: String
@@ -274,6 +278,27 @@ type DeleteAccountResult {
    name: String!
    place_id: String
  }
+
+# ===== REAL-TIME COLLABORATION: Trip Operations (Event Sourcing) =====
+# Operations are stored as lightweight events for conflict-free collaboration
+# @model directive creates DynamoDB table + GraphQL mutations/queries automatically
+
+type TripOperation
+  @model
+  @auth(rules: [{ allow: public }])
+{
+  id: ID!
+  tripID: ID! @index(name: "byTripID", sortKeyFields: ["timestamp"], queryField: "listOperationsByTrip")
+  timestamp: Float!
+  opId: ID!
+  userId: ID!
+  sequenceNumber: Int!
+  type: String!
+  target: String!
+  dayNumber: Int
+  operationData: AWSJSON!
+  ttl: Int # Unix timestamp for DynamoDB TTL (auto-delete after 1 hour)
+}
 
  type Query {
    analyzeWishlist(wishlist_text: String!, selectedCity: String!): WishlistAnalysisResult @function(name: "wishlistAnalyzer-dev")

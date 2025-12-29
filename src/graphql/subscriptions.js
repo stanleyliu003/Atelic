@@ -197,3 +197,69 @@ export const onDeleteWishlistAnalysis = /* GraphQL */ `
     }
   }
 `;
+export const onCreateTripOperation = /* GraphQL */ `
+  subscription OnCreateTripOperation(
+    $filter: ModelSubscriptionTripOperationFilterInput
+  ) {
+    onCreateTripOperation(filter: $filter) {
+      id
+      tripID
+      timestamp
+      opId
+      userId
+      sequenceNumber
+      type
+      target
+      dayNumber
+      operationData
+      ttl
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateTripOperation = /* GraphQL */ `
+  subscription OnUpdateTripOperation(
+    $filter: ModelSubscriptionTripOperationFilterInput
+  ) {
+    onUpdateTripOperation(filter: $filter) {
+      id
+      tripID
+      timestamp
+      opId
+      userId
+      sequenceNumber
+      type
+      target
+      dayNumber
+      operationData
+      ttl
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteTripOperation = /* GraphQL */ `
+  subscription OnDeleteTripOperation(
+    $filter: ModelSubscriptionTripOperationFilterInput
+  ) {
+    onDeleteTripOperation(filter: $filter) {
+      id
+      tripID
+      timestamp
+      opId
+      userId
+      sequenceNumber
+      type
+      target
+      dayNumber
+      operationData
+      ttl
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;

@@ -1,6 +1,12 @@
 {
   "permissions": {
     "storage": {
+      "TripOperationsStorage": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ],
       "TripStorage": [
         "read"
       ]

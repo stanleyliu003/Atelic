@@ -437,6 +437,92 @@ export const listWishlistAnalyses = /* GraphQL */ `
     }
   }
 `;
+export const getTripOperation = /* GraphQL */ `
+  query GetTripOperation($id: ID!) {
+    getTripOperation(id: $id) {
+      id
+      tripID
+      timestamp
+      opId
+      userId
+      sequenceNumber
+      type
+      target
+      dayNumber
+      operationData
+      ttl
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listTripOperations = /* GraphQL */ `
+  query ListTripOperations(
+    $filter: ModelTripOperationFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listTripOperations(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        tripID
+        timestamp
+        opId
+        userId
+        sequenceNumber
+        type
+        target
+        dayNumber
+        operationData
+        ttl
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const listOperationsByTrip = /* GraphQL */ `
+  query ListOperationsByTrip(
+    $tripID: ID!
+    $timestamp: ModelFloatKeyConditionInput
+    $sortDirection: ModelSortDirection
+    $filter: ModelTripOperationFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listOperationsByTrip(
+      tripID: $tripID
+      timestamp: $timestamp
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        tripID
+        timestamp
+        opId
+        userId
+        sequenceNumber
+        type
+        target
+        dayNumber
+        operationData
+        ttl
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 export const getUserProfile = /* GraphQL */ `
   query GetUserProfile($username: String, $userID: String) {
     getUserProfile(username: $username, userID: $userID) {
@@ -497,6 +583,8 @@ export const getUserProfile = /* GraphQL */ `
       deviceType
       modelName
       osVersion
+      activityPreferences
+      selectedUseCases
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate

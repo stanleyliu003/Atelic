@@ -515,6 +515,75 @@ export const deleteWishlistAnalysis = /* GraphQL */ `
     }
   }
 `;
+export const createTripOperation = /* GraphQL */ `
+  mutation CreateTripOperation(
+    $input: CreateTripOperationInput!
+    $condition: ModelTripOperationConditionInput
+  ) {
+    createTripOperation(input: $input, condition: $condition) {
+      id
+      tripID
+      timestamp
+      opId
+      userId
+      sequenceNumber
+      type
+      target
+      dayNumber
+      operationData
+      ttl
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateTripOperation = /* GraphQL */ `
+  mutation UpdateTripOperation(
+    $input: UpdateTripOperationInput!
+    $condition: ModelTripOperationConditionInput
+  ) {
+    updateTripOperation(input: $input, condition: $condition) {
+      id
+      tripID
+      timestamp
+      opId
+      userId
+      sequenceNumber
+      type
+      target
+      dayNumber
+      operationData
+      ttl
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteTripOperation = /* GraphQL */ `
+  mutation DeleteTripOperation(
+    $input: DeleteTripOperationInput!
+    $condition: ModelTripOperationConditionInput
+  ) {
+    deleteTripOperation(input: $input, condition: $condition) {
+      id
+      tripID
+      timestamp
+      opId
+      userId
+      sequenceNumber
+      type
+      target
+      dayNumber
+      operationData
+      ttl
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const updateUserProfile = /* GraphQL */ `
   mutation UpdateUserProfile(
     $username: String!
@@ -583,6 +652,8 @@ export const updateUserProfile = /* GraphQL */ `
       deviceType
       modelName
       osVersion
+      activityPreferences
+      selectedUseCases
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate

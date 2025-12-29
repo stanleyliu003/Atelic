@@ -56,15 +56,18 @@ export const CollaboratorListItem: React.FC<CollaboratorListItemProps> = ({
   };
 
   const getAvailableRoles = (): CollaboratorRole[] => {
+    let roles: CollaboratorRole[] = [];
+
     if (currentUserRole === 'owner') {
-      // Temporarily disabled: owner cannot change viewer to editor
-      return [/* 'editor', */ 'viewer'];
+      // Owners can promote/demote between editor and viewer
+      roles = ['editor', 'viewer'];
     } else if (currentUserRole === 'editor') {
-      // Editors can only change viewers (but only to viewer, so no actual role changes)
-      // However, they can remove viewers, so we still need to show the menu
-      return ['viewer'];
+      // Editors can only manage viewers (no role changes, just removal)
+      roles = ['viewer'];
     }
-    return [];
+
+    // Filter out the collaborator's current role - only show the OTHER role(s)
+    return roles.filter(role => role !== collaborator.role);
   };
 
   const handleRolePress = () => {
