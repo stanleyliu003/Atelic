@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -12,11 +12,14 @@ import {
   Platform,
   PanResponder,
   Animated,
+  Alert,
+  Image,
 } from 'react-native';
-import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { TravelMode, RouteLegModeData, Activity } from '../../types/activity.types';
 import { Colors } from '../../../constants/Colors';
 import { formatDistance, formatDuration } from '../../utils/routeUtils';
+import { openUber, openLyft, isUberInstalled, isLyftInstalled } from '../../services/rideHailing';
 
 interface TransportationSettingsModalProps {
   visible: boolean;
@@ -44,6 +47,23 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
   destinationActivity,
 }) => {
   const translateY = useRef(new Animated.Value(0)).current;
+  const [uberAvailable, setUberAvailable] = useState(false);
+  const [lyftAvailable, setLyftAvailable] = useState(false);
+
+  // Check if ride-hailing apps are installed
+  useEffect(() => {
+    const checkApps = async () => {
+      const [uber, lyft] = await Promise.all([
+        isUberInstalled(),
+        isLyftInstalled(),
+      ]);
+      setUberAvailable(uber);
+      setLyftAvailable(lyft);
+    };
+    if (visible) {
+      checkApps();
+    }
+  }, [visible]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -216,6 +236,68 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
     }
   };
 
+  const handleOpenUber = async () => {
+    try {
+      if (!originActivity || !destinationActivity) {
+        Alert.alert('Error', 'Missing origin or destination location');
+        return;
+      }
+
+      if (!originActivity.lat || !originActivity.lng || !destinationActivity.lat || !destinationActivity.lng) {
+        Alert.alert('Error', 'Location coordinates are not available');
+        return;
+      }
+
+      // Use formatted_address if available, fallback to name
+      const pickupAddress = originActivity.formatted_address || originActivity.name;
+      const dropoffAddress = destinationActivity.formatted_address || destinationActivity.name;
+
+      await openUber({
+        pickupLat: originActivity.lat,
+        pickupLng: originActivity.lng,
+        pickupName: pickupAddress,
+        dropoffLat: destinationActivity.lat,
+        dropoffLng: destinationActivity.lng,
+        dropoffName: dropoffAddress,
+      });
+      onClose(); // Close modal after opening Uber
+    } catch (error) {
+      console.error('[Modal] Error opening Uber:', error);
+      Alert.alert('Error', 'Failed to open Uber. Please try again.');
+    }
+  };
+
+  const handleOpenLyft = async () => {
+    try {
+      if (!originActivity || !destinationActivity) {
+        Alert.alert('Error', 'Missing origin or destination location');
+        return;
+      }
+
+      if (!originActivity.lat || !originActivity.lng || !destinationActivity.lat || !destinationActivity.lng) {
+        Alert.alert('Error', 'Location coordinates are not available');
+        return;
+      }
+
+      // Use formatted_address if available, fallback to name
+      const pickupAddress = originActivity.formatted_address || originActivity.name;
+      const dropoffAddress = destinationActivity.formatted_address || destinationActivity.name;
+
+      await openLyft({
+        pickupLat: originActivity.lat,
+        pickupLng: originActivity.lng,
+        pickupName: pickupAddress,
+        dropoffLat: destinationActivity.lat,
+        dropoffLng: destinationActivity.lng,
+        dropoffName: dropoffAddress,
+      });
+      onClose(); // Close modal after opening Lyft
+    } catch (error) {
+      console.error('[Modal] Error opening Lyft:', error);
+      Alert.alert('Error', 'Failed to open Lyft. Please try again.');
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -271,9 +353,28 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Choose Transportation</Text>
-            <Text style={styles.timestamp}>
-              {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-            </Text>
+            <View style={styles.rideIconsContainer}>
+              <TouchableOpacity
+                style={styles.uberIconButton}
+                onPress={handleOpenUber}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={require('../../../assets/uber-logo.png')}
+                  style={styles.uberLogo}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.lyftIconButton}
+                onPress={handleOpenLyft}
+                activeOpacity={0.7}
+              >
+                <View style={styles.lyftLogoContainer}>
+                  <Text style={styles.lyftLogoText}>lyft</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Mode Options */}
@@ -319,7 +420,7 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
                     </View>
                   </TouchableOpacity>
 
-                  {/* Directions button - only show on selected mode, opens map selection */}
+                  {/* Directions button - show on selected mode */}
                   {isSelected && isAvailable && (
                     <TouchableOpacity
                       style={styles.directionsButton}
@@ -443,6 +544,53 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#8E8E93',
     fontWeight: '500',
+  },
+  rideIconsContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  uberIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  uberLogo: {
+    width: 36,
+    height: 36,
+    tintColor: '#FFFFFF',
+  },
+  lyftIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#FF00BF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  lyftLogoContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lyftLogoText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
   optionsContainer: {
     paddingHorizontal: 16,

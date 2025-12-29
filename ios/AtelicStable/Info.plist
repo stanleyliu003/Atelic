@@ -41,6 +41,8 @@
       <string>comgooglemaps</string>
       <string>comgooglemaps-x-callback</string>
       <string>maps</string>
+      <string>uber</string>
+      <string>lyft</string>
     </array>
     <key>NSAppTransportSecurity</key>
     <dict>

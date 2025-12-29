@@ -366,7 +366,7 @@
 				CODE_SIGN_ENTITLEMENTS = AtelicStable/AtelicStable.entitlements;
 				CURRENT_PROJECT_VERSION = 29;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = LVFSXPK7N7;
+				DEVELOPMENT_TEAM = XN7KYHAH52;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -387,7 +387,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = AtelicStable;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ujjwal.AtelicStable;
 				PRODUCT_NAME = AtelicStable;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -410,7 +410,7 @@
 				CODE_SIGN_ENTITLEMENTS = AtelicStable/AtelicStable.entitlements;
 				CURRENT_PROJECT_VERSION = 29;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = LVFSXPK7N7;
+				DEVELOPMENT_TEAM = XN7KYHAH52;
 				HERMES_ENABLE_DEBUGGER = YES;
 				INFOPLIST_FILE = AtelicStable/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
@@ -426,7 +426,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = AtelicStable;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ujjwal.AtelicStable;
 				PRODUCT_NAME = AtelicStable;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -504,7 +504,7 @@
 				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
-				USE_HERMES = YES;
+				USE_HERMES = true;
 			};
 			name = Debug;
 		};
@@ -565,7 +565,7 @@
 				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
-				USE_HERMES = YES;
+				USE_HERMES = true;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
