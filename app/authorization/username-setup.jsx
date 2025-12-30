@@ -6,6 +6,7 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator,
 import { Ionicons } from '@expo/vector-icons';
 import DeviceInfo from 'react-native-device-info';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Notifications from 'expo-notifications';
 
 const updateUserProfileMutation = /* GraphQL */ `
   mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
@@ -61,6 +62,8 @@ export default function UsernameSetup() {
   const [isGoogleUser, setIsGoogleUser] = useState(false);
   const [activityPreferences, setActivityPreferences] = useState([]);
   const [selectedUseCases, setSelectedUseCases] = useState([]);
+  const [devicePushToken, setDevicePushToken] = useState(null);
+  const [notificationPermissionGranted, setNotificationPermissionGranted] = useState(false);
 
   const activityOptions = [
     { label: 'History', emoji: '🏛️', value: 'history' },
@@ -213,6 +216,47 @@ export default function UsernameSetup() {
     }
   };
 
+  // Request notification permissions and get device token
+  const requestNotificationPermission = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+
+      // Request permission
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus === 'granted') {
+        // Get the native device token (APNs token for iOS)
+        const tokenData = await Notifications.getDevicePushTokenAsync();
+        const deviceToken = tokenData.data;
+
+        console.log('Device push token obtained:', deviceToken);
+        setDevicePushToken(deviceToken);
+        setNotificationPermissionGranted(true);
+
+        // Store token - we'll save this to DynamoDB in handleContinue
+        return deviceToken;
+      } else {
+        console.log('Notification permission denied');
+        setNotificationPermissionGranted(false);
+        // User can still continue without notifications
+        return null;
+      }
+    } catch (err) {
+      console.error('Error requesting notification permission:', err);
+      setError('Failed to set up notifications. You can continue without notifications.');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleContinue = async () => {
     setError('');
     setIsLoading(true);
@@ -338,7 +382,9 @@ export default function UsernameSetup() {
               modelName,
               osVersion,
               activityPreferences,
-              selectedUseCases
+              selectedUseCases,
+              devicePushToken: devicePushToken || null,
+              notificationsEnabled: notificationPermissionGranted
             })
           },
           authMode: 'AMAZON_COGNITO_USER_POOLS'
@@ -426,7 +472,10 @@ export default function UsernameSetup() {
       // Use cases page - no validation required
       setCurrentPage(8);
     } else if (currentPage === 8) {
-      // Final welcome page - submit
+      // Welcome page - go to notifications
+      setCurrentPage(9);
+    } else if (currentPage === 9) {
+      // Notifications page - submit
       handleContinue();
     }
   };
@@ -467,7 +516,9 @@ export default function UsernameSetup() {
     } else if (currentPage === 7) {
       return false; // Use cases page - optional
     } else if (currentPage === 8) {
-      return isLoading;
+      return false; // Welcome page - no validation
+    } else if (currentPage === 9) {
+      return isLoading; // Notifications page - can submit while loading
     }
     return false;
   };
@@ -787,6 +838,76 @@ export default function UsernameSetup() {
               </>
             )}
 
+            {/* Page 9: Notification Permission */}
+            {currentPage === 9 && (
+              <>
+                <Text style={styles.title}>Stay in the loop</Text>
+                <Text style={styles.subtitle}>
+                  Get notified when your trip is coming up, when collaborators make changes, and when your friends invite you to join their trips.
+                </Text>
+
+                <View style={{ marginTop: 40, gap: 20 }}>
+                  <View style={styles.notificationFeatureBox}>
+                    <View style={styles.notificationIconCircle}>
+                      <Ionicons name="calendar" size={28} color="#F36406" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.notificationFeatureTitle}>Trip Reminders</Text>
+                      <Text style={styles.notificationFeatureDesc}>Get reminded when your trip is coming up</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.notificationFeatureBox}>
+                    <View style={styles.notificationIconCircle}>
+                      <Ionicons name="people" size={28} color="#F36406" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.notificationFeatureTitle}>Collaboration Updates</Text>
+                      <Text style={styles.notificationFeatureDesc}>Know when friends update your shared trip</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.notificationFeatureBox}>
+                    <View style={styles.notificationIconCircle}>
+                      <Ionicons name="mail" size={28} color="#F36406" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.notificationFeatureTitle}>Trip Invites</Text>
+                      <Text style={styles.notificationFeatureDesc}>Get invited to join trips with friends</Text>
+                    </View>
+                  </View>
+
+                  {!notificationPermissionGranted && (
+                    <TouchableOpacity
+                      style={styles.enableNotificationsButton}
+                      onPress={requestNotificationPermission}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <ActivityIndicator color="#F36406" />
+                      ) : (
+                        <>
+                          <Ionicons name="notifications" size={24} color="#F36406" />
+                          <Text style={styles.enableNotificationsText}>Enable Notifications</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+
+                  {notificationPermissionGranted && (
+                    <View style={styles.notificationSuccessBox}>
+                      <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+                      <Text style={styles.notificationSuccessText}>Notifications enabled!</Text>
+                    </View>
+                  )}
+                </View>
+
+                <Text style={styles.skipText}>
+                  You can change this anytime in Settings
+                </Text>
+              </>
+            )}
+
             {error ? (
               <Text style={styles.errorText}>{error}</Text>
             ) : null}
@@ -806,7 +927,7 @@ export default function UsernameSetup() {
                 <ActivityIndicator color={Colors.WHITE} />
               ) : (
                 <Text style={styles.buttonText}>
-                  {currentPage === 8 ? 'Start planning' : 'Continue'}
+                  {currentPage === 9 ? 'Start planning' : 'Continue'}
                 </Text>
               )}
             </TouchableOpacity>
@@ -1068,5 +1189,72 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
     lineHeight: 24,
+  },
+  notificationFeatureBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+    padding: 18,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 15,
+  },
+  notificationIconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: Colors.WHITE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationFeatureTitle: {
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    color: Colors.BLACK,
+    marginBottom: 4,
+  },
+  notificationFeatureDesc: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    lineHeight: 20,
+  },
+  enableNotificationsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    padding: 18,
+    backgroundColor: Colors.WHITE,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: '#F36406',
+    marginTop: 10,
+  },
+  enableNotificationsText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    color: '#F36406',
+  },
+  notificationSuccessBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    padding: 18,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 15,
+    marginTop: 10,
+  },
+  notificationSuccessText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    color: '#10B981',
+  },
+  skipText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    textAlign: 'center',
+    marginTop: 20,
   },
 });

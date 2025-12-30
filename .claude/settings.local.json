@@ -33,7 +33,9 @@
       "Bash(node:*)",
       "Bash(dig:*)",
       "Bash(nslookup:*)",
-      "Bash(host:*)"
+      "Bash(host:*)",
+      "Bash(xcrun xctrace:*)",
+      "Bash(npx expo run:ios:*)"
     ],
     "deny": [],
     "ask": [],
