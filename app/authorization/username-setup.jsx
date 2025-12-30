@@ -671,16 +671,16 @@ export default function UsernameSetup() {
                 <View style={{ marginTop: 40 }}>
                   <View style={{ gap: 15 }}>
                     <TouchableOpacity
-                      style={[styles.genderButtonFull, gender === 'man' && styles.genderButtonSelected]}
-                      onPress={() => setGender('man')}
+                      style={[styles.genderButtonFull, gender === 'male' && styles.genderButtonSelected]}
+                      onPress={() => setGender('male')}
                     >
-                      <Text style={{ color: gender === 'man' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Man</Text>
+                      <Text style={{ color: gender === 'male' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Man</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.genderButtonFull, gender === 'woman' && styles.genderButtonSelected]}
-                      onPress={() => setGender('woman')}
+                      style={[styles.genderButtonFull, gender === 'female' && styles.genderButtonSelected]}
+                      onPress={() => setGender('female')}
                     >
-                      <Text style={{ color: gender === 'woman' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Woman</Text>
+                      <Text style={{ color: gender === 'female' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Woman</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.genderButtonFull, gender === 'non-binary' && styles.genderButtonSelected]}
