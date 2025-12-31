@@ -612,7 +612,7 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                                 enableSwipe={true}
                                                 weekdays={['S', 'M', 'T', 'W', 'T', 'F', 'S']}
                                                 allowBackwardRangeSelect={true}
-                                            onDateChange={(date, type) => {
+                                            onDateChange={async (date, type) => {
                                                 if (type === 'END_DATE') {
                                                     // Only proceed if we have a valid date
                                                     if (!date) {
@@ -653,6 +653,13 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                                             setEndDate(date);
                                                             setContextEndDate(date.toISOString());
                                                             setTripLength(days);
+                                                        }
+
+                                                        // Save trip to database after dates are selected
+                                                        try {
+                                                            await saveTrip();
+                                                        } catch (error) {
+                                                            console.error('[create_trip_1_city] Error saving trip after date selection:', error);
                                                         }
                                                     }
                                                 } else {
@@ -721,9 +728,16 @@ export default function create_trip_1_city({ showBackButton = true }) {
                                                         styles.option,
                                                         tripLength === day && styles.selectedOption
                                                     ]}
-                                                    onPress={() => {
+                                                    onPress={async () => {
                                                         setTripLength(day);
                                                         setIsDropdownOpen(false);
+
+                                                        // Save trip to database after selecting flexible days
+                                                        try {
+                                                            await saveTrip();
+                                                        } catch (error) {
+                                                            console.error('[create_trip_1_city] Error saving trip after flexible days selection:', error);
+                                                        }
                                                     }}
                                                 >
                                                     <Text style={[
