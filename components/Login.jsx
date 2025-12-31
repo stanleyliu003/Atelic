@@ -25,6 +25,18 @@ const updateUserProfileMutation = /* GraphQL */ `
   }
 `;
 
+const getUserProfileQuery = /* GraphQL */ `
+  query GetUserProfile($username: String) {
+    getUserProfile(username: $username) {
+      username
+      notificationsEnabled
+      activityPreferences
+      selectedUseCases
+      __typename
+    }
+  }
+`;
+
 // CRITICAL: This configures Amplify to use expo-web-browser for OAuth
 // This ensures authentication happens in an in-app browser (ASWebAuthenticationSession on iOS)
 // instead of opening Safari browser
@@ -182,6 +194,35 @@ export default function Login() {
       if (!preferredUsername) {
         isNavigatingRef.current = true;
         router.replace('/authorization/username-setup');
+        return;
+      }
+
+      // Check if user has completed updated onboarding (notificationsEnabled field)
+      // This ensures old users go through the new onboarding flow
+      let needsOnboarding = false;
+      try {
+        const profileResult = await API.graphql({
+          query: getUserProfileQuery,
+          variables: { username: preferredUsername }
+        });
+
+        const userProfile = profileResult.data?.getUserProfile;
+
+        // If notificationsEnabled field is missing (null/undefined), user needs onboarding
+        // Note: false is a valid value (user chose not to enable notifications)
+        if (userProfile && userProfile.notificationsEnabled === null) {
+          console.log('[Login] User missing notificationsEnabled field, sending to onboarding');
+          needsOnboarding = true;
+        }
+      } catch (profileErr) {
+        console.warn('[Login] Failed to fetch user profile, skipping onboarding check:', profileErr?.errors || profileErr?.message || profileErr);
+        // Don't block login if profile check fails
+      }
+
+      // If user needs onboarding, redirect to username-setup with query param
+      if (needsOnboarding) {
+        isNavigatingRef.current = true;
+        router.replace('/authorization/username-setup?mode=returning');
         return;
       }
 

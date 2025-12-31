@@ -1,6 +1,6 @@
 import { Colors } from '../../constants/Colors';
 import { Auth, API } from 'aws-amplify';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView, Modal, ImageBackground } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,6 +57,10 @@ const registerDeviceTokenMutation = /* GraphQL */ `
 
 export default function UsernameSetup() {
   const router = useRouter();
+  const searchParams = useLocalSearchParams();
+  const isReturningUser = searchParams.mode === 'returning';
+
+  // All users start at page 1, but returning users skip gender (page 3) and username (page 4)
   const [currentPage, setCurrentPage] = useState(1);
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
@@ -125,6 +129,58 @@ export default function UsernameSetup() {
 
         console.log('User attributes:', attributes);
 
+        // For returning users, pre-populate name and username from Cognito
+        if (isReturningUser) {
+          const nameAttr = attributes.find(attr => attr.Name === 'name');
+          const givenNameAttr = attributes.find(attr => attr.Name === 'given_name');
+          const familyNameAttr = attributes.find(attr => attr.Name === 'family_name');
+          const preferredUsernameAttr = attributes.find(attr => attr.Name === 'preferred_username');
+          const birthdateAttr = attributes.find(attr => attr.Name === 'birthdate');
+          const genderAttr = attributes.find(attr => attr.Name === 'gender');
+
+          // Set username
+          if (preferredUsernameAttr?.Value) {
+            setUsername(preferredUsernameAttr.Value);
+            console.log('[Returning User] Loaded username:', preferredUsernameAttr.Value);
+          }
+
+          // Set name
+          if (nameAttr?.Value) {
+            const nameParts = nameAttr.Value.trim().split(' ');
+            setFirstName(nameParts[0] || '');
+            setLastName(nameParts.slice(1).join(' ') || '');
+            setFullName(nameAttr.Value);
+            console.log('[Returning User] Loaded name:', nameAttr.Value);
+          } else if (givenNameAttr?.Value && familyNameAttr?.Value) {
+            setFirstName(givenNameAttr.Value);
+            setLastName(familyNameAttr.Value);
+            setFullName(`${givenNameAttr.Value} ${familyNameAttr.Value}`.trim());
+            console.log('[Returning User] Loaded name from given+family');
+          } else if (givenNameAttr?.Value) {
+            setFirstName(givenNameAttr.Value);
+            setLastName('');
+            setFullName(givenNameAttr.Value);
+            console.log('[Returning User] Loaded name from given only');
+          }
+
+          // Set birthdate if available
+          if (birthdateAttr?.Value) {
+            try {
+              const birthDate = new Date(birthdateAttr.Value);
+              setSelectedDate(birthDate);
+              console.log('[Returning User] Loaded birthdate:', birthdateAttr.Value);
+            } catch (dateErr) {
+              console.warn('[Returning User] Failed to parse birthdate:', dateErr);
+            }
+          }
+
+          // Set gender if available
+          if (genderAttr?.Value) {
+            setGender(genderAttr.Value);
+            console.log('[Returning User] Loaded gender:', genderAttr.Value);
+          }
+        }
+
         // Check if user has identities attribute indicating external provider sign-in
         const identitiesAttr = attributes.find(attr => attr.Name === 'identities');
         if (identitiesAttr) {
@@ -143,8 +199,8 @@ export default function UsernameSetup() {
           setIsAppleUser(isApple);
           setIsGoogleUser(isGoogle);
 
-          // For external users, check if name is already available
-          if (isExternal) {
+          // For NEW external users (not returning), check if name is already available
+          if (isExternal && !isReturningUser) {
             const nameAttr = attributes.find(attr => attr.Name === 'name');
             const givenNameAttr = attributes.find(attr => attr.Name === 'given_name');
             const familyNameAttr = attributes.find(attr => attr.Name === 'family_name');
@@ -180,7 +236,7 @@ export default function UsernameSetup() {
     };
 
     checkUserProvider();
-  }, []);
+  }, [isReturningUser]);
 
   // Extract first name from full name
   const getFirstName = () => {
@@ -282,10 +338,20 @@ export default function UsernameSetup() {
     setIsLoading(true);
 
     // Validate all fields first
-    if (!username || username.trim().length < 5) {
-      setError('Username must be at least 5 characters long.');
-      setIsLoading(false);
-      return;
+    // For returning users, skip username validation (already set)
+    if (!isReturningUser) {
+      if (!username || username.trim().length < 5) {
+        setError('Username must be at least 5 characters long.');
+        setIsLoading(false);
+        return;
+      }
+
+      const usernameRegex = /^[a-zA-Z0-9_]{5,20}$/;
+      if (!usernameRegex.test(username)) {
+        setError('Username must be 5-20 characters and contain only letters, numbers, and underscores.');
+        setIsLoading(false);
+        return;
+      }
     }
 
     if (!firstName || firstName.trim().length < 1) {
@@ -326,39 +392,35 @@ export default function UsernameSetup() {
       return;
     }
 
-    const usernameRegex = /^[a-zA-Z0-9_]{5,20}$/;
-    if (!usernameRegex.test(username)) {
-      setError('Username must be 5-20 characters and contain only letters, numbers, and underscores.');
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      // Step 1: Check if username is already taken
-      console.log('Checking username availability for:', username.trim());
-
-      const result = await API.graphql({
-        query: searchUsers,
-        variables: { searchTerm: username.trim() }
-      });
-
-      const users = result.data?.searchUsers || [];
-
-      // Check if any user has this exact username
-      const usernameExists = users.some(
-        user => user.username?.toLowerCase() === username.trim().toLowerCase()
-      );
-
-      if (usernameExists) {
-        setError('This username is already taken. Please choose another one.');
-        setIsLoading(false);
-        return;
-      }
-
-      console.log('Username is available, proceeding to update...');
-
-      // Step 2: Username is available, update the user's preferred_username
       const user = await Auth.currentAuthenticatedUser();
+
+      // For NEW users only: Check if username is already taken
+      if (!isReturningUser) {
+        console.log('Checking username availability for:', username.trim());
+
+        const result = await API.graphql({
+          query: searchUsers,
+          variables: { searchTerm: username.trim() }
+        });
+
+        const users = result.data?.searchUsers || [];
+
+        // Check if any user has this exact username
+        const usernameExists = users.some(
+          user => user.username?.toLowerCase() === username.trim().toLowerCase()
+        );
+
+        if (usernameExists) {
+          setError('This username is already taken. Please choose another one.');
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('Username is available, proceeding to update...');
+      } else {
+        console.log('[Returning User] Skipping username availability check');
+      }
 
       // Format birthdate as YYYY-MM-DD for Cognito
       const year = selectedDate.getFullYear();
@@ -368,18 +430,22 @@ export default function UsernameSetup() {
 
       // Prepare attributes to update
       const attributesToUpdate = {
-        'preferred_username': username.trim(),
         'gender': gender,
         'birthdate': birthdate,
         'name': fullName.trim()
       };
 
+      // Only update username for new users
+      if (!isReturningUser) {
+        attributesToUpdate['preferred_username'] = username.trim();
+      }
+
       // Update user attributes
       await Auth.updateUserAttributes(user, attributesToUpdate);
 
-      console.log('Username updated successfully:', username);
+      console.log('[OnboardingComplete] User attributes updated successfully');
 
-      // Set accountCreatedAt once (no overwrite) in UserProfiles
+      // Update UserProfiles in DynamoDB
       try {
         const current = await Auth.currentAuthenticatedUser();
         const prefUsernameAttr = (await Auth.userAttributes(current)).find(a => a.Name === 'preferred_username');
@@ -389,26 +455,37 @@ export default function UsernameSetup() {
         const osName = DeviceInfo.getSystemName() || null;
         const osVersion = DeviceInfo.getSystemVersion() || null;
         const modelName = DeviceInfo.getModel() || null;
+
+        // Use different action based on user type
+        const action = isReturningUser ? 'UPDATE_ONBOARDING' : 'SET_ACCOUNT_CREATED_AT';
+        const tripDataPayload = {
+          appVersion,
+          deviceType: osName,
+          modelName,
+          osVersion,
+          activityPreferences,
+          selectedUseCases,
+          devicePushToken: devicePushToken || null,
+          notificationsEnabled: notificationPermissionGranted
+        };
+
+        // For new users, also include createdAt and userID
+        if (!isReturningUser) {
+          tripDataPayload.createdAt = new Date().toISOString();
+          tripDataPayload.userID = cognitoUserId;
+        }
+
         await API.graphql({
           query: updateUserProfileMutation,
           variables: {
             username: prefUsername,
-            action: 'SET_ACCOUNT_CREATED_AT',
-            tripData: JSON.stringify({
-              createdAt: new Date().toISOString(),
-              userID: cognitoUserId,
-              appVersion,
-              deviceType: osName,
-              modelName,
-              osVersion,
-              activityPreferences,
-              selectedUseCases,
-              devicePushToken: devicePushToken || null,
-              notificationsEnabled: notificationPermissionGranted
-            })
+            action: action,
+            tripData: JSON.stringify(tripDataPayload)
           },
           authMode: 'AMAZON_COGNITO_USER_POOLS'
         });
+
+        console.log(`[OnboardingComplete] UserProfile updated with action: ${action}`);
 
         // Register device token with SNS if notifications were granted
         if (devicePushToken && notificationPermissionGranted) {
@@ -457,7 +534,7 @@ export default function UsernameSetup() {
     setError('');
 
     if (currentPage === 1) {
-      // Validate first name and last name
+      // Page 1: First name and last name
       if (!firstName || firstName.trim().length < 1) {
         setError('Please enter your first name.');
         return;
@@ -468,7 +545,7 @@ export default function UsernameSetup() {
       }
       setCurrentPage(2);
     } else if (currentPage === 2) {
-      // Validate birthday
+      // Page 2: Birthday
       if (!selectedDate) {
         setError('Please select your birthday.');
         return;
@@ -478,16 +555,17 @@ export default function UsernameSetup() {
         setError('Age must be between 4 and 100.');
         return;
       }
-      setCurrentPage(3);
+      // For returning users, skip page 3 (gender) and page 4 (username), go directly to page 5
+      setCurrentPage(isReturningUser ? 5 : 3);
     } else if (currentPage === 3) {
-      // Validate gender
+      // Page 3: Gender (SKIP for returning users)
       if (!gender) {
         setError('Please select your gender.');
         return;
       }
       setCurrentPage(4);
     } else if (currentPage === 4) {
-      // Validate username
+      // Page 4: Username (SKIP for returning users)
       if (!username || username.trim().length < 5) {
         setError('Username must be at least 5 characters long.');
         return;
@@ -499,28 +577,35 @@ export default function UsernameSetup() {
       }
       setCurrentPage(5);
     } else if (currentPage === 5) {
-      // Good company page - no validation required
+      // Page 5: Good company page - no validation required
       setCurrentPage(6);
     } else if (currentPage === 6) {
-      // Activities page - no validation required
+      // Page 6: Activities page - no validation required
       setCurrentPage(7);
     } else if (currentPage === 7) {
-      // Use cases page - no validation required
+      // Page 7: Use cases page - no validation required
       setCurrentPage(8);
     } else if (currentPage === 8) {
-      // Notifications page - request permission then go to welcome
+      // Page 8: Notifications page - request permission then go to welcome
       await requestNotificationPermission();
       setCurrentPage(9);
     } else if (currentPage === 9) {
-      // Welcome page - submit
+      // Page 9: Welcome page - submit
       handleContinue();
     }
   };
 
   const handleBack = () => {
     setError('');
+
     if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
+      // Special handling for returning users: skip pages 3 and 4 when going backwards
+      if (currentPage === 5 && isReturningUser) {
+        // From page 5 (Good Company), go back to page 2 (Birthday), skipping gender and username
+        setCurrentPage(2);
+      } else {
+        setCurrentPage(currentPage - 1);
+      }
     } else {
       // Sign out and go back to login
       Auth.signOut({ global: false }).catch(() => {});

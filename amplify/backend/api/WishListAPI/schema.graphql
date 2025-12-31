@@ -331,7 +331,7 @@ type TripOperation
    getTripIDs(userID: String!): [TripSummary] @function(name: "getTripIDs-${env}") @auth(rules: [{ allow: public }])
    getUserTrips(userID: String!, tripID: String!): Trip @function(name: "getUserTrips-${env}") @auth(rules: [{ allow: public }])
    searchUsers(searchTerm: String!): [UserProfile] @function(name: "searchUsers-${env}") @auth(rules: [{ allow: public }])
-   getUserProfile(username: String, userID: String): UserProfileStorage @function(name: "getUserProfile-${env}") @auth(rules: [{ allow: private }])
+   getUserProfile(username: String, userID: String): UserProfileStorage @function(name: "getUserProfile-${env}") @auth(rules: [{ allow: public }])
  }
 
    input WaypointInput {
