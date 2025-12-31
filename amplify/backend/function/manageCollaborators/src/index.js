@@ -177,7 +177,7 @@ function canPerformAction(requesterRole, targetRole, action) {
 }
 
 // Helper function to send push notification when collaborator is invited
-async function sendCollaboratorInviteNotification(username, inviteeName, selectedCity, inviterName) {
+async function sendCollaboratorInviteNotification(username, inviteeName, selectedCity, inviterName, tripId) {
   const USER_PROFILES_TABLE = process.env.STORAGE_USERPROFILESSTORAGE_NAME || 'UserProfilesStorage-dev';
   const IS_PRODUCTION = process.env.ENV === 'prod';
 
@@ -213,6 +213,14 @@ async function sendCollaboratorInviteNotification(username, inviteeName, selecte
     // 3. Format the APNs payload
     const platform = IS_PRODUCTION ? 'APNS' : 'APNS_SANDBOX';
 
+    // Custom data that will be available in notification.request.content.data
+    const customData = {
+      type: 'trip_invitation',
+      selectedCity: selectedCity,
+      inviterName: inviterName,
+      tripId: tripId
+    };
+
     const apnsPayload = {
       aps: {
         alert: {
@@ -221,20 +229,24 @@ async function sendCollaboratorInviteNotification(username, inviteeName, selecte
         },
         badge: 1,
         sound: 'default',
-        'mutable-content': 1
+        'mutable-content': 1,
+        'content-available': 1
       },
-      type: 'trip_invitation',
-      selectedCity: selectedCity,
-      inviterName: inviterName
+      // Custom data fields at root level (APNs standard)
+      type: customData.type,
+      selectedCity: customData.selectedCity,
+      inviterName: customData.inviterName,
+      tripId: customData.tripId
     };
 
-    const message = {
-      [platform]: JSON.stringify(apnsPayload)
-    };
+    console.log('📤 Sending APNs payload:', JSON.stringify(apnsPayload, null, 2));
 
     // 4. Send notification via SNS
     await snsClient.send(new PublishCommand({
-      Message: JSON.stringify(message),
+      Message: JSON.stringify({
+        [platform]: JSON.stringify(apnsPayload),
+        default: `${inviterName} wants you to join their trip to ${selectedCity}.`
+      }),
       MessageStructure: 'json',
       TargetArn: snsEndpointArn
     }));
@@ -331,7 +343,8 @@ async function handleAddCollaborator(trip, args, requesterId, requesterRole, tab
       username,
       fullName,
       trip.selectedCity || 'Unknown',
-      addedBy || 'Someone'
+      addedBy || 'Someone',
+      trip.tripID
     );
   } catch (notifError) {
     // Don't fail the collaborator addition if notification fails

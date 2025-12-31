@@ -122,13 +122,13 @@ type DeleteAccountResult {
   errors: [String]
 }
 
-type RegisterDeviceTokenResult @auth(rules: [{ allow: public }]) {
+type RegisterDeviceTokenResult {
   success: Boolean!
   message: String!
   endpointArn: String
 }
 
-type SendNotificationResult @auth(rules: [{ allow: public }]) {
+type SendNotificationResult {
   success: Boolean!
   message: String!
   messageId: String
