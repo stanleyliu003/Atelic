@@ -222,8 +222,18 @@ export default function UsernameSetup() {
       setIsLoading(true);
       setError('');
 
-      // Request permission
+      // Check current permission status
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
+
+      // If already denied, guide user to Settings
+      if (existingStatus === 'denied') {
+        setError('');
+        setIsLoading(false);
+        // Open iOS Settings so user can manually enable notifications
+        await Linking.openURL('app-settings:');
+        return null;
+      }
+
       let finalStatus = existingStatus;
 
       if (existingStatus !== 'granted') {
@@ -417,7 +427,7 @@ export default function UsernameSetup() {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     setError('');
 
     if (currentPage === 1) {
@@ -472,10 +482,11 @@ export default function UsernameSetup() {
       // Use cases page - no validation required
       setCurrentPage(8);
     } else if (currentPage === 8) {
-      // Welcome page - go to notifications
+      // Notifications page - request permission then go to welcome
+      await requestNotificationPermission();
       setCurrentPage(9);
     } else if (currentPage === 9) {
-      // Notifications page - submit
+      // Welcome page - submit
       handleContinue();
     }
   };
@@ -516,9 +527,9 @@ export default function UsernameSetup() {
     } else if (currentPage === 7) {
       return false; // Use cases page - optional
     } else if (currentPage === 8) {
-      return false; // Welcome page - no validation
+      return false; // Notifications page - no validation
     } else if (currentPage === 9) {
-      return isLoading; // Notifications page - can submit while loading
+      return isLoading; // Welcome page - can submit while loading
     }
     return false;
   };
@@ -825,35 +836,22 @@ export default function UsernameSetup() {
               </>
             )}
 
-            {/* Page 8: Welcome */}
+            {/* Page 8: Notification Permission */}
             {currentPage === 8 && (
               <>
-                <Text style={styles.imageTitle}>Welcome {getFirstName()}</Text>
-                <Text style={styles.imageSubtitle}>You're all set. Start your first itinerary, invite your travel buddies, and create your dream trip!</Text>
-                <ImageBackground
-                  source={require('../../assets/images/freinds_traveling4.png')}
-                  style={styles.imageBackground}
-                  imageStyle={styles.backgroundImage}
-                />
-              </>
-            )}
+                <View style={{ alignItems: 'center', marginBottom: 10 }}>
+                  <Ionicons name="notifications-outline" size={60} color="black" />
+                </View>
+                <Text style={styles.title}>Want an occasional nudge?</Text>
 
-            {/* Page 9: Notification Permission */}
-            {currentPage === 9 && (
-              <>
-                <Text style={styles.title}>Stay in the loop</Text>
-                <Text style={styles.subtitle}>
-                  Get notified when your trip is coming up, when collaborators make changes, and when your friends invite you to join their trips.
-                </Text>
-
-                <View style={{ marginTop: 40, gap: 20 }}>
+                <View style={{ marginTop: 30, gap: 20 }}>
                   <View style={styles.notificationFeatureBox}>
                     <View style={styles.notificationIconCircle}>
-                      <Ionicons name="calendar" size={28} color="#F36406" />
+                      <Ionicons name="mail" size={28} color="#F36406" />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.notificationFeatureTitle}>Trip Reminders</Text>
-                      <Text style={styles.notificationFeatureDesc}>Get reminded when your trip is coming up</Text>
+                      <Text style={styles.notificationFeatureTitle}>Trip Invites</Text>
+                      <Text style={styles.notificationFeatureDesc}>Get invited to join trips with friends</Text>
                     </View>
                   </View>
 
@@ -869,42 +867,31 @@ export default function UsernameSetup() {
 
                   <View style={styles.notificationFeatureBox}>
                     <View style={styles.notificationIconCircle}>
-                      <Ionicons name="mail" size={28} color="#F36406" />
+                      <Ionicons name="calendar" size={28} color="#F36406" />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.notificationFeatureTitle}>Trip Invites</Text>
-                      <Text style={styles.notificationFeatureDesc}>Get invited to join trips with friends</Text>
+                      <Text style={styles.notificationFeatureTitle}>Trip Reminders</Text>
+                      <Text style={styles.notificationFeatureDesc}>Get reminded for upcoming trips</Text>
                     </View>
                   </View>
-
-                  {!notificationPermissionGranted && (
-                    <TouchableOpacity
-                      style={styles.enableNotificationsButton}
-                      onPress={requestNotificationPermission}
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <ActivityIndicator color="#F36406" />
-                      ) : (
-                        <>
-                          <Ionicons name="notifications" size={24} color="#F36406" />
-                          <Text style={styles.enableNotificationsText}>Enable Notifications</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  )}
-
-                  {notificationPermissionGranted && (
-                    <View style={styles.notificationSuccessBox}>
-                      <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                      <Text style={styles.notificationSuccessText}>Notifications enabled!</Text>
-                    </View>
-                  )}
                 </View>
 
                 <Text style={styles.skipText}>
                   You can change this anytime in Settings
                 </Text>
+              </>
+            )}
+
+            {/* Page 9: Welcome */}
+            {currentPage === 9 && (
+              <>
+                <Text style={styles.imageTitle}>Welcome {getFirstName()}</Text>
+                <Text style={styles.imageSubtitle}>You're all set. Start your first itinerary, invite your travel buddies, and create your dream trip!</Text>
+                <ImageBackground
+                  source={require('../../assets/images/freinds_traveling4.png')}
+                  style={styles.imageBackground}
+                  imageStyle={styles.backgroundImage}
+                />
               </>
             )}
 
@@ -927,7 +914,7 @@ export default function UsernameSetup() {
                 <ActivityIndicator color={Colors.WHITE} />
               ) : (
                 <Text style={styles.buttonText}>
-                  {currentPage === 9 ? 'Start planning' : 'Continue'}
+                  {currentPage === 9 ? 'Start planning' : currentPage === 8 ? 'Choose permissions' : 'Continue'}
                 </Text>
               )}
             </TouchableOpacity>

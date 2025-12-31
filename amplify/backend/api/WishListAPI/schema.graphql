@@ -186,6 +186,10 @@ type DeleteAccountResult {
    activityPreferences: [String]
    selectedUseCases: [String]
 
+   # Push notifications
+   notificationsEnabled: Boolean
+   devicePushToken: String
+
    # Subscription info
    subscriptionTier: String!
    subscriptionStartDate: String
@@ -225,7 +229,6 @@ type DeleteAccountResult {
  }
 
  type UserPreferences {
-   notifications: Boolean
    theme: String
    language: String
    defaultCurrency: String
