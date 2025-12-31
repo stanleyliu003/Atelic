@@ -1,17 +1,8 @@
 [
   {
     "Action": [
-      "dynamodb:GetItem",
-      "dynamodb:Query"
-    ],
-    "Resource": [
-      "arn:aws:dynamodb:*:*:table/UserProfilesStorage-*",
-      "arn:aws:dynamodb:*:*:table/UserProfilesStorage-*/index/*"
-    ]
-  },
-  {
-    "Action": [
-      "sns:Publish",
+      "sns:CreatePlatformEndpoint",
+      "sns:SetEndpointAttributes",
       "sns:GetEndpointAttributes"
     ],
     "Resource": [

@@ -45,6 +45,16 @@ const searchUsers = /* GraphQL */ `
   }
 `;
 
+const registerDeviceTokenMutation = /* GraphQL */ `
+  mutation RegisterDeviceToken($username: String) {
+    registerDeviceToken(username: $username) {
+      success
+      message
+      endpointArn
+    }
+  }
+`;
+
 export default function UsernameSetup() {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
@@ -399,6 +409,22 @@ export default function UsernameSetup() {
           },
           authMode: 'AMAZON_COGNITO_USER_POOLS'
         });
+
+        // Register device token with SNS if notifications were granted
+        if (devicePushToken && notificationPermissionGranted) {
+          try {
+            const registerResult = await API.graphql({
+              query: registerDeviceTokenMutation,
+              variables: { username: prefUsername },
+              authMode: 'AMAZON_COGNITO_USER_POOLS'
+            });
+            console.log('Device token registered with SNS:', registerResult.data?.registerDeviceToken);
+          } catch (snsErr) {
+            console.warn('Failed to register device token with SNS (non-blocking):', snsErr?.errors || snsErr?.message || snsErr);
+            // Non-blocking - user can still continue
+          }
+        }
+
         // Best-effort read after write
         try {
           await API.graphql({

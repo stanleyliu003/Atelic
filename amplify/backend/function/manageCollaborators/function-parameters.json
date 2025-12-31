@@ -5,6 +5,10 @@
       "TripStorage": [
         "read",
         "update"
+      ],
+      "UserProfilesStorage": [
+        "read",
+        "update"
       ]
     }
   }

@@ -4,13 +4,18 @@
 	STORAGE_TRIPSTORAGE_ARN
 	STORAGE_TRIPSTORAGE_NAME
 	STORAGE_TRIPSTORAGE_STREAMARN
+	STORAGE_USERPROFILESSTORAGE_ARN
+	STORAGE_USERPROFILESSTORAGE_NAME
+	STORAGE_USERPROFILESSTORAGE_STREAMARN
 Amplify Params - DO NOT EDIT */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, UpdateCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
+const snsClient = new SNSClient();
 
 // Helper function to normalize tripPhotoReference to array format
 const normalizePhotoReferences = (photoRef) => {
@@ -171,6 +176,77 @@ function canPerformAction(requesterRole, targetRole, action) {
   }
 }
 
+// Helper function to send push notification when collaborator is invited
+async function sendCollaboratorInviteNotification(username, inviteeName, selectedCity, inviterName) {
+  const USER_PROFILES_TABLE = process.env.STORAGE_USERPROFILESSTORAGE_NAME || 'UserProfilesStorage-dev';
+  const IS_PRODUCTION = process.env.ENV === 'prod';
+
+  console.log('📲 Sending invite notification to:', username);
+
+  try {
+    // 1. Get the invited user's profile to retrieve snsEndpointArn
+    const result = await docClient.send(new GetCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: { username }
+    }));
+
+    const userProfile = result.Item;
+
+    if (!userProfile) {
+      console.log('⚠️ User profile not found for:', username);
+      return;
+    }
+
+    const { snsEndpointArn, notificationsEnabled } = userProfile;
+
+    // 2. Check if notifications are enabled
+    if (!notificationsEnabled) {
+      console.log('⚠️ Notifications not enabled for user:', username);
+      return;
+    }
+
+    if (!snsEndpointArn) {
+      console.log('⚠️ No SNS endpoint ARN found for user:', username);
+      return;
+    }
+
+    // 3. Format the APNs payload
+    const platform = IS_PRODUCTION ? 'APNS' : 'APNS_SANDBOX';
+
+    const apnsPayload = {
+      aps: {
+        alert: {
+          title: `You're invited to the ${selectedCity} trip`,
+          body: `${inviterName} wants you to join their trip to ${selectedCity}.`
+        },
+        badge: 1,
+        sound: 'default',
+        'mutable-content': 1
+      },
+      type: 'trip_invitation',
+      selectedCity: selectedCity,
+      inviterName: inviterName
+    };
+
+    const message = {
+      [platform]: JSON.stringify(apnsPayload)
+    };
+
+    // 4. Send notification via SNS
+    await snsClient.send(new PublishCommand({
+      Message: JSON.stringify(message),
+      MessageStructure: 'json',
+      TargetArn: snsEndpointArn
+    }));
+
+    console.log('✅ Notification sent successfully to:', username);
+
+  } catch (error) {
+    console.error('❌ Error sending notification:', error);
+    throw error;
+  }
+}
+
 // Add collaborator handler
 async function handleAddCollaborator(trip, args, requesterId, requesterRole, tableName) {
   const { userID, userEmail, fullName, username, role, addedBy } = args;
@@ -248,6 +324,19 @@ async function handleAddCollaborator(trip, args, requesterId, requesterRole, tab
     }))
   });
   console.log('=== ADD COLLABORATOR END ===');
+
+  // Send push notification to the invited collaborator
+  try {
+    await sendCollaboratorInviteNotification(
+      username,
+      fullName,
+      trip.selectedCity || 'Unknown',
+      addedBy || 'Someone'
+    );
+  } catch (notifError) {
+    // Don't fail the collaborator addition if notification fails
+    console.error('⚠️ Failed to send notification (non-blocking):', notifError.message);
+  }
 
   return convertDynamoItemToTrip(result.Attributes);
 }

@@ -175,6 +175,7 @@ async function createInitialProfile(username, userID) {
     // Push notifications
     notificationsEnabled: null,
     devicePushToken: null,
+    snsEndpointArn: null,
 
     // System fields
     lastActiveAt: now,

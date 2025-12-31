@@ -585,6 +585,9 @@ export const getUserProfile = /* GraphQL */ `
       osVersion
       activityPreferences
       selectedUseCases
+      notificationsEnabled
+      devicePushToken
+      snsEndpointArn
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate
@@ -593,7 +596,6 @@ export const getUserProfile = /* GraphQL */ `
       lastActiveAt
       accountStatus
       preferences {
-        notifications
         theme
         language
         defaultCurrency
