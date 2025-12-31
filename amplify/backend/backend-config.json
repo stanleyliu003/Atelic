@@ -401,6 +401,38 @@
           ],
           "category": "storage",
           "resourceName": "TripStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "registerDeviceToken": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -461,6 +493,29 @@
           ],
           "category": "storage",
           "resourceName": "TripStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "sendPushNotification": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -754,6 +809,22 @@
         }
       ]
     },
+    "AMPLIFY_function_registerDeviceToken_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "registerDeviceToken"
+        }
+      ]
+    },
+    "AMPLIFY_function_registerDeviceToken_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "registerDeviceToken"
+        }
+      ]
+    },
     "AMPLIFY_function_searchAutocomplete_deploymentBucketName": {
       "usedBy": [
         {
@@ -831,6 +902,22 @@
         {
           "category": "function",
           "resourceName": "searchUsers"
+        }
+      ]
+    },
+    "AMPLIFY_function_sendPushNotification_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "sendPushNotification"
+        }
+      ]
+    },
+    "AMPLIFY_function_sendPushNotification_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "sendPushNotification"
         }
       ]
     },

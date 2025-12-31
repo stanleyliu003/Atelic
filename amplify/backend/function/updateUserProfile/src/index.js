@@ -427,7 +427,6 @@ async function ensureProfileInitialized(username, tripData, identityUserId) {
     lastActiveAt: now,
     accountStatus: 'active',
     preferences: {
-      notifications: true,
       theme: 'light',
       language: 'en',
       defaultCurrency: 'USD',
@@ -1136,7 +1135,6 @@ async function updateLogin(username, data) {
       lastActiveAt: now,
       accountStatus: 'active',
       preferences: {
-        notifications: true,
         theme: 'light',
         language: 'en',
         defaultCurrency: 'USD',
@@ -1399,6 +1397,18 @@ async function setAccountCreatedAt(username, data) {
   if (osVersion) {
     setDeviceParts.push('osVersion = :osVersion');
     values[':osVersion'] = osVersion;
+  }
+
+  // Add push notification fields if provided
+  if (data?.devicePushToken !== undefined) {
+    setDeviceParts.push('devicePushToken = :devicePushToken');
+    values[':devicePushToken'] = data.devicePushToken;
+    console.log('[SET_ACCOUNT_CREATED_AT] Adding devicePushToken:', data.devicePushToken);
+  }
+  if (data?.notificationsEnabled !== undefined) {
+    setDeviceParts.push('notificationsEnabled = :notificationsEnabled');
+    values[':notificationsEnabled'] = data.notificationsEnabled;
+    console.log('[SET_ACCOUNT_CREATED_AT] Adding notificationsEnabled:', data.notificationsEnabled);
   }
 
   // Add onboarding preferences if provided (including empty arrays)

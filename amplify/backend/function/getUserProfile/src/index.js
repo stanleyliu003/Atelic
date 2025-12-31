@@ -172,11 +172,15 @@ async function createInitialProfile(username, userID) {
     subscriptionStatus: 'active',
     trialEndsAt: null,
 
+    // Push notifications
+    notificationsEnabled: null,
+    devicePushToken: null,
+    snsEndpointArn: null,
+
     // System fields
     lastActiveAt: now,
     accountStatus: 'active',
     preferences: {
-      notifications: true,
       theme: 'light',
       language: 'en',
       defaultCurrency: 'USD',

@@ -34,14 +34,10 @@
     </array>
     <key>CFBundleVersion</key>
     <string>28</string>
+    <key>GMSApiKey</key>
+    <string>AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
-    <key>LSApplicationQueriesSchemes</key>
-    <array>
-      <string>comgooglemaps</string>
-      <string>comgooglemaps-x-callback</string>
-      <string>maps</string>
-    </array>
     <key>NSAppTransportSecurity</key>
     <dict>
       <key>NSAllowsArbitraryLoads</key>
@@ -50,9 +46,7 @@
       <true/>
     </dict>
     <key>NSFaceIDUsageDescription</key>
-    <string>Use Face ID for secure authentication and account access.</string>
-    <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Atelic needs your location to display your trip route on the map and help you navigate between destinations.</string>
+    <string>Allow $(PRODUCT_NAME) to access your Face ID biometric data.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
@@ -71,6 +65,13 @@
     <array>
       <string>UIInterfaceOrientationPortrait</string>
       <string>UIInterfaceOrientationPortraitUpsideDown</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+      <string>UIInterfaceOrientationPortrait</string>
+      <string>UIInterfaceOrientationPortraitUpsideDown</string>
+      <string>UIInterfaceOrientationLandscapeLeft</string>
+      <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
     <key>UIUserInterfaceStyle</key>
     <string>Light</string>
