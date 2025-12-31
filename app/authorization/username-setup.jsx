@@ -868,7 +868,7 @@ export default function UsernameSetup() {
                 <View style={{ alignItems: 'center', marginBottom: 10 }}>
                   <Ionicons name="notifications-outline" size={60} color="black" />
                 </View>
-                <Text style={styles.title}>Want an occasional nudge?</Text>
+                <Text style={styles.title}>We can remind you about</Text>
 
                 <View style={{ marginTop: 30, gap: 20 }}>
                   <View style={styles.notificationFeatureBox}>
@@ -897,7 +897,7 @@ export default function UsernameSetup() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.notificationFeatureTitle}>Trip Reminders</Text>
-                      <Text style={styles.notificationFeatureDesc}>Get reminded for upcoming trips</Text>
+                      <Text style={styles.notificationFeatureDesc}>Get reminded for upcoming trips, flights, and reservations</Text>
                     </View>
                   </View>
                 </View>
