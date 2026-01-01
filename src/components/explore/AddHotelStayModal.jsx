@@ -16,8 +16,11 @@ import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-g
 import { runOnJS } from 'react-native-reanimated';
 import CalendarPicker from 'react-native-calendar-picker';
 import { Colors } from '../../../constants/Colors';
-import { getSearchAutocomplete } from '../../services/searchService';
+import { getSearchAutocomplete, getPlaceDetails } from '../../services/searchService';
 import { useCreateTrip } from '../../../context/CreateTripContext';
+import { ActivityCard } from '../trip-view/activity/activity_card';
+import { ActivityDetailView } from '../trip-view/description_card';
+import AddHotelTimeModal from './add_hotel_time_modal';
 
 /**
  * AddHotelStayModal Component
@@ -32,13 +35,23 @@ export const AddHotelStayModal = ({ visible, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedPlace, setSelectedPlace] = useState(null);
+  const [loadingPlaceDetails, setLoadingPlaceDetails] = useState(false);
   const [checkInDate, setCheckInDate] = useState(null);
   const [checkOutDate, setCheckOutDate] = useState(null);
   const [stayLength, setStayLength] = useState(null);
+  const [checkInTime, setCheckInTime] = useState('15:00'); // Default 3:00 PM
+  const [checkOutTime, setCheckOutTime] = useState('11:00'); // Default 11:00 AM
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
+  const [showCheckInTimeModal, setShowCheckInTimeModal] = useState(false);
+  const [showCheckOutTimeModal, setShowCheckOutTimeModal] = useState(false);
+  const [checkInButtonLayout, setCheckInButtonLayout] = useState(null);
+  const [checkOutButtonLayout, setCheckOutButtonLayout] = useState(null);
   const searchInputRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
   const checkInDateRef = useRef(null);
+  const checkInButtonRef = useRef(null);
+  const checkOutButtonRef = useRef(null);
 
   // Get selected city from context
   const { selectedCity } = useCreateTrip();
@@ -73,6 +86,24 @@ export const AddHotelStayModal = ({ visible, onClose }) => {
     return `${dayName} ${monthName} ${dayNumber}`;
   };
 
+  // Format time to 12-hour format (e.g., "15:00" -> "3:00 PM")
+  const formatTime = (time24) => {
+    if (!time24) return '';
+    const [hourStr, minute] = time24.split(':');
+    const hour24 = parseInt(hourStr, 10);
+    const isPM = hour24 >= 12;
+    const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+    return `${hour12}:${minute} ${isPM ? 'PM' : 'AM'}`;
+  };
+
+  // Format date to "1/15" format (without year)
+  const formatShortDate = (date) => {
+    if (!date) return '';
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month}/${day}`;
+  };
+
   // Handle modal close
   const handleClose = () => {
     // Reset state when closing
@@ -82,6 +113,8 @@ export const AddHotelStayModal = ({ visible, onClose }) => {
     setCheckInDate(null);
     setCheckOutDate(null);
     setStayLength(null);
+    setCheckInTime('15:00'); // Reset to default 3:00 PM
+    setCheckOutTime('11:00'); // Reset to default 11:00 AM
     setError(null);
     onClose();
   };
@@ -155,10 +188,34 @@ export const AddHotelStayModal = ({ visible, onClose }) => {
   };
 
   // Handle suggestion selection
-  const handleSuggestionSelect = (suggestion) => {
-    setSelectedPlace(suggestion);
+  const handleSuggestionSelect = async (suggestion) => {
     setSearchQuery(suggestion.name);
     setSuggestions([]);
+
+    // Fetch full place details using the place_id
+    if (suggestion.place_id) {
+      setLoadingPlaceDetails(true);
+      try {
+        const fullPlaceDetails = await getPlaceDetails(suggestion.place_id, selectedCity);
+        setSelectedPlace(fullPlaceDetails);
+        console.log('[AddHotelStayModal] Fetched full place details:', fullPlaceDetails);
+      } catch (err) {
+        console.error('[AddHotelStayModal] Error fetching place details:', err);
+        setError('Failed to load hotel details');
+        // Fallback to basic suggestion data
+        setSelectedPlace(suggestion);
+      } finally {
+        setLoadingPlaceDetails(false);
+      }
+    } else {
+      // No place_id available, use basic suggestion data
+      setSelectedPlace(suggestion);
+    }
+  };
+
+  // Handle card press to open description modal
+  const handleCardPress = () => {
+    setShowDescriptionModal(true);
   };
 
   // Swipe down gesture to close
@@ -219,14 +276,10 @@ export const AddHotelStayModal = ({ visible, onClose }) => {
               </View>
             </View>
 
-            {/* Selected Place Address */}
-            {selectedPlace && (
-              <Text style={styles.selectedAddress}>{selectedPlace.address_info}</Text>
-            )}
           </View>
 
           {/* Stay Duration Section - Only show when a place is selected */}
-          {selectedPlace && (
+          {selectedPlace && !loadingPlaceDetails && (
             <View style={styles.stayDurationSection}>
               <Text style={styles.stayDurationTitle}>How long is your stay?</Text>
 
@@ -246,74 +299,149 @@ export const AddHotelStayModal = ({ visible, onClose }) => {
                   </Text>
                 </View>
               </TouchableOpacity>
+
+              {/* Check-in and Check-out Time Buttons Row */}
+              {stayLength && (
+                <View style={styles.timeButtonsRow}>
+                  {/* Check-in Time Button */}
+                  <TouchableOpacity
+                    ref={checkInButtonRef}
+                    style={[styles.dateButton, styles.halfWidthButton]}
+                    onPress={() => {
+                      checkInButtonRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
+                        setCheckInButtonLayout({ x: pageX, y: pageY, width, height });
+                        setShowCheckInTimeModal(true);
+                      });
+                    }}
+                  >
+                    <View style={styles.timeButtonColumn}>
+                      <Text style={styles.timeButtonLabel}>
+                        Check-in {checkInDate ? `(${formatShortDate(checkInDate)})` : ''}
+                      </Text>
+                      <View style={styles.timeButtonContent}>
+                        <Ionicons name="time-outline" size={20} color="black" />
+                        <Text style={styles.timeButtonText}>
+                          {formatTime(checkInTime)}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Check-out Time Button */}
+                  <TouchableOpacity
+                    ref={checkOutButtonRef}
+                    style={[styles.dateButton, styles.halfWidthButton]}
+                    onPress={() => {
+                      checkOutButtonRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
+                        setCheckOutButtonLayout({ x: pageX, y: pageY, width, height });
+                        setShowCheckOutTimeModal(true);
+                      });
+                    }}
+                  >
+                    <View style={styles.timeButtonColumn}>
+                      <Text style={styles.timeButtonLabel}>
+                        Check-out {checkOutDate ? `(${formatShortDate(checkOutDate)})` : ''}
+                      </Text>
+                      <View style={styles.timeButtonContent}>
+                        <Ionicons name="time-outline" size={20} color="black" />
+                        <Text style={styles.timeButtonText}>
+                          {formatTime(checkOutTime)}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           )}
 
-          {/* Suggestions List */}
-          <ScrollView style={styles.suggestionsContainer} showsVerticalScrollIndicator={false}>
-            {/* Loading State */}
-            {loading && (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={Colors.PRIMARY} />
-                <Text style={styles.loadingText}>Loading suggestions...</Text>
-              </View>
-            )}
+          {/* Selected Place Activity Card */}
+          {(selectedPlace || loadingPlaceDetails) && (
+            <View style={styles.selectedPlaceContainer}>
+              {loadingPlaceDetails ? (
+                <View style={styles.loadingPlaceDetailsContainer}>
+                  <ActivityIndicator size="small" color={Colors.PRIMARY} />
+                  <Text style={styles.loadingPlaceDetailsText}>Loading hotel details...</Text>
+                </View>
+              ) : selectedPlace ? (
+                <ActivityCard
+                  activity={selectedPlace}
+                  disabled={false}
+                  hideNotesButton={true}
+                  isLastActivity={true}
+                  onDescriptionCardPress={handleCardPress}
+                />
+              ) : null}
+            </View>
+          )}
 
-            {/* Error State */}
-            {!loading && error && (
-              <View style={styles.errorContainer}>
-                <Ionicons name="alert-circle-outline" size={48} color="#999" />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
+          {/* Suggestions List - Only show when no place is selected or being loaded */}
+          {!selectedPlace && !loadingPlaceDetails && (
+            <ScrollView style={styles.suggestionsContainer} showsVerticalScrollIndicator={false}>
+              {/* Loading State */}
+              {loading && (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={Colors.PRIMARY} />
+                  <Text style={styles.loadingText}>Loading suggestions...</Text>
+                </View>
+              )}
 
-            {/* Empty State */}
-            {!loading && !error && suggestions.length === 0 && searchQuery.length >= 2 && !selectedPlace && (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="search-outline" size={48} color="#ccc" />
-                <Text style={styles.emptyText}>No hotels found</Text>
-                <Text style={styles.emptySubtext}>Try a different search term</Text>
-              </View>
-            )}
+              {/* Error State */}
+              {!loading && error && (
+                <View style={styles.errorContainer}>
+                  <Ionicons name="alert-circle-outline" size={48} color="#999" />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              )}
 
-            {/* Suggestions List */}
-            {!loading && !error && suggestions.length > 0 && (
-              <View style={styles.suggestionsList}>
-                {suggestions.map((suggestion, index) => (
-                  <TouchableOpacity
-                    key={suggestion.place_id || index}
-                    style={styles.suggestionItem}
-                    onPress={() => handleSuggestionSelect(suggestion)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.suggestionIconContainer}>
-                      <MaterialCommunityIcons
-                        name="map-marker-outline"
-                        size={20}
-                        color="#444"
-                      />
-                    </View>
-                    <View style={styles.suggestionTextContainer}>
-                      <Text
-                        style={styles.suggestionName}
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                      >
-                        {suggestion.name}
-                      </Text>
-                      <Text
-                        style={styles.suggestionAddress}
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                      >
-                        {suggestion.address_info}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </ScrollView>
+              {/* Empty State */}
+              {!loading && !error && suggestions.length === 0 && searchQuery.length >= 2 && (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="search-outline" size={48} color="#ccc" />
+                  <Text style={styles.emptyText}>No hotels found</Text>
+                  <Text style={styles.emptySubtext}>Try a different search term</Text>
+                </View>
+              )}
+
+              {/* Suggestions List */}
+              {!loading && !error && suggestions.length > 0 && (
+                <View style={styles.suggestionsList}>
+                  {suggestions.map((suggestion, index) => (
+                    <TouchableOpacity
+                      key={suggestion.place_id || index}
+                      style={styles.suggestionItem}
+                      onPress={() => handleSuggestionSelect(suggestion)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.suggestionIconContainer}>
+                        <MaterialCommunityIcons
+                          name="map-marker-outline"
+                          size={20}
+                          color="#444"
+                        />
+                      </View>
+                      <View style={styles.suggestionTextContainer}>
+                        <Text
+                          style={styles.suggestionName}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {suggestion.name}
+                        </Text>
+                        <Text
+                          style={styles.suggestionAddress}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {suggestion.address_info}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </ScrollView>
+          )}
         </GestureHandlerRootView>
       </View>
 
@@ -440,6 +568,44 @@ export const AddHotelStayModal = ({ visible, onClose }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Activity Detail Modal */}
+      {showDescriptionModal && selectedPlace && (
+        <Modal visible={showDescriptionModal} animationType="slide" transparent={true}>
+          <View style={styles.descriptionModalOverlay}>
+            <View style={styles.descriptionModalContent}>
+              <ActivityDetailView
+                activity={selectedPlace}
+                onClose={() => setShowDescriptionModal(false)}
+                variant="wishlist"
+                showDragIndicator={true}
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Check-in Time Modal */}
+      <AddHotelTimeModal
+        visible={showCheckInTimeModal}
+        onClose={() => setShowCheckInTimeModal(false)}
+        initialTime={checkInTime}
+        onSave={(time) => {
+          setCheckInTime(time);
+        }}
+        buttonLayout={checkInButtonLayout}
+      />
+
+      {/* Check-out Time Modal */}
+      <AddHotelTimeModal
+        visible={showCheckOutTimeModal}
+        onClose={() => setShowCheckOutTimeModal(false)}
+        initialTime={checkOutTime}
+        onSave={(time) => {
+          setCheckOutTime(time);
+        }}
+        buttonLayout={checkOutButtonLayout}
+      />
     </Modal>
   );
 };
@@ -520,11 +686,22 @@ const styles = StyleSheet.create({
   clearButton: {
     marginLeft: 8,
   },
-  selectedAddress: {
+  selectedPlaceContainer: {
+    paddingHorizontal: 20,
+    marginTop: 15,
+    marginBottom: 5,
+  },
+  loadingPlaceDetailsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    gap: 10,
+  },
+  loadingPlaceDetailsText: {
     fontFamily: 'outfit',
     fontSize: 14,
-    color: '#999',
-    marginTop: 4,
+    color: Colors.GRAY,
   },
   stayDurationSection: {
     paddingHorizontal: 20,
@@ -551,6 +728,41 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+  },
+  timeButton: {
+    marginTop: 12,
+  },
+  timeButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 12,
+  },
+  halfWidthButton: {
+    flex: 1,
+    height: 70,
+  },
+  timeButtonColumn: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  timeButtonLabel: {
+    fontFamily: 'outfit-medium',
+    fontSize: 12,
+    color: '#666',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  timeButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  timeButtonText: {
+    fontFamily: 'outfit',
+    fontSize: 16,
+    color: '#1a1a1a',
   },
   dateButtonContent: {
     flexDirection: 'row',
@@ -687,5 +899,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: 'outfit-bold',
     fontSize: 18,
+  },
+  // Description Modal Styles
+  descriptionModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  descriptionModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    maxHeight: '90%',
+    height: '90%',
   },
 });
