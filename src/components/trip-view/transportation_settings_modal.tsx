@@ -369,7 +369,8 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
                   resizeMode="contain"
                 />
               </TouchableOpacity>
-              <TouchableOpacity
+              {/* Lyft temporarily disabled */}
+              {/* <TouchableOpacity
                 style={styles.lyftIconButton}
                 onPress={handleOpenLyft}
                 activeOpacity={0.7}
@@ -377,7 +378,7 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
                 <View style={styles.lyftLogoContainer}>
                   <Text style={styles.lyftLogoText}>lyft</Text>
                 </View>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
           </View>
 
