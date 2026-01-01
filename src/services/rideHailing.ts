@@ -90,19 +90,20 @@ export async function openLyft(params: RideHailingParams): Promise<void> {
   try {
     const { pickupLat, pickupLng, pickupName, dropoffLat, dropoffLng, dropoffName } = params;
 
-    // Encode names for URL - ensure proper formatting
-    const encodedPickupName = pickupName ? encodeURIComponent(pickupName) : '';
-    const encodedDropoffName = dropoffName ? encodeURIComponent(dropoffName) : '';
+    // Hierarchy: formatted_address > coordinates
+    // Include address if available for better user experience
+    const pickupAddress = pickupName ? encodeURIComponent(pickupName) : '';
+    const dropoffAddress = dropoffName ? encodeURIComponent(dropoffName) : '';
 
-    // Lyft deep link with formatted address
+    // Lyft deep link format
     // Format: lyft://ridetype?id=lyft&pickup[latitude]=37.7577&pickup[longitude]=-122.4376&pickup[address]=...&destination[latitude]=37.7577&destination[longitude]=-122.4376&destination[address]=...
     const appUrl = `lyft://ridetype?id=lyft` +
       `&pickup[latitude]=${pickupLat}` +
       `&pickup[longitude]=${pickupLng}` +
-      (pickupName ? `&pickup[address]=${encodedPickupName}` : '') +
+      (pickupAddress ? `&pickup[address]=${pickupAddress}` : '') +
       `&destination[latitude]=${dropoffLat}` +
       `&destination[longitude]=${dropoffLng}` +
-      (dropoffName ? `&destination[address]=${encodedDropoffName}` : '');
+      (dropoffAddress ? `&destination[address]=${dropoffAddress}` : '');
 
     const canOpenApp = await Linking.canOpenURL(appUrl);
 
@@ -114,10 +115,10 @@ export async function openLyft(params: RideHailingParams): Promise<void> {
       const webUrl = `https://lyft.com/ride?id=lyft` +
         `&pickup[latitude]=${pickupLat}` +
         `&pickup[longitude]=${pickupLng}` +
-        (pickupName ? `&pickup[address]=${encodedPickupName}` : '') +
+        (pickupAddress ? `&pickup[address]=${pickupAddress}` : '') +
         `&destination[latitude]=${dropoffLat}` +
         `&destination[longitude]=${dropoffLng}` +
-        (dropoffName ? `&destination[address]=${encodedDropoffName}` : '');
+        (dropoffAddress ? `&destination[address]=${dropoffAddress}` : '');
 
       await Linking.openURL(webUrl);
       console.log('[RideHailing] Opened Lyft web');
