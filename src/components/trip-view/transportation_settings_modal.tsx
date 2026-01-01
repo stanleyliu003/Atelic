@@ -155,13 +155,18 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
         return;
       }
 
-      // Use place names for better display, with coordinates as fallback
-      const originName = encodeURIComponent(originActivity.name || `${originActivity.lat},${originActivity.lng}`);
-      const destinationName = encodeURIComponent(destinationActivity.name || `${destinationActivity.lat},${destinationActivity.lng}`);
       const googleMapsTravelMode = getGoogleMapsTravelMode(mode);
 
+      // Determine best origin/destination parameters for app (hierarchy: formatted_address > coordinates)
+      const originParam = originActivity.formatted_address
+        ? encodeURIComponent(originActivity.formatted_address)
+        : `${originActivity.lat},${originActivity.lng}`;
+      const destinationParam = destinationActivity.formatted_address
+        ? encodeURIComponent(destinationActivity.formatted_address)
+        : `${destinationActivity.lat},${destinationActivity.lng}`;
+
       // Try Google Maps app first
-      const googleMapsAppUrl = `comgooglemaps://?saddr=${originName}&daddr=${destinationName}&directionsmode=${googleMapsTravelMode}`;
+      const googleMapsAppUrl = `comgooglemaps://?saddr=${originParam}&daddr=${destinationParam}&directionsmode=${googleMapsTravelMode}`;
       const canOpenGoogleMaps = await Linking.canOpenURL(googleMapsAppUrl);
 
       if (canOpenGoogleMaps) {
@@ -169,12 +174,19 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
         console.log('[Modal] Opened Google Maps app');
         onClose();
       } else {
-        // Fallback to Google Maps web - use place_id if available for accuracy
+        // Fallback to Google Maps web - hierarchy: place_id > formatted_address > coordinates
         let webUrl;
         if (originActivity.place_id && destinationActivity.place_id) {
-          webUrl = `https://www.google.com/maps/dir/?api=1&origin=${originName}&origin_place_id=${originActivity.place_id}&destination=${destinationName}&destination_place_id=${destinationActivity.place_id}&travelmode=${googleMapsTravelMode}`;
+          // Best: Use place_id for most accurate results
+          webUrl = `https://www.google.com/maps/dir/?api=1&origin=place_id:${originActivity.place_id}&destination=place_id:${destinationActivity.place_id}&travelmode=${googleMapsTravelMode}`;
+        } else if (originActivity.formatted_address && destinationActivity.formatted_address) {
+          // Good: Use formatted addresses
+          const originAddr = encodeURIComponent(originActivity.formatted_address);
+          const destAddr = encodeURIComponent(destinationActivity.formatted_address);
+          webUrl = `https://www.google.com/maps/dir/?api=1&origin=${originAddr}&destination=${destAddr}&travelmode=${googleMapsTravelMode}`;
         } else {
-          webUrl = `https://www.google.com/maps/dir/?api=1&origin=${originName}&destination=${destinationName}&travelmode=${googleMapsTravelMode}`;
+          // Fallback: Use coordinates
+          webUrl = `https://www.google.com/maps/dir/?api=1&origin=${originActivity.lat},${originActivity.lng}&destination=${destinationActivity.lat},${destinationActivity.lng}&travelmode=${googleMapsTravelMode}`;
         }
         await Linking.openURL(webUrl);
         console.log('[Modal] Opened Google Maps web');
@@ -197,13 +209,16 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
         return;
       }
 
-      // Use place names for better display
-      const originName = encodeURIComponent(originActivity.name || `${originActivity.lat},${originActivity.lng}`);
-      const destinationName = encodeURIComponent(destinationActivity.name || `${destinationActivity.lat},${destinationActivity.lng}`);
+      // Hierarchy: formatted_address > coordinates
+      const originParam = originActivity.formatted_address
+        ? encodeURIComponent(originActivity.formatted_address)
+        : `${originActivity.lat},${originActivity.lng}`;
+      const destinationParam = destinationActivity.formatted_address
+        ? encodeURIComponent(destinationActivity.formatted_address)
+        : `${destinationActivity.lat},${destinationActivity.lng}`;
 
-      // Convert travel mode to direction flag: d=driving, w=walking, r=transit
       const directionFlag = mode === 'DRIVE' ? 'd' : mode === 'WALK' ? 'w' : 'r';
-      const appleMapsUrl = `maps://?saddr=${originName}&daddr=${destinationName}&dirflg=${directionFlag}`;
+      const appleMapsUrl = `maps://?saddr=${originParam}&daddr=${destinationParam}&dirflg=${directionFlag}`;
 
       await Linking.openURL(appleMapsUrl);
       console.log('[Modal] Opened Apple Maps');
