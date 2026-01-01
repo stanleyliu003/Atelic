@@ -119,7 +119,10 @@ export const AutocompleteModal = ({
       setError(null);
 
       try {
-        const results = await getSearchAutocomplete(selectedCity, searchQuery, filters);
+        // If no specific filters are selected by the user, default to 'establishment' for general places
+        // This ensures we get all types of places (restaurants, attractions, etc.) but not random addresses
+        const searchFilters = filters && filters.length > 0 ? filters : ['establishment'];
+        const results = await getSearchAutocomplete(selectedCity, searchQuery, searchFilters);
         setSuggestions(results);
         console.log('[AutocompleteModal] Received suggestions:', results);
       } catch (err) {
@@ -254,6 +257,23 @@ export const AutocompleteModal = ({
   const handleCloseActivityDetail = () => {
     setShowActivityDetail(false);
     setSelectedActivityForDetail(null);
+  };
+
+  // Handle adding lodging from hotel modal
+  const handleAddLodging = (lodgingData) => {
+    console.log('[AutocompleteModal] Adding lodging:', lodgingData);
+
+    // Close hotel modal first
+    setShowHotelModal(false);
+
+    // Pass the lodging data to parent via onSaveActivities
+    // The parent will handle adding it to the appropriate days
+    if (onSaveActivities) {
+      onSaveActivities([], [], lodgingData);
+    }
+
+    // Close the autocomplete modal
+    handleCloseModal();
   };
 
   // Swipe down gesture to close
@@ -489,6 +509,7 @@ export const AutocompleteModal = ({
       <AddHotelStayModal
         visible={showHotelModal}
         onClose={() => setShowHotelModal(false)}
+        onAddLodging={handleAddLodging}
       />
     </Modal>
   );

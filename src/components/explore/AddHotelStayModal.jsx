@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
@@ -28,8 +29,9 @@ import AddHotelTimeModal from './add_hotel_time_modal';
  *
  * @param {boolean} visible - Whether modal is visible
  * @param {function} onClose - Callback to close modal
+ * @param {function} onAddLodging - Callback when adding lodging to trip (receives hotel data)
  */
-export const AddHotelStayModal = ({ visible, onClose }) => {
+export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -53,8 +55,8 @@ export const AddHotelStayModal = ({ visible, onClose }) => {
   const checkInButtonRef = useRef(null);
   const checkOutButtonRef = useRef(null);
 
-  // Get selected city from context
-  const { selectedCity } = useCreateTrip();
+  // Get selected city and trip dates from context
+  const { selectedCity, startDate, endDate } = useCreateTrip();
 
   // Pan responder for swipe-down gesture to close calendar
   const calendarPanResponder = useRef(
@@ -149,7 +151,10 @@ export const AddHotelStayModal = ({ visible, onClose }) => {
 
       try {
         // Filter for lodging/accommodation types
-        const filters = ['lodging'];
+        // Google Autocomplete API only supports these lodging types: 'lodging', 'campground', 'rv_park'
+        // 'lodging' is a broad category that includes hotels, motels, B&Bs, hostels, inns, etc.
+        // Note: Does NOT include regular addresses (like Airbnb addresses)
+        const filters = ['lodging', 'campground', 'rv_park'];
         const results = await getSearchAutocomplete(selectedCity, query, filters);
         setSuggestions(results);
       } catch (err) {
@@ -216,6 +221,31 @@ export const AddHotelStayModal = ({ visible, onClose }) => {
   // Handle card press to open description modal
   const handleCardPress = () => {
     setShowDescriptionModal(true);
+  };
+
+  // Handle adding lodging to trip
+  const handleAddLodging = () => {
+    if (!selectedPlace || !checkInDate || !checkOutDate || !stayLength) {
+      return; // Don't allow adding without complete information
+    }
+
+    // Prepare lodging data
+    const lodgingData = {
+      hotel: selectedPlace,
+      checkInDate,
+      checkOutDate,
+      stayLength,
+      checkInTime,
+      checkOutTime,
+    };
+
+    // Call parent callback
+    if (onAddLodging) {
+      onAddLodging(lodgingData);
+    }
+
+    // Close modal and reset
+    handleClose();
   };
 
   // Swipe down gesture to close
@@ -414,11 +444,7 @@ export const AddHotelStayModal = ({ visible, onClose }) => {
                       activeOpacity={0.7}
                     >
                       <View style={styles.suggestionIconContainer}>
-                        <MaterialCommunityIcons
-                          name="map-marker-outline"
-                          size={20}
-                          color="#444"
-                        />
+                      <MaterialIcons name="bed" size={20} color="#444" />
                       </View>
                       <View style={styles.suggestionTextContainer}>
                         <Text
@@ -442,6 +468,19 @@ export const AddHotelStayModal = ({ visible, onClose }) => {
               )}
             </ScrollView>
           )}
+
+          {/* Add Lodging Button - Show when place, dates, and times are selected */}
+          {selectedPlace && checkInDate && checkOutDate && stayLength && (
+            <View style={styles.addLodgingButtonContainer}>
+              <TouchableOpacity
+                style={styles.addLodgingButton}
+                onPress={handleAddLodging}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.addLodgingButtonText}>Add lodging</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </GestureHandlerRootView>
       </View>
 
@@ -464,8 +503,8 @@ export const AddHotelStayModal = ({ visible, onClose }) => {
               <CalendarPicker
                 startFromMonday={false}
                 allowRangeSelection={true}
-                minDate={new Date(new Date().setHours(0, 0, 0, 0))}
-                maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 3))}
+                minDate={startDate ? new Date(startDate) : new Date(new Date().setHours(0, 0, 0, 0))}
+                maxDate={endDate ? new Date(endDate) : new Date(new Date().setFullYear(new Date().getFullYear() + 3))}
                 todayBackgroundColor="#E8F4FD"
                 todayTextStyle={{ color: '#27BFFF' }}
                 selectedDayColor="#FFA53F"
@@ -655,6 +694,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     marginBottom: 10,
+  },
+  helperText: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: '#666',
+    marginTop: 8,
+    lineHeight: 16,
   },
   searchBarContainer: {
     marginBottom: 8,
@@ -912,5 +958,32 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 25,
     maxHeight: '90%',
     height: '90%',
+  },
+  // Add Lodging Button Styles
+  addLodgingButtonContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    paddingBottom: 30,
+    borderTopWidth: 1,
+    borderTopColor: '#e9ecef',
+    backgroundColor: Colors.WHITE,
+  },
+  addLodgingButton: {
+    marginTop: 30,
+    backgroundColor: '#F36406',
+    borderRadius: 25,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addLodgingButtonText: {
+    color: '#FFFFFF',
+    fontFamily: 'outfit-bold',
+    fontSize: 18,
   },
 });
