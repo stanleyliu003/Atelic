@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, Alert, ActivityIndicator, TextInput } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { API } from 'aws-amplify';
+import { API, Auth } from 'aws-amplify';
 import { addCollaborator, removeCollaborator, updateCollaboratorRole } from '../../../graphql/mutations';
 import { UserSearchField } from './UserSearchField';
 import { CollaboratorListItem } from './collaboratorPermissions';
@@ -76,8 +76,17 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
       setIsLoading(true);
       console.log('[ShareTripModal] Adding collaborator:', user, 'with role:', role);
 
-      const currentUser = getCurrentUser(currentUserID);
-      const addedBy = currentUser?.fullName || 'Self';
+      // Get current user's full name from Cognito
+      let addedBy = 'Someone';
+      try {
+        const cognitoUser = await Auth.currentAuthenticatedUser();
+        addedBy = cognitoUser.attributes?.name || cognitoUser.attributes?.preferred_username || 'Someone';
+      } catch (authError) {
+        console.warn('[ShareTripModal] Failed to get current user name:', authError);
+        // Fallback to collaborators array
+        const currentUser = getCurrentUser(currentUserID);
+        addedBy = currentUser?.fullName || 'Someone';
+      }
 
       const result = await API.graphql({
         query: addCollaborator,

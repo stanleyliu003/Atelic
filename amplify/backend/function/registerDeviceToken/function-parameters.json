@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "auth": {
+      "amplifybackend59ccdbf8": [
+        "create",
+        "read",
+        "update"
+      ]
+    },
+    "storage": {
+      "UserProfilesStorage": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  },
+  "lambdaLayers": []
+}
