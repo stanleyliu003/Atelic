@@ -233,7 +233,9 @@ function RouteInfoCard({
   return (
     <View style={styles.routeCard}>
       {isLoading ? (
-        <Text style={styles.loadingText}>Loading...</Text>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
       ) : (
         <>
           {/* Left: Route Info + Dropdown Button */}
@@ -1323,9 +1325,15 @@ const styles = StyleSheet.create({
   chevronIcon: {
     marginLeft: 10,
   },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
   loadingText: {
     fontFamily: 'outfit',
-    fontSize: 22,
+    fontSize: 14,
     color: Colors.GRAY,
   },
   autocompleteLoadingContainer: {
