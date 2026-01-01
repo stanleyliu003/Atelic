@@ -57,6 +57,8 @@ export async function openUber(params: RideHailingParams): Promise<void> {
       `&dropoff[longitude]=${dropoffLng}` +
       (dropoffName ? `&dropoff[formatted_address]=${encodedDropoffName}` : '');
 
+    console.log('[RideHailing] Uber App URL:', appUrl);
+
     const canOpenApp = await Linking.canOpenURL(appUrl);
 
     if (canOpenApp) {
@@ -73,6 +75,7 @@ export async function openUber(params: RideHailingParams): Promise<void> {
         `&dropoff[longitude]=${dropoffLng}` +
         (dropoffName ? `&dropoff[formatted_address]=${encodedDropoffName}` : '');
 
+      console.log('[RideHailing] Uber Web URL:', webUrl);
       await Linking.openURL(webUrl);
       console.log('[RideHailing] Opened Uber web');
     }
@@ -85,17 +88,20 @@ export async function openUber(params: RideHailingParams): Promise<void> {
 /**
  * Open Lyft app with pre-filled pickup and destination
  * Falls back to web version if app is not installed
+ *
+ * Based on official Lyft SDK documentation:
+ * - iOS SDK: https://github.com/lyft/Lyft-iOS-sdk/blob/master/Sources/LyftUI/LyftDeepLink.swift
+ * - Android SDK: https://github.com/lyft/lyft-android-sdk/blob/master/deeplink/src/main/java/com/lyft/deeplink/DeepLink.java
  */
 export async function openLyft(params: RideHailingParams): Promise<void> {
   try {
     const { pickupLat, pickupLng, pickupName, dropoffLat, dropoffLng, dropoffName } = params;
 
-    // Hierarchy: formatted_address > coordinates
-    // Include address if available for better user experience
+    // Encode address names for URL
     const pickupAddress = pickupName ? encodeURIComponent(pickupName) : '';
     const dropoffAddress = dropoffName ? encodeURIComponent(dropoffName) : '';
 
-    // Lyft deep link format
+    // Lyft deep link format with coordinates and addresses
     // Format: lyft://ridetype?id=lyft&pickup[latitude]=37.7577&pickup[longitude]=-122.4376&pickup[address]=...&destination[latitude]=37.7577&destination[longitude]=-122.4376&destination[address]=...
     const appUrl = `lyft://ridetype?id=lyft` +
       `&pickup[latitude]=${pickupLat}` +
@@ -105,14 +111,18 @@ export async function openLyft(params: RideHailingParams): Promise<void> {
       `&destination[longitude]=${dropoffLng}` +
       (dropoffAddress ? `&destination[address]=${dropoffAddress}` : '');
 
+    console.log('[RideHailing] Lyft App URL:', appUrl);
+    console.log('[RideHailing] Lyft Pickup:', { lat: pickupLat, lng: pickupLng, name: pickupName });
+    console.log('[RideHailing] Lyft Destination:', { lat: dropoffLat, lng: dropoffLng, name: dropoffName });
+
     const canOpenApp = await Linking.canOpenURL(appUrl);
 
     if (canOpenApp) {
       await Linking.openURL(appUrl);
       console.log('[RideHailing] Opened Lyft app');
     } else {
-      // Fall back to universal web link
-      const webUrl = `https://lyft.com/ride?id=lyft` +
+      // Fall back to Lyft web link
+      const webUrl = `https://ride.lyft.com/u?id=lyft` +
         `&pickup[latitude]=${pickupLat}` +
         `&pickup[longitude]=${pickupLng}` +
         (pickupAddress ? `&pickup[address]=${pickupAddress}` : '') +
@@ -120,6 +130,7 @@ export async function openLyft(params: RideHailingParams): Promise<void> {
         `&destination[longitude]=${dropoffLng}` +
         (dropoffAddress ? `&destination[address]=${dropoffAddress}` : '');
 
+      console.log('[RideHailing] Lyft Web URL:', webUrl);
       await Linking.openURL(webUrl);
       console.log('[RideHailing] Opened Lyft web');
     }
