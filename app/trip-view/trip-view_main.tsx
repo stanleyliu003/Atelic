@@ -2742,7 +2742,7 @@ export default function TripViewMain() {
                                                         value={searchQuery}
                                                         onChangeText={handleSearchQueryChange}
                                                         onPress={handleSearchPress}
-                                                        placeholder="Add more activities"
+                                                        placeholder="Add places"
                                                     />
                                                 </View>
                                             )}
@@ -2824,7 +2824,7 @@ export default function TripViewMain() {
                                                         value={searchQuery}
                                                         onChangeText={handleSearchQueryChange}
                                                         onPress={handleSearchPress}
-                                                        placeholder="Add more activities"
+                                                        placeholder="Add places"
                                                     />
                                                 </View>
                                             )}

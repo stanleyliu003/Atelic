@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { Colors } from '../../../constants/Colors';
@@ -19,6 +20,7 @@ import { useCreateTrip } from '../../../context/CreateTripContext';
 import Feather from '@expo/vector-icons/Feather';
 import { WishlistActivities } from '../trip-view/wishlist_activities';
 import { ActivityDetailView } from '../trip-view/description_card';
+import { AddHotelStayModal } from './AddHotelStayModal';
 
 /**
  * AutocompleteModal Component - Refactored for Direct Place Selection
@@ -70,6 +72,7 @@ export const AutocompleteModal = ({
   const [selectedWishlistActivities, setSelectedWishlistActivities] = useState([]);
   const [selectedActivityForDetail, setSelectedActivityForDetail] = useState(null);
   const [showActivityDetail, setShowActivityDetail] = useState(false);
+  const [showHotelModal, setShowHotelModal] = useState(false);
 
   // Get recent searches from context
   const { recentSearches, addToRecentSearches } = useCreateTrip();
@@ -310,6 +313,20 @@ export const AutocompleteModal = ({
             </View>
           </View>
 
+          {/* Hotel/Stay Button - Only show when search query is empty */}
+          {localQuery.length === 0 && (
+            <View style={styles.hotelButtonContainer}>
+              <TouchableOpacity
+                style={styles.hotelButton}
+                onPress={() => setShowHotelModal(true)}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons name="bed" size={24} color="black" />
+                <Text style={styles.hotelButtonText}>Add Hotel/Stay</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Divider */}
           <View style={styles.divider} />
 
@@ -467,6 +484,12 @@ export const AutocompleteModal = ({
           </View>
         </Modal>
       )}
+
+      {/* Add Hotel/Stay Modal */}
+      <AddHotelStayModal
+        visible={showHotelModal}
+        onClose={() => setShowHotelModal(false)}
+      />
     </Modal>
   );
 };
@@ -543,6 +566,26 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     marginLeft: 8,
+  },
+  hotelButtonContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    flexDirection: 'row',
+  },
+  hotelButton: {
+    width: '33%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F2F2F2',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 6,
+  },
+  hotelButtonText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 12,
+    color: '#333',
   },
   divider: {
     height: 1,
