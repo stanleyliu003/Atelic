@@ -5,7 +5,9 @@
   "scripts": {
     "start": "expo start",
     "ios": "expo run:ios",
-    "android": "expo run:android"
+    "android": "expo run:android",
+    "update-oauth": "node scripts/update-oauth-domain.js",
+    "postinstall": "node scripts/generate-aws-exports.js && node scripts/update-oauth-domain.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",

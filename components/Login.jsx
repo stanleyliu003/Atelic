@@ -7,8 +7,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, App
 import { Feather, AntDesign } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import DeviceInfo from 'react-native-device-info';
-import { MINIMUM_APP_VERSION } from '../constants/AppConfig';
-import { isVersionOutdated } from '../src/utils/versionComparison';
+import { checkUpdateRequired, getCurrentAppVersion } from '../src/services/versionCheckService';
 import { UpdateRequired } from '../src/components/UpdateRequired';
 
 // Warm up the browser for better performance (recommended by Expo)
@@ -92,7 +91,7 @@ export default function Login() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showDeletedNotice, setShowDeletedNotice] = useState(false);
   const [showUpdateRequired, setShowUpdateRequired] = useState(false);
-  const [currentAppVersion, setCurrentAppVersion] = useState(null);
+  const [minimumRequiredVersion, setMinimumRequiredVersion] = useState(null);
   const isNavigatingRef = useRef(false);
 
   useEffect(() => {
@@ -147,14 +146,13 @@ export default function Login() {
 
   const checkAuthenticationState = async () => {
     // ========== VERSION CHECK (BEFORE ANYTHING ELSE) ==========
-    const appVersion = DeviceInfo.getVersion() || null;
-    setCurrentAppVersion(appVersion);
+    // Fetch minimum version from backend (DynamoDB via Lambda)
+    // This ensures version enforcement works even for users with outdated app bundles
+    const minimumVersion = await checkUpdateRequired();
 
-    const platform = Platform.OS; // 'ios' or 'android'
-    const minimumVersion = MINIMUM_APP_VERSION[platform];
-
-    if (isVersionOutdated(appVersion, minimumVersion)) {
+    if (minimumVersion) {
       console.log('[Login] App version outdated, showing update prompt');
+      setMinimumRequiredVersion(minimumVersion);
       setShowUpdateRequired(true);
       setIsCheckingAuth(false);
       return; // Block further execution - don't proceed to auth
@@ -188,10 +186,23 @@ export default function Login() {
         await Auth.currentSession(); // This triggers refresh
       }
 
-      // Check if user has a username set (important for Google OAuth users)
-      const preferredUsername = user?.attributes?.preferred_username;
+      // Check if user has complete profile (username, name, birthdate, gender)
+      // Important for both OAuth users and email sign-up users
+      const attributes = await Auth.userAttributes(user);
+      const preferredUsername = attributes.find(attr => attr.Name === 'preferred_username')?.Value;
+      const name = attributes.find(attr => attr.Name === 'name')?.Value;
+      const birthdate = attributes.find(attr => attr.Name === 'birthdate')?.Value;
+      const gender = attributes.find(attr => attr.Name === 'gender')?.Value;
 
-      if (!preferredUsername) {
+      // Redirect to username-setup if profile is incomplete
+      if (!preferredUsername || !name || !birthdate || !gender) {
+        console.log('[Login] Incomplete profile detected, redirecting to username-setup');
+        console.log('[Login] Missing fields:', {
+          hasUsername: !!preferredUsername,
+          hasName: !!name,
+          hasBirthdate: !!birthdate,
+          hasGender: !!gender
+        });
         isNavigatingRef.current = true;
         router.replace('/authorization/username-setup');
         return;
@@ -288,11 +299,11 @@ export default function Login() {
   };
 
   // Show update required screen if app version is outdated
-  if (showUpdateRequired && currentAppVersion) {
+  if (showUpdateRequired && minimumRequiredVersion) {
     return (
       <UpdateRequired
-        currentVersion={currentAppVersion}
-        minimumVersion={MINIMUM_APP_VERSION[Platform.OS]}
+        currentVersion={getCurrentAppVersion()}
+        minimumVersion={minimumRequiredVersion}
       />
     );
   }

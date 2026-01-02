@@ -2,10 +2,9 @@
   "expo": {
     "name": "Atelic",
     "slug": "atelic",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/Atelic_Logo_Zoom.png",
-
     "userInterfaceStyle": "light",
     "scheme": "atelicstable",
     "splash": {
@@ -17,7 +16,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "AtelicStable",
       "deploymentTarget": "15.0",
-      "buildNumber": "28",
+      "buildNumber": "33",
       "infoPlist": {
         "CFBundleName": "Atelic"
       },
@@ -53,6 +52,15 @@
           "mode": "production"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "50047ef4-0800-4809-980e-cb08122bc621"
+      }
+    },
+    "owner": "stanleycliu003"
   }
 }

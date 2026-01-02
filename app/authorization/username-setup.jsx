@@ -121,7 +121,7 @@ export default function UsernameSetup() {
   ];
 
   useEffect(() => {
-    // Check if user signed in with external provider (Apple or Google)
+    // Check if user signed in with external provider (Apple or Google) OR email/password
     const checkUserProvider = async () => {
       try {
         const user = await Auth.currentAuthenticatedUser();
@@ -563,7 +563,13 @@ export default function UsernameSetup() {
         setError('Please select your gender.');
         return;
       }
-      setCurrentPage(4);
+      // Skip page 4 (username) if user already has username (from email sign-up)
+      if (username && username.trim().length >= 5) {
+        console.log('[UsernameSetup] Skipping username page - already set:', username);
+        setCurrentPage(5); // Jump to "Good company" page
+      } else {
+        setCurrentPage(4); // Go to username page for OAuth users
+      }
     } else if (currentPage === 4) {
       // Page 4: Username (SKIP for returning users)
       if (!username || username.trim().length < 5) {
@@ -651,7 +657,10 @@ export default function UsernameSetup() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={{ paddingTop: 60, paddingBottom: 40 }}
+        contentContainerStyle={{
+          paddingTop: 60,
+          paddingBottom: (currentPage === 6 || currentPage === 7) ? 120 : 40
+        }}
         keyboardShouldPersistTaps="handled"
         style={{ backgroundColor: Colors.WHITE }}
         showsVerticalScrollIndicator={false}
@@ -943,6 +952,32 @@ export default function UsernameSetup() {
                       );
                     })}
                   </View>
+
+                  {/* Terms and Privacy Policy - Inside scrollable content */}
+                  <View style={{ marginTop: 40, paddingHorizontal: 0 }}>
+                    <Text style={{
+                      fontFamily: 'outfit',
+                      fontSize: 12,
+                      color: Colors.GRAY,
+                      textAlign: 'center',
+                      lineHeight: 20
+                    }}>
+                      By continuing you agree to Atelic's{' '}
+                      <Text
+                        style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+                        onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
+                      >
+                        Terms of Service
+                      </Text>
+                      {' '}and acknowledge you've read our{' '}
+                      <Text
+                        style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+                        onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
+                      >
+                        Privacy Policy
+                      </Text>
+                    </Text>
+                  </View>
                 </View>
               </>
             )}
@@ -1006,7 +1041,7 @@ export default function UsernameSetup() {
               </>
             )}
 
-            {error ? (
+            {error && (currentPage !== 6 && currentPage !== 7) ? (
               <Text style={styles.errorText}>{error}</Text>
             ) : null}
 
@@ -1030,37 +1065,64 @@ export default function UsernameSetup() {
               )}
             </TouchableOpacity>
 
-            {/* Terms and Privacy Policy - Show on use cases page */}
-            {currentPage === 7 && (
-              <View style={{ marginTop: 40, paddingHorizontal: 0 }}>
-                <Text style={{
-                  fontFamily: 'outfit',
-                  fontSize: 12,
-                  color: Colors.GRAY,
-                  textAlign: 'center',
-                  lineHeight: 20
-                }}>
-                  By continuing you agree to Atelic's{' '}
-                  <Text
-                    style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-                    onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
-                  >
-                    Terms of Service
-                  </Text>
-                  {' '}and acknowledge you've read our{' '}
-                  <Text
-                    style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-                    onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
-                  >
-                    Privacy Policy
-                  </Text>
-                </Text>
-              </View>
-            )}
+                {/* Terms and Privacy Policy - Show on use cases page */}
+                {currentPage === 7 && (
+                  <View style={{ marginTop: 40, paddingHorizontal: 0 }}>
+                    <Text style={{
+                      fontFamily: 'outfit',
+                      fontSize: 12,
+                      color: Colors.GRAY,
+                      textAlign: 'center',
+                      lineHeight: 20
+                    }}>
+                      By continuing you agree to Atelic's{' '}
+                      <Text
+                        style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+                        onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
+                      >
+                        Terms of Service
+                      </Text>
+                      {' '}and acknowledge you've read our{' '}
+                      <Text
+                        style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+                        onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
+                      >
+                        Privacy Policy
+                      </Text>
+                    </Text>
+                  </View>
+                )}
 
           </View>
         </View>
       </ScrollView>
+
+      {/* Fixed button at bottom for pages 6 and 7 */}
+      {(currentPage === 6 || currentPage === 7) && (
+        <View style={styles.fixedButtonContainer}>
+          {error ? (
+            <Text style={[styles.errorText, { marginBottom: 10 }]}>{error}</Text>
+          ) : null}
+
+          <TouchableOpacity
+            onPress={handleNext}
+            disabled={isNextDisabled()}
+            style={[
+              styles.button,
+              {
+                opacity: isNextDisabled() ? 0.3 : 1,
+                marginTop: 0
+              }
+            ]}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={Colors.WHITE} />
+            ) : (
+              <Text style={styles.buttonText}>Continue</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -1074,6 +1136,22 @@ const styles = StyleSheet.create({
   },
   content: {
     width: '100%',
+  },
+  fixedButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: Colors.WHITE,
+    padding: 25,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 25,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
   },
   title: {
     fontFamily: 'outfit-bold',

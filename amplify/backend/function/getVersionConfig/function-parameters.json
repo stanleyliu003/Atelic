@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "storage": {
+      "AppVersionManager": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    }
+  },
+  "lambdaLayers": []
+}

@@ -24,16 +24,10 @@ export default function SignUp() {
   const router=useRouter();
 
   const [email,setEmail]=useState('');
-  const [username,setUsername]=useState('');
   const [password,setPassword]=useState('');
-  const [fullName,setFullName]=useState('');
   const [error, setError] = useState('');
-  const [usernameError, setUsernameError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [age, setAge] = useState('');
-  const [ageError, setAgeError] = useState('');
-  const [gender, setGender] = useState('');
 
    useEffect(()=>{
        navigation.setOptions({
@@ -44,24 +38,14 @@ export default function SignUp() {
    //creating a new method
    const OnCreateAccount = async () => {
      setError('');
-     setUsernameError('');
      setEmailError('');
-     setAgeError('');
      setIsLoading(true);
 
-     if (!email || !username || !password || !fullName || !age || !gender) {
+     if (!email || !password) {
        setError('Please fill out all fields.');
        setIsLoading(false);
        return;
      }
-
-    // Validate age is a number between 4 and 100
-    const ageNum = parseInt(age);
-    if (isNaN(ageNum) || ageNum < 4 || ageNum > 100) {
-      setAgeError('Age must be a valid number between 4 and 100.');
-      setIsLoading(false);
-      return;
-    }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -88,7 +72,7 @@ export default function SignUp() {
       if (existingUser) {
         // Provide different error messages based on authentication method
         if (existingUser.isExternalProvider) {
-          setEmailError('An account with this email exists via Google sign-in. Please use "Sign in with Google" instead.');
+          setEmailError('An account with this email exists via Google/Apple sign-in. Please use that method instead.');
         } else {
           setEmailError('An account with this email already exists. Please sign in instead.');
         }
@@ -102,40 +86,6 @@ export default function SignUp() {
       return;
     }
 
-    // Username validation
-    const usernameRegex = /^[a-zA-Z0-9_]{5,20}$/;
-    if (!usernameRegex.test(username)) {
-      setError('Username must be 5-20 characters and contain only letters, numbers, and underscores.');
-      setIsLoading(false);
-      return;
-    }
-
-    // Check if username is already taken
-    try {
-      const result = await API.graphql({
-        query: searchUsers,
-        variables: { searchTerm: username.trim() }
-      });
-
-      const users = result.data?.searchUsers || [];
-
-      // Check if any user has this exact username
-      const usernameExists = users.some(
-        user => user.username?.toLowerCase() === username.trim().toLowerCase()
-      );
-
-      if (usernameExists) {
-        setUsernameError('This username is already taken. Please choose another one.');
-        setIsLoading(false);
-        return;
-      }
-    } catch (usernameCheckErr) {
-      console.error('Username check failed:', usernameCheckErr);
-      setError('Unable to verify username availability. Please try again.');
-      setIsLoading(false);
-      return;
-    }
-
      // Password validation (minimum 8 characters as per Cognito config)
      if (password.length < 8) {
        setError('Password must be at least 8 characters long.');
@@ -144,21 +94,11 @@ export default function SignUp() {
      }
 
      try {
-       // Convert age to birthdate format (YYYY-MM-DD) for Cognito
-       // Cognito requires birthdate to be at least 10 characters
-       const currentYear = new Date().getFullYear();
-       const birthYear = currentYear - ageNum;
-       const birthdate = `${birthYear}-01-01`;
-
        const result = await Auth.signUp({
          username: email,
          password,
          attributes: {
            email,
-           name: fullName,
-           birthdate,
-           gender,
-           preferred_username: username,
          },
        });
 
@@ -174,18 +114,6 @@ export default function SignUp() {
          setError(err.message || 'Sign up failed. Please try again.');
        }
      } finally {
-       setIsLoading(false);
-     }
-   };
-
-   const onGoogleSignUp = async () => {
-     setError('');
-     setIsLoading(true);
-     try {
-       await Auth.federatedSignIn({ provider: 'Google' });
-     } catch (err) {
-       console.error('Google sign-up error:', err);
-       setError('Google sign-up failed. Please try again.');
        setIsLoading(false);
      }
    };
@@ -215,37 +143,21 @@ export default function SignUp() {
           <Text style={{
             fontFamily:'outfit-bold',
             fontSize:30,
-            marginTop:20
+            marginTop:20,
+            textAlign:'center'
           }}>Create New Account</Text>
 
           <Text style={{
             fontFamily:'outfit',
             fontSize:15,
             color:Colors.GRAY,
-            marginTop:20
-          }}>Join thousands of users using Atelic today!</Text>
-
-        {/* Enter Full Name */}
-        <View style={{
-          marginTop:30,
-          marginBottom:5
-        }}>
-          <Text style={{
-            fontFamily:'outfit'
-          }}>Full Name</Text>
-          <TextInput 
-          style={styles.input}
-          placeholder='Enter Full Name'
-          value={fullName}
-          onChangeText={(value)=>setFullName(value)}
-          autoCorrect={false}
-          spellCheck={false}
-          />
-        </View>
+            marginTop:20,
+            textAlign:'center'
+          }}>We can't wait to help you plan your dream vacation!</Text>
 
         {/* Enter Email */}
         <View style={{
-          marginTop:20,
+          marginTop:30,
           marginBottom:5
         }}>
           <Text style={{
@@ -264,82 +176,6 @@ export default function SignUp() {
           {emailError ? (
             <Text style={{ color: 'red', marginTop: 5, fontFamily: 'outfit', fontSize: 14 }}>{emailError}</Text>
           ) : null}
-        </View>
-
-        {/* Enter Username */}
-        <View style={{
-          marginTop:20,
-          marginBottom:5
-        }}>
-          <Text style={{
-            fontFamily:'outfit'
-          }}>Username</Text>
-          <TextInput
-          style={styles.input}
-          placeholder='Enter Username (5-20 characters)'
-          value={username}
-          onChangeText={(value)=>setUsername(value)}
-          autoCapitalize="none"
-          autoCorrect={false}
-          spellCheck={false}
-          />
-          {usernameError ? (
-            <Text style={{ color: 'red', marginTop: 5, fontFamily: 'outfit', fontSize: 14 }}>{usernameError}</Text>
-          ) : null}
-        </View>
-
-        {/* Enter Age */}
-        <View style={{
-          marginTop:20,
-          marginBottom:5
-        }}>
-          <Text style={{
-            fontFamily:'outfit'
-          }}>Age</Text>
-          <TextInput
-            style={styles.input}
-            placeholder='Enter your age (4-100)'
-            value={age}
-            onChangeText={(value)=>setAge(value)}
-            keyboardType="number-pad"
-            autoCorrect={false}
-            spellCheck={false}
-          />
-          {ageError ? (
-            <Text style={{ color: 'red', marginTop: 5, fontFamily: 'outfit', fontSize: 14 }}>{ageError}</Text>
-          ) : null}
-        </View>
-
-        {/* Select Gender */}
-        <View style={{
-          marginTop: 20,
-          marginBottom:5
-        }}>
-          <Text style={{
-            fontFamily: 'outfit'
-          }}>Gender</Text>
-          <View style={{ marginTop: 5, alignItems: 'center', justifyContent: 'center' }}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-              <TouchableOpacity
-                style={[styles.genderButton, gender === 'male' && styles.genderButtonSelected]}
-                onPress={() => setGender('male')}
-              >
-                <Text style={{ color: gender === 'male' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Male</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.genderButton, gender === 'female' && styles.genderButtonSelected]}
-                onPress={() => setGender('female')}
-              >
-                <Text style={{ color: gender === 'female' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Female</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.genderButton, gender === 'other' && styles.genderButtonSelected]}
-                onPress={() => setGender('other')}
-              >
-                <Text style={{ color: gender === 'other' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit' }}>Other</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
         </View>
 
         {/* Enter Password */}
@@ -386,34 +222,7 @@ export default function SignUp() {
             </TouchableOpacity>
           </View>
 
-        {/* Terms and Privacy Policy */}
-        <View style={{
-          marginTop: 20,
-          paddingHorizontal: 5
-        }}>
-          <Text style={{
-            fontFamily: 'outfit',
-            fontSize: 11,
-            color: Colors.GRAY,
-            textAlign: 'center',
-            lineHeight: 20
-          }}>
-            By continuing you agree to Atelic's{' '}
-            <Text 
-              style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-              onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
-            >
-              Terms of Service
-            </Text>
-            {' '}and acknowledge you've read our{' '}
-            <Text 
-              style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-              onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
-            >
-              Privacy Policy
-            </Text>
-          </Text>
-        </View>
+        
 
         </View>
       </ScrollView>
@@ -429,18 +238,5 @@ const styles = StyleSheet.create({
       borderColor:Colors.GRAY,
       fontFamily:'outfit',
       marginTop: 5
-  },
-  genderButton: {
-    flex: 1,
-    padding: 15,
-    borderWidth: 0.5,
-    borderRadius: 15,
-    borderColor: Colors.GRAY,
-    marginRight: 10,
-    backgroundColor: Colors.WHITE,
-    alignItems: 'center',
-  },
-  genderButtonSelected: {
-    backgroundColor: '#F36406',
-  },
+  }
 })

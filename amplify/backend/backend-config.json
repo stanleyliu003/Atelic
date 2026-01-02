@@ -390,6 +390,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "getVersionConfig": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "AppVersionManager"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "manageCollaborators": {
       "build": true,
       "dependsOn": [
@@ -809,6 +825,22 @@
         }
       ]
     },
+    "AMPLIFY_function_getVersionConfig_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getVersionConfig"
+        }
+      ]
+    },
+    "AMPLIFY_function_getVersionConfig_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getVersionConfig"
+        }
+      ]
+    },
     "AMPLIFY_function_manageCollaborators_deploymentBucketName": {
       "usedBy": [
         {
@@ -979,6 +1011,10 @@
     }
   },
   "storage": {
+    "AppVersionManager": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    },
     "PlacesAPIActivityStorage": {
       "providerPlugin": "awscloudformation",
       "service": "DynamoDB"
