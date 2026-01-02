@@ -385,6 +385,97 @@ export const getVersionConfig = /* GraphQL */ `
     }
   }
 `;
+
+export const getUserProfile = /* GraphQL */ `
+  query GetUserProfile($username: String, $userID: String) {
+    getUserProfile(username: $username, userID: $userID) {
+      username
+      userID
+      email
+      fullName
+      age
+      gender
+      ownedTripsCount
+      ownedTrips {
+        tripId
+        selectedCity
+        tripPhotoReference
+        startDate
+        endDate
+        tripLength
+        createdAt
+        updatedAt
+        __typename
+      }
+      sharedTripsCount
+      sharedTrips {
+        tripId
+        selectedCity
+        tripPhotoReference
+        startDate
+        endDate
+        tripLength
+        role
+        ownerUsername
+        createdAt
+        updatedAt
+        __typename
+      }
+      totalTripsCompleted
+      totalTripsUpcoming
+      totalTripsInProgress
+      activitiesPerTrip
+      totalActivitiesOwned
+      avgActivitiesPerTrip
+      collaboratorsPerTrip
+      totalCollaboratorsAcrossTrips
+      avgCollaboratorsPerTrip
+      mostVisitedCities
+      totalTripDuration
+      avgTripDuration
+      lastTripDate
+      nextTripDate
+      followersCount
+      followingCount
+      friends
+      bio
+      profilePhotoUrl
+      socialLinks
+      accountCreatedAt
+      appVersion
+      deviceType
+      modelName
+      osVersion
+      activityPreferences
+      selectedUseCases
+      notificationsEnabled
+      devicePushToken
+      snsEndpointArn
+      subscriptionTier
+      subscriptionStartDate
+      subscriptionEndDate
+      subscriptionStatus
+      trialEndsAt
+      lastActiveAt
+      accountStatus
+      preferences {
+        theme
+        language
+        defaultCurrency
+        preferredTravelMode
+        distanceUnit
+        timeFormat
+        dateFormat
+        profileVisibility
+        allowCollaborationRequests
+        shareActivityHistory
+        __typename
+      }
+      version
+      __typename
+    }
+  }
+`;
 export const getWishlistAnalysis = /* GraphQL */ `
   query GetWishlistAnalysis($id: ID!) {
     getWishlistAnalysis(id: $id) {
@@ -531,94 +622,6 @@ export const listOperationsByTrip = /* GraphQL */ `
         __typename
       }
       nextToken
-      __typename
-    }
-  }
-`;
-export const getUserProfile = /* GraphQL */ `
-  query GetUserProfile($username: String, $userID: String) {
-    getUserProfile(username: $username, userID: $userID) {
-      username
-      userID
-      email
-      fullName
-      age
-      gender
-      ownedTripsCount
-      ownedTrips {
-        tripId
-        selectedCity
-        tripPhotoReference
-        startDate
-        endDate
-        tripLength
-        createdAt
-        updatedAt
-        __typename
-      }
-      sharedTripsCount
-      sharedTrips {
-        tripId
-        selectedCity
-        tripPhotoReference
-        startDate
-        endDate
-        tripLength
-        role
-        ownerUsername
-        createdAt
-        updatedAt
-        __typename
-      }
-      totalTripsCompleted
-      totalTripsUpcoming
-      totalTripsInProgress
-      activitiesPerTrip
-      totalActivitiesOwned
-      avgActivitiesPerTrip
-      collaboratorsPerTrip
-      totalCollaboratorsAcrossTrips
-      avgCollaboratorsPerTrip
-      mostVisitedCities
-      totalTripDuration
-      avgTripDuration
-      lastTripDate
-      nextTripDate
-      followersCount
-      followingCount
-      friends
-      bio
-      profilePhotoUrl
-      socialLinks
-      accountCreatedAt
-      appVersion
-      deviceType
-      modelName
-      osVersion
-      activityPreferences
-      selectedUseCases
-      subscriptionTier
-      subscriptionStartDate
-      subscriptionEndDate
-      subscriptionStatus
-      trialEndsAt
-      lastActiveAt
-      accountStatus
-      preferences {
-        notifications
-        theme
-        language
-        defaultCurrency
-        preferredTravelMode
-        distanceUnit
-        timeFormat
-        dateFormat
-        profileVisibility
-        allowCollaborationRequests
-        shareActivityHistory
-        __typename
-      }
-      version
       __typename
     }
   }

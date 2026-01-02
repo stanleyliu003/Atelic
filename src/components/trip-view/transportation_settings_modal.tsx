@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -12,11 +12,14 @@ import {
   Platform,
   PanResponder,
   Animated,
+  Alert,
+  Image,
 } from 'react-native';
-import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { TravelMode, RouteLegModeData, Activity } from '../../types/activity.types';
 import { Colors } from '../../../constants/Colors';
 import { formatDistance, formatDuration } from '../../utils/routeUtils';
+import { openUber, openLyft, isUberInstalled, isLyftInstalled } from '../../services/rideHailing';
 
 interface TransportationSettingsModalProps {
   visible: boolean;
@@ -44,6 +47,23 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
   destinationActivity,
 }) => {
   const translateY = useRef(new Animated.Value(0)).current;
+  const [uberAvailable, setUberAvailable] = useState(false);
+  const [lyftAvailable, setLyftAvailable] = useState(false);
+
+  // Check if ride-hailing apps are installed
+  useEffect(() => {
+    const checkApps = async () => {
+      const [uber, lyft] = await Promise.all([
+        isUberInstalled(),
+        isLyftInstalled(),
+      ]);
+      setUberAvailable(uber);
+      setLyftAvailable(lyft);
+    };
+    if (visible) {
+      checkApps();
+    }
+  }, [visible]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -135,30 +155,35 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
         return;
       }
 
-      // Use place names for better display, with coordinates as fallback
-      const originName = encodeURIComponent(originActivity.name || `${originActivity.lat},${originActivity.lng}`);
-      const destinationName = encodeURIComponent(destinationActivity.name || `${destinationActivity.lat},${destinationActivity.lng}`);
       const googleMapsTravelMode = getGoogleMapsTravelMode(mode);
 
+      // Google Maps URL scheme accepts: "lat,lng" OR "address string"
+      // Priority: formatted_address (shows readable names) > coordinates (precision)
+      // formatted_address provides better UX in Google Maps UI
+      const originParam = originActivity.formatted_address
+        ? encodeURIComponent(originActivity.formatted_address)
+        : `${originActivity.lat},${originActivity.lng}`;
+      const destinationParam = destinationActivity.formatted_address
+        ? encodeURIComponent(destinationActivity.formatted_address)
+        : `${destinationActivity.lat},${destinationActivity.lng}`;
+
       // Try Google Maps app first
-      const googleMapsAppUrl = `comgooglemaps://?saddr=${originName}&daddr=${destinationName}&directionsmode=${googleMapsTravelMode}`;
+      const googleMapsAppUrl = `comgooglemaps://?saddr=${originParam}&daddr=${destinationParam}&directionsmode=${googleMapsTravelMode}`;
       const canOpenGoogleMaps = await Linking.canOpenURL(googleMapsAppUrl);
 
       if (canOpenGoogleMaps) {
         await Linking.openURL(googleMapsAppUrl);
-        console.log('[Modal] Opened Google Maps app');
-        onClose();
       } else {
-        // Fallback to Google Maps web - use place_id if available for accuracy
+        // Fallback to Google Maps web - hierarchy: place_id > coordinates > formatted_address
         let webUrl;
         if (originActivity.place_id && destinationActivity.place_id) {
-          webUrl = `https://www.google.com/maps/dir/?api=1&origin=${originName}&origin_place_id=${originActivity.place_id}&destination=${destinationName}&destination_place_id=${destinationActivity.place_id}&travelmode=${googleMapsTravelMode}`;
+          // Best: Use place_id for most accurate results (avoids ambiguity with chain stores)
+          webUrl = `https://www.google.com/maps/dir/?api=1&origin=place_id:${originActivity.place_id}&destination=place_id:${destinationActivity.place_id}&travelmode=${googleMapsTravelMode}`;
         } else {
-          webUrl = `https://www.google.com/maps/dir/?api=1&origin=${originName}&destination=${destinationName}&travelmode=${googleMapsTravelMode}`;
+          // Use coordinates for precision - formatted_address is ambiguous for chain stores/restaurants
+          webUrl = `https://www.google.com/maps/dir/?api=1&origin=${originActivity.lat},${originActivity.lng}&destination=${destinationActivity.lat},${destinationActivity.lng}&travelmode=${googleMapsTravelMode}`;
         }
         await Linking.openURL(webUrl);
-        console.log('[Modal] Opened Google Maps web');
-        onClose();
       }
     } catch (error) {
       console.error('[Modal] Error opening Google Maps:', error);
@@ -177,17 +202,14 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
         return;
       }
 
-      // Use place names for better display
-      const originName = encodeURIComponent(originActivity.name || `${originActivity.lat},${originActivity.lng}`);
-      const destinationName = encodeURIComponent(destinationActivity.name || `${destinationActivity.lat},${destinationActivity.lng}`);
+      // Use coordinates for precision - formatted_address is ambiguous for chain stores/restaurants
+      const originParam = `${originActivity.lat},${originActivity.lng}`;
+      const destinationParam = `${destinationActivity.lat},${destinationActivity.lng}`;
 
-      // Convert travel mode to direction flag: d=driving, w=walking, r=transit
       const directionFlag = mode === 'DRIVE' ? 'd' : mode === 'WALK' ? 'w' : 'r';
-      const appleMapsUrl = `maps://?saddr=${originName}&daddr=${destinationName}&dirflg=${directionFlag}`;
+      const appleMapsUrl = `maps://?saddr=${originParam}&daddr=${destinationParam}&dirflg=${directionFlag}`;
 
       await Linking.openURL(appleMapsUrl);
-      console.log('[Modal] Opened Apple Maps');
-      onClose();
     } catch (error) {
       console.error('[Modal] Error opening Apple Maps:', error);
     }
@@ -202,17 +224,81 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
         },
         (buttonIndex) => {
           if (buttonIndex === 1) {
-            // Google Maps
-            openGoogleMaps(mode);
+            // Add delay to allow ActionSheet to fully dismiss before opening external app
+            // Longer delay (400ms) to ensure smooth transition and prevent UI freeze
+            setTimeout(() => {
+              openGoogleMaps(mode).catch(err => console.error('[Modal] Error in delayed Google Maps open:', err));
+            }, 400);
           } else if (buttonIndex === 2) {
-            // Apple Maps
-            openAppleMaps(mode);
+            setTimeout(() => {
+              openAppleMaps(mode).catch(err => console.error('[Modal] Error in delayed Apple Maps open:', err));
+            }, 400);
           }
         }
       );
     } else {
       // Default to Google Maps on Android
       openGoogleMaps(mode);
+    }
+  };
+
+  const handleOpenUber = async () => {
+    try {
+      if (!originActivity || !destinationActivity) {
+        Alert.alert('Error', 'Missing origin or destination location');
+        return;
+      }
+
+      if (!originActivity.lat || !originActivity.lng || !destinationActivity.lat || !destinationActivity.lng) {
+        Alert.alert('Error', 'Location coordinates are not available');
+        return;
+      }
+
+      // Use formatted_address if available, fallback to name
+      const pickupAddress = originActivity.formatted_address || originActivity.name;
+      const dropoffAddress = destinationActivity.formatted_address || destinationActivity.name;
+
+      await openUber({
+        pickupLat: originActivity.lat,
+        pickupLng: originActivity.lng,
+        pickupName: pickupAddress,
+        dropoffLat: destinationActivity.lat,
+        dropoffLng: destinationActivity.lng,
+        dropoffName: dropoffAddress,
+      });
+    } catch (error) {
+      console.error('[Modal] Error opening Uber:', error);
+      Alert.alert('Error', 'Failed to open Uber. Please try again.');
+    }
+  };
+
+  const handleOpenLyft = async () => {
+    try {
+      if (!originActivity || !destinationActivity) {
+        Alert.alert('Error', 'Missing origin or destination location');
+        return;
+      }
+
+      if (!originActivity.lat || !originActivity.lng || !destinationActivity.lat || !destinationActivity.lng) {
+        Alert.alert('Error', 'Location coordinates are not available');
+        return;
+      }
+
+      // Use formatted_address if available, fallback to name
+      const pickupAddress = originActivity.formatted_address || originActivity.name;
+      const dropoffAddress = destinationActivity.formatted_address || destinationActivity.name;
+
+      await openLyft({
+        pickupLat: originActivity.lat,
+        pickupLng: originActivity.lng,
+        pickupName: pickupAddress,
+        dropoffLat: destinationActivity.lat,
+        dropoffLng: destinationActivity.lng,
+        dropoffName: dropoffAddress,
+      });
+    } catch (error) {
+      console.error('[Modal] Error opening Lyft:', error);
+      Alert.alert('Error', 'Failed to open Lyft. Please try again.');
     }
   };
 
@@ -271,9 +357,29 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Choose Transportation</Text>
-            <Text style={styles.timestamp}>
-              {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-            </Text>
+            <View style={styles.rideIconsContainer}>
+              <TouchableOpacity
+                style={styles.uberIconButton}
+                onPress={handleOpenUber}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={require('../../../assets/uber-logo.png')}
+                  style={styles.uberLogo}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+              {/* Lyft temporarily disabled */}
+              {/* <TouchableOpacity
+                style={styles.lyftIconButton}
+                onPress={handleOpenLyft}
+                activeOpacity={0.7}
+              >
+                <View style={styles.lyftLogoContainer}>
+                  <Text style={styles.lyftLogoText}>lyft</Text>
+                </View>
+              </TouchableOpacity> */}
+            </View>
           </View>
 
           {/* Mode Options */}
@@ -319,7 +425,7 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
                     </View>
                   </TouchableOpacity>
 
-                  {/* Directions button - only show on selected mode, opens map selection */}
+                  {/* Directions button - show on selected mode */}
                   {isSelected && isAvailable && (
                     <TouchableOpacity
                       style={styles.directionsButton}
@@ -443,6 +549,53 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#8E8E93',
     fontWeight: '500',
+  },
+  rideIconsContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  uberIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  uberLogo: {
+    width: 36,
+    height: 36,
+    tintColor: '#FFFFFF',
+  },
+  lyftIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#FF00BF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  lyftLogoContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lyftLogoText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
   optionsContainer: {
     paddingHorizontal: 16,

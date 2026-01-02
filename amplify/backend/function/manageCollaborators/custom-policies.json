@@ -1,6 +1,22 @@
 [
   {
-    "Action": [],
-    "Resource": []
+    "Action": [
+      "dynamodb:GetItem",
+      "dynamodb:Query"
+    ],
+    "Resource": [
+      "arn:aws:dynamodb:*:*:table/UserProfilesStorage-*",
+      "arn:aws:dynamodb:*:*:table/UserProfilesStorage-*/index/*"
+    ]
+  },
+  {
+    "Action": [
+      "sns:Publish",
+      "sns:GetEndpointAttributes"
+    ],
+    "Resource": [
+      "arn:aws:sns:us-east-1:036284794661:app/APNS_SANDBOX/Atelic-iOS-Production",
+      "arn:aws:sns:us-east-1:036284794661:app/APNS_SANDBOX/Atelic-iOS-Production/*"
+    ]
   }
 ]

@@ -1,0 +1,13 @@
+[
+  {
+    "Action": [
+      "sns:CreatePlatformEndpoint",
+      "sns:SetEndpointAttributes",
+      "sns:GetEndpointAttributes"
+    ],
+    "Resource": [
+      "arn:aws:sns:us-east-1:036284794661:app/APNS_SANDBOX/Atelic-iOS-Production",
+      "arn:aws:sns:us-east-1:036284794661:app/APNS_SANDBOX/Atelic-iOS-Production/*"
+    ]
+  }
+]

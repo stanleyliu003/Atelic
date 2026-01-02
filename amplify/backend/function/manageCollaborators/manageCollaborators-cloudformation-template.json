@@ -27,6 +27,18 @@
     "storageTripStorageStreamArn": {
       "Type": "String",
       "Default": "storageTripStorageStreamArn"
+    },
+    "storageUserProfilesStorageName": {
+      "Type": "String",
+      "Default": "storageUserProfilesStorageName"
+    },
+    "storageUserProfilesStorageArn": {
+      "Type": "String",
+      "Default": "storageUserProfilesStorageArn"
+    },
+    "storageUserProfilesStorageStreamArn": {
+      "Type": "String",
+      "Default": "storageUserProfilesStorageStreamArn"
     }
   },
   "Conditions": {
@@ -90,6 +102,15 @@
             },
             "STORAGE_TRIPSTORAGE_STREAMARN": {
               "Ref": "storageTripStorageStreamArn"
+            },
+            "STORAGE_USERPROFILESSTORAGE_NAME": {
+              "Ref": "storageUserProfilesStorageName"
+            },
+            "STORAGE_USERPROFILESSTORAGE_ARN": {
+              "Ref": "storageUserProfilesStorageArn"
+            },
+            "STORAGE_USERPROFILESSTORAGE_STREAMARN": {
+              "Ref": "storageUserProfilesStorageStreamArn"
             }
           }
         },
@@ -231,10 +252,80 @@
                   ]
                 }
               ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:Get*",
+                "dynamodb:BatchGetItem",
+                "dynamodb:List*",
+                "dynamodb:Describe*",
+                "dynamodb:Scan",
+                "dynamodb:Query",
+                "dynamodb:PartiQLSelect",
+                "dynamodb:Update*",
+                "dynamodb:RestoreTable*",
+                "dynamodb:PartiQLUpdate"
+              ],
+              "Resource": [
+                {
+                  "Ref": "storageUserProfilesStorageArn"
+                },
+                {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      {
+                        "Ref": "storageUserProfilesStorageArn"
+                      },
+                      "index/*"
+                    ]
+                  ]
+                }
+              ]
             }
           ]
         }
       }
+    },
+    "CustomLambdaExecutionPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "custom-lambda-execution-policy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "dynamodb:GetItem",
+                "dynamodb:Query"
+              ],
+              "Resource": [
+                "arn:aws:dynamodb:*:*:table/UserProfilesStorage-*",
+                "arn:aws:dynamodb:*:*:table/UserProfilesStorage-*/index/*"
+              ],
+              "Effect": "Allow"
+            },
+            {
+              "Action": [
+                "sns:Publish",
+                "sns:GetEndpointAttributes"
+              ],
+              "Resource": [
+                "arn:aws:sns:us-east-1:036284794661:app/APNS_SANDBOX/Atelic-iOS-Production",
+                "arn:aws:sns:us-east-1:036284794661:app/APNS_SANDBOX/Atelic-iOS-Production/*"
+              ],
+              "Effect": "Allow"
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "LambdaExecutionRole"
+          }
+        ]
+      },
+      "DependsOn": "LambdaExecutionRole"
     }
   },
   "Outputs": {

@@ -127,24 +127,39 @@ function RouteInfoCard({
       }
 
       const googleMapsTravelMode = getGoogleMapsTravelMode(travelMode);
-      const originName = encodeURIComponent(currentActivity.name || `${currentActivity.lat},${currentActivity.lng}`);
-      const destinationName = encodeURIComponent(nextActivity.name || `${nextActivity.lat},${nextActivity.lng}`);
+
+      // Google Maps URL scheme accepts: "lat,lng" OR "address string"
+      // Priority: formatted_address (shows readable names) > coordinates (precision)
+      // formatted_address provides better UX in Google Maps UI
+      const originParam = currentActivity.formatted_address
+        ? encodeURIComponent(currentActivity.formatted_address)
+        : `${currentActivity.lat},${currentActivity.lng}`;
+      const destinationParam = nextActivity.formatted_address
+        ? encodeURIComponent(nextActivity.formatted_address)
+        : `${nextActivity.lat},${nextActivity.lng}`;
 
       // Try Google Maps app first
-      const googleMapsAppUrl = `comgooglemaps://?saddr=${originName}&daddr=${destinationName}&directionsmode=${googleMapsTravelMode}`;
+      const googleMapsAppUrl = `comgooglemaps://?saddr=${originParam}&daddr=${destinationParam}&directionsmode=${googleMapsTravelMode}`;
+      console.log('[RouteCard] Google Maps App URL:', googleMapsAppUrl);
+
       const canOpenGoogleMaps = await Linking.canOpenURL(googleMapsAppUrl);
 
       if (canOpenGoogleMaps) {
         await Linking.openURL(googleMapsAppUrl);
         console.log('[RouteCard] Opened Google Maps app');
       } else {
-        // Fallback to Google Maps web
+        // Fallback to Google Maps web - hierarchy: place_id > coordinates
         let webUrl;
         if (currentActivity.place_id && nextActivity.place_id) {
-          webUrl = `https://www.google.com/maps/dir/?api=1&origin=${originName}&origin_place_id=${currentActivity.place_id}&destination=${destinationName}&destination_place_id=${nextActivity.place_id}&travelmode=${googleMapsTravelMode}`;
+          // Best: Use place_id for most accurate results (avoids ambiguity with chain stores)
+          webUrl = `https://www.google.com/maps/dir/?api=1&origin=place_id:${currentActivity.place_id}&destination=place_id:${nextActivity.place_id}&travelmode=${googleMapsTravelMode}`;
+          console.log('[RouteCard] Using place_id for Google Maps web');
         } else {
-          webUrl = `https://www.google.com/maps/dir/?api=1&origin=${originName}&destination=${destinationName}&travelmode=${googleMapsTravelMode}`;
+          // Use coordinates for precision - formatted_address is ambiguous for chain stores/restaurants
+          webUrl = `https://www.google.com/maps/dir/?api=1&origin=${currentActivity.lat},${currentActivity.lng}&destination=${nextActivity.lat},${nextActivity.lng}&travelmode=${googleMapsTravelMode}`;
+          console.log('[RouteCard] Using coordinates for Google Maps web (no place_id available)');
         }
+        console.log('[RouteCard] Google Maps Web URL:', webUrl);
         await Linking.openURL(webUrl);
         console.log('[RouteCard] Opened Google Maps web');
       }
@@ -165,12 +180,14 @@ function RouteInfoCard({
         return;
       }
 
-      const originName = encodeURIComponent(currentActivity.name || `${currentActivity.lat},${currentActivity.lng}`);
-      const destinationName = encodeURIComponent(nextActivity.name || `${nextActivity.lat},${nextActivity.lng}`);
+      // Use coordinates for precision - Apple Maps auto-resolves to place names
+      const originParam = `${currentActivity.lat},${currentActivity.lng}`;
+      const destinationParam = `${nextActivity.lat},${nextActivity.lng}`;
 
       // Convert travel mode to direction flag
       const directionFlag = travelMode === 'DRIVE' ? 'd' : travelMode === 'WALK' ? 'w' : 'r';
-      const appleMapsUrl = `maps://?saddr=${originName}&daddr=${destinationName}&dirflg=${directionFlag}`;
+      const appleMapsUrl = `maps://?saddr=${originParam}&daddr=${destinationParam}&dirflg=${directionFlag}`;
+      console.log('[RouteCard] Apple Maps URL:', appleMapsUrl);
 
       await Linking.openURL(appleMapsUrl);
       console.log('[RouteCard] Opened Apple Maps');
@@ -190,9 +207,15 @@ function RouteInfoCard({
         },
         (buttonIndex) => {
           if (buttonIndex === 1) {
-            openGoogleMaps();
+            // Add delay to allow ActionSheet to fully dismiss before opening external app
+            // Longer delay (400ms) to ensure smooth transition and prevent UI freeze
+            setTimeout(() => {
+              openGoogleMaps().catch(err => console.error('[RouteCard] Error in delayed Google Maps open:', err));
+            }, 400);
           } else if (buttonIndex === 2) {
-            openAppleMaps();
+            setTimeout(() => {
+              openAppleMaps().catch(err => console.error('[RouteCard] Error in delayed Apple Maps open:', err));
+            }, 400);
           }
         }
       );
@@ -209,35 +232,37 @@ function RouteInfoCard({
 
   return (
     <View style={styles.routeCard}>
-      <TouchableOpacity
-        style={styles.routeCardContent}
-        onPress={handleRoutePress}
-        activeOpacity={0.7}
-        disabled={isLoading}
-      >
-        {isLoading ? (
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading...</Text>
-        ) : (
-          <>
-            <View style={styles.routeInfoItem}>
-              {getTravelModeIcon(travelMode)}
-              <Text style={styles.routeInfoValue}>  {formatDuration(nextActivityDuration)}</Text>
-            </View>
-            <View style={styles.routeInfoItem}>
-              <Text style={styles.routeMidDotLabel}>· </Text>
-              <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
-            </View>
-          </>
-        )}
-      </TouchableOpacity>
-      {!isLoading && (
-        <TouchableOpacity
-          style={styles.settingsButton}
-          onPress={handleSettingsPress}
-          activeOpacity={0.7}
-        >
-          <FontAwesome5 name="chevron-right" size={18} color={Colors.PRIMARY} />
-        </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          {/* Left: Route Info + Dropdown Button */}
+          <TouchableOpacity
+            style={styles.routeMainButton}
+            onPress={handleSettingsPress}
+            activeOpacity={0.7}
+          >
+            {getTravelModeIcon(travelMode)}
+            <Text style={styles.routeInfoValue}>{formatDuration(nextActivityDuration)}</Text>
+            <Text style={styles.routeMidDotLabel}>•</Text>
+            <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
+            <FontAwesome5 name="chevron-down" size={14} color="#8E8E93" style={styles.chevronIcon} />
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.routeDivider} />
+
+          {/* Right: Directions Button */}
+          <TouchableOpacity
+            style={styles.directionsButton}
+            onPress={handleRoutePress}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.directionsText}>Directions</Text>
+          </TouchableOpacity>
+        </>
       )}
     </View>
   );
@@ -536,7 +561,7 @@ export function ActivityList({
       const routeLeg = routeLegs[index];
 
       // Extract distance and duration from EnhancedRouteLeg structure
-      const enhancedLeg = routeLeg as EnhancedRouteLeg | undefined;
+      const enhancedLeg = routeLeg as any as EnhancedRouteLeg | undefined;
       const selectedModeData = enhancedLeg?.selectedMode ? enhancedLeg.modeData[enhancedLeg.selectedMode] : undefined;
       const nextActivityDistance = selectedModeData?.distance || (routeLeg as any)?.distance;
       const nextActivityDuration = selectedModeData?.duration || (routeLeg as any)?.duration;
@@ -1228,30 +1253,42 @@ const styles = StyleSheet.create({
   routeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    marginTop: 4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    marginTop: 6,
+    marginBottom: 2,
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: '#E5E5E7',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+    overflow: 'hidden',
   },
-  routeCardContent: {
+  routeMainButton: {
     flex: 1,
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: 6,
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
-  settingsButton: {
-    padding: 10,
-    paddingRight: 14,
-    paddingLeft: 8,
+  routeDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#E5E5E7',
+  },
+  directionsButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  directionsText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 14,
+    color: '#007AFF',
   },
   routeInfo: {
     backgroundColor: '#f8f9fa',
@@ -1272,25 +1309,31 @@ const styles = StyleSheet.create({
   routeInfoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 9,
   },
   routeMidDotLabel: {
     fontFamily: 'outfit',
-    fontSize: 24,
-    color: Colors.PRIMARY,
-    marginLeft: -2,
+    fontSize: 13,
+    color: '#8E8E93',
+    marginHorizontal: 6,
   },
   routeInfoValue: {
-    fontFamily: 'outfit-medium',
-    fontSize: 13,
-    color: Colors.PRIMARY,
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: '#1C1C1E',
+    marginLeft: 4,
   },
   chevronIcon: {
-    marginLeft: 8,
+    marginLeft: 10,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
   },
   loadingText: {
     fontFamily: 'outfit',
-    fontSize: 22,
+    fontSize: 14,
     color: Colors.GRAY,
   },
   autocompleteLoadingContainer: {

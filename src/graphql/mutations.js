@@ -654,6 +654,9 @@ export const updateUserProfile = /* GraphQL */ `
       osVersion
       activityPreferences
       selectedUseCases
+      notificationsEnabled
+      devicePushToken
+      snsEndpointArn
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate
@@ -662,7 +665,6 @@ export const updateUserProfile = /* GraphQL */ `
       lastActiveAt
       accountStatus
       preferences {
-        notifications
         theme
         language
         defaultCurrency
@@ -676,6 +678,39 @@ export const updateUserProfile = /* GraphQL */ `
         __typename
       }
       version
+      __typename
+    }
+  }
+`;
+export const registerDeviceToken = /* GraphQL */ `
+  mutation RegisterDeviceToken($username: String, $userID: String) {
+    registerDeviceToken(username: $username, userID: $userID) {
+      success
+      message
+      endpointArn
+      __typename
+    }
+  }
+`;
+export const sendPushNotification = /* GraphQL */ `
+  mutation SendPushNotification(
+    $username: String
+    $userID: String
+    $title: String!
+    $body: String!
+    $data: AWSJSON
+  ) {
+    sendPushNotification(
+      username: $username
+      userID: $userID
+      title: $title
+      body: $body
+      data: $data
+    ) {
+      success
+      message
+      messageId
+      error
       __typename
     }
   }

@@ -4,8 +4,8 @@ import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking, PanResponder, Image } from 'react-native';
 import { Auth, API } from 'aws-amplify';
-import { useEffect, useState } from 'react';
-import { router, useFocusEffect } from 'expo-router';
+import { useEffect, useState, useRef } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { listUserTripsFromCloud, retrieveTripFromCloud, deleteUserAccountFromCloud } from '../../src/services/lambdaService';
@@ -17,6 +17,8 @@ import { TripCarouselImage } from '../../src/components/profile/TripCarouselImag
 
 export default function Profile() {
   const { restoreTripFromObject, setSelectedCity } = useCreateTrip();
+  const params = useLocalSearchParams();
+  const hasAutoLoadedRef = useRef(false);
 
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
@@ -94,6 +96,30 @@ export default function Profile() {
       loadUserData();
     }, [loadUserData])
   );
+
+  // Auto-load trip from notification
+  useEffect(() => {
+    const autoLoadTripFromNotification = async () => {
+      // Only auto-load once per notification tap
+      if (hasAutoLoadedRef.current) return;
+
+      const { autoLoadTripId, fromNotification } = params;
+
+      if (autoLoadTripId && fromNotification === 'true' && currentUserID) {
+        hasAutoLoadedRef.current = true;
+        console.log('[Profile] Auto-loading trip from notification:', autoLoadTripId);
+
+        try {
+          await handleLoadTrip(autoLoadTripId);
+        } catch (error) {
+          console.error('[Profile] Error auto-loading trip:', error);
+          Alert.alert('Error', 'Failed to load the trip you were invited to.');
+        }
+      }
+    };
+
+    autoLoadTripFromNotification();
+  }, [params, currentUserID]);
 
 
   const loadUserTrips = async (userID) => {

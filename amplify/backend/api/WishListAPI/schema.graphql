@@ -122,6 +122,19 @@ type DeleteAccountResult {
   errors: [String]
 }
 
+type RegisterDeviceTokenResult {
+  success: Boolean!
+  message: String!
+  endpointArn: String
+}
+
+type SendNotificationResult {
+  success: Boolean!
+  message: String!
+  messageId: String
+  error: String
+}
+
  type UserProfile {
    userID: String!
    email: String!
@@ -186,6 +199,11 @@ type DeleteAccountResult {
    activityPreferences: [String]
    selectedUseCases: [String]
 
+   # Push notifications
+   notificationsEnabled: Boolean
+   devicePushToken: String
+   snsEndpointArn: String
+
    # Subscription info
    subscriptionTier: String!
    subscriptionStartDate: String
@@ -225,7 +243,6 @@ type DeleteAccountResult {
  }
 
  type UserPreferences {
-   notifications: Boolean
    theme: String
    language: String
    defaultCurrency: String
@@ -323,7 +340,7 @@ type AppVersionConfig {
    getTripIDs(userID: String!): [TripSummary] @function(name: "getTripIDs-${env}") @auth(rules: [{ allow: public }])
    getUserTrips(userID: String!, tripID: String!): Trip @function(name: "getUserTrips-${env}") @auth(rules: [{ allow: public }])
    searchUsers(searchTerm: String!): [UserProfile] @function(name: "searchUsers-${env}") @auth(rules: [{ allow: public }])
-   getUserProfile(username: String, userID: String): UserProfileStorage @function(name: "getUserProfile-${env}") @auth(rules: [{ allow: private }])
+   getUserProfile(username: String, userID: String): UserProfileStorage @function(name: "getUserProfile-${env}") @auth(rules: [{ allow: public }])
    getVersionConfig(platform: String!, environment: String!): AppVersionConfig @function(name: "getVersionConfig-${env}") @auth(rules: [{ allow: public }])
  }
 
@@ -401,6 +418,8 @@ type AppVersionConfig {
    removeCollaborator(tripId: String!, username: String!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
    updateCollaboratorRole(tripId: String!, username: String!, role: CollaboratorRole!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
    updateUserProfile(username: String!, action: String!, tripData: AWSJSON): UserProfileStorage @function(name: "updateUserProfile-${env}") @auth(rules: [{ allow: private }])
+   registerDeviceToken(username: String, userID: String): RegisterDeviceTokenResult @function(name: "registerDeviceToken-${env}") @auth(rules: [{ allow: private }])
+   sendPushNotification(username: String, userID: String, title: String!, body: String!, data: AWSJSON): SendNotificationResult @function(name: "sendPushNotification-${env}") @auth(rules: [{ allow: private }])
  }
 
    type Subscription {

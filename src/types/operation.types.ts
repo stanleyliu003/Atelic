@@ -1,5 +1,7 @@
 import { Activity } from './activity.types';
 
+import { TravelMode } from './activity.types';
+
 /**
  * Base operation type with common fields
  * All operations are append-only writes to DynamoDB
@@ -10,7 +12,7 @@ export type Operation = {
   opId: string; // Unique operation ID: `${userId}_${type}_${target}_${timestamp}_${random}`
   userId: string; // User who performed the operation
   sequenceNumber: number; // For deterministic ordering within same millisecond
-  type: 'add' | 'remove' | 'modify' | 'reorder' | 'move';
+  type: 'add' | 'remove' | 'modify' | 'reorder' | 'move' | 'update_transport_mode';
   target: 'wishlist' | 'day';
   dayNumber?: number; // Required if target is 'day'
   data: any; // Operation-specific data
@@ -93,6 +95,21 @@ export type OperationMove = Operation & {
 };
 
 /**
+ * Update transport mode operation - changes the transportation mode for a route leg
+ * The leg is identified by the origin activity's instanceId (destination is the next activity in order)
+ */
+export type OperationUpdateTransportMode = Operation & {
+  type: 'update_transport_mode';
+  target: 'day';
+  dayNumber: number;
+  data: {
+    originInstanceId: string; // The instanceId of the origin activity for this leg
+    mode: TravelMode; // The new transportation mode (WALK, DRIVE, TRANSIT)
+    lastModified: number; // Timestamp for LWW conflict resolution
+  };
+};
+
+/**
  * Union type of all operations
  */
 export type AnyOperation =
@@ -100,4 +117,5 @@ export type AnyOperation =
   | OperationRemove
   | OperationModify
   | OperationReorder
-  | OperationMove;
+  | OperationMove
+  | OperationUpdateTransportMode;

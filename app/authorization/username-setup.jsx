@@ -1,11 +1,12 @@
 import { Colors } from '../../constants/Colors';
 import { Auth, API } from 'aws-amplify';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView, Modal, ImageBackground } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DeviceInfo from 'react-native-device-info';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Notifications from 'expo-notifications';
 
 const updateUserProfileMutation = /* GraphQL */ `
   mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
@@ -44,8 +45,22 @@ const searchUsers = /* GraphQL */ `
   }
 `;
 
+const registerDeviceTokenMutation = /* GraphQL */ `
+  mutation RegisterDeviceToken($username: String) {
+    registerDeviceToken(username: $username) {
+      success
+      message
+      endpointArn
+    }
+  }
+`;
+
 export default function UsernameSetup() {
   const router = useRouter();
+  const searchParams = useLocalSearchParams();
+  const isReturningUser = searchParams.mode === 'returning';
+
+  // All users start at page 1, but returning users skip gender (page 3) and username (page 4)
   const [currentPage, setCurrentPage] = useState(1);
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
@@ -61,6 +76,8 @@ export default function UsernameSetup() {
   const [isGoogleUser, setIsGoogleUser] = useState(false);
   const [activityPreferences, setActivityPreferences] = useState([]);
   const [selectedUseCases, setSelectedUseCases] = useState([]);
+  const [devicePushToken, setDevicePushToken] = useState(null);
+  const [notificationPermissionGranted, setNotificationPermissionGranted] = useState(false);
 
   const activityOptions = [
     { label: 'History', emoji: '🏛️', value: 'history' },
@@ -112,11 +129,56 @@ export default function UsernameSetup() {
 
         console.log('User attributes:', attributes);
 
-        // Check if user already has a username (from email sign-up)
-        const prefUsernameAttr = attributes.find(attr => attr.Name === 'preferred_username');
-        if (prefUsernameAttr && prefUsernameAttr.Value) {
-          console.log('User already has username:', prefUsernameAttr.Value);
-          setUsername(prefUsernameAttr.Value);
+        // For returning users, pre-populate name and username from Cognito
+        if (isReturningUser) {
+          const nameAttr = attributes.find(attr => attr.Name === 'name');
+          const givenNameAttr = attributes.find(attr => attr.Name === 'given_name');
+          const familyNameAttr = attributes.find(attr => attr.Name === 'family_name');
+          const preferredUsernameAttr = attributes.find(attr => attr.Name === 'preferred_username');
+          const birthdateAttr = attributes.find(attr => attr.Name === 'birthdate');
+          const genderAttr = attributes.find(attr => attr.Name === 'gender');
+
+          // Set username
+          if (preferredUsernameAttr?.Value) {
+            setUsername(preferredUsernameAttr.Value);
+            console.log('[Returning User] Loaded username:', preferredUsernameAttr.Value);
+          }
+
+          // Set name
+          if (nameAttr?.Value) {
+            const nameParts = nameAttr.Value.trim().split(' ');
+            setFirstName(nameParts[0] || '');
+            setLastName(nameParts.slice(1).join(' ') || '');
+            setFullName(nameAttr.Value);
+            console.log('[Returning User] Loaded name:', nameAttr.Value);
+          } else if (givenNameAttr?.Value && familyNameAttr?.Value) {
+            setFirstName(givenNameAttr.Value);
+            setLastName(familyNameAttr.Value);
+            setFullName(`${givenNameAttr.Value} ${familyNameAttr.Value}`.trim());
+            console.log('[Returning User] Loaded name from given+family');
+          } else if (givenNameAttr?.Value) {
+            setFirstName(givenNameAttr.Value);
+            setLastName('');
+            setFullName(givenNameAttr.Value);
+            console.log('[Returning User] Loaded name from given only');
+          }
+
+          // Set birthdate if available
+          if (birthdateAttr?.Value) {
+            try {
+              const birthDate = new Date(birthdateAttr.Value);
+              setSelectedDate(birthDate);
+              console.log('[Returning User] Loaded birthdate:', birthdateAttr.Value);
+            } catch (dateErr) {
+              console.warn('[Returning User] Failed to parse birthdate:', dateErr);
+            }
+          }
+
+          // Set gender if available
+          if (genderAttr?.Value) {
+            setGender(genderAttr.Value);
+            console.log('[Returning User] Loaded gender:', genderAttr.Value);
+          }
         }
 
         // Check if user has identities attribute indicating external provider sign-in
@@ -137,8 +199,8 @@ export default function UsernameSetup() {
           setIsAppleUser(isApple);
           setIsGoogleUser(isGoogle);
 
-          // For external users, check if name is already available
-          if (isExternal) {
+          // For NEW external users (not returning), check if name is already available
+          if (isExternal && !isReturningUser) {
             const nameAttr = attributes.find(attr => attr.Name === 'name');
             const givenNameAttr = attributes.find(attr => attr.Name === 'given_name');
             const familyNameAttr = attributes.find(attr => attr.Name === 'family_name');
@@ -174,7 +236,7 @@ export default function UsernameSetup() {
     };
 
     checkUserProvider();
-  }, []);
+  }, [isReturningUser]);
 
   // Extract first name from full name
   const getFirstName = () => {
@@ -220,15 +282,76 @@ export default function UsernameSetup() {
     }
   };
 
+  // Request notification permissions and get device token
+  const requestNotificationPermission = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+
+      // Check current permission status
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+
+      // If already denied, guide user to Settings
+      if (existingStatus === 'denied') {
+        setError('');
+        setIsLoading(false);
+        // Open iOS Settings so user can manually enable notifications
+        await Linking.openURL('app-settings:');
+        return null;
+      }
+
+      let finalStatus = existingStatus;
+
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus === 'granted') {
+        // Get the native device token (APNs token for iOS)
+        const tokenData = await Notifications.getDevicePushTokenAsync();
+        const deviceToken = tokenData.data;
+
+        console.log('Device push token obtained:', deviceToken);
+        setDevicePushToken(deviceToken);
+        setNotificationPermissionGranted(true);
+
+        // Store token - we'll save this to DynamoDB in handleContinue
+        return deviceToken;
+      } else {
+        console.log('Notification permission denied');
+        setNotificationPermissionGranted(false);
+        // User can still continue without notifications
+        return null;
+      }
+    } catch (err) {
+      console.error('Error requesting notification permission:', err);
+      setError('Failed to set up notifications. You can continue without notifications.');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleContinue = async () => {
     setError('');
     setIsLoading(true);
 
     // Validate all fields first
-    if (!username || username.trim().length < 5) {
-      setError('Username must be at least 5 characters long.');
-      setIsLoading(false);
-      return;
+    // For returning users, skip username validation (already set)
+    if (!isReturningUser) {
+      if (!username || username.trim().length < 5) {
+        setError('Username must be at least 5 characters long.');
+        setIsLoading(false);
+        return;
+      }
+
+      const usernameRegex = /^[a-zA-Z0-9_]{5,20}$/;
+      if (!usernameRegex.test(username)) {
+        setError('Username must be 5-20 characters and contain only letters, numbers, and underscores.');
+        setIsLoading(false);
+        return;
+      }
     }
 
     if (!firstName || firstName.trim().length < 1) {
@@ -269,39 +392,35 @@ export default function UsernameSetup() {
       return;
     }
 
-    const usernameRegex = /^[a-zA-Z0-9_]{5,20}$/;
-    if (!usernameRegex.test(username)) {
-      setError('Username must be 5-20 characters and contain only letters, numbers, and underscores.');
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      // Step 1: Check if username is already taken
-      console.log('Checking username availability for:', username.trim());
-
-      const result = await API.graphql({
-        query: searchUsers,
-        variables: { searchTerm: username.trim() }
-      });
-
-      const users = result.data?.searchUsers || [];
-
-      // Check if any user has this exact username
-      const usernameExists = users.some(
-        user => user.username?.toLowerCase() === username.trim().toLowerCase()
-      );
-
-      if (usernameExists) {
-        setError('This username is already taken. Please choose another one.');
-        setIsLoading(false);
-        return;
-      }
-
-      console.log('Username is available, proceeding to update...');
-
-      // Step 2: Username is available, update the user's preferred_username
       const user = await Auth.currentAuthenticatedUser();
+
+      // For NEW users only: Check if username is already taken
+      if (!isReturningUser) {
+        console.log('Checking username availability for:', username.trim());
+
+        const result = await API.graphql({
+          query: searchUsers,
+          variables: { searchTerm: username.trim() }
+        });
+
+        const users = result.data?.searchUsers || [];
+
+        // Check if any user has this exact username
+        const usernameExists = users.some(
+          user => user.username?.toLowerCase() === username.trim().toLowerCase()
+        );
+
+        if (usernameExists) {
+          setError('This username is already taken. Please choose another one.');
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('Username is available, proceeding to update...');
+      } else {
+        console.log('[Returning User] Skipping username availability check');
+      }
 
       // Format birthdate as YYYY-MM-DD for Cognito
       const year = selectedDate.getFullYear();
@@ -311,18 +430,22 @@ export default function UsernameSetup() {
 
       // Prepare attributes to update
       const attributesToUpdate = {
-        'preferred_username': username.trim(),
         'gender': gender,
         'birthdate': birthdate,
         'name': fullName.trim()
       };
 
+      // Only update username for new users
+      if (!isReturningUser) {
+        attributesToUpdate['preferred_username'] = username.trim();
+      }
+
       // Update user attributes
       await Auth.updateUserAttributes(user, attributesToUpdate);
 
-      console.log('Username updated successfully:', username);
+      console.log('[OnboardingComplete] User attributes updated successfully');
 
-      // Set accountCreatedAt once (no overwrite) in UserProfiles
+      // Update UserProfiles in DynamoDB
       try {
         const current = await Auth.currentAuthenticatedUser();
         const prefUsernameAttr = (await Auth.userAttributes(current)).find(a => a.Name === 'preferred_username');
@@ -332,24 +455,53 @@ export default function UsernameSetup() {
         const osName = DeviceInfo.getSystemName() || null;
         const osVersion = DeviceInfo.getSystemVersion() || null;
         const modelName = DeviceInfo.getModel() || null;
+
+        // Use different action based on user type
+        const action = isReturningUser ? 'UPDATE_ONBOARDING' : 'SET_ACCOUNT_CREATED_AT';
+        const tripDataPayload = {
+          appVersion,
+          deviceType: osName,
+          modelName,
+          osVersion,
+          activityPreferences,
+          selectedUseCases,
+          devicePushToken: devicePushToken || null,
+          notificationsEnabled: notificationPermissionGranted
+        };
+
+        // For new users, also include createdAt and userID
+        if (!isReturningUser) {
+          tripDataPayload.createdAt = new Date().toISOString();
+          tripDataPayload.userID = cognitoUserId;
+        }
+
         await API.graphql({
           query: updateUserProfileMutation,
           variables: {
             username: prefUsername,
-            action: 'SET_ACCOUNT_CREATED_AT',
-            tripData: JSON.stringify({
-              createdAt: new Date().toISOString(),
-              userID: cognitoUserId,
-              appVersion,
-              deviceType: osName,
-              modelName,
-              osVersion,
-              activityPreferences,
-              selectedUseCases
-            })
+            action: action,
+            tripData: JSON.stringify(tripDataPayload)
           },
           authMode: 'AMAZON_COGNITO_USER_POOLS'
         });
+
+        console.log(`[OnboardingComplete] UserProfile updated with action: ${action}`);
+
+        // Register device token with SNS if notifications were granted
+        if (devicePushToken && notificationPermissionGranted) {
+          try {
+            const registerResult = await API.graphql({
+              query: registerDeviceTokenMutation,
+              variables: { username: prefUsername },
+              authMode: 'AMAZON_COGNITO_USER_POOLS'
+            });
+            console.log('Device token registered with SNS:', registerResult.data?.registerDeviceToken);
+          } catch (snsErr) {
+            console.warn('Failed to register device token with SNS (non-blocking):', snsErr?.errors || snsErr?.message || snsErr);
+            // Non-blocking - user can still continue
+          }
+        }
+
         // Best-effort read after write
         try {
           await API.graphql({
@@ -378,11 +530,11 @@ export default function UsernameSetup() {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     setError('');
 
     if (currentPage === 1) {
-      // Validate first name and last name
+      // Page 1: First name and last name
       if (!firstName || firstName.trim().length < 1) {
         setError('Please enter your first name.');
         return;
@@ -393,7 +545,7 @@ export default function UsernameSetup() {
       }
       setCurrentPage(2);
     } else if (currentPage === 2) {
-      // Validate birthday
+      // Page 2: Birthday
       if (!selectedDate) {
         setError('Please select your birthday.');
         return;
@@ -403,9 +555,10 @@ export default function UsernameSetup() {
         setError('Age must be between 4 and 100.');
         return;
       }
-      setCurrentPage(3);
+      // For returning users, skip page 3 (gender) and page 4 (username), go directly to page 5
+      setCurrentPage(isReturningUser ? 5 : 3);
     } else if (currentPage === 3) {
-      // Validate gender
+      // Page 3: Gender (SKIP for returning users)
       if (!gender) {
         setError('Please select your gender.');
         return;
@@ -418,7 +571,7 @@ export default function UsernameSetup() {
         setCurrentPage(4); // Go to username page for OAuth users
       }
     } else if (currentPage === 4) {
-      // Validate username
+      // Page 4: Username (SKIP for returning users)
       if (!username || username.trim().length < 5) {
         setError('Username must be at least 5 characters long.');
         return;
@@ -430,26 +583,32 @@ export default function UsernameSetup() {
       }
       setCurrentPage(5);
     } else if (currentPage === 5) {
-      // Good company page - no validation required
+      // Page 5: Good company page - no validation required
       setCurrentPage(6);
     } else if (currentPage === 6) {
-      // Activities page - no validation required
+      // Page 6: Activities page - no validation required
       setCurrentPage(7);
     } else if (currentPage === 7) {
-      // Use cases page - no validation required
+      // Page 7: Use cases page - no validation required
       setCurrentPage(8);
     } else if (currentPage === 8) {
-      // Final welcome page - submit
+      // Page 8: Notifications page - request permission then go to welcome
+      await requestNotificationPermission();
+      setCurrentPage(9);
+    } else if (currentPage === 9) {
+      // Page 9: Welcome page - submit
       handleContinue();
     }
   };
 
   const handleBack = () => {
     setError('');
+
     if (currentPage > 1) {
-      // If on page 5 and username was already set (email user), skip back to page 3
-      if (currentPage === 5 && username && username.trim().length >= 5) {
-        setCurrentPage(3);
+      // Special handling for returning users: skip pages 3 and 4 when going backwards
+      if (currentPage === 5 && isReturningUser) {
+        // From page 5 (Good Company), go back to page 2 (Birthday), skipping gender and username
+        setCurrentPage(2);
       } else {
         setCurrentPage(currentPage - 1);
       }
@@ -485,7 +644,9 @@ export default function UsernameSetup() {
     } else if (currentPage === 7) {
       return false; // Use cases page - optional
     } else if (currentPage === 8) {
-      return isLoading;
+      return false; // Notifications page - no validation
+    } else if (currentPage === 9) {
+      return isLoading; // Welcome page - can submit while loading
     }
     return false;
   };
@@ -641,16 +802,16 @@ export default function UsernameSetup() {
                 <View style={{ marginTop: 40 }}>
                   <View style={{ gap: 15 }}>
                     <TouchableOpacity
-                      style={[styles.genderButtonFull, gender === 'man' && styles.genderButtonSelected]}
-                      onPress={() => setGender('man')}
+                      style={[styles.genderButtonFull, gender === 'male' && styles.genderButtonSelected]}
+                      onPress={() => setGender('male')}
                     >
-                      <Text style={{ color: gender === 'man' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Man</Text>
+                      <Text style={{ color: gender === 'male' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Man</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.genderButtonFull, gender === 'woman' && styles.genderButtonSelected]}
-                      onPress={() => setGender('woman')}
+                      style={[styles.genderButtonFull, gender === 'female' && styles.genderButtonSelected]}
+                      onPress={() => setGender('female')}
                     >
-                      <Text style={{ color: gender === 'woman' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Woman</Text>
+                      <Text style={{ color: gender === 'female' ? Colors.WHITE : Colors.PRIMARY, fontFamily: 'outfit', fontSize: 16 }}>Woman</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.genderButtonFull, gender === 'non-binary' && styles.genderButtonSelected]}
@@ -821,8 +982,54 @@ export default function UsernameSetup() {
               </>
             )}
 
-            {/* Page 8: Welcome */}
+            {/* Page 8: Notification Permission */}
             {currentPage === 8 && (
+              <>
+                <View style={{ alignItems: 'center', marginBottom: 10 }}>
+                  <Ionicons name="notifications-outline" size={60} color="black" />
+                </View>
+                <Text style={styles.title}>We can remind you about</Text>
+
+                <View style={{ marginTop: 30, gap: 20 }}>
+                  <View style={styles.notificationFeatureBox}>
+                    <View style={styles.notificationIconCircle}>
+                      <Ionicons name="mail" size={28} color="#F36406" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.notificationFeatureTitle}>Trip Invites</Text>
+                      <Text style={styles.notificationFeatureDesc}>Get invited to join trips with friends</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.notificationFeatureBox}>
+                    <View style={styles.notificationIconCircle}>
+                      <Ionicons name="people" size={28} color="#F36406" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.notificationFeatureTitle}>Collaboration Updates</Text>
+                      <Text style={styles.notificationFeatureDesc}>Know when friends update your shared trip</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.notificationFeatureBox}>
+                    <View style={styles.notificationIconCircle}>
+                      <Ionicons name="calendar" size={28} color="#F36406" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.notificationFeatureTitle}>Trip Reminders</Text>
+                      <Text style={styles.notificationFeatureDesc}>Get reminded for upcoming trips, flights, and reservations</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <Text style={styles.skipText}>
+                  You can change this anytime in Settings
+                </Text>
+              </>
+            )}
+
+            {/* Page 9: Welcome */}
+            {currentPage === 9 && (
               <>
                 <Text style={styles.imageTitle}>Welcome {getFirstName()}</Text>
                 <Text style={styles.imageSubtitle}>You're all set. Start your first itinerary, invite your travel buddies, and create your dream trip!</Text>
@@ -838,28 +1045,25 @@ export default function UsernameSetup() {
               <Text style={styles.errorText}>{error}</Text>
             ) : null}
 
-            {/* Show button inline for pages that are NOT 6 or 7 */}
-            {(currentPage !== 6 && currentPage !== 7) && (
-              <>
-                <TouchableOpacity
-                  onPress={handleNext}
-                  disabled={isNextDisabled()}
-                  style={[
-                    styles.button,
-                    {
-                      opacity: isNextDisabled() ? 0.3 : 1,
-                      marginTop: 35
-                    }
-                  ]}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color={Colors.WHITE} />
-                  ) : (
-                    <Text style={styles.buttonText}>
-                      {currentPage === 8 ? 'Start planning' : 'Continue'}
-                    </Text>
-                  )}
-                </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleNext}
+              disabled={isNextDisabled()}
+              style={[
+                styles.button,
+                {
+                  opacity: isNextDisabled() ? 0.3 : 1,
+                  marginTop: currentPage === 6 ? 0 : 35
+                }
+              ]}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={Colors.WHITE} />
+              ) : (
+                <Text style={styles.buttonText}>
+                  {currentPage === 9 ? 'Start planning' : currentPage === 8 ? 'Choose permissions' : 'Continue'}
+                </Text>
+              )}
+            </TouchableOpacity>
 
                 {/* Terms and Privacy Policy - Show on use cases page */}
                 {currentPage === 7 && (
@@ -1163,5 +1367,72 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
     lineHeight: 24,
+  },
+  notificationFeatureBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+    padding: 18,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 15,
+  },
+  notificationIconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: Colors.WHITE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationFeatureTitle: {
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    color: Colors.BLACK,
+    marginBottom: 4,
+  },
+  notificationFeatureDesc: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    lineHeight: 20,
+  },
+  enableNotificationsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    padding: 18,
+    backgroundColor: Colors.WHITE,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: '#F36406',
+    marginTop: 10,
+  },
+  enableNotificationsText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    color: '#F36406',
+  },
+  notificationSuccessBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    padding: 18,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 15,
+    marginTop: 10,
+  },
+  notificationSuccessText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    color: '#10B981',
+  },
+  skipText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    textAlign: 'center',
+    marginTop: 20,
   },
 });

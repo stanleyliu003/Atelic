@@ -99,6 +99,10 @@ exports.handler = async (event) => {
         result = await setAccountCreatedAt(username, tripData);
         break;
 
+      case 'UPDATE_ONBOARDING':
+        result = await updateOnboarding(username, tripData);
+        break;
+
       case 'DELETE_ACCOUNT':
         result = await deleteAccountProfile(username, tripData, callerIdentityUserId);
         break;
@@ -427,7 +431,6 @@ async function ensureProfileInitialized(username, tripData, identityUserId) {
     lastActiveAt: now,
     accountStatus: 'active',
     preferences: {
-      notifications: true,
       theme: 'light',
       language: 'en',
       defaultCurrency: 'USD',
@@ -1136,7 +1139,6 @@ async function updateLogin(username, data) {
       lastActiveAt: now,
       accountStatus: 'active',
       preferences: {
-        notifications: true,
         theme: 'light',
         language: 'en',
         defaultCurrency: 'USD',
@@ -1333,6 +1335,107 @@ async function updateSubscription(username, data) {
 }
 
 /**
+ * Update onboarding fields for returning users (those who completed old onboarding but need to fill new fields)
+ * This updates: activityPreferences, selectedUseCases, notificationsEnabled, devicePushToken
+ * WITHOUT creating a new accountCreatedAt
+ */
+async function updateOnboarding(username, data) {
+  const {
+    appVersion,
+    deviceType,
+    modelName,
+    osVersion,
+    activityPreferences,
+    selectedUseCases,
+    devicePushToken,
+    notificationsEnabled
+  } = data || {};
+
+  console.log('[UPDATE_ONBOARDING] Received data:', {
+    username,
+    activityPreferences,
+    selectedUseCases,
+    devicePushToken,
+    notificationsEnabled,
+    activityPreferencesType: typeof activityPreferences,
+    selectedUseCasesType: typeof selectedUseCases,
+    activityPreferencesIsArray: Array.isArray(activityPreferences),
+    selectedUseCasesIsArray: Array.isArray(selectedUseCases)
+  });
+
+  const updateParts = [];
+  const values = { ':now': new Date().toISOString() };
+
+  // Update device info if provided
+  if (appVersion) {
+    updateParts.push('appVersion = :appVersion');
+    values[':appVersion'] = appVersion;
+  }
+  if (deviceType) {
+    updateParts.push('deviceType = :deviceType');
+    values[':deviceType'] = deviceType;
+  }
+  if (modelName) {
+    updateParts.push('modelName = :modelName');
+    values[':modelName'] = modelName;
+  }
+  if (osVersion) {
+    updateParts.push('osVersion = :osVersion');
+    values[':osVersion'] = osVersion;
+  }
+
+  // Update onboarding preferences
+  if (Array.isArray(activityPreferences)) {
+    updateParts.push('activityPreferences = :activityPreferences');
+    values[':activityPreferences'] = activityPreferences;
+    console.log('[UPDATE_ONBOARDING] Adding activityPreferences:', activityPreferences);
+  }
+
+  if (Array.isArray(selectedUseCases)) {
+    updateParts.push('selectedUseCases = :selectedUseCases');
+    values[':selectedUseCases'] = selectedUseCases;
+    console.log('[UPDATE_ONBOARDING] Adding selectedUseCases:', selectedUseCases);
+  }
+
+  // Update push notification fields (can be null, false, or truthy values)
+  if (devicePushToken !== undefined) {
+    updateParts.push('devicePushToken = :devicePushToken');
+    values[':devicePushToken'] = devicePushToken;
+    console.log('[UPDATE_ONBOARDING] Adding devicePushToken:', devicePushToken);
+  }
+
+  // CRITICAL: Always set notificationsEnabled for returning users (even if false)
+  if (notificationsEnabled !== undefined) {
+    updateParts.push('notificationsEnabled = :notificationsEnabled');
+    values[':notificationsEnabled'] = notificationsEnabled;
+    console.log('[UPDATE_ONBOARDING] Adding notificationsEnabled:', notificationsEnabled);
+  }
+
+  if (updateParts.length === 0) {
+    console.warn('[UPDATE_ONBOARDING] No fields to update');
+    return null;
+  }
+
+  // Always update lastActiveAt
+  updateParts.push('lastActiveAt = :now');
+
+  const updateExpression = `SET ${updateParts.join(', ')}`;
+  console.log('[UPDATE_ONBOARDING] Update expression:', updateExpression);
+  console.log('[UPDATE_ONBOARDING] Values:', JSON.stringify(values));
+
+  const result = await docClient.send(new UpdateCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username },
+    UpdateExpression: updateExpression,
+    ExpressionAttributeValues: values,
+    ReturnValues: 'ALL_NEW'
+  }));
+
+  console.log('[UPDATE_ONBOARDING] Update successful for user:', username);
+  return result.Attributes;
+}
+
+/**
  * Set accountCreatedAt once (no overwrite) – can be called from signup flows
  */
 async function setAccountCreatedAt(username, data) {
@@ -1399,6 +1502,18 @@ async function setAccountCreatedAt(username, data) {
   if (osVersion) {
     setDeviceParts.push('osVersion = :osVersion');
     values[':osVersion'] = osVersion;
+  }
+
+  // Add push notification fields if provided
+  if (data?.devicePushToken !== undefined) {
+    setDeviceParts.push('devicePushToken = :devicePushToken');
+    values[':devicePushToken'] = data.devicePushToken;
+    console.log('[SET_ACCOUNT_CREATED_AT] Adding devicePushToken:', data.devicePushToken);
+  }
+  if (data?.notificationsEnabled !== undefined) {
+    setDeviceParts.push('notificationsEnabled = :notificationsEnabled');
+    values[':notificationsEnabled'] = data.notificationsEnabled;
+    console.log('[SET_ACCOUNT_CREATED_AT] Adding notificationsEnabled:', data.notificationsEnabled);
   }
 
   // Add onboarding preferences if provided (including empty arrays)
