@@ -35,7 +35,8 @@
       "Bash(nslookup:*)",
       "Bash(host:*)",
       "Bash(xcrun xctrace:*)",
-      "Bash(npx expo run:ios:*)"
+      "Bash(npx expo run:ios:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": [],

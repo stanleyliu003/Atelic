@@ -1,4 +1,4 @@
-import { Activity, DayWithPolyline } from '../types/activity.types';
+import { Activity, DayWithPolyline, TravelMode } from '../types/activity.types';
 import {
   Operation,
   OperationAdd,
@@ -6,8 +6,17 @@ import {
   OperationModify,
   OperationReorder,
   OperationMove,
+  OperationUpdateTransportMode,
   AnyOperation,
 } from '../types/operation.types';
+
+/**
+ * Transportation mode override for a route leg
+ * Key format: `${dayNumber}_${originInstanceId}` -> TravelMode
+ */
+export type TransportModeOverrides = {
+  [legKey: string]: TravelMode;
+};
 
 /**
  * Trip state that can be reconstructed from operations
@@ -15,6 +24,7 @@ import {
 export type ReconstructedTripState = {
   wishlist: Activity[];
   dayActivities: { [dayNumber: number]: DayWithPolyline };
+  transportModes?: TransportModeOverrides; // Optional for backward compatibility
 };
 
 /**
@@ -52,6 +62,8 @@ export function applyOperation(
       return applyReorderOperation(state, operation as OperationReorder);
     case 'move':
       return applyMoveOperation(state, operation as OperationMove);
+    case 'update_transport_mode':
+      return applyUpdateTransportModeOperation(state, operation as OperationUpdateTransportMode);
     default:
       console.warn('[applyOperation] Unknown operation type:', (operation as any).type);
       return state;
@@ -560,6 +572,49 @@ function applyMoveOperation(
 }
 
 /**
+ * Applies an UPDATE_TRANSPORT_MODE operation
+ * Updates the transportation mode for a route leg between two activities
+ * Uses Last Write Wins (LWW) conflict resolution based on lastModified timestamp
+ *
+ * @param state Current trip state
+ * @param operation The update_transport_mode operation
+ * @returns New trip state with updated transport mode
+ */
+function applyUpdateTransportModeOperation(
+  state: ReconstructedTripState,
+  operation: OperationUpdateTransportMode
+): ReconstructedTripState {
+  const { originInstanceId, mode, lastModified } = operation.data;
+  const dayNumber = operation.dayNumber;
+
+  // Create the leg key for this route segment
+  const legKey = `${dayNumber}_${originInstanceId}`;
+
+  // Get existing transport modes or initialize empty object
+  const currentModes = state.transportModes || {};
+
+  // Check if we already have a more recent update for this leg
+  // We use a convention where the lastModified is stored in a parallel map
+  // For simplicity, we'll just overwrite since operations are applied in order
+  // and LWW is already handled by the operation timestamp ordering
+
+  console.log(
+    '[applyUpdateTransportModeOperation] Setting mode for leg',
+    legKey,
+    'to',
+    mode
+  );
+
+  return {
+    ...state,
+    transportModes: {
+      ...currentModes,
+      [legKey]: mode,
+    },
+  };
+}
+
+/**
  * Reconstructs trip state from a list of operations
  * Operations should be sorted by timestamp + sequenceNumber (oldest first)
  *
@@ -577,6 +632,7 @@ export function reconstructTripFromOperations(
   const startState: ReconstructedTripState = initialState || {
     wishlist: [],
     dayActivities: {},
+    transportModes: {},
   };
 
   // Sort operations by timestamp, then sequenceNumber (defensive - should already be sorted)
@@ -595,6 +651,7 @@ export function reconstructTripFromOperations(
   console.log('[reconstructTripFromOperations] ✅ Reconstruction complete');
   console.log('[reconstructTripFromOperations] Final wishlist:', finalState.wishlist.length, 'activities');
   console.log('[reconstructTripFromOperations] Final days:', Object.keys(finalState.dayActivities).length);
+  console.log('[reconstructTripFromOperations] Transport mode overrides:', Object.keys(finalState.transportModes || {}).length);
 
   return finalState;
 }
