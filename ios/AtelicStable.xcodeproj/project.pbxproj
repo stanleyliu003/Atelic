@@ -351,7 +351,7 @@
 				CODE_SIGN_ENTITLEMENTS = AtelicStable/Atelic.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 32;
+				CURRENT_PROJECT_VERSION = 33;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = LVFSXPK7N7;
 				ENABLE_BITCODE = NO;
@@ -391,7 +391,7 @@
 				CODE_SIGN_ENTITLEMENTS = AtelicStable/Atelic.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 32;
+				CURRENT_PROJECT_VERSION = 33;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = LVFSXPK7N7;
 				HERMES_ENABLE_DEBUGGER = YES;
