@@ -23,7 +23,8 @@
     "production": {
       "ios": {
         "buildConfiguration": "Release",
-        "scheme": "AtelicStable"
+        "scheme": "AtelicStable",
+        "image": "latest"
       },
       "prebuildCommand": "node scripts/generate-aws-exports.js",
       "env": {
