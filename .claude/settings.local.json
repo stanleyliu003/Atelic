@@ -50,7 +50,8 @@
       "Bash(do)",
       "Bash(echo:*)",
       "Bash(done)",
-      "Bash(bash scripts/check-all-tripop-resolvers.sh:*)"
+      "Bash(bash scripts/check-all-tripop-resolvers.sh:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": [],

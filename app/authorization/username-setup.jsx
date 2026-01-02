@@ -1092,8 +1092,6 @@ export default function UsernameSetup() {
                     </Text>
                   </View>
                 )}
-              </>
-            )}
 
           </View>
         </View>

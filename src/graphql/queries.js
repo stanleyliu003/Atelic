@@ -373,19 +373,6 @@ export const searchUsers = /* GraphQL */ `
     }
   }
 `;
-export const getVersionConfig = /* GraphQL */ `
-  query GetVersionConfig($platform: String!, $environment: String!) {
-    getVersionConfig(platform: $platform, environment: $environment) {
-      id
-      platform
-      minimumVersion
-      environment
-      lastUpdated
-      __typename
-    }
-  }
-`;
-
 export const getUserProfile = /* GraphQL */ `
   query GetUserProfile($username: String, $userID: String) {
     getUserProfile(username: $username, userID: $userID) {
@@ -472,6 +459,18 @@ export const getUserProfile = /* GraphQL */ `
         __typename
       }
       version
+      __typename
+    }
+  }
+`;
+export const getVersionConfig = /* GraphQL */ `
+  query GetVersionConfig($platform: String!, $environment: String!) {
+    getVersionConfig(platform: $platform, environment: $environment) {
+      id
+      platform
+      minimumVersion
+      environment
+      lastUpdated
       __typename
     }
   }
