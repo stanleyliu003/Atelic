@@ -24,7 +24,7 @@
       "ios": {
         "buildConfiguration": "Release",
         "scheme": "AtelicStable",
-        "image": "latest"
+        "image": "macos-sonoma-14.5-xcode-16.0"
       },
       "prebuildCommand": "node scripts/generate-aws-exports.js",
       "env": {
