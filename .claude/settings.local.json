@@ -51,7 +51,10 @@
       "Bash(echo:*)",
       "Bash(done)",
       "Bash(bash scripts/check-all-tripop-resolvers.sh:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(pod install)",
+      "Bash(eas build:configure:*)",
+      "Bash(eas build:*)"
     ],
     "deny": [],
     "ask": [],

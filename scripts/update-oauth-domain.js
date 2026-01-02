@@ -32,6 +32,12 @@ try {
     process.exit(0);
   }
 
+  // Check if aws-exports.js exists before trying to read it
+  if (!fs.existsSync(AWS_EXPORTS_PATH)) {
+    console.log('ℹ️  aws-exports.js not found — skipping OAuth domain update (will be generated later)');
+    process.exit(0);
+  }
+
   let content = fs.readFileSync(AWS_EXPORTS_PATH, 'utf8');
 
   const oauthDomainRegex = /("oauth"\s*:\s*\{[\s\S]*?"domain"\s*:\s*")([^"]*)(")/m;

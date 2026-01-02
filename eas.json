@@ -6,6 +6,7 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "prebuildCommand": "node scripts/generate-aws-exports.js",
       "env": {
         "EXPO_PUBLIC_GOOGLE_PLACES_API_KEY": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
         "EXPO_PUBLIC_GOOGLE_MAP_KEY": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
@@ -13,12 +14,18 @@
     },
     "preview": {
       "distribution": "internal",
+      "prebuildCommand": "node scripts/generate-aws-exports.js",
       "env": {
         "EXPO_PUBLIC_GOOGLE_PLACES_API_KEY": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
         "EXPO_PUBLIC_GOOGLE_MAP_KEY": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
       }
     },
     "production": {
+      "ios": {
+        "buildConfiguration": "Release",
+        "scheme": "AtelicStable"
+      },
+      "prebuildCommand": "node scripts/generate-aws-exports.js",
       "env": {
         "EXPO_PUBLIC_GOOGLE_PLACES_API_KEY": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
         "EXPO_PUBLIC_GOOGLE_MAP_KEY": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
