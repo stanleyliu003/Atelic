@@ -50,6 +50,14 @@
           ],
           "category": "function",
           "resourceName": "processAppsFlyerAttributionV2"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "getFlightInfo"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -320,16 +328,7 @@
     },
     "getFlightInfo": {
       "build": true,
-      "dependsOn": [
-        {
-          "attributes": [
-            "ApiName",
-            "ApiId"
-          ],
-          "category": "api",
-          "resourceName": "WishlistRestAPI"
-        }
-      ],
+      "dependsOn": [],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },

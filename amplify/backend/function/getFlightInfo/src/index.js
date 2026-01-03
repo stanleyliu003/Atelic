@@ -1,9 +1,6 @@
 /* Amplify Params - DO NOT EDIT
-	API_WISHLISTRESTAPI_APIID
-	API_WISHLISTRESTAPI_APINAME
 	ENV
 	REGION
-	FLIGHTAWARE_API_KEY
 Amplify Params - DO NOT EDIT */
 
 const AEROAPI_BASE_URL = 'https://aeroapi.flightaware.com/aeroapi';

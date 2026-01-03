@@ -1,14 +1,6 @@
 {
   "lambdaLayers": [],
-  "permissions": {
-    "api": {
-      "WishlistRestAPI": [
-        "create",
-        "read",
-        "update"
-      ]
-    }
-  },
+  "permissions": {},
   "environmentVariableList": [
     {
       "cloudFormationParameterName": "flightawareApiKey",
