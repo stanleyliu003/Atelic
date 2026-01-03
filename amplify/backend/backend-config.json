@@ -431,6 +431,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "processAppsFlyerAttributionV2": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "registerDeviceToken": {
       "build": true,
       "dependsOn": [
@@ -854,6 +870,22 @@
         {
           "category": "function",
           "resourceName": "manageCollaborators"
+        }
+      ]
+    },
+    "AMPLIFY_function_processAppsFlyerAttributionV2_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processAppsFlyerAttributionV2"
+        }
+      ]
+    },
+    "AMPLIFY_function_processAppsFlyerAttributionV2_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processAppsFlyerAttributionV2"
         }
       ]
     },
