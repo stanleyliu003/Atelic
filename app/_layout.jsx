@@ -75,6 +75,19 @@ export default function RootLayout() {
           // }
         });
 
+        // Set CUID (Customer User ID) if user is already logged in
+        // This enables cross-device tracking for returning users
+        try {
+          const user = await Auth.currentAuthenticatedUser();
+          if (user?.username) {
+            appsFlyer.setCustomerUserId(user.username);
+            console.log('[AppsFlyer] Set CUID for logged-in user:', user.username);
+          }
+        } catch (authErr) {
+          // User not logged in yet - CUID will be set after signup/login
+          console.log('[AppsFlyer] No authenticated user yet, CUID will be set after login');
+        }
+
       } catch (error) {
         console.error('[AppsFlyer] Failed to initialize:', error);
       }

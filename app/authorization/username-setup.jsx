@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DeviceInfo from 'react-native-device-info';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
+import appsFlyer from 'react-native-appsflyer';
 
 const updateUserProfileMutation = /* GraphQL */ `
   mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
@@ -486,6 +487,40 @@ export default function UsernameSetup() {
         });
 
         console.log(`[OnboardingComplete] UserProfile updated with action: ${action}`);
+
+        // Link AppsFlyer attribution if available (NEW USERS ONLY)
+        if (!isReturningUser) {
+          try {
+            // Get AppsFlyer device ID
+            const appsflyerId = await appsFlyer.getAppsFlyerUID();
+            
+            if (appsflyerId) {
+              console.log('[Attribution] Linking AppsFlyer attribution, device ID:', appsflyerId);
+              
+              // Call LINK_ATTRIBUTION action
+              const attributionResult = await API.graphql({
+                query: updateUserProfileMutation,
+                variables: {
+                  username: prefUsername,
+                  action: 'LINK_ATTRIBUTION',
+                  tripData: JSON.stringify({ appsflyerDeviceId: appsflyerId })
+                },
+                authMode: 'AMAZON_COGNITO_USER_POOLS'
+              });
+              
+              console.log('[Attribution] Successfully linked attribution:', attributionResult);
+              
+              // Set CUID in AppsFlyer SDK to track cross-device
+              appsFlyer.setCustomerUserId(cognitoUserId);
+              console.log('[Attribution] Set CUID in AppsFlyer:', cognitoUserId);
+            } else {
+              console.log('[Attribution] No AppsFlyer device ID available');
+            }
+          } catch (attrErr) {
+            console.warn('[Attribution] Failed to link attribution (non-blocking):', attrErr?.errors || attrErr?.message || attrErr);
+            // Non-blocking - attribution linking failure shouldn't prevent signup
+          }
+        }
 
         // Register device token with SNS if notifications were granted
         if (devicePushToken && notificationPermissionGranted) {
