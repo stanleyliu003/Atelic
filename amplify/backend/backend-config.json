@@ -320,6 +320,16 @@
     },
     "getFlightInfo": {
       "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "ApiName",
+            "ApiId"
+          ],
+          "category": "api",
+          "resourceName": "WishlistRestAPI"
+        }
+      ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
@@ -783,6 +793,14 @@
       ]
     },
     "AMPLIFY_function_getFlightInfo_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFlightInfo_flightawareApiKey": {
       "usedBy": [
         {
           "category": "function",
