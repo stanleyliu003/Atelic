@@ -211,6 +211,7 @@
                 "dynamodb:Scan",
                 "dynamodb:Query",
                 "dynamodb:PartiQLSelect",
+                "dynamodb:PutItem",
                 "dynamodb:Update*",
                 "dynamodb:RestoreTable*",
                 "dynamodb:PartiQLUpdate"
