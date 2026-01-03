@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Atelic",
+    "name": "AtelicStable",
     "slug": "atelic",
     "version": "1.0.4",
     "orientation": "portrait",
@@ -18,7 +18,15 @@
       "deploymentTarget": "15.0",
       "buildNumber": "33",
       "infoPlist": {
-        "CFBundleName": "Atelic"
+        "CFBundleName": "Atelic",
+        "LSApplicationQueriesSchemes": [
+          "comgooglemaps",
+          "uber",
+          "lyft"
+        ],
+        "NSLocationWhenInUseUsageDescription": "Atelic uses your location to show nearby activities and help you plan trips in your current area.",
+        "NSUserTrackingUsageDescription": "This app would like to track your activity to provide better attribution and personalized experiences.",
+        "NSFaceIDUsageDescription": "Allow Atelic to use Face ID for secure authentication."
       },
       "config": {
         "googleMapsApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
@@ -50,6 +58,15 @@
           "color": "#F36406",
           "sounds": [],
           "mode": "production"
+        }
+      ],
+      [
+        "react-native-appsflyer",
+        {
+          "appleAppID": "id6748835773",
+          "devKey": {
+            "ios": "yZTo4qHBjVjMgSCoMqGG4f"
+          }
         }
       ]
     ],

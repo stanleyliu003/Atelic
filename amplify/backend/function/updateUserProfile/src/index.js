@@ -119,6 +119,10 @@ exports.handler = async (event) => {
         result = await updateSocialCounts(username, tripData);
         break;
 
+      case 'LINK_ATTRIBUTION':
+        result = await linkAttribution(username, tripData);
+        break;
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }
@@ -1657,4 +1661,111 @@ async function updateSocialCounts(username, data) {
 
   console.log('Updated social counts:', result.Attributes);
   return result.Attributes;
+}
+
+/**
+ * Link AppsFlyer attribution data from anonymous install to user account
+ * This is called during user sign-up to connect pre-signup attribution data
+ * 
+ * @param {string} username - The actual username of the newly signed-up user
+ * @param {object} data - Contains appsflyerDeviceId from the SDK
+ */
+async function linkAttribution(username, data) {
+  const { appsflyerDeviceId } = data;
+
+  if (!appsflyerDeviceId) {
+    console.log('[LINK_ATTRIBUTION] No AppsFlyer device ID provided, skipping attribution linking');
+    return { success: false, message: 'No device ID provided' };
+  }
+
+  console.log('[LINK_ATTRIBUTION] Starting attribution link:', { username, appsflyerDeviceId });
+
+  try {
+    // Look up the anonymous attribution record using the temporary username
+    const anonymousUsername = `AF_${appsflyerDeviceId}`;
+    
+    const anonymousResult = await docClient.send(new GetCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: { username: anonymousUsername }
+    }));
+
+    const anonymousProfile = anonymousResult.Item;
+
+    if (!anonymousProfile) {
+      console.log('[LINK_ATTRIBUTION] No anonymous attribution record found for device:', appsflyerDeviceId);
+      return { success: false, message: 'No attribution data found for this device' };
+    }
+
+    // Extract attribution fields from the anonymous profile
+    const {
+      attributionSource,
+      attributionCampaign,
+      attributionCampaignId,
+      attributionInstallDate,
+      attributionDeviceId
+    } = anonymousProfile;
+
+    console.log('[LINK_ATTRIBUTION] Found attribution data:', {
+      source: attributionSource,
+      campaign: attributionCampaign,
+      installDate: attributionInstallDate
+    });
+
+    // Update the real user's profile with attribution data
+    const updateResult = await docClient.send(new UpdateCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: { username },
+      UpdateExpression: `
+        SET attributionSource = :source,
+            attributionCampaign = :campaign,
+            attributionCampaignId = :campaignId,
+            attributionInstallDate = :installDate,
+            attributionDeviceId = :deviceId,
+            attributionStatus = :status,
+            lastActiveAt = :now
+      `,
+      ExpressionAttributeValues: {
+        ':source': attributionSource || null,
+        ':campaign': attributionCampaign || null,
+        ':campaignId': attributionCampaignId || null,
+        ':installDate': attributionInstallDate || null,
+        ':deviceId': attributionDeviceId || appsflyerDeviceId,
+        ':status': 'linked',
+        ':now': new Date().toISOString()
+      },
+      ReturnValues: 'ALL_NEW'
+    }));
+
+    console.log('[LINK_ATTRIBUTION] Successfully linked attribution to user:', username);
+
+    // Delete the anonymous attribution record (cleanup)
+    const { DeleteCommand } = require('@aws-sdk/lib-dynamodb');
+    await docClient.send(new DeleteCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: { username: anonymousUsername }
+    }));
+
+    console.log('[LINK_ATTRIBUTION] Deleted anonymous attribution record:', anonymousUsername);
+
+    return {
+      success: true,
+      message: 'Attribution linked successfully',
+      attribution: {
+        source: attributionSource,
+        campaign: attributionCampaign,
+        installDate: attributionInstallDate,
+        status: 'linked'
+      },
+      profile: updateResult.Attributes
+    };
+
+  } catch (error) {
+    console.error('[LINK_ATTRIBUTION] Error linking attribution:', error);
+    // Don't throw - attribution linking is non-critical, user signup should still succeed
+    return {
+      success: false,
+      message: 'Failed to link attribution',
+      error: error.message
+    };
+  }
 }

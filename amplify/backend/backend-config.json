@@ -42,6 +42,14 @@
           ],
           "category": "function",
           "resourceName": "wishlistAnalyzer"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "processAppsFlyerAttributionV2"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -418,6 +426,22 @@
           "category": "storage",
           "resourceName": "TripStorage"
         },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "processAppsFlyerAttributionV2": {
+      "build": true,
+      "dependsOn": [
         {
           "attributes": [
             "Name",
@@ -854,6 +878,22 @@
         {
           "category": "function",
           "resourceName": "manageCollaborators"
+        }
+      ]
+    },
+    "AMPLIFY_function_processAppsFlyerAttributionV2_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processAppsFlyerAttributionV2"
+        }
+      ]
+    },
+    "AMPLIFY_function_processAppsFlyerAttributionV2_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processAppsFlyerAttributionV2"
         }
       ]
     },

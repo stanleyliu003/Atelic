@@ -115,6 +115,13 @@ export type AmplifyDependentResourcesAttributes = {
       "Name": "string",
       "Region": "string"
     },
+    "processAppsFlyerAttributionV2": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
     "registerDeviceToken": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
