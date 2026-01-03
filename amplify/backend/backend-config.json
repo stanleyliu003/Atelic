@@ -42,6 +42,14 @@
           ],
           "category": "function",
           "resourceName": "wishlistAnalyzer"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "processAppsFlyerAttributionV2"
         }
       ],
       "providerPlugin": "awscloudformation",

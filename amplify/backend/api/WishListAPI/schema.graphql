@@ -188,14 +188,22 @@ type SendNotificationResult {
    profilePhotoUrl: String
    socialLinks: AWSJSON
 
-   # Usage stats
-   accountCreatedAt: String!
-   appVersion: String
-   deviceType: String
-   modelName: String
-   osVersion: String
+  # Usage stats
+  accountCreatedAt: String!
+  appVersion: String
+  deviceType: String
+  modelName: String
+  osVersion: String
 
-   # Onboarding preferences
+  # AppsFlyer Attribution Data (6 fields only)
+  attributionSource: String          # Platform: "facebook", "instagram", "google_ads", "organic"
+  attributionCampaign: String        # Campaign name: "summer_sale_2026"
+  attributionCampaignId: String      # Campaign ID (for AppsFlyer dashboard)
+  attributionInstallDate: String     # ISO timestamp: "2026-03-15T14:22:00Z"
+  attributionDeviceId: String        # AppsFlyer device ID (for linking anonymous → user)
+  attributionStatus: String          # "pending" | "linked" | "organic"
+
+  # Onboarding preferences
    activityPreferences: [String]
    selectedUseCases: [String]
 

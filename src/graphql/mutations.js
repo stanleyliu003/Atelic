@@ -652,6 +652,12 @@ export const updateUserProfile = /* GraphQL */ `
       deviceType
       modelName
       osVersion
+      attributionSource
+      attributionCampaign
+      attributionCampaignId
+      attributionInstallDate
+      attributionDeviceId
+      attributionStatus
       activityPreferences
       selectedUseCases
       notificationsEnabled

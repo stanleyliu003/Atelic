@@ -2,6 +2,7 @@
   "permissions": {
     "storage": {
       "UserProfilesStorage": [
+        "create",
         "read",
         "update"
       ]
