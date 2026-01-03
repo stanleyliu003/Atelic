@@ -318,6 +318,11 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "getFlightInfo": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "getLocationCoordinates": {
       "build": true,
       "dependsOn": [
@@ -774,6 +779,22 @@
         {
           "category": "function",
           "resourceName": "generateCategoryActivities"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFlightInfo_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFlightInfo_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
         }
       ]
     },
