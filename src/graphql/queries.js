@@ -433,6 +433,12 @@ export const getUserProfile = /* GraphQL */ `
       deviceType
       modelName
       osVersion
+      attributionSource
+      attributionCampaign
+      attributionCampaignId
+      attributionInstallDate
+      attributionDeviceId
+      attributionStatus
       activityPreferences
       selectedUseCases
       notificationsEnabled
@@ -459,6 +465,18 @@ export const getUserProfile = /* GraphQL */ `
         __typename
       }
       version
+      __typename
+    }
+  }
+`;
+export const getVersionConfig = /* GraphQL */ `
+  query GetVersionConfig($platform: String!, $environment: String!) {
+    getVersionConfig(platform: $platform, environment: $environment) {
+      id
+      platform
+      minimumVersion
+      environment
+      lastUpdated
       __typename
     }
   }

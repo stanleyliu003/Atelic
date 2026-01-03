@@ -5,7 +5,9 @@
   "scripts": {
     "start": "expo start",
     "ios": "expo run:ios",
-    "android": "expo run:android"
+    "android": "expo run:android",
+    "update-oauth": "node scripts/update-oauth-domain.js",
+    "postinstall": "node scripts/generate-aws-exports.js && node scripts/update-oauth-domain.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
@@ -35,12 +37,14 @@
     "expo-status-bar": "~1.12.1",
     "expo-symbols": "~0.1.5",
     "expo-system-ui": "~3.0.7",
+    "expo-tracking-transparency": "~4.0.2",
     "expo-web-browser": "~13.0.3",
     "lodash.isequal": "^4.5.0",
     "prop-types": "^15.8.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-native": "0.74.5",
+    "react-native-appsflyer": "^6.17.8",
     "react-native-calendar-picker": "^8.0.5",
     "react-native-device-info": "^14.1.1",
     "react-native-gesture-handler": "~2.16.1",

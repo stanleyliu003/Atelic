@@ -42,6 +42,14 @@
           ],
           "category": "function",
           "resourceName": "wishlistAnalyzer"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "processAppsFlyerAttributionV2"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -390,6 +398,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "getVersionConfig": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "AppVersionManager"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "manageCollaborators": {
       "build": true,
       "dependsOn": [
@@ -402,6 +426,22 @@
           "category": "storage",
           "resourceName": "TripStorage"
         },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "processAppsFlyerAttributionV2": {
+      "build": true,
+      "dependsOn": [
         {
           "attributes": [
             "Name",
@@ -673,6 +713,22 @@
         }
       ]
     },
+    "AMPLIFY_function_exportUserAnalytics_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "exportUserAnalytics"
+        }
+      ]
+    },
+    "AMPLIFY_function_exportUserAnalytics_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "exportUserAnalytics"
+        }
+      ]
+    },
     "AMPLIFY_function_exportUserDataAnalytics_deploymentBucketName": {
       "usedBy": [
         {
@@ -793,6 +849,22 @@
         }
       ]
     },
+    "AMPLIFY_function_getVersionConfig_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getVersionConfig"
+        }
+      ]
+    },
+    "AMPLIFY_function_getVersionConfig_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getVersionConfig"
+        }
+      ]
+    },
     "AMPLIFY_function_manageCollaborators_deploymentBucketName": {
       "usedBy": [
         {
@@ -806,6 +878,22 @@
         {
           "category": "function",
           "resourceName": "manageCollaborators"
+        }
+      ]
+    },
+    "AMPLIFY_function_processAppsFlyerAttributionV2_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processAppsFlyerAttributionV2"
+        }
+      ]
+    },
+    "AMPLIFY_function_processAppsFlyerAttributionV2_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processAppsFlyerAttributionV2"
         }
       ]
     },
@@ -963,6 +1051,10 @@
     }
   },
   "storage": {
+    "AppVersionManager": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    },
     "PlacesAPIActivityStorage": {
       "providerPlugin": "awscloudformation",
       "service": "DynamoDB"

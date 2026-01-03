@@ -34,8 +34,14 @@ install! 'cocoapods',
 
 prepare_react_native_project!
 
-target 'Atelic' do
+target 'AtelicStable' do
+# @generated begin AppsFlyer Strict Mode - expo prebuild (DO NOT MODIFY) sync-b29372208dd0dbd1274e957795cd756926086c3a
+$RNAppsFlyerStrictMode=false
+# @generated end AppsFlyer Strict Mode
   use_expo_modules!
+# @generated begin AppsFlyer Purchase Connector - expo prebuild (DO NOT MODIFY) sync-40d043aa4472dc51990344aee6329be6fe164eba
+$AppsFlyerPurchaseConnector=false
+# @generated end AppsFlyer Purchase Connector
 # @generated begin react-native-maps - expo prebuild (DO NOT MODIFY) sync-e9cc66c360abe50bc66d89fffb3c55b034d7d369
   pod 'react-native-google-maps', path: File.dirname(`node --print "require.resolve('react-native-maps/package.json')"`)
 # @generated end react-native-maps

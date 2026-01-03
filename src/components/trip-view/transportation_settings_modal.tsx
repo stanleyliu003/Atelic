@@ -155,30 +155,35 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
         return;
       }
 
-      // Use place names for better display, with coordinates as fallback
-      const originName = encodeURIComponent(originActivity.name || `${originActivity.lat},${originActivity.lng}`);
-      const destinationName = encodeURIComponent(destinationActivity.name || `${destinationActivity.lat},${destinationActivity.lng}`);
       const googleMapsTravelMode = getGoogleMapsTravelMode(mode);
 
+      // Google Maps URL scheme accepts: "lat,lng" OR "address string"
+      // Priority: formatted_address (shows readable names) > coordinates (precision)
+      // formatted_address provides better UX in Google Maps UI
+      const originParam = originActivity.formatted_address
+        ? encodeURIComponent(originActivity.formatted_address)
+        : `${originActivity.lat},${originActivity.lng}`;
+      const destinationParam = destinationActivity.formatted_address
+        ? encodeURIComponent(destinationActivity.formatted_address)
+        : `${destinationActivity.lat},${destinationActivity.lng}`;
+
       // Try Google Maps app first
-      const googleMapsAppUrl = `comgooglemaps://?saddr=${originName}&daddr=${destinationName}&directionsmode=${googleMapsTravelMode}`;
+      const googleMapsAppUrl = `comgooglemaps://?saddr=${originParam}&daddr=${destinationParam}&directionsmode=${googleMapsTravelMode}`;
       const canOpenGoogleMaps = await Linking.canOpenURL(googleMapsAppUrl);
 
       if (canOpenGoogleMaps) {
         await Linking.openURL(googleMapsAppUrl);
-        console.log('[Modal] Opened Google Maps app');
-        onClose();
       } else {
-        // Fallback to Google Maps web - use place_id if available for accuracy
+        // Fallback to Google Maps web - hierarchy: place_id > coordinates > formatted_address
         let webUrl;
         if (originActivity.place_id && destinationActivity.place_id) {
-          webUrl = `https://www.google.com/maps/dir/?api=1&origin=${originName}&origin_place_id=${originActivity.place_id}&destination=${destinationName}&destination_place_id=${destinationActivity.place_id}&travelmode=${googleMapsTravelMode}`;
+          // Best: Use place_id for most accurate results (avoids ambiguity with chain stores)
+          webUrl = `https://www.google.com/maps/dir/?api=1&origin=place_id:${originActivity.place_id}&destination=place_id:${destinationActivity.place_id}&travelmode=${googleMapsTravelMode}`;
         } else {
-          webUrl = `https://www.google.com/maps/dir/?api=1&origin=${originName}&destination=${destinationName}&travelmode=${googleMapsTravelMode}`;
+          // Use coordinates for precision - formatted_address is ambiguous for chain stores/restaurants
+          webUrl = `https://www.google.com/maps/dir/?api=1&origin=${originActivity.lat},${originActivity.lng}&destination=${destinationActivity.lat},${destinationActivity.lng}&travelmode=${googleMapsTravelMode}`;
         }
         await Linking.openURL(webUrl);
-        console.log('[Modal] Opened Google Maps web');
-        onClose();
       }
     } catch (error) {
       console.error('[Modal] Error opening Google Maps:', error);
@@ -197,17 +202,14 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
         return;
       }
 
-      // Use place names for better display
-      const originName = encodeURIComponent(originActivity.name || `${originActivity.lat},${originActivity.lng}`);
-      const destinationName = encodeURIComponent(destinationActivity.name || `${destinationActivity.lat},${destinationActivity.lng}`);
+      // Use coordinates for precision - formatted_address is ambiguous for chain stores/restaurants
+      const originParam = `${originActivity.lat},${originActivity.lng}`;
+      const destinationParam = `${destinationActivity.lat},${destinationActivity.lng}`;
 
-      // Convert travel mode to direction flag: d=driving, w=walking, r=transit
       const directionFlag = mode === 'DRIVE' ? 'd' : mode === 'WALK' ? 'w' : 'r';
-      const appleMapsUrl = `maps://?saddr=${originName}&daddr=${destinationName}&dirflg=${directionFlag}`;
+      const appleMapsUrl = `maps://?saddr=${originParam}&daddr=${destinationParam}&dirflg=${directionFlag}`;
 
       await Linking.openURL(appleMapsUrl);
-      console.log('[Modal] Opened Apple Maps');
-      onClose();
     } catch (error) {
       console.error('[Modal] Error opening Apple Maps:', error);
     }
@@ -222,11 +224,15 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
         },
         (buttonIndex) => {
           if (buttonIndex === 1) {
-            // Google Maps
-            openGoogleMaps(mode);
+            // Add delay to allow ActionSheet to fully dismiss before opening external app
+            // Longer delay (400ms) to ensure smooth transition and prevent UI freeze
+            setTimeout(() => {
+              openGoogleMaps(mode).catch(err => console.error('[Modal] Error in delayed Google Maps open:', err));
+            }, 400);
           } else if (buttonIndex === 2) {
-            // Apple Maps
-            openAppleMaps(mode);
+            setTimeout(() => {
+              openAppleMaps(mode).catch(err => console.error('[Modal] Error in delayed Apple Maps open:', err));
+            }, 400);
           }
         }
       );
@@ -260,7 +266,6 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
         dropoffLng: destinationActivity.lng,
         dropoffName: dropoffAddress,
       });
-      onClose(); // Close modal after opening Uber
     } catch (error) {
       console.error('[Modal] Error opening Uber:', error);
       Alert.alert('Error', 'Failed to open Uber. Please try again.');
@@ -291,7 +296,6 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
         dropoffLng: destinationActivity.lng,
         dropoffName: dropoffAddress,
       });
-      onClose(); // Close modal after opening Lyft
     } catch (error) {
       console.error('[Modal] Error opening Lyft:', error);
       Alert.alert('Error', 'Failed to open Lyft. Please try again.');
@@ -365,7 +369,8 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
                   resizeMode="contain"
                 />
               </TouchableOpacity>
-              <TouchableOpacity
+              {/* Lyft temporarily disabled */}
+              {/* <TouchableOpacity
                 style={styles.lyftIconButton}
                 onPress={handleOpenLyft}
                 activeOpacity={0.7}
@@ -373,7 +378,7 @@ const TransportationSettingsModal: React.FC<TransportationSettingsModalProps> = 
                 <View style={styles.lyftLogoContainer}>
                   <Text style={styles.lyftLogoText}>lyft</Text>
                 </View>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
           </View>
 

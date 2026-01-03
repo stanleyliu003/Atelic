@@ -1,0 +1,14 @@
+{
+  "resourceName": "AppVersionManager",
+  "tableName": "AppVersions",
+  "partitionKey": {
+    "fieldName": "id",
+    "fieldType": "string"
+  },
+  "sortKey": {
+    "fieldName": "platform",
+    "fieldType": "string"
+  },
+  "gsi": [],
+  "triggerFunctions": []
+}

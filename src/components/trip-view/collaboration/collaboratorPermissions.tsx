@@ -132,20 +132,9 @@ export const CollaboratorListItem: React.FC<CollaboratorListItemProps> = ({
   };
 
   const handleRoleChange = (newRole: CollaboratorRole) => {
-    Alert.alert(
-      'Change Role',
-      `Change ${collaborator.fullName}'s role to ${newRole}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Change',
-          onPress: () => {
-            console.log('[CollaboratorListItem] Changing role:', collaborator.username, 'to', newRole);
-            onRoleChange(collaborator.username, newRole);
-          }
-        }
-      ]
-    );
+    // Change role immediately without confirmation
+    console.log('[CollaboratorListItem] Changing role:', collaborator.username, 'to', newRole);
+    onRoleChange(collaborator.username, newRole);
   };
 
   const handleRemoveAccess = () => {

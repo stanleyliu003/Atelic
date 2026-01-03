@@ -29,7 +29,7 @@ import Entypo from '@expo/vector-icons/Entypo';
 import { duplicateActivity } from '../../src/utils/activityInstanceId';
 import { Operation } from '../../src/types/operation.types';
 import { saveOperation, listOperations } from '../../src/services/tripOperationsService';
-import { verifyStateReconstruction, applyOperation, ReconstructedTripState } from '../../src/services/tripReconstructionService';
+import { verifyStateReconstruction, applyOperation, ReconstructedTripState, TransportModeOverrides } from '../../src/services/tripReconstructionService';
 
 // GraphQL subscription for real-time trip updates
 const onTripUpdated = /* GraphQL */ `
@@ -65,6 +65,7 @@ export default function TripViewMain() {
         wishlistText,
         dayPolylines,
         dayTravelModes,
+        setLegTravelMode,
         updateActivities,
         setTripId,
         restoreTripFromObject,
@@ -106,6 +107,11 @@ export default function TripViewMain() {
     });
     const [routeLoading, setRouteLoading] = useState(false);
     const routeCache = useRef<{ [tab: string]: { activitiesHash: string, routeData: RouteData } }>({});
+    // Ref to always have access to the latest routeData (for use in callbacks without stale closures)
+    const routeDataRef = useRef<RouteData>(routeData);
+    // Ref to store transport mode overrides from operations (persisted across collaborators)
+    // Key format: `${dayNumber}_${originInstanceId}` -> TravelMode
+    const transportModeOverridesRef = useRef<TransportModeOverrides>({});
 
     // State for SearchBar and AutocompleteModal
     const [searchQuery, setSearchQuery] = useState('');
@@ -236,6 +242,17 @@ export default function TripViewMain() {
     useEffect(() => {
         tripIdRef.current = tripId;
     }, [tripId]);
+
+    // Keep routeDataRef in sync with routeData state (for use in callbacks without stale closures)
+    useEffect(() => {
+        routeDataRef.current = routeData;
+    }, [routeData]);
+
+    // Ref to track current activeTab for use in callbacks
+    const activeTabRef = useRef(activeTab);
+    useEffect(() => {
+        activeTabRef.current = activeTab;
+    }, [activeTab]);
 
     // Reset height to default state on component mount/reload
     useEffect(() => {
@@ -874,6 +891,182 @@ export default function TripViewMain() {
                     }
                 }
 
+                // Update transport mode overrides if present
+                if (updatedState.transportModes && Object.keys(updatedState.transportModes).length > 0) {
+                    console.log('[syncNewOperations] Updating transport mode overrides:', Object.keys(updatedState.transportModes).length);
+                    transportModeOverridesRef.current = {
+                        ...transportModeOverridesRef.current,
+                        ...updatedState.transportModes,
+                    };
+
+                    // Use refs to get latest values (avoid stale closures)
+                    const currentActiveTab = activeTabRef.current;
+                    const currentRouteData = routeDataRef.current;
+
+                    // Also update context for DynamoDB persistence
+                    if (currentActiveTab.startsWith('day')) {
+                        const currentDayNumber = parseInt(currentActiveTab.replace('day', ''));
+
+                        // Sync to context using legIndex for backward compatibility
+                        Object.entries(updatedState.transportModes).forEach(([legKey, mode]) => {
+                            const [dayStr, instanceId] = legKey.split('_');
+                            const dayNum = parseInt(dayStr);
+                            if (dayNum === currentDayNumber) {
+                                // Find the leg index for this instanceId
+                                const currentDayActivities = getActivitiesForTab(currentActiveTab);
+                                const legIndex = currentDayActivities.findIndex(a => a.instanceId === instanceId);
+                                if (legIndex >= 0) {
+                                    setLegTravelMode(dayNum, legIndex, mode);
+                                }
+                            }
+                        });
+                    }
+
+                    // If we're on a day tab, apply transport mode changes to current routeData
+                    if (currentActiveTab.startsWith('day')) {
+                        const currentDayNumber = parseInt(currentActiveTab.replace('day', ''));
+                        const currentDayActivities = getActivitiesForTab(currentActiveTab);
+
+                        // Check if any transport mode changes affect the current day
+                        const relevantModes = Object.keys(updatedState.transportModes).filter(key =>
+                            key.startsWith(`${currentDayNumber}_`)
+                        );
+
+                        if (relevantModes.length > 0 && currentRouteData.legs.length > 0) {
+                            console.log('[syncNewOperations] Using latest routeData with', currentRouteData.legs.length, 'legs');
+                            console.log('[syncNewOperations] Applying', relevantModes.length, 'transport mode changes to current day');
+
+                            // Create a copy of legs to update
+                            const updatedLegs = [...currentRouteData.legs];
+
+                            // Find legs that need mode data fetched
+                            const legsNeedingFetch: { index: number; mode: TravelMode; leg: EnhancedRouteLeg }[] = [];
+
+                            // Update the route legs with the new selected modes
+                            for (let index = 0; index < updatedLegs.length; index++) {
+                                const leg = updatedLegs[index];
+                                const originActivity = currentDayActivities[index];
+                                if (!originActivity?.instanceId) continue;
+
+                                const legKey = `${currentDayNumber}_${originActivity.instanceId}`;
+                                const overrideMode = updatedState.transportModes?.[legKey];
+
+                                if (overrideMode && (leg as EnhancedRouteLeg).selectedMode !== overrideMode) {
+                                    console.log('[syncNewOperations] Updating leg', index, 'mode to', overrideMode);
+
+                                    const enhancedLeg = leg as EnhancedRouteLeg;
+
+                                    // Check if mode data exists for the new mode
+                                    if (!enhancedLeg.modeData[overrideMode]) {
+                                        // Need to fetch this mode's route data
+                                        legsNeedingFetch.push({
+                                            index,
+                                            mode: overrideMode,
+                                            leg: { ...enhancedLeg, selectedMode: overrideMode }
+                                        });
+                                    }
+
+                                    updatedLegs[index] = {
+                                        ...enhancedLeg,
+                                        selectedMode: overrideMode,
+                                    };
+                                }
+                            }
+
+                            // Fetch missing mode data from getRoute Lambda
+                            if (legsNeedingFetch.length > 0) {
+                                console.log('[syncNewOperations] Fetching route data for', legsNeedingFetch.length, 'legs with missing mode data');
+
+                                // Fetch mode data in parallel
+                                const fetchResults = await Promise.all(
+                                    legsNeedingFetch.map(async ({ index, mode }) => {
+                                        try {
+                                            const legActivities = [currentDayActivities[index], currentDayActivities[index + 1]];
+                                            if (!legActivities[0] || !legActivities[1]) return { index, mode, data: null };
+
+                                            const result = await fetchRoutePolylineWithMode(legActivities, mode);
+                                            return {
+                                                index,
+                                                mode,
+                                                data: result.legs[0] ? {
+                                                    distance: result.legs[0].distance,
+                                                    duration: result.legs[0].duration,
+                                                    polyline: result.legs[0].polyline
+                                                } : null
+                                            };
+                                        } catch (error) {
+                                            console.error(`[syncNewOperations] Error fetching ${mode} mode for leg ${index}:`, error);
+                                            return { index, mode, data: null };
+                                        }
+                                    })
+                                );
+
+                                // Apply fetched data to legs
+                                fetchResults.forEach(({ index, mode, data }) => {
+                                    if (data) {
+                                        const enhancedLeg = updatedLegs[index] as EnhancedRouteLeg;
+                                        updatedLegs[index] = {
+                                            ...enhancedLeg,
+                                            modeData: {
+                                                ...enhancedLeg.modeData,
+                                                [mode]: data
+                                            }
+                                        };
+                                        console.log(`[syncNewOperations] Updated leg ${index} with ${mode} data: ${data.duration}, ${data.distance}m`);
+                                    } else {
+                                        // Fallback to DRIVE if fetch failed
+                                        const enhancedLeg = updatedLegs[index] as EnhancedRouteLeg;
+                                        updatedLegs[index] = {
+                                            ...enhancedLeg,
+                                            selectedMode: 'DRIVE'
+                                        };
+                                        console.warn(`[syncNewOperations] Fallback to DRIVE for leg ${index} - fetch failed`);
+                                    }
+                                });
+                            }
+
+                            // Recalculate polyline based on all selected modes
+                            let newPolylineCoords: { latitude: number; longitude: number }[] = [];
+                            let totalDistance = 0;
+                            let totalDurationSeconds = 0;
+
+                            for (let i = 0; i < updatedLegs.length; i++) {
+                                const leg = updatedLegs[i] as EnhancedRouteLeg;
+                                const modeData = leg.modeData[leg.selectedMode];
+                                if (modeData?.polyline) {
+                                    const legCoords = decodePolyline(modeData.polyline);
+                                    newPolylineCoords = [...newPolylineCoords, ...legCoords];
+                                    totalDistance += modeData.distance || 0;
+                                    // Parse duration string to seconds
+                                    totalDurationSeconds += parseDuration(modeData.duration || '0m');
+                                }
+                            }
+
+                            // Update route data with new polyline and totals
+                            setRouteData(prevRouteData => ({
+                                ...prevRouteData,
+                                polyline: newPolylineCoords,
+                                legs: updatedLegs,
+                                totalDistance,
+                                totalDuration: formatDuration(totalDurationSeconds),
+                            }));
+
+                            // Update route cache
+                            if (routeCache.current[currentActiveTab]) {
+                                routeCache.current[currentActiveTab].routeData = {
+                                    ...routeCache.current[currentActiveTab].routeData,
+                                    legs: updatedLegs,
+                                    polyline: newPolylineCoords,
+                                    totalDistance,
+                                    totalDuration: formatDuration(totalDurationSeconds),
+                                };
+                            }
+
+                            console.log('[syncNewOperations] Route updated - total distance:', totalDistance, 'total duration:', formatDuration(totalDurationSeconds));
+                        }
+                    }
+                }
+
             } finally {
                 // Re-enable operation tracking after state settles
                 setTimeout(() => {
@@ -1006,7 +1199,7 @@ export default function TripViewMain() {
                 }, 0);
             }
         }
-    }, [tripId, currentUserID, activities, dayActivities, updateActivities]);
+    }, [tripId, currentUserID, activities, dayActivities, updateActivities, setLegTravelMode]);
 
     // Function to add activities back to the wishlist
     const addActivitiesToWishlist = (newActivities: Activity[], prependToTop: boolean = false) => {
@@ -1212,6 +1405,7 @@ export default function TripViewMain() {
         setRouteLoading(true);
         const fetchRoute = async () => {
             const currentTabActivities = getActivitiesForTab(activeTab);
+            const dayNumber = parseInt(activeTab.replace('day', ''));
             const activitiesHash = hashActivities(currentTabActivities);
             const cached = routeCache.current[activeTab];
             if (cached && cached.activitiesHash === activitiesHash) {
@@ -1219,31 +1413,87 @@ export default function TripViewMain() {
                 setRouteLoading(false);
                 // Store encoded polyline in context if available
                 if (cached.routeData.polyline && cached.routeData.polyline.length > 1) {
-                    const dayNumber = parseInt(activeTab.replace('day', ''));
                     const encoded = encodePolyline(cached.routeData.polyline);
                     setDayPolyline(dayNumber, encoded);
                 }
                 return;
             }
+
+            // Get saved travel modes for this day (from context - restored from DynamoDB)
+            const savedModesForDay = dayTravelModes[dayNumber] || {};
+            console.log('[fetchRoute] Saved travel modes for day', dayNumber, ':', savedModesForDay);
+
             // Fetch initial route with DRIVE mode (default)
             const basicRouteData = await fetchRoutePolyline(currentTabActivities);
 
-            // Transform legs into EnhancedRouteLeg structure with DRIVE data only
-            const enhancedLegs: EnhancedRouteLeg[] = basicRouteData.legs.map((leg: any) => ({
-                modeData: {
-                    DRIVE: {
-                        distance: leg.distance,
-                        duration: leg.duration,
-                        polyline: leg.polyline
+            // Transform legs into EnhancedRouteLeg structure with DRIVE data
+            // Apply saved travel modes from context (DynamoDB) or operations ref
+            const enhancedLegs: EnhancedRouteLeg[] = basicRouteData.legs.map((leg: any, index: number) => {
+                // Priority: 1. Operations ref (instanceId-based, real-time sync)
+                //           2. Context/DynamoDB (legIndex-based, backward compatible)
+                //           3. Default to DRIVE
+                const originActivity = currentTabActivities[index];
+                const instanceId = originActivity?.instanceId;
+                const operationsOverride = instanceId ? transportModeOverridesRef.current[`${dayNumber}_${instanceId}`] : null;
+                const savedMode = savedModesForDay[index];
+                const selectedMode = (operationsOverride || savedMode || 'DRIVE') as TravelMode;
+
+                return {
+                    modeData: {
+                        DRIVE: {
+                            distance: leg.distance,
+                            duration: leg.duration,
+                            polyline: leg.polyline
+                        }
+                    },
+                    selectedMode,
+                    loadingModes: []
+                };
+            });
+
+            // If any legs have non-DRIVE saved modes, fetch those modes
+            const legsNeedingFetch = enhancedLegs
+                .map((leg, index) => ({ leg, index, mode: leg.selectedMode }))
+                .filter(item => item.mode !== 'DRIVE');
+
+            if (legsNeedingFetch.length > 0) {
+                console.log('[fetchRoute] Fetching mode data for', legsNeedingFetch.length, 'legs with saved non-DRIVE modes');
+
+                await Promise.all(legsNeedingFetch.map(async ({ index, mode }) => {
+                    try {
+                        const legActivities = [currentTabActivities[index], currentTabActivities[index + 1]];
+                        if (!legActivities[0] || !legActivities[1]) return;
+
+                        const result = await fetchRoutePolylineWithMode(legActivities, mode);
+                        if (result.legs[0]) {
+                            enhancedLegs[index].modeData[mode] = {
+                                distance: result.legs[0].distance,
+                                duration: result.legs[0].duration,
+                                polyline: result.legs[0].polyline
+                            };
+                        }
+                    } catch (error) {
+                        console.error(`[fetchRoute] Error fetching ${mode} mode for leg ${index}:`, error);
+                        // Fallback to DRIVE if fetch fails
+                        enhancedLegs[index].selectedMode = 'DRIVE';
                     }
-                },
-                selectedMode: 'DRIVE' as TravelMode,
-                loadingModes: []
-            }));
+                }));
+            }
+
+            // Recalculate polyline based on selected modes (not just DRIVE)
+            let calculatedPolyline: { latitude: number; longitude: number }[] = [];
+            for (let i = 0; i < enhancedLegs.length; i++) {
+                const leg = enhancedLegs[i];
+                const modeData = leg.modeData[leg.selectedMode];
+                if (modeData?.polyline) {
+                    const legCoords = decodePolyline(modeData.polyline);
+                    calculatedPolyline = [...calculatedPolyline, ...legCoords];
+                }
+            }
 
             const newRouteData: RouteData = {
-                polyline: basicRouteData.polyline,
-                legs: enhancedLegs as any,
+                polyline: calculatedPolyline.length > 0 ? calculatedPolyline : basicRouteData.polyline,
+                legs: enhancedLegs,
                 totalDistance: basicRouteData.totalDistance,
                 totalDuration: basicRouteData.totalDuration,
                 travelMode: 'DRIVE'
@@ -1257,7 +1507,6 @@ export default function TripViewMain() {
             };
             // Store encoded polyline in context if available
             if (newRouteData.polyline && newRouteData.polyline.length > 1) {
-                const dayNumber = parseInt(activeTab.replace('day', ''));
                 const encoded = encodePolyline(newRouteData.polyline);
                 setDayPolyline(dayNumber, encoded);
             }
@@ -1265,7 +1514,7 @@ export default function TripViewMain() {
         };
         fetchRoute();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeTab, activities, dayActivities]);
+    }, [activeTab, activities, dayActivities, dayTravelModes]);
 
     // Invalidate cache for a day if its activities change
     useEffect(() => {
@@ -1734,6 +1983,10 @@ export default function TripViewMain() {
         const dayActivities = getActivitiesForTab(activeTab);
         const currentDayNumber = parseInt(activeTab.replace('day', ''));
 
+        // Get the origin activity for this leg (used for operation tracking)
+        const originActivity = dayActivities[selectedLegIndex];
+        const originInstanceId = originActivity?.instanceId;
+
         // Update the selected mode for this leg
         const updatedLegs = [...routeData.legs];
         const currentLeg = updatedLegs[selectedLegIndex] as any as EnhancedRouteLeg;
@@ -1788,6 +2041,34 @@ export default function TripViewMain() {
             const encoded = encodePolyline(newPolylineCoords);
             setDayPolyline(currentDayNumber, encoded);
         }
+
+        // ✨ Track operation: update_transport_mode for real-time sync
+        if (originInstanceId) {
+            // Update local transport mode overrides ref
+            const legKey = `${currentDayNumber}_${originInstanceId}`;
+            transportModeOverridesRef.current[legKey] = mode;
+
+            const op = createOperation('update_transport_mode', 'day', {
+                originInstanceId,
+                mode,
+                lastModified: Date.now(),
+            }, currentDayNumber);
+            queueSave(op);
+            console.log('[handleSelectMode] Recorded update_transport_mode operation:', {
+                dayNumber: currentDayNumber,
+                originInstanceId,
+                mode,
+            });
+        }
+
+        // ✨ Persist to context for DynamoDB snapshot save (backward compatible)
+        // This ensures the mode is saved with the trip and restored on reload
+        setLegTravelMode(currentDayNumber, selectedLegIndex, mode);
+        console.log('[handleSelectMode] Persisted to context for DynamoDB save:', {
+            dayNumber: currentDayNumber,
+            legIndex: selectedLegIndex,
+            mode,
+        });
     };
 
     // Handler for activity description card selection
@@ -2695,6 +2976,29 @@ export default function TripViewMain() {
                     const latestTimestamp = Math.max(...allOperations.map(op => op.timestamp));
                     lastProcessedOperationTimestampRef.current = latestTimestamp;
                     console.log('[trip-view_main] ✅ Baseline timestamp set to:', latestTimestamp, '(' + allOperations.length + ' existing operations)');
+
+                    // Extract transport mode operations and populate the overrides ref
+                    // Process operations in order (they should already be sorted by timestamp)
+                    const transportModeOps = allOperations.filter(
+                        op => op.type === 'update_transport_mode'
+                    );
+
+                    if (transportModeOps.length > 0) {
+                        console.log('[trip-view_main] Found', transportModeOps.length, 'transport mode operations');
+
+                        // Apply transport mode operations in order (LWW based on order)
+                        const transportModes: TransportModeOverrides = {};
+                        transportModeOps.forEach(op => {
+                            const data = op.data as { originInstanceId: string; mode: TravelMode };
+                            if (data.originInstanceId && data.mode && op.dayNumber !== undefined) {
+                                const legKey = `${op.dayNumber}_${data.originInstanceId}`;
+                                transportModes[legKey] = data.mode;
+                            }
+                        });
+
+                        transportModeOverridesRef.current = transportModes;
+                        console.log('[trip-view_main] ✅ Initialized', Object.keys(transportModes).length, 'transport mode overrides');
+                    }
                 } else {
                     // No operations yet - set to current time
                     lastProcessedOperationTimestampRef.current = Date.now();
