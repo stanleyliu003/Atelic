@@ -51,6 +51,16 @@
           "sounds": [],
           "mode": "production"
         }
+      ],
+      "expo-tracking-transparency",
+      [
+        "react-native-appsflyer",
+        {
+          "appleAppID": "id6748835773",
+          "devKey": {
+            "ios": "yZTo4qHBjVjMgSCoMqGG4f"
+          }
+        }
       ]
     ],
     "extra": {
