@@ -37,7 +37,7 @@
     "expo-status-bar": "~1.12.1",
     "expo-symbols": "~0.1.5",
     "expo-system-ui": "~3.0.7",
-    "expo-tracking-transparency": "^6.0.8",
+    "expo-tracking-transparency": "~4.0.2",
     "expo-web-browser": "~13.0.3",
     "lodash.isequal": "^4.5.0",
     "prop-types": "^15.8.1",

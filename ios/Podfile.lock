@@ -62,6 +62,8 @@ PODS:
     - ExpoModulesCore
   - ExpoSystemUI (3.0.7):
     - ExpoModulesCore
+  - ExpoTrackingTransparency (4.0.2):
+    - ExpoModulesCore
   - ExpoWebBrowser (13.0.3):
     - ExpoModulesCore
   - EXSplashScreen (0.27.7):
@@ -1433,6 +1435,7 @@ DEPENDENCIES:
   - ExpoSecureStore (from `../node_modules/expo-secure-store/ios`)
   - ExpoSymbols (from `../node_modules/expo-symbols/ios`)
   - ExpoSystemUI (from `../node_modules/expo-system-ui/ios`)
+  - ExpoTrackingTransparency (from `../node_modules/expo-tracking-transparency/ios`)
   - ExpoWebBrowser (from `../node_modules/expo-web-browser/ios`)
   - EXSplashScreen (from `../node_modules/expo-splash-screen/ios`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
@@ -1556,6 +1559,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-symbols/ios"
   ExpoSystemUI:
     :path: "../node_modules/expo-system-ui/ios"
+  ExpoTrackingTransparency:
+    :path: "../node_modules/expo-tracking-transparency/ios"
   ExpoWebBrowser:
     :path: "../node_modules/expo-web-browser/ios"
   EXSplashScreen:
@@ -1716,6 +1721,7 @@ SPEC CHECKSUMS:
   ExpoSecureStore: 6506992a9f53c94ea716c54d4a63144965945c2c
   ExpoSymbols: 0948627271da29e5fea1c63f6c7f08ab19f06300
   ExpoSystemUI: 2072307375696c398a5d75633bdd5143fadc3d26
+  ExpoTrackingTransparency: 2b629896d03dd937eb4e2bf5c71a6297b7e0fd2e
   ExpoWebBrowser: cf10afe886891ab495877dada977fe6c269614a4
   EXSplashScreen: a4ce3dd5d28d48e8b9132bcd9b58ee8e340db78c
   FBLazyVector: ac12dc084d1c8ec4cc4d7b3cf1b0ebda6dab85af
@@ -1796,6 +1802,6 @@ SPEC CHECKSUMS:
   SocketRocket: abac6f5de4d4d62d24e11868d7a2f427e0ef940d
   Yoga: 950bbfd7e6f04790fdb51149ed51df41f329fcc8
 
-PODFILE CHECKSUM: 3bed2a7cd96c3680af4e99543a9bc0b9b7bb97b3
+PODFILE CHECKSUM: da59728f9b6a4a9c3035ad2466d70c7b20cbbd1a
 
 COCOAPODS: 1.16.2
