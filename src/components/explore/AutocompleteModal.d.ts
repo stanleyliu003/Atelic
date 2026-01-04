@@ -1,5 +1,6 @@
 import { FC } from 'react';
 import { Activity } from '../../types/activity.types';
+import { FlightReservation } from '../../types/flight.types';
 
 interface AutocompleteModalProps {
   visible: boolean;
@@ -10,7 +11,12 @@ interface AutocompleteModalProps {
   onClose: () => void;
   onFilterToggle: (filterId: string) => void;
   onQueryChange: (text: string) => void;
-  onSaveActivities: (selectedActivities: Activity[], deselectedWishlistActivityIds?: string[]) => void;
+  onSaveActivities: (
+    selectedActivities: Activity[], 
+    deselectedWishlistActivityIds?: string[],
+    lodgingData?: any,
+    flightData?: FlightReservation
+  ) => void;
   wishlistActivities?: Activity[];
   activeTab?: string;
   /**

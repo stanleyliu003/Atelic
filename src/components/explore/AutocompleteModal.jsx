@@ -21,6 +21,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { WishlistActivities } from '../trip-view/wishlist_activities';
 import { ActivityDetailView } from '../trip-view/description_card';
 import { AddHotelStayModal } from './AddHotelStayModal';
+import { AddFlightModal } from './AddFlightModal';
 
 /**
  * AutocompleteModal Component - Refactored for Direct Place Selection
@@ -73,6 +74,7 @@ export const AutocompleteModal = ({
   const [selectedActivityForDetail, setSelectedActivityForDetail] = useState(null);
   const [showActivityDetail, setShowActivityDetail] = useState(false);
   const [showHotelModal, setShowHotelModal] = useState(false);
+  const [showFlightModal, setShowFlightModal] = useState(false);
 
   // Get recent searches from context
   const { recentSearches, addToRecentSearches } = useCreateTrip();
@@ -276,6 +278,23 @@ export const AutocompleteModal = ({
     handleCloseModal();
   };
 
+  // Handle adding flight from flight modal
+  const handleAddFlight = (flightData) => {
+    console.log('[AutocompleteModal] Adding flight:', flightData);
+
+    // Close flight modal first
+    setShowFlightModal(false);
+
+    // Pass the flight data to parent via onSaveActivities
+    // The parent will handle adding it to the trip
+    if (onSaveActivities) {
+      onSaveActivities([], [], null, flightData);
+    }
+
+    // Close the autocomplete modal
+    handleCloseModal();
+  };
+
   // Swipe down gesture to close
   const swipeGesture = Gesture.Pan()
     .onEnd((event) => {
@@ -333,7 +352,7 @@ export const AutocompleteModal = ({
             </View>
           </View>
 
-          {/* Hotel/Stay Button - Only show when search query is empty */}
+          {/* Hotel/Stay and Flight Buttons - Only show when search query is empty */}
           {localQuery.length === 0 && (
             <View style={styles.hotelButtonContainer}>
               <TouchableOpacity
@@ -343,6 +362,14 @@ export const AutocompleteModal = ({
               >
                 <MaterialIcons name="bed" size={24} color="black" />
                 <Text style={styles.hotelButtonText}>Add Hotel/Stay</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.hotelButton}
+                onPress={() => setShowFlightModal(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="airplane" size={24} color="black" />
+                <Text style={styles.hotelButtonText}>Add Flight</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -511,6 +538,13 @@ export const AutocompleteModal = ({
         onClose={() => setShowHotelModal(false)}
         onAddLodging={handleAddLodging}
       />
+
+      {/* Add Flight Modal */}
+      <AddFlightModal
+        visible={showFlightModal}
+        onClose={() => setShowFlightModal(false)}
+        onAddFlight={handleAddFlight}
+      />
     </Modal>
   );
 };
@@ -592,9 +626,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     flexDirection: 'row',
+    gap: 10,
   },
   hotelButton: {
-    width: '33%',
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F2F2F2',

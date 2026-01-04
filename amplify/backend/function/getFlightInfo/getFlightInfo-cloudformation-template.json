@@ -18,6 +18,12 @@
     },
     "flightawareApiKey": {
       "Type": "String"
+    },
+    "amadeusApiKey": {
+      "Type": "String"
+    },
+    "amadeusApiSecretKey": {
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -75,6 +81,12 @@
             },
             "FLIGHTAWARE_API_KEY": {
               "Ref": "flightawareApiKey"
+            },
+            "Amadeus_API_Key": {
+              "Ref": "amadeusApiKey"
+            },
+            "Amadeus_API_Secret_Key": {
+              "Ref": "amadeusApiSecretKey"
             }
           }
         },

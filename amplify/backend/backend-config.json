@@ -791,6 +791,22 @@
         }
       ]
     },
+    "AMPLIFY_function_getFlightInfo_amadeusApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFlightInfo_amadeusApiSecretKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
     "AMPLIFY_function_getFlightInfo_deploymentBucketName": {
       "usedBy": [
         {

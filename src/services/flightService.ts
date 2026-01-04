@@ -56,29 +56,44 @@ export const searchAirlines = (query: string): Airline[] => {
           airline.iata?.toLowerCase().includes(searchTerm) ||
           airline.icao?.toLowerCase().includes(searchTerm))
     )
-    .slice(0, 10); // Limit to 10 results
+    .slice(0, 5); // Limit to 5 results
 };
 
 /**
  * Get flight information from backend Lambda via REST API
  * Includes AsyncStorage caching for recent user searches
+ * @param flightIdent - Flight identifier (e.g., "AA100", "DL123")
+ * @param flightDate - Date of the flight (optional, used for filtering specific flight on a date)
  */
-export const getFlightInfo = async (flightIdent: string): Promise<FlightInfo> => {
+export const getFlightInfo = async (flightIdent: string, flightDate?: Date): Promise<FlightInfo> => {
   try {
+    // Create cache key with date if provided
+    const cacheKey = flightDate
+      ? `${flightIdent}_${flightDate.toISOString().split('T')[0]}`
+      : flightIdent;
+
     // Check AsyncStorage cache first
-    const cachedData = await getFlightFromCache(flightIdent);
+    const cachedData = await getFlightFromCache(cacheKey);
     if (cachedData) {
       console.log('[flightService] Using cached flight data');
       return cachedData;
     }
 
-    console.log('[flightService] Fetching flight from API:', flightIdent);
+    console.log('[flightService] Fetching flight from API:', flightIdent, flightDate);
+
+    // Prepare request body
+    const requestBody: { flightIdent: string; flightDate?: string } = {
+      flightIdent: flightIdent.toUpperCase(),
+    };
+
+    // Add flight date if provided
+    if (flightDate) {
+      requestBody.flightDate = flightDate.toISOString();
+    }
 
     // Call Lambda function via REST API
     const response = await API.post('WishlistRestAPI', '/getFlightInfo', {
-      body: {
-        flightIdent: flightIdent.toUpperCase(),
-      },
+      body: requestBody,
       timeout: 30000, // 30 second timeout
     });
 
@@ -89,7 +104,7 @@ export const getFlightInfo = async (flightIdent: string): Promise<FlightInfo> =>
     const flightData: FlightInfo = response.flight;
 
     // Cache the result
-    await cacheFlightData(flightIdent, flightData);
+    await cacheFlightData(cacheKey, flightData);
 
     return flightData;
   } catch (error: any) {
@@ -181,15 +196,21 @@ export const clearFlightCache = async (): Promise<void> => {
 
 /**
  * Parse flight number input
- * Supports formats: "AA100", "AA 100", "AA-100"
+ * Supports formats: "AA100", "AA 100", "AA-100", "B6123", "DL477"
+ * Prioritizes 2-char IATA codes (standard), falls back to 3-char if needed
  */
 export const parseFlightNumber = (input: string): ParsedFlightNumber | null => {
   if (!input) return null;
 
   const trimmed = input.trim().toUpperCase().replace(/[-\s]/g, '');
 
-  // Match airline code (2 letters) + flight number (digits)
-  const match = trimmed.match(/^([A-Z]{2})(\d+)$/);
+  // Try 2-character airline code first (standard IATA: AA, B6, DL, etc.)
+  let match = trimmed.match(/^([A-Z0-9]{2})(\d+)$/);
+
+  // If no match, try 3-character code (ICAO or extended: AAL, DAL, etc.)
+  if (!match) {
+    match = trimmed.match(/^([A-Z0-9]{3})(\d+)$/);
+  }
 
   if (match) {
     return {

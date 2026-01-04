@@ -19,6 +19,7 @@ import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
 import { fetchRoutePolyline, fetchRoutePolylineWithMode, RouteData } from '../../src/services/getRoute_graphQL_call';
 import { optimizeRouteWithHaversine } from '../../src/components/trip-view/logic/optimize_route';
 import { Activity, TabType, TravelMode, EnhancedRouteLeg, RouteLegModeData } from '../../src/types/activity.types';
+import type { FlightReservation } from '../../src/types/flight.types';
 import TransportationSettingsModal from '../../src/components/trip-view/transportation_settings_modal';
 import { decodePolyline } from '../../src/utils/polyline';
 import { API, Auth, graphqlOperation } from 'aws-amplify';
@@ -2263,7 +2264,13 @@ export default function TripViewMain() {
     };
 
     // Handler for saving search results (new direct flow)
-    const handleSaveSearchResults = (selectedActivities: Activity[], wishlistActivityIds?: string[], lodgingData?: any) => {
+    const handleSaveSearchResults = (selectedActivities: Activity[], wishlistActivityIds?: string[], lodgingData?: any, flightData?: FlightReservation) => {
+        // Handle flight data if provided
+        if (flightData) {
+            handleAddFlightToTrip(flightData);
+            return;
+        }
+
         // Handle lodging data if provided
         if (lodgingData) {
             handleAddLodgingToTrip(lodgingData);

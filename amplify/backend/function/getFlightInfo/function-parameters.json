@@ -5,6 +5,14 @@
     {
       "cloudFormationParameterName": "flightawareApiKey",
       "environmentVariableName": "FLIGHTAWARE_API_KEY"
+    },
+    {
+      "cloudFormationParameterName": "amadeusApiKey",
+      "environmentVariableName": "Amadeus_API_Key"
+    },
+    {
+      "cloudFormationParameterName": "amadeusApiSecretKey",
+      "environmentVariableName": "Amadeus_API_Secret_Key"
     }
   ]
 }
