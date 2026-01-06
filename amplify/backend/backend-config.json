@@ -50,6 +50,14 @@
           ],
           "category": "function",
           "resourceName": "processAppsFlyerAttributionV2"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "getFlightInfo"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -315,6 +323,12 @@
           "resourceName": "PlacesAPIActivityStorage"
         }
       ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "getFlightInfo": {
+      "build": true,
+      "dependsOn": [],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
@@ -774,6 +788,46 @@
         {
           "category": "function",
           "resourceName": "generateCategoryActivities"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFlightInfo_amadeusApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFlightInfo_amadeusApiSecretKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFlightInfo_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFlightInfo_flightawareApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFlightInfo_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
         }
       ]
     },

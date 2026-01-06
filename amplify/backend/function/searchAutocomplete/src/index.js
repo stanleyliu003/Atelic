@@ -130,11 +130,38 @@ async function getPlacesAutocomplete(query, cityLat, cityLng, filters) {
     // Radius of 50km (50000 meters) to cover the city area
     const radius = 50000; // 50km in meters
 
+    // SMART ADDRESS DETECTION (Option 3: Hybrid Approach)
+    // Only switch to address mode for lodging searches (AddHotelStayModal)
+    const isLodgingSearch = filters && filters.some(f =>
+        ['lodging', 'campground', 'rv_park'].includes(f)
+    );
+
+    // Address detection patterns
+    const addressPatterns = [
+        /^\d+\s+\w/,           // Starts with number + space + word (e.g., "123 Main")
+        /\d+\s+(st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|way|ct|court|pl|place|terrace|circle|parkway|highway|freeway)/i,
+    ];
+
+    // Exclude queries that contain hotel/lodging keywords (e.g., "1 Hotel Boston")
+    const hasHotelKeyword = /hotel|motel|inn|resort|lodge|hostel|b&b|bed and breakfast/i.test(query);
+
+    // Detect if query looks like a street address
+    const looksLikeAddress = isLodgingSearch &&
+                            !hasHotelKeyword &&
+                            addressPatterns.some(pattern => pattern.test(query));
+
+    // Use filters parameter to build types string
+    // If query looks like an address, search for addresses instead of establishments
+    // Otherwise, use provided filters (e.g., 'lodging' for hotels) or default to 'establishment'
+    const typesParam = looksLikeAddress
+        ? 'address'  // Switch to address search when query matches address patterns
+        : (filters && filters.length > 0 ? filters.join('|') : 'establishment');
+
     let url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?` +
         `input=${encodeURIComponent(query)}` +
         `&location=${cityLat},${cityLng}` +
         `&radius=${radius}` +
-        `&types=establishment` +
+        `&types=${typesParam}` +
         `&key=${apiKey}`;
 
     console.log(`Places Autocomplete API URL (key hidden): ${url.replace(apiKey, 'HIDDEN')}`);

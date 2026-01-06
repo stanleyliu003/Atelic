@@ -123,6 +123,92 @@ const getFreshPhotoReference = async (placeId) => {
     });
 };
 
+/**
+ * Reverse lookup: Search for establishment at a given address
+ * When user selects a street address, try to find the actual business at that address
+ * Priority: lodging first, then any establishment
+ * @param {string} address - The full address (e.g., "10 Avery St, Boston, MA 02111")
+ * @param {number} lat - Latitude of the address
+ * @param {number} lng - Longitude of the address
+ * @returns {object|null} - The establishment place_id if found, null otherwise
+ */
+const findEstablishmentAtAddress = async (address, lat, lng) => {
+    // Try 1: Search for lodging first (priority for hotel searches)
+    console.log(`[Reverse Lookup] Trying lodging search for: ${address}`);
+    const lodgingUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(address)}&location=${lat},${lng}&radius=20&types=lodging&key=${apiKey}`;
+
+    const lodgingResult = await new Promise((resolve) => {
+        const req = https.get(lodgingUrl, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const result = JSON.parse(data);
+                    if (result.status === 'OK' && result.predictions && result.predictions.length > 0) {
+                        const place = result.predictions[0];
+                        console.log(`[Reverse Lookup] Found lodging: ${place.description} (place_id: ${place.place_id})`);
+                        resolve({
+                            found: true,
+                            place_id: place.place_id,
+                            name: place.structured_formatting?.main_text || place.description,
+                            type: 'lodging'
+                        });
+                    } else {
+                        resolve({ found: false });
+                    }
+                } catch (e) {
+                    console.error(`[Reverse Lookup] Error parsing lodging response:`, e);
+                    resolve({ found: false });
+                }
+            });
+        });
+        req.on('error', (err) => {
+            console.error(`[Reverse Lookup] Error searching for lodging:`, err);
+            resolve({ found: false });
+        });
+    });
+
+    if (lodgingResult.found) {
+        return lodgingResult;
+    }
+
+    // Try 2: If no lodging found, search for any establishment
+    console.log(`[Reverse Lookup] No lodging found, trying establishment search for: ${address}`);
+    const establishmentUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(address)}&location=${lat},${lng}&radius=20&types=establishment&key=${apiKey}`;
+
+    return new Promise((resolve) => {
+        const req = https.get(establishmentUrl, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const result = JSON.parse(data);
+                    if (result.status === 'OK' && result.predictions && result.predictions.length > 0) {
+                        const place = result.predictions[0];
+                        console.log(`[Reverse Lookup] Found establishment: ${place.description} (place_id: ${place.place_id})`);
+                        resolve({
+                            found: true,
+                            place_id: place.place_id,
+                            name: place.structured_formatting?.main_text || place.description,
+                            type: 'establishment'
+                        });
+                    } else {
+                        console.log(`[Reverse Lookup] No establishment found at address: ${address}`);
+                        resolve({ found: false });
+                    }
+                } catch (e) {
+                    console.error(`[Reverse Lookup] Error parsing establishment response:`, e);
+                    resolve({ found: false });
+                }
+            });
+        });
+        req.on('error', (err) => {
+            console.error(`[Reverse Lookup] Error searching for establishment:`, err);
+            resolve({ found: false });
+        });
+    });
+};
+
 // Helper function to get place details (rating, reviews, etc.)
 const getPlaceDetailsByPlaceId = async (placeId) => {
     // Check cache first
@@ -451,28 +537,59 @@ exports.handler = async (event) => {
                 throw new Error(`Could not get coordinates for place_id: ${placeName}`);
             }
 
+            // CHECK IF THIS IS A STREET ADDRESS (not an establishment)
+            // If it's an address type, try to find lodging at this address
+            const isAddressType = details.types && details.types.some(t =>
+                ['street_address', 'premise', 'route', 'geocode'].includes(t)
+            );
+            const isLodgingType = details.types && details.types.some(t =>
+                ['lodging', 'hotel', 'campground', 'rv_park'].includes(t)
+            );
+
+            let finalPlaceId = placeName;
+            let finalDetails = details;
+
+            // If it's an address (not already a lodging), try reverse lookup
+            if (isAddressType && !isLodgingType && details.formatted_address) {
+                console.log(`[Reverse Lookup] Detected address type, searching for establishment at: ${details.formatted_address}`);
+                const establishmentResult = await findEstablishmentAtAddress(
+                    details.formatted_address,
+                    details.lat,
+                    details.lng
+                );
+
+                if (establishmentResult.found) {
+                    // Found an establishment! Use that place_id instead
+                    console.log(`[Reverse Lookup] SUCCESS! Found ${establishmentResult.type}: ${establishmentResult.name} (place_id: ${establishmentResult.place_id})`);
+                    finalPlaceId = establishmentResult.place_id;
+                    finalDetails = await getPlaceDetailsByPlaceId(establishmentResult.place_id);
+                } else {
+                    console.log(`[Reverse Lookup] No establishment found, using original address place_id`);
+                }
+            }
+
             // Fetch fresh photo_reference
-            const photo_reference = await getFreshPhotoReference(placeName);
+            const photo_reference = await getFreshPhotoReference(finalPlaceId);
 
             result = {
                 name: placeName,
-                foundName: details.display_name,
-                place_id: placeName,
-                lat: details.lat,
-                lng: details.lng,
-                display_name: details.display_name,
-                formatted_address: details.formatted_address,
-                types: details.types,
-                primaryType: details.primaryType,
-                rating: details.rating,
-                user_ratings_total: details.user_ratings_total,
-                website_uri: details.website_uri,
+                foundName: finalDetails.display_name,
+                place_id: finalPlaceId,
+                lat: finalDetails.lat || details.lat,
+                lng: finalDetails.lng || details.lng,
+                display_name: finalDetails.display_name,
+                formatted_address: finalDetails.formatted_address,
+                types: finalDetails.types,
+                primaryType: finalDetails.primaryType,
+                rating: finalDetails.rating,
+                user_ratings_total: finalDetails.user_ratings_total,
+                website_uri: finalDetails.website_uri,
                 photo_reference: photo_reference,
-                regular_opening_hours: details.regular_opening_hours,
-                reviews: details.reviews,
-                editorial_summary: details.editorial_summary,
-                primary_type_display_name: details.primary_type_display_name,
-                international_phone_number: details.international_phone_number
+                regular_opening_hours: finalDetails.regular_opening_hours,
+                reviews: finalDetails.reviews,
+                editorial_summary: finalDetails.editorial_summary,
+                primary_type_display_name: finalDetails.primary_type_display_name,
+                international_phone_number: finalDetails.international_phone_number
             };
         } else {
             // Regular text-based search
