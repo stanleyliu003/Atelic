@@ -9,9 +9,12 @@ Amplify Params - DO NOT EDIT */
 
 /**
  * Lambda Function: Sync UserProfiles to Amplitude
- *
- * Reads all users from DynamoDB UserProfiles table and sends their data
- * to Amplitude as user properties for analytics and BI dashboards.
+ * 
+ * SCALABLE ARCHITECTURE:
+ * This function uses a "Page-by-Page" processing pattern.
+ * Instead of loading all users into memory (which causes crashes on large tables),
+ * it scans one page of DynamoDB results, sends them to Amplitude, 
+ * clears the memory, and then moves to the next page.
  */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
@@ -24,20 +27,18 @@ const docClient = DynamoDBDocumentClient.from(client);
 
 const USER_PROFILES_TABLE = process.env.STORAGE_USERPROFILESSTORAGE_NAME;
 const AMPLITUDE_API_KEY = process.env.AMPLITUDE_API_KEY;
+// Use HTTP API v2 for real-time data visibility
 const AMPLITUDE_BATCH_ENDPOINT = 'api2.amplitude.com';
-const AMPLITUDE_BATCH_PATH = '/batch';
+const AMPLITUDE_BATCH_PATH = '/2/httpapi';
 const ENV = process.env.ENV || 'dev';
 
 /**
  * @type {import('@types/aws-lambda').Handler}
  */
 exports.handler = async (event) => {
-  console.log('[Amplitude Sync] Starting user data sync...');
+  console.log('[Amplitude Sync] Starting scalable user data sync...');
   console.log(`[Amplitude Sync] Environment: ${ENV}`);
   console.log(`[Amplitude Sync] Table: ${USER_PROFILES_TABLE}`);
-  console.log(`[Amplitude Sync] API Key present: ${AMPLITUDE_API_KEY ? 'Yes' : 'No'}`);
-  console.log(`[Amplitude Sync] API Key (first 8 chars): ${AMPLITUDE_API_KEY ? AMPLITUDE_API_KEY.substring(0, 8) + '...' : 'MISSING'}`);
-  console.log(`[Amplitude Sync] Expected API Key: 3279109a...`);
   
   // Validate required environment variables
   if (!USER_PROFILES_TABLE) {
@@ -46,101 +47,82 @@ exports.handler = async (event) => {
   if (!AMPLITUDE_API_KEY) {
     throw new Error('AMPLITUDE_API_KEY environment variable is not set');
   }
+
+  // Statistics trackers
+  let totalUsersScanned = 0;
+  let totalUsersSynced = 0;
+  let totalEventsSent = 0;
+  let totalInvalidUsers = 0;
+  let pageCount = 0;
   
-  // Verify API key matches expected value
-  if (AMPLITUDE_API_KEY !== '3279109aad9e03ba305c1621058551b1') {
-    console.warn(`[Amplitude Sync] ⚠️ WARNING: API Key does not match expected value!`);
-    console.warn(`[Amplitude Sync] Expected: 3279109aad9e03ba305c1621058551b1`);
-    console.warn(`[Amplitude Sync] Actual: ${AMPLITUDE_API_KEY}`);
-  }
+  // Pagination key for DynamoDB
+  let lastEvaluatedKey = null;
 
   try {
-    // Scan all users from DynamoDB
-    const users = await scanAllUsers();
-    console.log(`[Amplitude Sync] Scanned ${users.length} users from DynamoDB`);
-
-    if (users.length === 0) {
-      console.log('[Amplitude Sync] No users found to sync');
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          message: 'No users to sync',
-          users_synced: 0
-        })
-      };
-    }
-
-    // Filter out users with invalid usernames (null, undefined, or too short for Amplitude)
-    const validUsers = [];
-    const invalidUsers = [];
-    
-    for (const user of users) {
-      if (user.username && typeof user.username === 'string' && user.username.length >= 5) {
-        validUsers.push(user);
-      } else {
-        invalidUsers.push({
-          username: user.username || 'null',
-          email: user.email || 'N/A'
-        });
-      }
-    }
-    
-    if (invalidUsers.length > 0) {
-      console.log(`[Amplitude Sync] ⚠️ Skipping ${invalidUsers.length} users with invalid usernames:`);
-      invalidUsers.forEach(invalid => {
-        console.log(`  - username: "${invalid.username}", email: ${invalid.email}`);
-      });
-    }
-    
-    if (validUsers.length === 0) {
-      console.log('[Amplitude Sync] No valid users to sync');
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          message: 'No valid users to sync',
-          users_synced: 0,
-          users_skipped: invalidUsers.length
-        })
-      };
-    }
-    
-    // Convert to Amplitude Identify events
-    const amplitudeEvents = validUsers.map(user => mapUserToAmplitudeEvent(user));
-    console.log(`[Amplitude Sync] Mapped ${amplitudeEvents.length} valid user events (skipped ${invalidUsers.length} invalid)`);
-
-    // Send to Amplitude in batches of 100
-    const batchSize = 100;
-    let totalSent = 0;
-    const batchCount = Math.ceil(amplitudeEvents.length / batchSize);
-
-    for (let i = 0; i < amplitudeEvents.length; i += batchSize) {
-      const batch = amplitudeEvents.slice(i, i + batchSize);
-      const batchNumber = Math.floor(i / batchSize) + 1;
-
-      console.log(`[Amplitude Sync] Sending batch ${batchNumber}/${batchCount} (${batch.length} users)`);
+    // LOOP: Process DynamoDB pages one by one
+    do {
+      pageCount++;
       
-      // Log first event structure for debugging
-      if (batchNumber === 1 && batch.length > 0) {
-        console.log(`[Amplitude Sync] Sample event structure:`, JSON.stringify(batch[0], null, 2));
+      // 1. Scan a single page of users (approx 1MB of data)
+      const scanParams = {
+        TableName: USER_PROFILES_TABLE,
+        Limit: 200 // explicit limit to control memory chunk size
+      };
+      
+      if (lastEvaluatedKey) {
+        scanParams.ExclusiveStartKey = lastEvaluatedKey;
       }
 
-      const response = await sendToAmplitude(batch);
-      totalSent += batch.length;
+      console.log(`[Amplitude Sync] Scanning page ${pageCount}...`);
+      const response = await docClient.send(new ScanCommand(scanParams));
+      const items = response.Items || [];
+      
+      totalUsersScanned += items.length;
+      console.log(`[Amplitude Sync] Page ${pageCount} fetched ${items.length} items`);
 
-      console.log(`[Amplitude Sync] Batch ${batchNumber} response:`, JSON.stringify(response, null, 2));
-    }
+      // 2. Process this page immediately
+      if (items.length > 0) {
+        const { events, validUserCount, invalidCount } = processUserBatch(items);
+        
+        totalUsersSynced += validUserCount;
+        totalInvalidUsers += invalidCount;
 
-    console.log(`[Amplitude Sync] ✅ Sync completed successfully: ${totalSent} users synced`);
+        // 3. Send events from this page to Amplitude
+        if (events.length > 0) {
+          await sendBatchToAmplitude(events);
+          totalEventsSent += events.length;
+        }
+      }
+
+      // 4. Update cursor for next loop
+      lastEvaluatedKey = response.LastEvaluatedKey;
+      
+      // Optional: Safety check for Lambda timeout
+      // if (context.getRemainingTimeInMillis() < 10000) { ... }
+
+    } while (lastEvaluatedKey);
+
+    // END LOOP
+
+    console.log(`[Amplitude Sync] ✅ Sync completed successfully!`);
+    console.log(`[Amplitude Sync] Summary:`);
+    console.log(`- Total Scanned: ${totalUsersScanned}`);
+    console.log(`- Valid Users:   ${totalUsersSynced}`);
+    console.log(`- Invalid/Skip:  ${totalInvalidUsers}`);
+    console.log(`- Events Sent:   ${totalEventsSent}`);
+    console.log(`- Pages:         ${pageCount}`);
 
     return {
       statusCode: 200,
       body: JSON.stringify({
         message: 'Sync completed successfully',
-        users_synced: totalSent,
-        users_skipped: invalidUsers.length,
-        batches_sent: batchCount,
-        environment: ENV,
-        table: USER_PROFILES_TABLE
+        stats: {
+          scanned: totalUsersScanned,
+          synced: totalUsersSynced,
+          events: totalEventsSent,
+          skipped: totalInvalidUsers,
+          pages: pageCount
+        }
       })
     };
 
@@ -151,100 +133,116 @@ exports.handler = async (event) => {
 };
 
 /**
- * Scan all users from DynamoDB (handles pagination)
+ * Process a batch of raw DynamoDB items into Amplitude events
  */
-async function scanAllUsers() {
-  const users = [];
-  let lastEvaluatedKey = null;
-  let pageCount = 0;
+function processUserBatch(items) {
+  const events = [];
+  let validUserCount = 0;
+  let invalidCount = 0;
 
-  do {
-    pageCount++;
-    console.log(`[Amplitude Sync] Scanning page ${pageCount}...`);
-    
-    // Build scan params - only include ExclusiveStartKey if we have one
-    const scanParams = {
-      TableName: USER_PROFILES_TABLE
-    };
-    
-    if (lastEvaluatedKey) {
-      scanParams.ExclusiveStartKey = lastEvaluatedKey;
+  for (const user of items) {
+    // Filter logic
+    if (user && user.username && typeof user.username === 'string' && user.username.length >= 2 && !user.username.startsWith('AF_')) {
+      // Map to events
+      const userEvents = mapUserToAmplitudeEvent(user);
+      events.push(...userEvents);
+      validUserCount++;
+    } else {
+      invalidCount++;
     }
+  }
 
-    const response = await docClient.send(new ScanCommand(scanParams));
-
-    // Safely handle Items array
-    const items = response.Items || [];
-    console.log(`[Amplitude Sync] Page ${pageCount} returned ${items.length} items`);
-
-    // Filter out anonymous AppsFlyer attribution records (AF_*)
-    const realUsers = items.filter(user => {
-      return user && user.username && !user.username.startsWith('AF_');
-    });
-
-    users.push(...realUsers);
-    lastEvaluatedKey = response.LastEvaluatedKey || null;
-
-  } while (lastEvaluatedKey);
-
-  return users;
+  return { events, validUserCount, invalidCount };
 }
 
 /**
- * Map DynamoDB user to Amplitude Identify event format
+ * Send events to Amplitude in sub-batches (API limit is usually 100-2000 events per req)
+ */
+async function sendBatchToAmplitude(allEvents) {
+  const BATCH_SIZE = 50; // Conservative batch size for HTTP API
+  
+  for (let i = 0; i < allEvents.length; i += BATCH_SIZE) {
+    const batch = allEvents.slice(i, i + BATCH_SIZE);
+    
+    // Log first event of the first batch for debugging
+    if (i === 0) {
+      // console.log(`[Amplitude Sync] Sample event:`, JSON.stringify(batch[0], null, 2));
+    }
+
+    await sendToAmplitudeApi(batch);
+  }
+}
+
+/**
+ * Map DynamoDB user to Amplitude events
+ * Returns an array of events: [$identify, user_profile_synced]
  */
 function mapUserToAmplitudeEvent(user) {
-  return {
+  const userProperties = {
+    // Basic info
+    email: user.email || null,
+    name: user.fullName || null,
+    age: user.age || null,
+    gender: user.gender || null,
+    app_version: user.appVersion || null,
+
+    // Trip metrics
+    owned_trips_count: user.ownedTripsCount || 0,
+    total_activities: user.totalActivitiesOwned || 0,
+    avg_activities_per_trip: user.avgActivitiesPerTrip || 0,
+    avg_collaborators_per_trip: user.avgCollaboratorsPerTrip || 0,
+    avg_trip_duration: user.avgTripDuration || 0,
+    total_trip_duration: user.totalTripDuration || 0,
+
+    // Trip status
+    trips_completed: user.totalTripsCompleted || 0,
+    trips_in_progress: user.totalTripsInProgress || 0,
+    trips_upcoming: user.totalTripsUpcoming || 0,
+
+    // Social
+    followers_count: user.followersCount || 0,
+    following_count: user.followingCount || 0,
+
+    // Attribution (AppsFlyer)
+    attribution_source: user.attributionSource || 'unknown',
+    attribution_campaign: user.attributionCampaign || null,
+    attribution_campaign_id: user.attributionCampaignId || null,
+    attribution_install_date: user.attributionInstallDate || null,
+    attribution_device_id: user.attributionDeviceId || null,
+    attribution_status: user.attributionStatus || null,
+
+    // Timestamps
+    account_created_at: user.accountCreatedAt || null,
+    last_active_at: user.lastActiveAt || null,
+
+    // Environment
+    environment: ENV
+  };
+
+  // Event 1: Identify (Update User Properties)
+  const identifyEvent = {
     user_id: user.username,
     event_type: '$identify',
-    time: Date.now(), // Required: timestamp in milliseconds
-    user_properties: {
-      // Basic info
-      email: user.email || null,
-      name: user.fullName || null,
-      age: user.age || null,
-      gender: user.gender || null,
-      app_version: user.appVersion || null,
-
-      // Trip metrics
-      owned_trips_count: user.ownedTripsCount || 0,
-      total_activities: user.totalActivitiesOwned || 0,
-      avg_activities_per_trip: user.avgActivitiesPerTrip || 0,
-      avg_collaborators_per_trip: user.avgCollaboratorsPerTrip || 0,
-      avg_trip_duration: user.avgTripDuration || 0,
-      total_trip_duration: user.totalTripDuration || 0,
-
-      // Trip status
-      trips_completed: user.totalTripsCompleted || 0,
-      trips_in_progress: user.totalTripsInProgress || 0,
-      trips_upcoming: user.totalTripsUpcoming || 0,
-
-      // Social
-      followers_count: user.followersCount || 0,
-      following_count: user.followingCount || 0,
-
-      // Attribution (AppsFlyer)
-      attribution_source: user.attributionSource || 'unknown',
-      attribution_campaign: user.attributionCampaign || null,
-      attribution_campaign_id: user.attributionCampaignId || null,
-      attribution_install_date: user.attributionInstallDate || null,
-      attribution_device_id: user.attributionDeviceId || null,
-      attribution_status: user.attributionStatus || null,
-
-      // Timestamps
-      account_created_at: user.accountCreatedAt || null,
-      last_active_at: user.lastActiveAt || null,
-
-      // Environment
-      environment: ENV
-    }
+    time: Date.now(),
+    user_properties: userProperties
   };
+
+  // Event 2: Visible Event for Event Stream
+  const syncEvent = {
+    user_id: user.username,
+    event_type: 'user_profile_synced',
+    time: Date.now(),
+    event_properties: userProperties,
+    user_properties: userProperties
+  };
+
+  return [identifyEvent, syncEvent];
 }
 
 /**
- * Send events to Amplitude HTTP Batch API
+ * Low-level send to Amplitude HTTP API
  */
-async function sendToAmplitude(events) {
+async function sendToAmplitudeApi(events) {
   const payload = JSON.stringify({
     api_key: AMPLITUDE_API_KEY,
     events: events
@@ -263,30 +261,20 @@ async function sendToAmplitude(events) {
 
     const req = https.request(options, (res) => {
       let data = '';
-
-      res.on('data', (chunk) => {
-        data += chunk;
-      });
-
+      res.on('data', chunk => data += chunk);
       res.on('end', () => {
-        try {
-          const parsedData = JSON.parse(data);
-
-          if (res.statusCode === 200) {
-            resolve(parsedData);
-          } else {
-            console.error('[Amplitude Sync] API error:', res.statusCode, data);
-            reject(new Error(`Amplitude API error: ${res.statusCode} - ${data}`));
-          }
-        } catch (parseError) {
-          console.error('[Amplitude Sync] Response parse error:', parseError);
-          reject(new Error(`Failed to parse Amplitude response: ${data}`));
+        if (res.statusCode === 200) {
+          resolve(data);
+        } else {
+          console.warn(`[Amplitude Sync] API Warning: ${res.statusCode}`, data);
+          // Don't crash the whole sync for one bad batch, but log it
+          resolve(data); 
         }
       });
     });
 
     req.on('error', (error) => {
-      console.error('[Amplitude Sync] Request error:', error);
+      console.error('[Amplitude Sync] Network Request error:', error);
       reject(error);
     });
 

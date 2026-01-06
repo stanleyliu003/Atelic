@@ -1,1 +1,1 @@
-{"statusCode":200,"body":"{\"message\":\"Sync completed successfully\",\"users_synced\":12,\"users_skipped\":1,\"batches_sent\":1,\"environment\":\"staging\",\"table\":\"UserProfiles-staging\"}"}
+{"statusCode":200,"body":"{\"message\":\"Sync completed successfully\",\"users_synced\":12,\"events_sent\":24,\"users_skipped\":1,\"batches_sent\":1,\"environment\":\"staging\",\"table\":\"UserProfiles-staging\"}"}

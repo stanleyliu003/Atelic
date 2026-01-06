@@ -152,6 +152,7 @@ export type AmplifyDependentResourcesAttributes = {
     },
     "syncUserProfilesAmplitudeBI": {
       "Arn": "string",
+      "CloudWatchEventRule": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",
       "Name": "string",

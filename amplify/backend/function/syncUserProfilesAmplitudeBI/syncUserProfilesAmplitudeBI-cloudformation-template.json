@@ -16,9 +16,6 @@
     "s3Key": {
       "Type": "String"
     },
-    "amplitudeApiKey": {
-      "Type": "String"
-    },
     "storageUserProfilesStorageName": {
       "Type": "String",
       "Default": "storageUserProfilesStorageName"
@@ -30,6 +27,9 @@
     "storageUserProfilesStorageStreamArn": {
       "Type": "String",
       "Default": "storageUserProfilesStorageStreamArn"
+    },
+    "amplitudeApiKey": {
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -241,6 +241,45 @@
           ]
         }
       }
+    },
+    "CloudWatchEvent": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Description": "Schedule rule for Lambda",
+        "ScheduleExpression": {
+          "Ref": "CloudWatchRule"
+        },
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "LambdaFunction",
+                "Arn"
+              ]
+            },
+            "Id": {
+              "Ref": "LambdaFunction"
+            }
+          }
+        ]
+      }
+    },
+    "PermissionForEventsToInvokeLambda": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "LambdaFunction"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "CloudWatchEvent",
+            "Arn"
+          ]
+        }
+      }
     }
   },
   "Outputs": {
@@ -273,6 +312,11 @@
           "LambdaExecutionRole",
           "Arn"
         ]
+      }
+    },
+    "CloudWatchEventRule": {
+      "Value": {
+        "Ref": "CloudWatchEvent"
       }
     }
   }
