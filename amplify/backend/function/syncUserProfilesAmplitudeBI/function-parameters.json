@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "storage": {
+      "UserProfilesStorage": [
+        "read",
+        "update"
+      ]
+    }
+  },
+  "lambdaLayers": [],
+  "environmentVariableList": [
+    {
+      "cloudFormationParameterName": "amplitudeApiKey",
+      "environmentVariableName": "AMPLITUDE_API_KEY"
+    }
+  ]
+}

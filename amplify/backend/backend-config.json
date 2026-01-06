@@ -537,6 +537,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "syncUserProfilesAmplitudeBI": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "updateUserProfile": {
       "build": true,
       "dependsOn": [
@@ -950,6 +966,30 @@
         {
           "category": "function",
           "resourceName": "sendPushNotification"
+        }
+      ]
+    },
+    "AMPLIFY_function_syncUserProfilesAmplitudeBI_amplitudeApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "syncUserProfilesAmplitudeBI"
+        }
+      ]
+    },
+    "AMPLIFY_function_syncUserProfilesAmplitudeBI_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "syncUserProfilesAmplitudeBI"
+        }
+      ]
+    },
+    "AMPLIFY_function_syncUserProfilesAmplitudeBI_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "syncUserProfilesAmplitudeBI"
         }
       ]
     },

@@ -150,6 +150,13 @@ export type AmplifyDependentResourcesAttributes = {
       "Name": "string",
       "Region": "string"
     },
+    "syncUserProfilesAmplitudeBI": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
     "updateUserProfile": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
