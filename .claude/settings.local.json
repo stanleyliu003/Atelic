@@ -54,7 +54,9 @@
       "Bash(git add:*)",
       "Bash(pod install)",
       "Bash(eas build:configure:*)",
-      "Bash(eas build:*)"
+      "Bash(eas build:*)",
+      "Bash(aws lambda update-function-code:*)",
+      "Bash(tee:*)"
     ],
     "deny": [],
     "ask": [],

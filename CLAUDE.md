@@ -22,6 +22,7 @@ npx tsc --noEmit             # Type check without emitting files
 ```bash
 amplify status               # Check backend status
 amplify push                 # Deploy backend changes
+#NEVER run amplify push. Always tell the user to run it manually. 
 amplify pull                 # Pull latest backend changes
 amplify publish              # Build and deploy frontend and backend
 ```
