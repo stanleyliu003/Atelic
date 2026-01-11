@@ -406,10 +406,12 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
                 <Text style={styles.timeLabel}>START</Text>
                 <Text style={styles.timeValue}>{activity.startTime || '--'}</Text>
               </View>
+              <View style={styles.timeDivider} />
               <View style={styles.timeColumn}>
                 <Text style={styles.timeLabel}>END</Text>
                 <Text style={styles.timeValue}>{activity.endTime || '--'}</Text>
               </View>
+              <View style={styles.timeDivider} />
               <View style={styles.timeColumn}>
                 <Text style={styles.timeLabel}>DURATION</Text>
                 <Text style={styles.timeValue}>
@@ -694,7 +696,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 0,
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   summaryText: {
     fontSize: 15,
@@ -970,7 +972,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
     paddingHorizontal: 20,
-    marginTop: 16,
+    marginTop: 8,
     marginBottom: 16,
   },
   actionButton: {
@@ -1027,6 +1029,11 @@ const styles = StyleSheet.create({
   timeColumn: {
     flex: 1,
     alignItems: 'center',
+  },
+  timeDivider: {
+    width: 1,
+    backgroundColor: '#BAE6FD',
+    marginHorizontal: 8,
   },
   timeLabel: {
     fontSize: 11,
