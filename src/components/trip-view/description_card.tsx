@@ -3,13 +3,15 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Feather from '@expo/vector-icons/Feather';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Image } from 'react-native';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { Activity } from '../../types/activity.types';
-import { ActivityImage } from './activity/activity_image';
+import { ActivityPhotoCarousel } from './activity/ActivityPhotoCarousel';
 
 interface ActivityDetailViewProps {
   activity: Activity;
@@ -28,13 +30,35 @@ const formatNumber = (num: number) => {
 const formatTimeAgo = (timestamp: number) => {
   const now = Date.now() / 1000;
   const diff = now - timestamp;
-  
+
   if (diff < 60) return 'just now';
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
   if (diff < 31536000) return `${Math.floor(diff / 2592000)}mo ago`;
   return `${Math.floor(diff / 31536000)}y ago`;
+};
+
+const calculateDuration = (startTime: string, endTime: string): string => {
+  const [startHour, startMin] = startTime.split(':').map(Number);
+  const [endHour, endMin] = endTime.split(':').map(Number);
+
+  const startMinutes = startHour * 60 + startMin;
+  const endMinutes = endHour * 60 + endMin;
+  const diffMinutes = endMinutes - startMinutes;
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes}m`;
+  }
+
+  const hours = Math.floor(diffMinutes / 60);
+  const minutes = diffMinutes % 60;
+
+  if (minutes === 0) {
+    return `${hours}h`;
+  }
+
+  return `${hours}h ${minutes}m`;
 };
 
 const renderStars = (rating: number) => {
@@ -286,23 +310,59 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
         <Ionicons name="close" size={24} color="#000" />
       </TouchableOpacity>
 
-      {/* Fixed Header with Activity Name */}
-      <View style={styles.fixedHeader}>
-        <View style={styles.nameContainer}>
-          <Text style={styles.activityName}>{activity.name}</Text>
-        </View>
-      </View>
-
       {/* Scrollable Content */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+
+        {/* Activity Photo Carousel */}
+        <View style={styles.heroImageContainer}>
+          <ActivityPhotoCarousel
+            activity={activity}
+            height={250}
+          />
+        </View>
+
+        {/* Category and Status Badges */}
+        <View style={styles.badgeRow}>
+          {activity.primary_type_display_name && (
+            <View style={styles.categoryBadge}>
+              <MaterialCommunityIcons name="tag" size={12} color="#9CA3AF" />
+              <Text style={styles.categoryText}>{activity.primary_type_display_name}</Text>
+            </View>
+          )}
+
+          {/* Open/Closed Badge */}
+          {activity.regular_opening_hours?.weekday_text && (
+            <View style={[
+              styles.hoursStatusBadge,
+              hoursStatus.status === 'open' && styles.hoursStatusBadgeOpen,
+              hoursStatus.status === 'closed' && styles.hoursStatusBadgeClosed
+            ]}>
+              <View style={[
+                styles.statusDot,
+                hoursStatus.status === 'open' && styles.statusDotOpen,
+                hoursStatus.status === 'closed' && styles.statusDotClosed
+              ]} />
+              <Text style={[
+                styles.hoursStatusBadgeText,
+                hoursStatus.status === 'open' && styles.hoursStatusBadgeTextOpen,
+                hoursStatus.status === 'closed' && styles.hoursStatusBadgeTextClosed
+              ]}>
+                {hoursStatus.status === 'open' ? 'Open' : 'Closed'}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Activity Name */}
+        <Text style={styles.activityNameMain}>{activity.name}</Text>
 
         {/* Rating and Review Count */}
         {activity.rating && (
           <View style={styles.ratingContainer}>
-            <Text style={styles.ratingText}>{activity.rating}</Text>
             <View style={styles.starsContainer}>
               {renderStars(activity.rating)}
             </View>
+            <Text style={styles.ratingText}>{activity.rating}</Text>
             {activity.user_ratings_total && (
               <Text style={styles.ratingsCountText}>
                 ({formatNumber(activity.user_ratings_total)})
@@ -310,116 +370,131 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
             )}
           </View>
         )}
-        
-        {/* Primary Type */}
-        {activity.primary_type_display_name && (
-          <Text style={styles.typeText}>
-            {activity.primary_type_display_name}
-          </Text>
-        )}
-
-        {/* Activity Image */}
-        <View style={styles.imageContainer}>
-          <ActivityImage
-            photo_reference={activity.photo_reference || ''}
-            place_id={activity.place_id}
-            style={styles.activityImage}
-          />
-        </View>
 
         {/* Editorial Summary */}
         {activity.editorial_summary && (
-          <>
-            <View style={styles.spacerLine} />
-            <View style={styles.editorialContainer}>
-              <Text style={styles.editorialText}>{activity.editorial_summary}</Text>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryText}>{activity.editorial_summary}</Text>
+          </View>
+        )}
+
+        {/* Action Buttons Row */}
+        <View style={styles.actionButtonsRow}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${activity.lat},${activity.lng}`)}>
+            <MaterialIcons name="directions" size={20} color="#333" />
+            <Text style={styles.actionButtonText}>Directions</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+            <MaterialCommunityIcons name="share-outline" size={20} color="#333" />
+            <Text style={styles.actionButtonText}>Share</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={handleWebsitePress}>
+            <MaterialIcons name="language" size={20} color="#333" />
+            <Text style={styles.actionButtonText}>Website</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Planned Time Section */}
+        {(activity.startTime || activity.endTime) && (
+          <View style={styles.plannedTimeContainer}>
+            <View style={styles.plannedTimeHeader}>
+              <MaterialIcons name="access-time" size={20} color="#333" />
+              <Text style={styles.plannedTimeTitle}>Planned Time</Text>
             </View>
-            <View style={styles.spacerLine} />
-          </>
+            <View style={styles.plannedTimeRow}>
+              <View style={styles.timeColumn}>
+                <Text style={styles.timeLabel}>START</Text>
+                <Text style={styles.timeValue}>{activity.startTime || '--'}</Text>
+              </View>
+              <View style={styles.timeColumn}>
+                <Text style={styles.timeLabel}>END</Text>
+                <Text style={styles.timeValue}>{activity.endTime || '--'}</Text>
+              </View>
+              <View style={styles.timeColumn}>
+                <Text style={styles.timeLabel}>DURATION</Text>
+                <Text style={styles.timeValue}>
+                  {activity.startTime && activity.endTime
+                    ? calculateDuration(activity.startTime, activity.endTime)
+                    : '--'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Your Notes Section */}
+        {activity.notes && (
+          <View style={styles.notesContainer}>
+            <View style={styles.notesHeader}>
+              <MaterialCommunityIcons name="note-text-outline" size={20} color="#333" />
+              <Text style={styles.notesTitle}>Your Notes</Text>
+            </View>
+            <Text style={styles.notesText}>{activity.notes}</Text>
+          </View>
         )}
 
         {/* Address */}
         {activity.formatted_address && (
-          <View style={styles.infoRow}>
-            <Ionicons name="location-outline" size={24} color="#027B8B" />
-            <Text style={styles.infoText}>{activity.formatted_address}</Text>
+          <View style={styles.infoCard}>
+            <View style={styles.infoSection}>
+              <MaterialIcons name="place" size={24} color="#333" />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>ADDRESS</Text>
+                <Text style={styles.infoText}>{activity.formatted_address}</Text>
+              </View>
+            </View>
           </View>
         )}
 
         {/* Hours */}
         {activity.regular_opening_hours?.weekday_text && (
-          <View style={styles.hoursMainContainer}>
-            <TouchableOpacity 
-              style={styles.hoursHeaderRow} 
-              onPress={() => setHoursExpanded(!hoursExpanded)}
-            >
-              <FontAwesome6 name="clock" size={24} color="#027B8B" />
-              <View style={styles.hoursStatusContainer}>
-                <Text style={styles.hoursStatusText}>
-                  <Text style={{ color: hoursStatus.color }}>
-                    {hoursStatus.statusText}
+          <View style={styles.infoCard}>
+            <View style={styles.infoSection}>
+              <MaterialIcons name="access-time" size={24} color="#333" />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>HOURS</Text>
+                <TouchableOpacity
+                  onPress={() => setHoursExpanded(!hoursExpanded)}
+                  style={styles.hoursToggle}
+                >
+                  <Text style={[styles.hoursStatusText, { color: hoursStatus.color }]}>
+                    {hoursStatus.statusText} {hoursStatus.timeText}
                   </Text>
-                  <Text style={{ color: '#333' }}>
-                    {hoursStatus.timeText}
-                  </Text>
-                </Text>
+                  <Ionicons
+                    name={hoursExpanded ? "chevron-up" : "chevron-down"}
+                    size={18}
+                    color="#999"
+                  />
+                </TouchableOpacity>
+                {hoursExpanded && (
+                  <View style={styles.expandedHoursContainer}>
+                    {activity.regular_opening_hours.weekday_text.map((dayHours, index) => (
+                      <Text key={index} style={styles.hoursText}>{dayHours}</Text>
+                    ))}
+                  </View>
+                )}
               </View>
-              <Ionicons 
-                name={hoursExpanded ? "chevron-up" : "chevron-down"} 
-                size={20} 
-                color="#666" 
-              />
-            </TouchableOpacity>
-            
-            {hoursExpanded && (
-              <View style={styles.expandedHoursContainer}>
-                {activity.regular_opening_hours.weekday_text.map((dayHours, index) => (
-                  <Text key={index} style={styles.hoursText}>{dayHours}</Text>
-                ))}
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Website */}
-        {activity.website_uri && (
-          <View style={styles.infoRow}>
-            <Entypo name="globe" size={24} color="#027B8B" />
-            <TouchableOpacity onPress={handleWebsitePress} style={styles.websiteTouchable}>
-              <Text style={styles.websiteText}>{activity.website_uri}</Text>
-            </TouchableOpacity>
+            </View>
           </View>
         )}
 
         {/* Phone */}
         {activity.international_phone_number && (
-          <View style={styles.infoRow}>
-            <FontAwesome6 name="phone" size={24} color="#027B8B" />
-            <Text style={styles.infoText}>{activity.international_phone_number}</Text>
+          <View style={styles.infoCard}>
+            <View style={styles.infoSection}>
+              <MaterialIcons name="phone" size={24} color="#333" />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>PHONE</Text>
+                <Text style={styles.infoText}>{activity.international_phone_number}</Text>
+              </View>
+            </View>
           </View>
         )}
 
-        {/* Recommendation Status */}
-        <View style={styles.recommendationContainer}>
-          <View style={styles.sourceRow}>
-            <Text style={styles.recommendationLabel}>Source</Text>
-            {activity.is_recommended && (
-              <Image 
-                source={require('../../../assets/Google_logo.webp')} 
-                style={styles.googleLogo}
-                resizeMode="contain"
-              />
-            )}
-          </View>
-          <Text style={styles.recommendationText}>
-            {activity.is_recommended ? 'Recommended by Google' : 'Added by you'}
-          </Text>
-        </View>
-
-        {/* Reviews */}
+        {/* Top Reviews */}
         {activity.reviews && activity.reviews.length > 0 && (
           <View style={styles.reviewsContainer}>
-            <Text style={styles.reviewsLabel}>Reviews</Text>
+            <Text style={styles.reviewsLabel}>Top Reviews</Text>
             {activity.reviews.slice(0, 5).map((review, index) => (
               <View key={index} style={styles.reviewItem}>
                 <View style={styles.reviewHeader}>
@@ -525,30 +600,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#D1D5DB',
     borderRadius: 3,
   },
-  fixedHeader: {
-    paddingHorizontal: 20,
-    paddingTop: 0,
-    paddingBottom: 10,
-    zIndex: 1000,
-  },
-  nameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingRight: 40,
-  },
   closeButton: {
     position: 'absolute',
-    top: -10,
-    right: -15,
-    width: 40,
-    height: 40,
+    top: 16,
+    right: 20,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E5E7EB',
-    borderRadius: 20,
-    zIndex: 2000,
-    elevation: 4,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 18,
+    zIndex: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   closeButtonWishlist: {
     top: 12,
@@ -556,66 +623,107 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 7,
+    paddingTop: 0,
   },
-  imageContainer: {
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 25,
-  },
-  activityImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 15,
+  heroImageContainer: {
+    width: '100%',
+    marginTop: 8,
+    marginBottom: 16,
   },
   spacerLine: {
     height: 1,
     backgroundColor: '#D9DCE0',
     marginVertical: 15,
   },
-  editorialContainer: {
-    marginBottom: 10,
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 20,
+    gap: 8,
   },
-  editorialText: {
-    fontFamily: 'outfit',
-    fontSize: 16,
-    color: '#333',
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    gap: 4,
+  },
+  categoryText: {
+    fontSize: 13,
+    color: '#6B7280',
+    textTransform: 'capitalize',
+  },
+  hoursStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  hoursStatusBadgeOpen: {
+    backgroundColor: '#ECFDF5',
+  },
+  hoursStatusBadgeClosed: {
+    backgroundColor: '#FEF2F2',
+  },
+  hoursStatusBadgeText: {
+    fontSize: 12,
+  },
+  hoursStatusBadgeTextOpen: {
+    color: '#059669',
+  },
+  hoursStatusBadgeTextClosed: {
+    color: '#DC2626',
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusDotOpen: {
+    backgroundColor: '#10B981',
+  },
+  statusDotClosed: {
+    backgroundColor: '#EF4444',
+  },
+  summaryCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 0,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  summaryText: {
+    fontSize: 15,
+    color: '#6B7280',
     lineHeight: 22,
-    textAlign: 'left',
-  },
-  activityName: {
-    fontFamily: 'outfit-bold',
-    fontSize: 24,
-    color: Colors.PRIMARY,
-    textAlign: 'left',
-    flex: 1,
-    marginRight: 10,
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    marginBottom: 5,
+    marginBottom: 12,
+    paddingHorizontal: 20,
   },
   starsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: 6,
   },
   ratingText: {
-    fontFamily: 'outfit',
     fontSize: 16,
-    color: Colors.GRAY,
-    marginRight: 8,
+    fontWeight: '700',
+    color: '#000',
+    marginRight: 6,
   },
   ratingsCountText: {
-    fontFamily: 'outfit',
     fontSize: 16,
-    color: Colors.GRAY,
+    color: '#6B7280',
   },
   typeText: {
-    fontFamily: 'outfit',
     fontSize: 16,
     color: Colors.GRAY,
     textTransform: 'capitalize',
@@ -628,7 +736,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   infoText: {
-    fontFamily: 'outfit',
     fontSize: 16,
     color: '#333',
     lineHeight: 22,
@@ -639,7 +746,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   cityText: {
-    fontFamily: 'outfit',
     fontSize: 16,
     color: '#333',
   },
@@ -649,13 +755,11 @@ const styles = StyleSheet.create({
   coordinatesText: {
     fontSize: 14,
     color: '#666',
-    fontFamily: 'monospace',
   },
   placeIdContainer: {
     marginBottom: 20,
   },
   placeIdLabel: {
-    fontFamily: 'outfit-bold',
     fontSize: 16,
     color: Colors.PRIMARY,
     marginBottom: 5,
@@ -663,19 +767,16 @@ const styles = StyleSheet.create({
   placeIdText: {
     fontSize: 12,
     color: '#666',
-    fontFamily: 'monospace',
   },
   recommendationContainer: {
     marginBottom: 30,
   },
   recommendationLabel: {
-    fontFamily: 'outfit-bold',
     fontSize: 16,
     color: Colors.PRIMARY,
     marginBottom: 5,
   },
   recommendationText: {
-    fontFamily: 'outfit',
     fontSize: 16,
     color: '#333',
   },
@@ -683,13 +784,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   hoursLabel: {
-    fontFamily: 'outfit-bold',
     fontSize: 16,
     color: Colors.PRIMARY,
     marginBottom: 8,
   },
   hoursText: {
-    fontFamily: 'outfit',
     fontSize: 14,
     color: '#333',
     lineHeight: 20,
@@ -700,7 +799,6 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   websiteText: {
-    fontFamily: 'outfit',
     fontSize: 14,
     color: '#333',
     lineHeight: 22,
@@ -719,15 +817,13 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   hoursStatusText: {
-    fontFamily: 'outfit',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
-    lineHeight: 22,
+    lineHeight: 21,
+    flex: 1,
   },
   expandedHoursContainer: {
-    marginTop: 8,
-    paddingLeft: 41,
-    paddingRight: 5,
+    marginTop: 12,
   },
   sourceRow: {
     flexDirection: 'row',
@@ -745,12 +841,13 @@ const styles = StyleSheet.create({
   },
   reviewsContainer: {
     marginBottom: 30,
+    paddingHorizontal: 20,
   },
   reviewsLabel: {
-    fontFamily: 'outfit-bold',
-    fontSize: 16,
-    color: Colors.PRIMARY,
-    marginBottom: 15,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 16,
   },
   reviewItem: {
     marginBottom: 20,
@@ -773,14 +870,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   reviewAuthorName: {
-    fontFamily: 'outfit',
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
     marginBottom: 2,
   },
   reviewTime: {
-    fontFamily: 'outfit',
     fontSize: 12,
     color: Colors.GRAY,
   },
@@ -795,7 +890,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   reviewText: {
-    fontFamily: 'outfit',
     fontSize: 14,
     color: '#333',
     lineHeight: 20,
@@ -809,20 +903,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   ellipsisText: {
-    fontFamily: 'outfit',
     fontSize: 14,
     color: '#333',
     lineHeight: 20,
   },
   moreText: {
-    fontFamily: 'outfit',
     fontSize: 14,
     color: Colors.GRAY,
     textDecorationLine: 'underline',
     lineHeight: 20,
   },
   moreButton: {
-    fontFamily: 'outfit',
     fontSize: 14,
     color: Colors.GRAY,
     textDecorationLine: 'underline',
@@ -864,5 +955,157 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 5,
+  },
+  // Activity Name (in content)
+  activityNameMain: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 8,
+    paddingHorizontal: 20,
+  },
+  // Action Buttons Row
+  actionButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  actionButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+  },
+  // Planned Time Section
+  plannedTimeContainer: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    shadowColor: '#0EA5E9',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  plannedTimeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  plannedTimeTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000',
+  },
+  plannedTimeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  timeColumn: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  timeLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  timeValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000',
+  },
+  // Your Notes Section
+  notesContainer: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  notesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  notesTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000',
+  },
+  notesText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+  },
+  // Info Card Wrapper (Address, Hours, Phone)
+  infoCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  // Info Sections (Address, Hours, Phone)
+  infoSection: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  infoText: {
+    fontSize: 15,
+    color: '#000',
+    lineHeight: 21,
+  },
+  hoursToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
 });
