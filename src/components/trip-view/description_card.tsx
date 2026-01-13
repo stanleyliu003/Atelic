@@ -64,6 +64,26 @@ const calculateDuration = (startTime: string, endTime: string): string => {
   return `${hours}h ${minutes}m`;
 };
 
+// Convert 24-hour time format (09:00) to 12-hour AM/PM format (9:00 AM)
+const formatTo12Hour = (time24: string): string => {
+  if (!time24) return '--';
+
+  const [hourStr, minuteStr] = time24.split(':');
+  let hour = parseInt(hourStr, 10);
+  const minute = minuteStr;
+
+  const period = hour >= 12 ? 'PM' : 'AM';
+
+  // Convert to 12-hour format
+  if (hour === 0) {
+    hour = 12;
+  } else if (hour > 12) {
+    hour = hour - 12;
+  }
+
+  return `${hour}:${minute} ${period}`;
+};
+
 const renderStars = (rating: number) => {
   const stars = [];
   const fullStars = Math.floor(rating);
@@ -496,12 +516,12 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
             <View style={styles.plannedTimeRow}>
               <View style={styles.timeColumn}>
                 <Text style={styles.timeLabel}>START</Text>
-                <Text style={styles.timeValue}>{liveActivity.startTime || '--'}</Text>
+                <Text style={styles.timeValue}>{formatTo12Hour(liveActivity.startTime || '')}</Text>
               </View>
               <View style={styles.timeDivider} />
               <View style={styles.timeColumn}>
                 <Text style={styles.timeLabel}>END</Text>
-                <Text style={styles.timeValue}>{liveActivity.endTime || '--'}</Text>
+                <Text style={styles.timeValue}>{formatTo12Hour(liveActivity.endTime || '')}</Text>
               </View>
               <View style={styles.timeDivider} />
               <View style={styles.timeColumn}>
@@ -524,12 +544,12 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
             <View style={styles.plannedTimeRow}>
               <View style={styles.timeColumn}>
                 <Text style={styles.timeLabel}>START</Text>
-                <Text style={styles.timeValue}>{liveActivity.startTime || '--'}</Text>
+                <Text style={styles.timeValue}>{formatTo12Hour(liveActivity.startTime || '')}</Text>
               </View>
               <View style={styles.timeDivider} />
               <View style={styles.timeColumn}>
                 <Text style={styles.timeLabel}>END</Text>
-                <Text style={styles.timeValue}>{liveActivity.endTime || '--'}</Text>
+                <Text style={styles.timeValue}>{formatTo12Hour(liveActivity.endTime || '')}</Text>
               </View>
               <View style={styles.timeDivider} />
               <View style={styles.timeColumn}>
@@ -1187,7 +1207,7 @@ const styles = StyleSheet.create({
   },
   timeValue: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1E293B',
   },
   // Your Notes Section
