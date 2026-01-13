@@ -862,9 +862,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   summaryText: {
+    fontFamily: 'outfit',
     fontSize: 15,
+    fontWeight: '400',
     color: '#6B7280',
     lineHeight: 22,
+    letterSpacing: 0.1,
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -879,9 +882,10 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   ratingText: {
+    fontFamily: 'outfit-medium',
     fontSize: 16,
-    fontWeight: '700',
-    color: '#000',
+    fontWeight: '500',
+    color: '#374151',
     marginRight: 6,
   },
   ratingsCountText: {
@@ -1123,11 +1127,13 @@ const styles = StyleSheet.create({
   },
   // Activity Name (in content)
   activityNameMain: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#000',
+    fontFamily: 'outfit-semibold',
+    fontSize: 26,
+    fontWeight: '600',
+    color: '#1F2937',
     marginBottom: 8,
     paddingHorizontal: 20,
+    letterSpacing: 0.2,
   },
   // Action Buttons Row
   actionButtonsRow: {
@@ -1155,9 +1161,11 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   actionButtonText: {
+    fontFamily: 'outfit',
     fontSize: 13,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: '500',
+    color: '#4B5563',
+    letterSpacing: 0.2,
   },
   // Planned Time Section
   plannedTimeContainer: {
@@ -1181,9 +1189,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   plannedTimeTitle: {
+    fontFamily: 'outfit-medium',
     fontSize: 15,
-    fontWeight: '600',
-    color: '#1E293B',
+    fontWeight: '500',
+    color: '#374151',
+    letterSpacing: 0.2,
   },
   plannedTimeRow: {
     flexDirection: 'row',
@@ -1199,6 +1209,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
   },
   timeLabel: {
+    fontFamily: 'outfit-medium',
     fontSize: 10,
     fontWeight: '600',
     color: '#94A3B8',
@@ -1206,9 +1217,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   timeValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1E293B',
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#334155',
+    letterSpacing: 0.3,
   },
   // Your Notes Section
   notesContainer: {
@@ -1230,14 +1243,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   notesTitle: {
+    fontFamily: 'outfit-medium',
     fontSize: 16,
-    fontWeight: '700',
-    color: '#000',
+    fontWeight: '500',
+    color: '#374151',
+    letterSpacing: 0.2,
   },
   notesText: {
+    fontFamily: 'outfit',
     fontSize: 14,
-    color: '#333',
+    fontWeight: '400',
+    color: '#4B5563',
     lineHeight: 20,
+    letterSpacing: 0.1,
   },
   // Info Card Wrapper (Address, Hours, Phone)
   infoCard: {
@@ -1262,6 +1280,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoLabel: {
+    fontFamily: 'outfit-medium',
     fontSize: 11,
     fontWeight: '600',
     color: '#9CA3AF',
@@ -1269,9 +1288,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   infoText: {
+    fontFamily: 'outfit',
     fontSize: 15,
-    color: '#000',
+    fontWeight: '400',
+    color: '#374151',
     lineHeight: 21,
+    letterSpacing: 0.1,
   },
   hoursToggle: {
     flexDirection: 'row',
