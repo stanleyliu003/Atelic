@@ -1470,7 +1470,7 @@ DEPENDENCIES:
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - react-native-appsflyer (from `../node_modules/react-native-appsflyer`)
   - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
-  - react-native-google-maps (from `/Users/stanleycliu/Desktop/Atelic_App_Dev/Atelic_Stable/node_modules/react-native-maps`)
+  - react-native-google-maps (from `/Users/ujjwalrastogi/Atelic_Stable/node_modules/react-native-maps`)
   - react-native-maps (from `../node_modules/react-native-maps`)
   - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
@@ -1627,7 +1627,7 @@ EXTERNAL SOURCES:
   react-native-get-random-values:
     :path: "../node_modules/react-native-get-random-values"
   react-native-google-maps:
-    :path: "/Users/stanleycliu/Desktop/Atelic_App_Dev/Atelic_Stable/node_modules/react-native-maps"
+    :path: "/Users/ujjwalrastogi/Atelic_Stable/node_modules/react-native-maps"
   react-native-maps:
     :path: "../node_modules/react-native-maps"
   react-native-netinfo:
