@@ -4,6 +4,7 @@ import Carousel from 'react-native-reanimated-carousel';
 import { Activity } from '../../../types/activity.types';
 import { Colors } from '../../../../constants/Colors';
 import { TripCarouselImage } from '../../profile/TripCarouselImage';
+import { GOOGLE_PLACES_API_KEY, UNSPLASH_ACCESS_KEY } from '../../../constants/api';
 
 interface ActivityPhotoCarouselProps {
   activity: Activity;
@@ -30,8 +31,95 @@ interface UnsplashResponse {
 }
 
 // Unsplash API configuration
-const UNSPLASH_ACCESS_KEY = 'yn2QK-2i5D4As5qcKEriMb31MQjrM6z8a0K4xERjGJ8';
 const UNSPLASH_API_BASE = 'https://api.unsplash.com';
+
+// Place types that should prioritize Unsplash (landmarks & attractions)
+const UNSPLASH_PRIORITY_TYPES = [
+  'tourist_attraction',
+  'monument',
+  'landmark',
+  'museum',
+  'art_gallery',
+  'park',
+  'national_park',
+  'natural_feature',
+  'stadium',
+  'zoo',
+  'aquarium',
+  'historical_landmark',
+  'point_of_interest',
+  'place_of_worship',
+  'church',
+  'mosque',
+  'temple',
+  'synagogue',
+];
+
+// Place types that should prioritize Google Places (local businesses)
+const GOOGLE_PLACES_PRIORITY_TYPES = [
+  'restaurant',
+  'bar',
+  'night_club',
+  'cafe',
+  'bakery',
+  'meal_takeaway',
+  'meal_delivery',
+  'food',
+  'store',
+  'shopping_mall',
+  'clothing_store',
+  'shoe_store',
+  'jewelry_store',
+  'book_store',
+  'lodging',
+  'hotel',
+  'spa',
+  'hair_care',
+  'beauty_salon',
+];
+
+// Helper function to determine if we should use Unsplash first
+const shouldUseUnsplashFirst = (primaryType?: string, types?: string[]): boolean => {
+  // Collect all types to check
+  const typesToCheck: string[] = [];
+
+  if (primaryType) {
+    typesToCheck.push(primaryType);
+  }
+
+  if (types && types.length > 0) {
+    typesToCheck.push(...types);
+  }
+
+  // If no types available, default to Unsplash
+  if (typesToCheck.length === 0) {
+    return true;
+  }
+
+  // Normalize all types
+  const normalizedTypes = typesToCheck.map(t => t.toLowerCase().replace(/\s+/g, '_'));
+
+  // Check if ANY type matches local business patterns (Google Places first)
+  const isLocalBusiness = normalizedTypes.some(normalizedType =>
+    GOOGLE_PLACES_PRIORITY_TYPES.some(businessType => normalizedType.includes(businessType))
+  );
+
+  if (isLocalBusiness) {
+    return false; // Use Google Places first
+  }
+
+  // Check if ANY type matches landmark patterns (Unsplash first)
+  const isLandmark = normalizedTypes.some(normalizedType =>
+    UNSPLASH_PRIORITY_TYPES.some(landmarkType => normalizedType.includes(landmarkType))
+  );
+
+  if (isLandmark) {
+    return true; // Use Unsplash first
+  }
+
+  // Default to Unsplash for other types
+  return true;
+};
 
 export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoCarouselProps) {
   const [photos, setPhotos] = useState<PhotoData[]>([]);
@@ -48,22 +136,47 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
     try {
       setLoading(true);
 
-      // Try Unsplash API first
-      const unsplashImages = await fetchUnsplashImages(activity.name);
+      const useUnsplashFirst = shouldUseUnsplashFirst(activity.primaryType, activity.types);
 
-      // If we got 5 images from Unsplash, use them
-      if (unsplashImages.length >= 5) {
-        setUnsplashUrls(unsplashImages.slice(0, 5));
-        setPhotos([]); // Clear Google Places photos
-        setLoading(false);
-        return;
+      if (useUnsplashFirst) {
+        // For landmarks & attractions: Try Unsplash first
+        console.log(`[ActivityPhotoCarousel] Using Unsplash first for ${activity.primaryType} / types: ${activity.types?.join(', ')}: ${activity.name}`);
+        const unsplashImages = await fetchUnsplashImages(activity.name);
+
+        // If we got 5 images from Unsplash, use them
+        if (unsplashImages.length >= 5) {
+          setUnsplashUrls(unsplashImages.slice(0, 5));
+          setPhotos([]); // Clear Google Places photos
+          setLoading(false);
+          return;
+        }
+
+        // Fallback to Google Places if Unsplash didn't return enough images
+        console.log(`[ActivityPhotoCarousel] Unsplash returned ${unsplashImages.length} images, falling back to Google Places`);
+        await fetchGooglePlacesPhotos();
+      } else {
+        // For local businesses: Use Google Places first
+        console.log(`[ActivityPhotoCarousel] Using Google Places first for ${activity.primaryType} / types: ${activity.types?.join(', ')}: ${activity.name}`);
+
+        // Check if we have Google Places photo
+        const hasGooglePhoto = !!activity.photo_reference;
+
+        if (hasGooglePhoto) {
+          console.log(`[ActivityPhotoCarousel] Found Google Places photo for ${activity.name}`);
+          await fetchGooglePlacesPhotos();
+        } else {
+          // No Google Places photos available, fallback to Unsplash
+          console.log(`[ActivityPhotoCarousel] No Google Places photos found for ${activity.name}, trying Unsplash as fallback`);
+          const unsplashImages = await fetchUnsplashImages(activity.name);
+          if (unsplashImages.length > 0) {
+            setUnsplashUrls(unsplashImages.slice(0, 5));
+            setPhotos([]); // Clear Google Places photos
+          }
+        }
       }
 
-      // Fallback to Google Places if Unsplash didn't return enough images
-      await fetchGooglePlacesPhotos();
-
     } catch (error) {
-      console.error('[ActivityPhotoCarousel] Error with Unsplash, falling back to Google Places:', error);
+      console.error('[ActivityPhotoCarousel] Error fetching photos, falling back:', error);
       await fetchGooglePlacesPhotos();
     } finally {
       setLoading(false);
@@ -92,21 +205,50 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
   };
 
   const fetchGooglePlacesPhotos = async () => {
-    let photoRefs: string[] = activity.photo_references || [];
+    // If we have a place_id, fetch multiple photos from Google Places API
+    if (activity.place_id) {
+      try {
+        console.log(`[ActivityPhotoCarousel] Fetching multiple photos from Google Places for: ${activity.name}`);
 
-    // If no photo_references but we have a single photo_reference, use it
-    if (photoRefs.length === 0 && activity.photo_reference) {
-      photoRefs = [activity.photo_reference];
+        // Fetch place details with photos field
+        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${activity.place_id}&fields=photos&key=${GOOGLE_PLACES_API_KEY}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.status === 'OK' && data.result?.photos && data.result.photos.length > 0) {
+          // Get up to 5 photos (same as Unsplash)
+          const photoRefs = data.result.photos.slice(0, 5).map((photo: any) => photo.photo_reference);
+
+          const photoData: PhotoData[] = photoRefs.map((ref: string) => ({
+            photo_reference: ref,
+            place_id: activity.place_id || ''
+          }));
+
+          console.log(`[ActivityPhotoCarousel] Found ${photoData.length} Google Places photos for: ${activity.name}`);
+          setPhotos(photoData);
+          setUnsplashUrls([]); // Clear Unsplash URLs
+          return;
+        } else {
+          console.log(`[ActivityPhotoCarousel] No photos found in Google Places API response for: ${activity.name}`);
+        }
+      } catch (error) {
+        console.error(`[ActivityPhotoCarousel] Error fetching Google Places photos:`, error);
+      }
     }
 
-    // Convert to PhotoData objects for TripCarouselImage
-    const photoData: PhotoData[] = photoRefs.map(ref => ({
-      photo_reference: ref,
-      place_id: activity.place_id || ''
-    }));
+    // Fallback: Use single photo_reference if available
+    if (activity.photo_reference) {
+      const photoData: PhotoData[] = [{
+        photo_reference: activity.photo_reference,
+        place_id: activity.place_id || ''
+      }];
 
-    setPhotos(photoData);
-    setUnsplashUrls([]); // Clear Unsplash URLs
+      setPhotos(photoData);
+      setUnsplashUrls([]); // Clear Unsplash URLs
+    } else {
+      setPhotos([]);
+    }
   };
 
   // Handle photo reference updates from TripCarouselImage (Google Places only)

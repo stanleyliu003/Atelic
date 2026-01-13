@@ -235,57 +235,115 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
       return { status: 'closed', statusText: 'Closed', timeText: '', color: '#DC2626' };
     }
 
-    // Parse open hours for today
-    const timeMatch = todayHours.match(/(\d{1,2}:\d{2}\s*[AP]M)\s*[–-]\s*(\d{1,2}:\d{2}\s*[AP]M)/i);
-    if (!timeMatch) {
+    // Parse open hours for today - handle multiple time periods (split shifts)
+    // Match all time ranges in the string
+    // Supports formats: "5:00 PM – 10:00 PM" or "5:00 – 10:00 PM" (AM/PM shared)
+    const timeRanges = todayHours.matchAll(/(\d{1,2}:\d{2})(?:\s*([AP]M))?\s*[–-]\s*(\d{1,2}:\d{2})\s*([AP]M)/gi);
+    const ranges = Array.from(timeRanges);
+
+    if (ranges.length === 0) {
       // Check for 24-hour format
       if (todayHours.toLowerCase().includes('24 hours') || todayHours.toLowerCase().includes('open 24 hours')) {
-        return { status: 'open', statusText: 'Open', timeText: ' 24 hours', color: '#16A34A' };
+        return { status: 'open', statusText: 'Open', timeText: ' ⋅ 24 hours', color: '#16A34A' };
       }
-      return { status: 'unknown', statusText: 'Hours format not recognized', timeText: '' };
+      // If format cannot be parsed but we have hours text, show it as-is
+      if (todayHours.trim()) {
+        return { status: 'unknown', statusText: '', timeText: todayHours.trim(), color: '#6B7280' };
+      }
+      return { status: 'unknown', statusText: 'Hours unavailable', timeText: '', color: '#6B7280' };
     }
 
-    const openTime = timeMatch[1];
-    const closeTime = timeMatch[2];
-    const openMinutes = parseTimeToMinutes(openTime);
-    const closeMinutes = parseTimeToMinutes(closeTime);
-
-    if (openMinutes === -1 || closeMinutes === -1) {
-      return { status: 'unknown', statusText: 'Hours format not recognized', timeText: '' };
-    }
-
-    // Handle overnight hours (e.g., 10 PM - 2 AM)
-    const isOvernightHours = closeMinutes < openMinutes;
-    
+    // Check each time range to see if we're currently open
     let isOpen = false;
-    if (isOvernightHours) {
-      isOpen = currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
-    } else {
-      isOpen = currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+    let currentRange = null;
+    let nextRange = null;
+
+    for (const match of ranges) {
+      // Extract time components
+      const openTimeNum = match[1];       // e.g., "5:00"
+      const openPeriod = match[2];        // e.g., "PM" or undefined
+      const closeTimeNum = match[3];      // e.g., "10:00"
+      const closePeriod = match[4];       // e.g., "PM"
+
+      // If opening time doesn't have AM/PM, use the same as closing time
+      const openTime = openPeriod ? `${openTimeNum} ${openPeriod}` : `${openTimeNum} ${closePeriod}`;
+      const closeTime = `${closeTimeNum} ${closePeriod}`;
+
+      const openMinutes = parseTimeToMinutes(openTime);
+      const closeMinutes = parseTimeToMinutes(closeTime);
+
+      if (openMinutes === -1 || closeMinutes === -1) continue;
+
+      // Handle overnight hours (e.g., 10 PM - 2 AM)
+      const isOvernightHours = closeMinutes < openMinutes;
+
+      let isOpenInThisRange = false;
+      if (isOvernightHours) {
+        isOpenInThisRange = currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
+      } else {
+        isOpenInThisRange = currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+      }
+
+      if (isOpenInThisRange) {
+        isOpen = true;
+        currentRange = { openTime, closeTime, openMinutes, closeMinutes, isOvernightHours };
+        break;
+      }
+
+      // Track next opening time if we're between shifts
+      if (!nextRange && currentMinutes < openMinutes) {
+        nextRange = { openTime, closeTime, openMinutes };
+      }
     }
 
-    if (isOpen) {
-      return { 
-        status: 'open', 
+    // If not open in any range, use the first range for display
+    if (!currentRange && ranges.length > 0) {
+      const match = ranges[0];
+      const openTimeNum = match[1];
+      const openPeriod = match[2];
+      const closeTimeNum = match[3];
+      const closePeriod = match[4];
+
+      const openTime = openPeriod ? `${openTimeNum} ${openPeriod}` : `${openTimeNum} ${closePeriod}`;
+      const closeTime = `${closeTimeNum} ${closePeriod}`;
+
+      currentRange = {
+        openTime,
+        closeTime,
+        openMinutes: parseTimeToMinutes(openTime),
+        closeMinutes: parseTimeToMinutes(closeTime),
+        isOvernightHours: parseTimeToMinutes(closeTime) < parseTimeToMinutes(openTime)
+      };
+    }
+
+    if (isOpen && currentRange) {
+      return {
+        status: 'open',
         statusText: 'Open',
-        timeText: ` ⋅ Closes ${closeTime}`,
+        timeText: ` ⋅ Closes ${currentRange.closeTime}`,
         color: '#16A34A'
       };
     } else {
+      // Use nextRange if available (for split shifts), otherwise use currentRange
+      const rangeToUse = nextRange || currentRange;
+      if (!rangeToUse) {
+        return { status: 'closed', statusText: 'Closed', timeText: '', color: '#DC2626' };
+      }
+
       // Check if will open later today
-      if (!isOvernightHours && currentMinutes < openMinutes) {
-        return { 
-          status: 'closed', 
+      if (!currentRange?.isOvernightHours && currentMinutes < rangeToUse.openMinutes) {
+        return {
+          status: 'closed',
           statusText: 'Closed',
-          timeText: ` ⋅ Opens ${openTime}`,
+          timeText: ` ⋅ Opens ${rangeToUse.openTime}`,
           color: '#DC2626'
         };
       } else {
         // Will open tomorrow or next day
-        return { 
-          status: 'closed', 
+        return {
+          status: 'closed',
           statusText: 'Closed',
-          timeText: ` ⋅ Opens ${openTime} tomorrow`,
+          timeText: ` ⋅ Opens ${rangeToUse.openTime} tomorrow`,
           color: '#DC2626'
         };
       }
@@ -293,6 +351,7 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
   };
 
   const hoursStatus = getHoursStatus();
+  console.log(`[description_card] Hours status for ${activity.name}:`, hoursStatus);
 
   return (
     <GestureHandlerRootView style={[styles.container, variant === 'wishlist' && styles.containerWishlist]}>
@@ -331,7 +390,7 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
           )}
 
           {/* Open/Closed Badge */}
-          {activity.regular_opening_hours?.weekday_text && (
+          {(hoursStatus.status === 'open' || hoursStatus.status === 'closed') && (
             <View style={[
               styles.hoursStatusBadge,
               hoursStatus.status === 'open' && styles.hoursStatusBadgeOpen,
@@ -347,7 +406,7 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
                 hoursStatus.status === 'open' && styles.hoursStatusBadgeTextOpen,
                 hoursStatus.status === 'closed' && styles.hoursStatusBadgeTextClosed
               ]}>
-                {hoursStatus.status === 'open' ? 'Open' : 'Closed'}
+                {hoursStatus.statusText}
               </Text>
             </View>
           )}
