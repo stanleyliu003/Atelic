@@ -286,6 +286,9 @@ export function ActivityCard({
               photo_reference={activity.photo_reference || ''}
               place_id={activity.place_id}
               style={[styles.activityImage, disabled && styles.disabledImage]}
+              activityName={activity.name}
+              primaryType={activity.primaryType}
+              types={activity.types}
             />
           </TouchableOpacity>
         </View>

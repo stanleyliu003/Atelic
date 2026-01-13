@@ -35,8 +35,8 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
   const { updateActivityNotes, tripId } = useCreateTrip();
   const [notes, setNotes] = useState(activity.notes || '');
   const isWishlist = activeTab === 'wishlist';
-  const [startTime, setStartTime] = useState(isWishlist ? '' : (activity.startTime || ''));
-  const [endTime, setEndTime] = useState(isWishlist ? '' : (activity.endTime || ''));
+  const [startTime, setStartTime] = useState(activity.startTime || '');
+  const [endTime, setEndTime] = useState(activity.endTime || '');
   const [timeModalVisible, setTimeModalVisible] = useState(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const notesInputRef = useRef(null);
@@ -45,11 +45,9 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
   // Sync local state with activity prop changes (from TripOperations updates)
   useEffect(() => {
     setNotes(activity.notes || '');
-    if (!isWishlist) {
-      setStartTime(activity.startTime || '');
-      setEndTime(activity.endTime || '');
-    }
-  }, [activity.notes, activity.startTime, activity.endTime, isWishlist]);
+    setStartTime(activity.startTime || '');
+    setEndTime(activity.endTime || '');
+  }, [activity.notes, activity.startTime, activity.endTime]);
 
   // Track keyboard visibility
   useEffect(() => {
@@ -86,8 +84,8 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
     // Only save if user is not a viewer
     if (!isViewer) {
       const nextNotes = notes.trim();
-      const nextStartTime = isWishlist ? '' : startTime;
-      const nextEndTime = isWishlist ? '' : endTime;
+      const nextStartTime = startTime;
+      const nextEndTime = endTime;
 
       const prevNotes = activity.notes || '';
       const prevStartTime = activity.startTime || '';
@@ -121,8 +119,8 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
     // Only save changes when closing via backdrop if user is not a viewer
     if (!isViewer) {
       const nextNotes = notes.trim();
-      const nextStartTime = isWishlist ? '' : startTime;
-      const nextEndTime = isWishlist ? '' : endTime;
+      const nextStartTime = startTime;
+      const nextEndTime = endTime;
 
       const prevNotes = activity.notes || '';
       const prevStartTime = activity.startTime || '';
@@ -275,51 +273,49 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
               </ScrollView>
             </Pressable>
 
-            {/* Add Time Button - Only show if NOT in wishlist */}
-            {!isWishlist && (
-              <View style={styles.timePickerWrapper} pointerEvents="box-none">
-                <View style={styles.timeButtonRow}>
+            {/* Add Time Button */}
+            <View style={styles.timePickerWrapper} pointerEvents="box-none">
+              <View style={styles.timeButtonRow}>
+                <TouchableOpacity
+                  style={styles.addTimeButton}
+                  onPress={() => setTimeModalVisible(true)}
+                  pointerEvents="auto"
+                  disabled={isViewer}
+                >
+                  <MaterialIcons name="access-time" size={18} color={Colors.PRIMARY} />
+                  <Text style={styles.addTimeText}>
+                    {startTime && endTime ? `${format12Hour(startTime)} - ${format12Hour(endTime)}` : 'Add Time'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Clear Time Button - Only show if time is set and user is not a viewer */}
+                {startTime && endTime && !isViewer && (
                   <TouchableOpacity
-                    style={styles.addTimeButton}
-                    onPress={() => setTimeModalVisible(true)}
+                    style={styles.clearTimeButton}
+                    onPress={() => {
+                      setTimeModalVisible(false); // Close the time modal first
+                      setStartTime('');
+                      setEndTime('');
+                    }}
                     pointerEvents="auto"
-                    disabled={isViewer}
                   >
-                    <MaterialIcons name="access-time" size={18} color={Colors.PRIMARY} />
-                    <Text style={styles.addTimeText}>
-                      {startTime && endTime ? `${format12Hour(startTime)} - ${format12Hour(endTime)}` : 'Add Time'}
-                    </Text>
+                    <MaterialIcons name="close" size={18} color="#666" />
                   </TouchableOpacity>
-
-                  {/* Clear Time Button - Only show if time is set and user is not a viewer */}
-                  {startTime && endTime && !isViewer && (
-                    <TouchableOpacity
-                      style={styles.clearTimeButton}
-                      onPress={() => {
-                        setTimeModalVisible(false); // Close the time modal first
-                        setStartTime('');
-                        setEndTime('');
-                      }}
-                      pointerEvents="auto"
-                    >
-                      <MaterialIcons name="close" size={18} color="#666" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Time Picker Popover - Only show if not a viewer */}
-                {!isViewer && (
-                  <AddTimeModal
-                    visible={timeModalVisible}
-                    onClose={() => setTimeModalVisible(false)}
-                    initialStartTime={startTime}
-                    initialEndTime={endTime}
-                    onSave={handleTimeUpdate}
-                    currentUserRole={currentUserRole}
-                  />
                 )}
               </View>
-            )}
+
+              {/* Time Picker Popover - Only show if not a viewer */}
+              {!isViewer && (
+                <AddTimeModal
+                  visible={timeModalVisible}
+                  onClose={() => setTimeModalVisible(false)}
+                  initialStartTime={startTime}
+                  initialEndTime={endTime}
+                  onSave={handleTimeUpdate}
+                  currentUserRole={currentUserRole}
+                />
+              )}
+            </View>
           </GestureHandlerRootView>
         </View>
       </KeyboardAvoidingView>

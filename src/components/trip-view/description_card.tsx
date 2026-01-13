@@ -12,6 +12,8 @@ import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-g
 import { runOnJS } from 'react-native-reanimated';
 import { Activity } from '../../types/activity.types';
 import { ActivityPhotoCarousel } from './activity/ActivityPhotoCarousel';
+import { AddNotesModal } from './activity/add_notes_modal';
+import { useCreateTrip } from '../../../context/CreateTripContext';
 
 interface ActivityDetailViewProps {
   activity: Activity;
@@ -21,6 +23,7 @@ interface ActivityDetailViewProps {
   onDuplicate?: (activity: Activity) => void;
   onDelete?: (activity: Activity) => void;
   currentUserRole?: 'owner' | 'editor' | 'viewer';
+  activeTab?: 'wishlist' | string;
 }
 
 const formatNumber = (num: number) => {
@@ -110,9 +113,34 @@ const renderStars = (rating: number) => {
   return stars;
 };
 
-export function ActivityDetailView({ activity, onClose, variant = 'trip', showDragIndicator = true, onDuplicate, onDelete, currentUserRole }: ActivityDetailViewProps) {
+export function ActivityDetailView({ activity, onClose, variant = 'trip', showDragIndicator = true, onDuplicate, onDelete, currentUserRole, activeTab }: ActivityDetailViewProps) {
   const [hoursExpanded, setHoursExpanded] = useState(false);
+  const [notesModalVisible, setNotesModalVisible] = useState(false);
   const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
+
+  // Get live activity data from context for real-time updates
+  const { activities, dayActivities } = useCreateTrip();
+
+  // Find the current activity by instanceId to get live updates
+  const getLiveActivity = (): Activity => {
+    // First check wishlist
+    const wishlistActivity = activities.find(a => a.instanceId === activity.instanceId);
+    if (wishlistActivity) return wishlistActivity;
+
+    // Then check all days
+    for (const dayNum of Object.keys(dayActivities)) {
+      const dayActivity = dayActivities[dayNum]?.activities?.find(
+        (a: Activity) => a.instanceId === activity.instanceId
+      );
+      if (dayActivity) return dayActivity;
+    }
+
+    // Fallback to prop if not found (shouldn't happen)
+    return activity;
+  };
+
+  // Use live activity data for display
+  const liveActivity = getLiveActivity();
 
   const handleDuplicate = () => {
     if (onDuplicate) {
@@ -154,13 +182,13 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
   };
 
   const handleWebsitePress = async () => {
-    if (activity.website_uri) {
+    if (liveActivity.website_uri) {
       try {
-        const supported = await Linking.canOpenURL(activity.website_uri);
+        const supported = await Linking.canOpenURL(liveActivity.website_uri);
         if (supported) {
-          await Linking.openURL(activity.website_uri);
+          await Linking.openURL(liveActivity.website_uri);
         } else {
-          console.log("Don't know how to open URI: " + activity.website_uri);
+          console.log("Don't know how to open URI: " + liveActivity.website_uri);
         }
       } catch (error) {
         console.error('An error occurred', error);
@@ -192,14 +220,14 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
   };
 
   const getHoursStatus = () => {
-    if (!activity.regular_opening_hours?.weekday_text) {
+    if (!liveActivity.regular_opening_hours?.weekday_text) {
       return { status: 'unknown', statusText: 'Hours not available', timeText: '' };
     }
 
     const { currentDay, currentMinutes } = getCurrentDayAndTime();
-    
+
     // Find today's hours
-    const todayHours = activity.regular_opening_hours.weekday_text.find(day => 
+    const todayHours = liveActivity.regular_opening_hours.weekday_text.find(day =>
       day.toLowerCase().startsWith(currentDay.toLowerCase())
     );
 
@@ -214,7 +242,7 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
       for (let i = 1; i <= 7; i++) {
         const nextDayIndex = (dayIndex + i) % 7;
         const nextDayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][nextDayIndex];
-        const nextDayHours = activity.regular_opening_hours.weekday_text.find(day => 
+        const nextDayHours = liveActivity.regular_opening_hours.weekday_text.find(day =>
           day.toLowerCase().startsWith(nextDayName.toLowerCase())
         );
         
@@ -351,7 +379,7 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
   };
 
   const hoursStatus = getHoursStatus();
-  console.log(`[description_card] Hours status for ${activity.name}:`, hoursStatus);
+  console.log(`[description_card] Hours status for ${liveActivity.name}:`, hoursStatus);
 
   return (
     <GestureHandlerRootView style={[styles.container, variant === 'wishlist' && styles.containerWishlist]}>
@@ -375,17 +403,17 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
         {/* Activity Photo Carousel */}
         <View style={styles.heroImageContainer}>
           <ActivityPhotoCarousel
-            activity={activity}
+            activity={liveActivity}
             height={250}
           />
         </View>
 
         {/* Category and Status Badges */}
         <View style={styles.badgeRow}>
-          {activity.primary_type_display_name && (
+          {liveActivity.primary_type_display_name && (
             <View style={styles.categoryBadge}>
               <MaterialCommunityIcons name="tag" size={12} color="#9CA3AF" />
-              <Text style={styles.categoryText}>{activity.primary_type_display_name}</Text>
+              <Text style={styles.categoryText}>{liveActivity.primary_type_display_name}</Text>
             </View>
           )}
 
@@ -413,33 +441,33 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
         </View>
 
         {/* Activity Name */}
-        <Text style={styles.activityNameMain}>{activity.name}</Text>
+        <Text style={styles.activityNameMain}>{liveActivity.name}</Text>
 
         {/* Rating and Review Count */}
-        {activity.rating && (
+        {liveActivity.rating && (
           <View style={styles.ratingContainer}>
             <View style={styles.starsContainer}>
-              {renderStars(activity.rating)}
+              {renderStars(liveActivity.rating)}
             </View>
-            <Text style={styles.ratingText}>{activity.rating}</Text>
-            {activity.user_ratings_total && (
+            <Text style={styles.ratingText}>{liveActivity.rating}</Text>
+            {liveActivity.user_ratings_total && (
               <Text style={styles.ratingsCountText}>
-                ({formatNumber(activity.user_ratings_total)})
+                ({formatNumber(liveActivity.user_ratings_total)})
               </Text>
             )}
           </View>
         )}
 
         {/* Editorial Summary */}
-        {activity.editorial_summary && (
+        {liveActivity.editorial_summary && (
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryText}>{activity.editorial_summary}</Text>
+            <Text style={styles.summaryText}>{liveActivity.editorial_summary}</Text>
           </View>
         )}
 
         {/* Action Buttons Row */}
         <View style={styles.actionButtonsRow}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${activity.lat},${activity.lng}`)}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${liveActivity.lat},${liveActivity.lng}`)}>
             <MaterialIcons name="directions" size={20} color="#333" />
             <Text style={styles.actionButtonText}>Directions</Text>
           </TouchableOpacity>
@@ -454,7 +482,40 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
         </View>
 
         {/* Planned Time Section */}
-        {(activity.startTime || activity.endTime) && (
+        {(liveActivity.startTime || liveActivity.endTime) && currentUserRole !== 'viewer' && (
+          <TouchableOpacity
+            style={styles.plannedTimeContainer}
+            onPress={() => setNotesModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.plannedTimeHeader}>
+              <MaterialIcons name="access-time" size={20} color="#333" />
+              <Text style={styles.plannedTimeTitle}>Planned Time</Text>
+              <MaterialIcons name="edit" size={16} color="#94A3B8" style={{ marginLeft: 'auto' }} />
+            </View>
+            <View style={styles.plannedTimeRow}>
+              <View style={styles.timeColumn}>
+                <Text style={styles.timeLabel}>START</Text>
+                <Text style={styles.timeValue}>{liveActivity.startTime || '--'}</Text>
+              </View>
+              <View style={styles.timeDivider} />
+              <View style={styles.timeColumn}>
+                <Text style={styles.timeLabel}>END</Text>
+                <Text style={styles.timeValue}>{liveActivity.endTime || '--'}</Text>
+              </View>
+              <View style={styles.timeDivider} />
+              <View style={styles.timeColumn}>
+                <Text style={styles.timeLabel}>DURATION</Text>
+                <Text style={styles.timeValue}>
+                  {liveActivity.startTime && liveActivity.endTime
+                    ? calculateDuration(liveActivity.startTime, liveActivity.endTime)
+                    : '--'}
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
+        {(liveActivity.startTime || liveActivity.endTime) && currentUserRole === 'viewer' && (
           <View style={styles.plannedTimeContainer}>
             <View style={styles.plannedTimeHeader}>
               <MaterialIcons name="access-time" size={20} color="#333" />
@@ -463,19 +524,19 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
             <View style={styles.plannedTimeRow}>
               <View style={styles.timeColumn}>
                 <Text style={styles.timeLabel}>START</Text>
-                <Text style={styles.timeValue}>{activity.startTime || '--'}</Text>
+                <Text style={styles.timeValue}>{liveActivity.startTime || '--'}</Text>
               </View>
               <View style={styles.timeDivider} />
               <View style={styles.timeColumn}>
                 <Text style={styles.timeLabel}>END</Text>
-                <Text style={styles.timeValue}>{activity.endTime || '--'}</Text>
+                <Text style={styles.timeValue}>{liveActivity.endTime || '--'}</Text>
               </View>
               <View style={styles.timeDivider} />
               <View style={styles.timeColumn}>
                 <Text style={styles.timeLabel}>DURATION</Text>
                 <Text style={styles.timeValue}>
-                  {activity.startTime && activity.endTime
-                    ? calculateDuration(activity.startTime, activity.endTime)
+                  {liveActivity.startTime && liveActivity.endTime
+                    ? calculateDuration(liveActivity.startTime, liveActivity.endTime)
                     : '--'}
                 </Text>
               </View>
@@ -484,31 +545,45 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
         )}
 
         {/* Your Notes Section */}
-        {activity.notes && (
+        {liveActivity.notes && currentUserRole !== 'viewer' && (
+          <TouchableOpacity
+            style={styles.notesContainer}
+            onPress={() => setNotesModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.notesHeader}>
+              <MaterialCommunityIcons name="note-text-outline" size={20} color="#333" />
+              <Text style={styles.notesTitle}>Your Notes</Text>
+              <MaterialIcons name="edit" size={16} color="#94A3B8" style={{ marginLeft: 'auto' }} />
+            </View>
+            <Text style={styles.notesText}>{liveActivity.notes}</Text>
+          </TouchableOpacity>
+        )}
+        {liveActivity.notes && currentUserRole === 'viewer' && (
           <View style={styles.notesContainer}>
             <View style={styles.notesHeader}>
               <MaterialCommunityIcons name="note-text-outline" size={20} color="#333" />
               <Text style={styles.notesTitle}>Your Notes</Text>
             </View>
-            <Text style={styles.notesText}>{activity.notes}</Text>
+            <Text style={styles.notesText}>{liveActivity.notes}</Text>
           </View>
         )}
 
         {/* Address */}
-        {activity.formatted_address && (
+        {liveActivity.formatted_address && (
           <View style={styles.infoCard}>
             <View style={styles.infoSection}>
               <MaterialIcons name="place" size={24} color="#333" />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>ADDRESS</Text>
-                <Text style={styles.infoText}>{activity.formatted_address}</Text>
+                <Text style={styles.infoText}>{liveActivity.formatted_address}</Text>
               </View>
             </View>
           </View>
         )}
 
         {/* Hours */}
-        {activity.regular_opening_hours?.weekday_text && (
+        {liveActivity.regular_opening_hours?.weekday_text && (
           <View style={styles.infoCard}>
             <View style={styles.infoSection}>
               <MaterialIcons name="access-time" size={24} color="#333" />
@@ -529,7 +604,7 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
                 </TouchableOpacity>
                 {hoursExpanded && (
                   <View style={styles.expandedHoursContainer}>
-                    {activity.regular_opening_hours.weekday_text.map((dayHours, index) => (
+                    {liveActivity.regular_opening_hours.weekday_text.map((dayHours, index) => (
                       <Text key={index} style={styles.hoursText}>{dayHours}</Text>
                     ))}
                   </View>
@@ -540,23 +615,23 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
         )}
 
         {/* Phone */}
-        {activity.international_phone_number && (
+        {liveActivity.international_phone_number && (
           <View style={styles.infoCard}>
             <View style={styles.infoSection}>
               <MaterialIcons name="phone" size={24} color="#333" />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>PHONE</Text>
-                <Text style={styles.infoText}>{activity.international_phone_number}</Text>
+                <Text style={styles.infoText}>{liveActivity.international_phone_number}</Text>
               </View>
             </View>
           </View>
         )}
 
         {/* Top Reviews */}
-        {activity.reviews && activity.reviews.length > 0 && (
+        {liveActivity.reviews && liveActivity.reviews.length > 0 && (
           <View style={styles.reviewsContainer}>
             <Text style={styles.reviewsLabel}>Top Reviews</Text>
-            {activity.reviews.slice(0, 5).map((review, index) => (
+            {liveActivity.reviews.slice(0, 5).map((review, index) => (
               <View key={index} style={styles.reviewItem}>
                 <View style={styles.reviewHeader}>
                   <Image 
@@ -632,6 +707,15 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
           )}
         </View>
       )}
+
+      {/* Add Notes Modal */}
+      <AddNotesModal
+        visible={notesModalVisible}
+        onClose={() => setNotesModalVisible(false)}
+        activity={liveActivity}
+        activeTab={activeTab || (variant === 'wishlist' ? 'wishlist' : (liveActivity.dayNumber ? `day${liveActivity.dayNumber}` : 'wishlist'))}
+        currentUserRole={currentUserRole}
+      />
     </GestureHandlerRootView>
   );
 }

@@ -667,13 +667,15 @@ export default function Profile() {
                   activeOpacity={1}
                 >
                   <View style={styles.tripCardContent}>
-                    {trip.tripPhotoReference && trip.tripPhotoReference.length > 0 ? (
+                    {trip.selectedCity ? (
                       <View style={styles.carouselContainer}>
                         <Carousel
                           loop={false}
                           width={350}
                           height={170}
-                          data={trip.tripPhotoReference}
+                          data={trip.tripPhotoReference && trip.tripPhotoReference.length > 0
+                            ? trip.tripPhotoReference
+                            : [{}, {}, {}, {}, {}]} // Default 5 empty objects for Unsplash
                           scrollAnimationDuration={300}
                           defaultIndex={0}
                           onSnapToItem={(index) =>
@@ -683,6 +685,8 @@ export default function Profile() {
                             <TripCarouselImage
                               photo_reference={item?.photo_reference}
                               place_id={item?.place_id}
+                              cityName={trip.selectedCity}
+                              photoIndex={index}
                               style={styles.tripCardImage}
                               onPhotoRefUpdate={(newRef) =>
                                 handleTripCarouselPhotoUpdate(trip.tripId, index, newRef)
@@ -690,9 +694,9 @@ export default function Profile() {
                             />
                           )}
                         />
-                        {trip.tripPhotoReference && trip.tripPhotoReference.length > 1 && (
+                        {(!trip.tripPhotoReference || trip.tripPhotoReference.length !== 1) && (
                           <View style={styles.paginationDots}>
-                            {trip.tripPhotoReference.map((_, index) => (
+                            {[0, 1, 2, 3, 4].map((index) => (
                               <View
                                 key={index}
                                 style={[
@@ -825,13 +829,15 @@ export default function Profile() {
                   activeOpacity={1}
                 >
                   <View style={styles.tripCardContent}>
-                    {trip.tripPhotoReference && trip.tripPhotoReference.length > 0 ? (
+                    {trip.selectedCity ? (
                       <View style={styles.carouselContainer}>
                         <Carousel
                           loop={false}
                           width={350}
                           height={170}
-                          data={trip.tripPhotoReference}
+                          data={trip.tripPhotoReference && trip.tripPhotoReference.length > 0
+                            ? trip.tripPhotoReference
+                            : [{}, {}, {}, {}, {}]} // Default 5 empty objects for Unsplash
                           scrollAnimationDuration={300}
                           defaultIndex={0}
                           onSnapToItem={(index) =>
@@ -841,6 +847,8 @@ export default function Profile() {
                             <TripCarouselImage
                               photo_reference={item?.photo_reference}
                               place_id={item?.place_id}
+                              cityName={trip.selectedCity}
+                              photoIndex={index}
                               style={styles.tripCardImage}
                               onPhotoRefUpdate={(newRef) =>
                                 handleTripCarouselPhotoUpdate(trip.tripId, index, newRef)
@@ -848,9 +856,9 @@ export default function Profile() {
                             />
                           )}
                         />
-                        {trip.tripPhotoReference && trip.tripPhotoReference.length > 1 && (
+                        {(!trip.tripPhotoReference || trip.tripPhotoReference.length !== 1) && (
                           <View style={styles.paginationDots}>
-                            {trip.tripPhotoReference.map((_, index) => (
+                            {[0, 1, 2, 3, 4].map((index) => (
                               <View
                                 key={index}
                                 style={[
