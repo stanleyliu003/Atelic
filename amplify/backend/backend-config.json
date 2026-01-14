@@ -657,6 +657,14 @@
         }
       ]
     },
+    "AMPLIFY_function_GetRoute_geminiApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "GetRoute"
+        }
+      ]
+    },
     "AMPLIFY_function_GetRoute_googlePlacesApiKey": {
       "usedBy": [
         {
@@ -754,6 +762,14 @@
       ]
     },
     "AMPLIFY_function_getLocationCoordinates_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getLocationCoordinates"
+        }
+      ]
+    },
+    "AMPLIFY_function_getLocationCoordinates_geminiApiKey": {
       "usedBy": [
         {
           "category": "function",
@@ -1018,6 +1034,14 @@
       ]
     },
     "AMPLIFY_function_wishlistAnalyzer_geminiApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "wishlistAnalyzer"
+        }
+      ]
+    },
+    "AMPLIFY_function_wishlistAnalyzer_googlePlacesApiKey": {
       "usedBy": [
         {
           "category": "function",

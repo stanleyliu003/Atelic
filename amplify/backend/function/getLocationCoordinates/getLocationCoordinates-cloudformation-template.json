@@ -30,6 +30,9 @@
     },
     "googlePlacesApiKey": {
       "Type": "String"
+    },
+    "geminiApiKey": {
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -96,6 +99,9 @@
             },
             "GOOGLE_PLACES_API_KEY": {
               "Ref": "googlePlacesApiKey"
+            },
+            "GEMINI_API_KEY": {
+              "Ref": "geminiApiKey"
             }
           }
         },

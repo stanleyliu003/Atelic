@@ -56,7 +56,8 @@
       "Bash(eas build:configure:*)",
       "Bash(eas build:*)",
       "Bash(aws lambda update-function-code:*)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": [],
