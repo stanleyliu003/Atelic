@@ -33,6 +33,10 @@ interface UnsplashResponse {
 // Unsplash API configuration
 const UNSPLASH_API_BASE = 'https://api.unsplash.com';
 
+// Cache to store Google Places photo references by place_id
+// Stores arrays of up to 5 photo_reference strings per place
+const googlePhotosCache: { [place_id: string]: string[] } = {};
+
 // Place types that should prioritize Unsplash (landmarks & attractions)
 const UNSPLASH_PRIORITY_TYPES = [
   'tourist_attraction',
@@ -207,6 +211,20 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
   const fetchGooglePlacesPhotos = async () => {
     // If we have a place_id, fetch multiple photos from Google Places API
     if (activity.place_id) {
+      // Check cache first
+      if (googlePhotosCache[activity.place_id] && googlePhotosCache[activity.place_id].length > 0) {
+        const cachedPhotoRefs = googlePhotosCache[activity.place_id];
+        const photoData: PhotoData[] = cachedPhotoRefs.map((ref: string) => ({
+          photo_reference: ref,
+          place_id: activity.place_id || ''
+        }));
+
+        console.log(`[ActivityPhotoCarousel] Using cached Google Places photos (${photoData.length}) for: ${activity.name}`);
+        setPhotos(photoData);
+        setUnsplashUrls([]); // Clear Unsplash URLs
+        return;
+      }
+
       try {
         console.log(`[ActivityPhotoCarousel] Fetching multiple photos from Google Places for: ${activity.name}`);
 
@@ -219,6 +237,9 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
         if (data.status === 'OK' && data.result?.photos && data.result.photos.length > 0) {
           // Get up to 5 photos (same as Unsplash)
           const photoRefs = data.result.photos.slice(0, 5).map((photo: any) => photo.photo_reference);
+
+          // Store in cache
+          googlePhotosCache[activity.place_id] = photoRefs;
 
           const photoData: PhotoData[] = photoRefs.map((ref: string) => ({
             photo_reference: ref,
