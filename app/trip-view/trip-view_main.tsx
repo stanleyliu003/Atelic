@@ -19,6 +19,7 @@ import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
 import { fetchRoutePolyline, fetchRoutePolylineWithMode, RouteData } from '../../src/services/getRoute_graphQL_call';
 import { optimizeRouteWithHaversine } from '../../src/components/trip-view/logic/optimize_route';
 import { Activity, TabType, TravelMode, EnhancedRouteLeg, RouteLegModeData } from '../../src/types/activity.types';
+import type { FlightReservation } from '../../src/types/flight.types';
 import TransportationSettingsModal from '../../src/components/trip-view/transportation_settings_modal';
 import { decodePolyline } from '../../src/utils/polyline';
 import { API, Auth, graphqlOperation } from 'aws-amplify';
@@ -2125,8 +2126,157 @@ export default function TripViewMain() {
         });
     };
 
+    // Helper function to add or subtract hours from a time string (HH:mm format)
+    const addHoursToTime = (timeStr: string, hours: number): string => {
+        const [hoursStr, minutes] = timeStr.split(':');
+        const totalMinutes = parseInt(hoursStr) * 60 + parseInt(minutes) + (hours * 60);
+
+        // Handle wraparound (negative or > 24 hours)
+        let newTotalMinutes = totalMinutes;
+        if (newTotalMinutes < 0) {
+            newTotalMinutes += 24 * 60; // Add 24 hours if negative
+        } else if (newTotalMinutes >= 24 * 60) {
+            newTotalMinutes -= 24 * 60; // Subtract 24 hours if over
+        }
+
+        const newHours = Math.floor(newTotalMinutes / 60);
+        const newMinutes = newTotalMinutes % 60;
+
+        return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
+    };
+
+    // Handler for adding lodging to trip across multiple days
+    const handleAddLodgingToTrip = (lodgingData: any) => {
+        const { hotel, checkInDate, checkOutDate, stayLength, checkInTime, checkOutTime } = lodgingData;
+
+        console.log('[trip-view_main] Adding lodging to trip:', lodgingData);
+
+        const dayCount = getDayCount();
+
+        if (dayCount === 0) {
+            console.log('[trip-view_main] No days exist in trip yet. Cannot add lodging.');
+            Alert.alert('No Days Available', 'Please create days for your trip before adding lodging.');
+            return;
+        }
+
+        if (!startDate) {
+            console.log('[trip-view_main] No trip start date found. Cannot calculate day numbers.');
+            Alert.alert('Missing Trip Dates', 'Please set your trip start and end dates before adding lodging.');
+            return;
+        }
+
+        // Calculate which day numbers correspond to check-in and check-out dates
+        const tripStartDate = new Date(startDate);
+        tripStartDate.setHours(0, 0, 0, 0); // Normalize to midnight
+
+        const checkInDateTime = new Date(checkInDate);
+        checkInDateTime.setHours(0, 0, 0, 0);
+
+        const checkOutDateTime = new Date(checkOutDate);
+        checkOutDateTime.setHours(0, 0, 0, 0);
+
+        // Calculate day numbers (day 1 = trip start date)
+        const checkInDayNumber = Math.floor((checkInDateTime.getTime() - tripStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const checkOutDayNumber = Math.floor((checkOutDateTime.getTime() - tripStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+        console.log('[trip-view_main] Check-in day:', checkInDayNumber, 'Check-out day:', checkOutDayNumber);
+
+        // Validate day numbers
+        if (checkInDayNumber < 1 || checkInDayNumber > dayCount || checkOutDayNumber < 1 || checkOutDayNumber > dayCount) {
+            console.log('[trip-view_main] Invalid day numbers calculated.');
+            Alert.alert('Invalid Dates', 'The selected check-in/check-out dates are outside your trip dates.');
+            return;
+        }
+
+        // Add lodging to each day in the range
+        for (let dayNumber = checkInDayNumber; dayNumber <= checkOutDayNumber; dayNumber++) {
+            const currentActivities = getDayActivities(dayNumber) || [];
+            const activitiesToAdd: Activity[] = [];
+
+            if (dayNumber === checkInDayNumber) {
+                // First day: Add check-in activity with times at the beginning
+                const checkInActivity = {
+                    ...hotel,
+                    instanceId: duplicateActivity(hotel).instanceId,
+                    notes: 'Check-in',
+                    startTime: addHoursToTime(checkInTime, -1),
+                    endTime: addHoursToTime(checkInTime, 1),
+                };
+                activitiesToAdd.push(checkInActivity);
+
+                // If check-in and check-out are on the same day, don't add end lodging
+                if (checkInDayNumber !== checkOutDayNumber) {
+                    // Add regular lodging at the end (no times)
+                    const endLodging = {
+                        ...hotel,
+                        instanceId: duplicateActivity(hotel).instanceId,
+                    };
+                    activitiesToAdd.push(endLodging);
+                }
+            } else if (dayNumber === checkOutDayNumber) {
+                // Last day: ONLY add check-out activity at the beginning (first activity)
+                const checkOutActivity = {
+                    ...hotel,
+                    instanceId: duplicateActivity(hotel).instanceId,
+                    notes: 'Check-out',
+                    startTime: addHoursToTime(checkOutTime, -1),
+                    endTime: checkOutTime,
+                };
+                activitiesToAdd.push(checkOutActivity);
+            } else {
+                // Middle days: Add lodging at beginning and end (no times, no notes)
+                const startLodging = {
+                    ...hotel,
+                    instanceId: duplicateActivity(hotel).instanceId,
+                };
+                const endLodging = {
+                    ...hotel,
+                    instanceId: duplicateActivity(hotel).instanceId,
+                };
+                activitiesToAdd.push(startLodging, endLodging);
+            }
+
+            // Construct new order based on which day we're on
+            let newOrder: Activity[];
+            if (dayNumber === checkOutDayNumber) {
+                // Check-out day: only check-out at the beginning
+                newOrder = [...activitiesToAdd, ...currentActivities];
+            } else if (dayNumber === checkInDayNumber && checkInDayNumber === checkOutDayNumber) {
+                // Same day check-in/check-out: only check-in at beginning
+                newOrder = [...activitiesToAdd, ...currentActivities];
+            } else if (dayNumber === checkInDayNumber) {
+                // Check-in day: check-in at beginning, lodging at end
+                newOrder = [activitiesToAdd[0], ...currentActivities, activitiesToAdd[1]];
+            } else {
+                // Middle days: lodging at beginning and end
+                newOrder = [activitiesToAdd[0], ...currentActivities, activitiesToAdd[1]];
+            }
+
+            // Reorder the day's activities
+            reorderDayActivities(dayNumber, newOrder);
+
+            // Track the operation
+            const op = createOperation('add', 'day', activitiesToAdd, dayNumber);
+            queueSave(op);
+        }
+
+        console.log('[trip-view_main] Successfully added lodging to days', checkInDayNumber, 'through', checkOutDayNumber);
+    };
+
     // Handler for saving search results (new direct flow)
-    const handleSaveSearchResults = (selectedActivities: Activity[], wishlistActivityIds?: string[]) => {
+    const handleSaveSearchResults = (selectedActivities: Activity[], wishlistActivityIds?: string[], lodgingData?: any, flightData?: FlightReservation) => {
+        // Handle flight data if provided
+        if (flightData) {
+            handleAddFlightToTrip(flightData);
+            return;
+        }
+
+        // Handle lodging data if provided
+        if (lodgingData) {
+            handleAddLodgingToTrip(lodgingData);
+            return;
+        }
+
         if (selectedActivities.length === 0) {
             return;
         }
@@ -3046,7 +3196,7 @@ export default function TripViewMain() {
                                                         value={searchQuery}
                                                         onChangeText={handleSearchQueryChange}
                                                         onPress={handleSearchPress}
-                                                        placeholder="Add more activities"
+                                                        placeholder="Add places"
                                                     />
                                                 </View>
                                             )}
@@ -3128,7 +3278,7 @@ export default function TripViewMain() {
                                                         value={searchQuery}
                                                         onChangeText={handleSearchQueryChange}
                                                         onPress={handleSearchPress}
-                                                        placeholder="Add more activities"
+                                                        placeholder="Add places"
                                                     />
                                                 </View>
                                             )}

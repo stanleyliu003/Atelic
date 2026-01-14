@@ -3,13 +3,17 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Feather from '@expo/vector-icons/Feather';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Image } from 'react-native';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { Activity } from '../../types/activity.types';
-import { ActivityImage } from './activity/activity_image';
+import { ActivityPhotoCarousel } from './activity/ActivityPhotoCarousel';
+import { AddNotesModal } from './activity/add_notes_modal';
+import { useCreateTrip } from '../../../context/CreateTripContext';
 
 interface ActivityDetailViewProps {
   activity: Activity;
@@ -19,6 +23,7 @@ interface ActivityDetailViewProps {
   onDuplicate?: (activity: Activity) => void;
   onDelete?: (activity: Activity) => void;
   currentUserRole?: 'owner' | 'editor' | 'viewer';
+  activeTab?: 'wishlist' | string;
 }
 
 const formatNumber = (num: number) => {
@@ -28,13 +33,55 @@ const formatNumber = (num: number) => {
 const formatTimeAgo = (timestamp: number) => {
   const now = Date.now() / 1000;
   const diff = now - timestamp;
-  
+
   if (diff < 60) return 'just now';
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
   if (diff < 31536000) return `${Math.floor(diff / 2592000)}mo ago`;
   return `${Math.floor(diff / 31536000)}y ago`;
+};
+
+const calculateDuration = (startTime: string, endTime: string): string => {
+  const [startHour, startMin] = startTime.split(':').map(Number);
+  const [endHour, endMin] = endTime.split(':').map(Number);
+
+  const startMinutes = startHour * 60 + startMin;
+  const endMinutes = endHour * 60 + endMin;
+  const diffMinutes = endMinutes - startMinutes;
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes}m`;
+  }
+
+  const hours = Math.floor(diffMinutes / 60);
+  const minutes = diffMinutes % 60;
+
+  if (minutes === 0) {
+    return `${hours}h`;
+  }
+
+  return `${hours}h ${minutes}m`;
+};
+
+// Convert 24-hour time format (09:00) to 12-hour AM/PM format (9:00 AM)
+const formatTo12Hour = (time24: string): string => {
+  if (!time24) return '--';
+
+  const [hourStr, minuteStr] = time24.split(':');
+  let hour = parseInt(hourStr, 10);
+  const minute = minuteStr;
+
+  const period = hour >= 12 ? 'PM' : 'AM';
+
+  // Convert to 12-hour format
+  if (hour === 0) {
+    hour = 12;
+  } else if (hour > 12) {
+    hour = hour - 12;
+  }
+
+  return `${hour}:${minute} ${period}`;
 };
 
 const renderStars = (rating: number) => {
@@ -86,9 +133,34 @@ const renderStars = (rating: number) => {
   return stars;
 };
 
-export function ActivityDetailView({ activity, onClose, variant = 'trip', showDragIndicator = true, onDuplicate, onDelete, currentUserRole }: ActivityDetailViewProps) {
+export function ActivityDetailView({ activity, onClose, variant = 'trip', showDragIndicator = true, onDuplicate, onDelete, currentUserRole, activeTab }: ActivityDetailViewProps) {
   const [hoursExpanded, setHoursExpanded] = useState(false);
+  const [notesModalVisible, setNotesModalVisible] = useState(false);
   const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
+
+  // Get live activity data from context for real-time updates
+  const { activities, dayActivities } = useCreateTrip();
+
+  // Find the current activity by instanceId to get live updates
+  const getLiveActivity = (): Activity => {
+    // First check wishlist
+    const wishlistActivity = activities.find(a => a.instanceId === activity.instanceId);
+    if (wishlistActivity) return wishlistActivity;
+
+    // Then check all days
+    for (const dayNum of Object.keys(dayActivities)) {
+      const dayActivity = dayActivities[dayNum]?.activities?.find(
+        (a: Activity) => a.instanceId === activity.instanceId
+      );
+      if (dayActivity) return dayActivity;
+    }
+
+    // Fallback to prop if not found (shouldn't happen)
+    return activity;
+  };
+
+  // Use live activity data for display
+  const liveActivity = getLiveActivity();
 
   const handleDuplicate = () => {
     if (onDuplicate) {
@@ -130,13 +202,13 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
   };
 
   const handleWebsitePress = async () => {
-    if (activity.website_uri) {
+    if (liveActivity.website_uri) {
       try {
-        const supported = await Linking.canOpenURL(activity.website_uri);
+        const supported = await Linking.canOpenURL(liveActivity.website_uri);
         if (supported) {
-          await Linking.openURL(activity.website_uri);
+          await Linking.openURL(liveActivity.website_uri);
         } else {
-          console.log("Don't know how to open URI: " + activity.website_uri);
+          console.log("Don't know how to open URI: " + liveActivity.website_uri);
         }
       } catch (error) {
         console.error('An error occurred', error);
@@ -168,14 +240,14 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
   };
 
   const getHoursStatus = () => {
-    if (!activity.regular_opening_hours?.weekday_text) {
+    if (!liveActivity.regular_opening_hours?.weekday_text) {
       return { status: 'unknown', statusText: 'Hours not available', timeText: '' };
     }
 
     const { currentDay, currentMinutes } = getCurrentDayAndTime();
-    
+
     // Find today's hours
-    const todayHours = activity.regular_opening_hours.weekday_text.find(day => 
+    const todayHours = liveActivity.regular_opening_hours.weekday_text.find(day =>
       day.toLowerCase().startsWith(currentDay.toLowerCase())
     );
 
@@ -190,7 +262,7 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
       for (let i = 1; i <= 7; i++) {
         const nextDayIndex = (dayIndex + i) % 7;
         const nextDayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][nextDayIndex];
-        const nextDayHours = activity.regular_opening_hours.weekday_text.find(day => 
+        const nextDayHours = liveActivity.regular_opening_hours.weekday_text.find(day =>
           day.toLowerCase().startsWith(nextDayName.toLowerCase())
         );
         
@@ -211,57 +283,115 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
       return { status: 'closed', statusText: 'Closed', timeText: '', color: '#DC2626' };
     }
 
-    // Parse open hours for today
-    const timeMatch = todayHours.match(/(\d{1,2}:\d{2}\s*[AP]M)\s*[–-]\s*(\d{1,2}:\d{2}\s*[AP]M)/i);
-    if (!timeMatch) {
+    // Parse open hours for today - handle multiple time periods (split shifts)
+    // Match all time ranges in the string
+    // Supports formats: "5:00 PM – 10:00 PM" or "5:00 – 10:00 PM" (AM/PM shared)
+    const timeRanges = todayHours.matchAll(/(\d{1,2}:\d{2})(?:\s*([AP]M))?\s*[–-]\s*(\d{1,2}:\d{2})\s*([AP]M)/gi);
+    const ranges = Array.from(timeRanges);
+
+    if (ranges.length === 0) {
       // Check for 24-hour format
       if (todayHours.toLowerCase().includes('24 hours') || todayHours.toLowerCase().includes('open 24 hours')) {
-        return { status: 'open', statusText: 'Open', timeText: ' 24 hours', color: '#16A34A' };
+        return { status: 'open', statusText: 'Open', timeText: ' ⋅ 24 hours', color: '#16A34A' };
       }
-      return { status: 'unknown', statusText: 'Hours format not recognized', timeText: '' };
+      // If format cannot be parsed but we have hours text, show it as-is
+      if (todayHours.trim()) {
+        return { status: 'unknown', statusText: '', timeText: todayHours.trim(), color: '#6B7280' };
+      }
+      return { status: 'unknown', statusText: 'Hours unavailable', timeText: '', color: '#6B7280' };
     }
 
-    const openTime = timeMatch[1];
-    const closeTime = timeMatch[2];
-    const openMinutes = parseTimeToMinutes(openTime);
-    const closeMinutes = parseTimeToMinutes(closeTime);
-
-    if (openMinutes === -1 || closeMinutes === -1) {
-      return { status: 'unknown', statusText: 'Hours format not recognized', timeText: '' };
-    }
-
-    // Handle overnight hours (e.g., 10 PM - 2 AM)
-    const isOvernightHours = closeMinutes < openMinutes;
-    
+    // Check each time range to see if we're currently open
     let isOpen = false;
-    if (isOvernightHours) {
-      isOpen = currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
-    } else {
-      isOpen = currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+    let currentRange = null;
+    let nextRange = null;
+
+    for (const match of ranges) {
+      // Extract time components
+      const openTimeNum = match[1];       // e.g., "5:00"
+      const openPeriod = match[2];        // e.g., "PM" or undefined
+      const closeTimeNum = match[3];      // e.g., "10:00"
+      const closePeriod = match[4];       // e.g., "PM"
+
+      // If opening time doesn't have AM/PM, use the same as closing time
+      const openTime = openPeriod ? `${openTimeNum} ${openPeriod}` : `${openTimeNum} ${closePeriod}`;
+      const closeTime = `${closeTimeNum} ${closePeriod}`;
+
+      const openMinutes = parseTimeToMinutes(openTime);
+      const closeMinutes = parseTimeToMinutes(closeTime);
+
+      if (openMinutes === -1 || closeMinutes === -1) continue;
+
+      // Handle overnight hours (e.g., 10 PM - 2 AM)
+      const isOvernightHours = closeMinutes < openMinutes;
+
+      let isOpenInThisRange = false;
+      if (isOvernightHours) {
+        isOpenInThisRange = currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
+      } else {
+        isOpenInThisRange = currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+      }
+
+      if (isOpenInThisRange) {
+        isOpen = true;
+        currentRange = { openTime, closeTime, openMinutes, closeMinutes, isOvernightHours };
+        break;
+      }
+
+      // Track next opening time if we're between shifts
+      if (!nextRange && currentMinutes < openMinutes) {
+        nextRange = { openTime, closeTime, openMinutes };
+      }
     }
 
-    if (isOpen) {
-      return { 
-        status: 'open', 
+    // If not open in any range, use the first range for display
+    if (!currentRange && ranges.length > 0) {
+      const match = ranges[0];
+      const openTimeNum = match[1];
+      const openPeriod = match[2];
+      const closeTimeNum = match[3];
+      const closePeriod = match[4];
+
+      const openTime = openPeriod ? `${openTimeNum} ${openPeriod}` : `${openTimeNum} ${closePeriod}`;
+      const closeTime = `${closeTimeNum} ${closePeriod}`;
+
+      currentRange = {
+        openTime,
+        closeTime,
+        openMinutes: parseTimeToMinutes(openTime),
+        closeMinutes: parseTimeToMinutes(closeTime),
+        isOvernightHours: parseTimeToMinutes(closeTime) < parseTimeToMinutes(openTime)
+      };
+    }
+
+    if (isOpen && currentRange) {
+      return {
+        status: 'open',
         statusText: 'Open',
-        timeText: ` ⋅ Closes ${closeTime}`,
+        timeText: ` ⋅ Closes ${currentRange.closeTime}`,
         color: '#16A34A'
       };
     } else {
+      // Use nextRange if available (for split shifts), otherwise use currentRange
+      const rangeToUse = nextRange || currentRange;
+      if (!rangeToUse) {
+        return { status: 'closed', statusText: 'Closed', timeText: '', color: '#DC2626' };
+      }
+
       // Check if will open later today
-      if (!isOvernightHours && currentMinutes < openMinutes) {
-        return { 
-          status: 'closed', 
+      if (!currentRange?.isOvernightHours && currentMinutes < rangeToUse.openMinutes) {
+        return {
+          status: 'closed',
           statusText: 'Closed',
-          timeText: ` ⋅ Opens ${openTime}`,
+          timeText: ` ⋅ Opens ${rangeToUse.openTime}`,
           color: '#DC2626'
         };
       } else {
         // Will open tomorrow or next day
-        return { 
-          status: 'closed', 
+        return {
+          status: 'closed',
           statusText: 'Closed',
-          timeText: ` ⋅ Opens ${openTime} tomorrow`,
+          timeText: ` ⋅ Opens ${rangeToUse.openTime} tomorrow`,
           color: '#DC2626'
         };
       }
@@ -269,6 +399,7 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
   };
 
   const hoursStatus = getHoursStatus();
+  console.log(`[description_card] Hours status for ${liveActivity.name}:`, hoursStatus);
 
   return (
     <GestureHandlerRootView style={[styles.container, variant === 'wishlist' && styles.containerWishlist]}>
@@ -286,141 +417,241 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
         <Ionicons name="close" size={24} color="#000" />
       </TouchableOpacity>
 
-      {/* Fixed Header with Activity Name */}
-      <View style={styles.fixedHeader}>
-        <View style={styles.nameContainer}>
-          <Text style={styles.activityName}>{activity.name}</Text>
-        </View>
-      </View>
-
       {/* Scrollable Content */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 
-        {/* Rating and Review Count */}
-        {activity.rating && (
-          <View style={styles.ratingContainer}>
-            <Text style={styles.ratingText}>{activity.rating}</Text>
-            <View style={styles.starsContainer}>
-              {renderStars(activity.rating)}
+        {/* Activity Photo Carousel */}
+        <View style={styles.heroImageContainer}>
+          <ActivityPhotoCarousel
+            activity={liveActivity}
+            height={250}
+          />
+        </View>
+
+        {/* Category and Status Badges */}
+        <View style={styles.badgeRow}>
+          {liveActivity.primary_type_display_name && (
+            <View style={styles.categoryBadge}>
+              <MaterialCommunityIcons name="tag" size={12} color="#9CA3AF" />
+              <Text style={styles.categoryText}>{liveActivity.primary_type_display_name}</Text>
             </View>
-            {activity.user_ratings_total && (
+          )}
+
+          {/* Open/Closed Badge */}
+          {(hoursStatus.status === 'open' || hoursStatus.status === 'closed') && (
+            <View style={[
+              styles.hoursStatusBadge,
+              hoursStatus.status === 'open' && styles.hoursStatusBadgeOpen,
+              hoursStatus.status === 'closed' && styles.hoursStatusBadgeClosed
+            ]}>
+              <View style={[
+                styles.statusDot,
+                hoursStatus.status === 'open' && styles.statusDotOpen,
+                hoursStatus.status === 'closed' && styles.statusDotClosed
+              ]} />
+              <Text style={[
+                styles.hoursStatusBadgeText,
+                hoursStatus.status === 'open' && styles.hoursStatusBadgeTextOpen,
+                hoursStatus.status === 'closed' && styles.hoursStatusBadgeTextClosed
+              ]}>
+                {hoursStatus.statusText}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Activity Name */}
+        <Text style={styles.activityNameMain}>{liveActivity.name}</Text>
+
+        {/* Rating and Review Count */}
+        {liveActivity.rating && (
+          <View style={styles.ratingContainer}>
+            <View style={styles.starsContainer}>
+              {renderStars(liveActivity.rating)}
+            </View>
+            <Text style={styles.ratingText}>{liveActivity.rating}</Text>
+            {liveActivity.user_ratings_total && (
               <Text style={styles.ratingsCountText}>
-                ({formatNumber(activity.user_ratings_total)})
+                ({formatNumber(liveActivity.user_ratings_total)})
               </Text>
             )}
           </View>
         )}
-        
-        {/* Primary Type */}
-        {activity.primary_type_display_name && (
-          <Text style={styles.typeText}>
-            {activity.primary_type_display_name}
-          </Text>
-        )}
-
-        {/* Activity Image */}
-        <View style={styles.imageContainer}>
-          <ActivityImage
-            photo_reference={activity.photo_reference || ''}
-            place_id={activity.place_id}
-            style={styles.activityImage}
-          />
-        </View>
 
         {/* Editorial Summary */}
-        {activity.editorial_summary && (
-          <>
-            <View style={styles.spacerLine} />
-            <View style={styles.editorialContainer}>
-              <Text style={styles.editorialText}>{activity.editorial_summary}</Text>
+        {liveActivity.editorial_summary && (
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryText}>{liveActivity.editorial_summary}</Text>
+          </View>
+        )}
+
+        {/* Action Buttons Row */}
+        <View style={styles.actionButtonsRow}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${liveActivity.lat},${liveActivity.lng}`)}>
+            <MaterialIcons name="directions" size={20} color="#333" />
+            <Text style={styles.actionButtonText}>Directions</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+            <MaterialCommunityIcons name="share-outline" size={20} color="#333" />
+            <Text style={styles.actionButtonText}>Share</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={handleWebsitePress}>
+            <MaterialIcons name="language" size={20} color="#333" />
+            <Text style={styles.actionButtonText}>Website</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Planned Time Section */}
+        {(liveActivity.startTime || liveActivity.endTime) && currentUserRole !== 'viewer' && (
+          <TouchableOpacity
+            style={styles.plannedTimeContainer}
+            onPress={() => setNotesModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.plannedTimeHeader}>
+              <MaterialIcons name="access-time" size={20} color="#333" />
+              <Text style={styles.plannedTimeTitle}>Planned Time</Text>
+              <MaterialIcons name="edit" size={16} color="#94A3B8" style={{ marginLeft: 'auto' }} />
             </View>
-            <View style={styles.spacerLine} />
-          </>
+            <View style={styles.plannedTimeRow}>
+              <View style={styles.timeColumn}>
+                <Text style={styles.timeLabel}>START</Text>
+                <Text style={styles.timeValue}>{formatTo12Hour(liveActivity.startTime || '')}</Text>
+              </View>
+              <View style={styles.timeDivider} />
+              <View style={styles.timeColumn}>
+                <Text style={styles.timeLabel}>END</Text>
+                <Text style={styles.timeValue}>{formatTo12Hour(liveActivity.endTime || '')}</Text>
+              </View>
+              <View style={styles.timeDivider} />
+              <View style={styles.timeColumn}>
+                <Text style={styles.timeLabel}>DURATION</Text>
+                <Text style={styles.timeValue}>
+                  {liveActivity.startTime && liveActivity.endTime
+                    ? calculateDuration(liveActivity.startTime, liveActivity.endTime)
+                    : '--'}
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
+        {(liveActivity.startTime || liveActivity.endTime) && currentUserRole === 'viewer' && (
+          <View style={styles.plannedTimeContainer}>
+            <View style={styles.plannedTimeHeader}>
+              <MaterialIcons name="access-time" size={20} color="#333" />
+              <Text style={styles.plannedTimeTitle}>Planned Time</Text>
+            </View>
+            <View style={styles.plannedTimeRow}>
+              <View style={styles.timeColumn}>
+                <Text style={styles.timeLabel}>START</Text>
+                <Text style={styles.timeValue}>{formatTo12Hour(liveActivity.startTime || '')}</Text>
+              </View>
+              <View style={styles.timeDivider} />
+              <View style={styles.timeColumn}>
+                <Text style={styles.timeLabel}>END</Text>
+                <Text style={styles.timeValue}>{formatTo12Hour(liveActivity.endTime || '')}</Text>
+              </View>
+              <View style={styles.timeDivider} />
+              <View style={styles.timeColumn}>
+                <Text style={styles.timeLabel}>DURATION</Text>
+                <Text style={styles.timeValue}>
+                  {liveActivity.startTime && liveActivity.endTime
+                    ? calculateDuration(liveActivity.startTime, liveActivity.endTime)
+                    : '--'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Your Notes Section */}
+        {liveActivity.notes && currentUserRole !== 'viewer' && (
+          <TouchableOpacity
+            style={styles.notesContainer}
+            onPress={() => setNotesModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.notesHeader}>
+              <MaterialCommunityIcons name="note-text-outline" size={20} color="#333" />
+              <Text style={styles.notesTitle}>Your Notes</Text>
+              <MaterialIcons name="edit" size={16} color="#94A3B8" style={{ marginLeft: 'auto' }} />
+            </View>
+            <Text style={styles.notesText}>{liveActivity.notes}</Text>
+          </TouchableOpacity>
+        )}
+        {liveActivity.notes && currentUserRole === 'viewer' && (
+          <View style={styles.notesContainer}>
+            <View style={styles.notesHeader}>
+              <MaterialCommunityIcons name="note-text-outline" size={20} color="#333" />
+              <Text style={styles.notesTitle}>Your Notes</Text>
+            </View>
+            <Text style={styles.notesText}>{liveActivity.notes}</Text>
+          </View>
         )}
 
         {/* Address */}
-        {activity.formatted_address && (
-          <View style={styles.infoRow}>
-            <Ionicons name="location-outline" size={24} color="#027B8B" />
-            <Text style={styles.infoText}>{activity.formatted_address}</Text>
+        {liveActivity.formatted_address && (
+          <View style={styles.infoCard}>
+            <View style={styles.infoSection}>
+              <MaterialIcons name="place" size={24} color="#333" />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>ADDRESS</Text>
+                <Text style={styles.infoText}>{liveActivity.formatted_address}</Text>
+              </View>
+            </View>
           </View>
         )}
 
         {/* Hours */}
-        {activity.regular_opening_hours?.weekday_text && (
-          <View style={styles.hoursMainContainer}>
-            <TouchableOpacity 
-              style={styles.hoursHeaderRow} 
-              onPress={() => setHoursExpanded(!hoursExpanded)}
-            >
-              <FontAwesome6 name="clock" size={24} color="#027B8B" />
-              <View style={styles.hoursStatusContainer}>
-                <Text style={styles.hoursStatusText}>
-                  <Text style={{ color: hoursStatus.color }}>
-                    {hoursStatus.statusText}
+        {liveActivity.regular_opening_hours?.weekday_text && (
+          <View style={styles.infoCard}>
+            <View style={styles.infoSection}>
+              <MaterialIcons name="access-time" size={24} color="#333" />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>HOURS</Text>
+                <TouchableOpacity
+                  onPress={() => setHoursExpanded(!hoursExpanded)}
+                  style={styles.hoursToggle}
+                >
+                  <Text style={[styles.hoursStatusText, { color: hoursStatus.color }]}>
+                    {hoursStatus.statusText} {hoursStatus.timeText}
                   </Text>
-                  <Text style={{ color: '#333' }}>
-                    {hoursStatus.timeText}
-                  </Text>
-                </Text>
+                  <Ionicons
+                    name={hoursExpanded ? "chevron-up" : "chevron-down"}
+                    size={18}
+                    color="#999"
+                  />
+                </TouchableOpacity>
+                {hoursExpanded && (
+                  <View style={styles.expandedHoursContainer}>
+                    {liveActivity.regular_opening_hours.weekday_text.map((dayHours, index) => (
+                      <Text key={index} style={styles.hoursText}>{dayHours}</Text>
+                    ))}
+                  </View>
+                )}
               </View>
-              <Ionicons 
-                name={hoursExpanded ? "chevron-up" : "chevron-down"} 
-                size={20} 
-                color="#666" 
-              />
-            </TouchableOpacity>
-            
-            {hoursExpanded && (
-              <View style={styles.expandedHoursContainer}>
-                {activity.regular_opening_hours.weekday_text.map((dayHours, index) => (
-                  <Text key={index} style={styles.hoursText}>{dayHours}</Text>
-                ))}
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Website */}
-        {activity.website_uri && (
-          <View style={styles.infoRow}>
-            <Entypo name="globe" size={24} color="#027B8B" />
-            <TouchableOpacity onPress={handleWebsitePress} style={styles.websiteTouchable}>
-              <Text style={styles.websiteText}>{activity.website_uri}</Text>
-            </TouchableOpacity>
+            </View>
           </View>
         )}
 
         {/* Phone */}
-        {activity.international_phone_number && (
-          <View style={styles.infoRow}>
-            <FontAwesome6 name="phone" size={24} color="#027B8B" />
-            <Text style={styles.infoText}>{activity.international_phone_number}</Text>
+        {liveActivity.international_phone_number && (
+          <View style={styles.infoCard}>
+            <View style={styles.infoSection}>
+              <MaterialIcons name="phone" size={24} color="#333" />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>PHONE</Text>
+                <Text style={styles.infoText}>{liveActivity.international_phone_number}</Text>
+              </View>
+            </View>
           </View>
         )}
 
-        {/* Recommendation Status */}
-        <View style={styles.recommendationContainer}>
-          <View style={styles.sourceRow}>
-            <Text style={styles.recommendationLabel}>Source</Text>
-            {activity.is_recommended && (
-              <Image 
-                source={require('../../../assets/Google_logo.webp')} 
-                style={styles.googleLogo}
-                resizeMode="contain"
-              />
-            )}
-          </View>
-          <Text style={styles.recommendationText}>
-            {activity.is_recommended ? 'Recommended by Google' : 'Added by you'}
-          </Text>
-        </View>
-
-        {/* Reviews */}
-        {activity.reviews && activity.reviews.length > 0 && (
+        {/* Top Reviews */}
+        {liveActivity.reviews && liveActivity.reviews.length > 0 && (
           <View style={styles.reviewsContainer}>
-            <Text style={styles.reviewsLabel}>Reviews</Text>
-            {activity.reviews.slice(0, 5).map((review, index) => (
+            <Text style={styles.reviewsLabel}>Top Reviews</Text>
+            {liveActivity.reviews.slice(0, 5).map((review, index) => (
               <View key={index} style={styles.reviewItem}>
                 <View style={styles.reviewHeader}>
                   <Image 
@@ -496,6 +727,15 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
           )}
         </View>
       )}
+
+      {/* Add Notes Modal */}
+      <AddNotesModal
+        visible={notesModalVisible}
+        onClose={() => setNotesModalVisible(false)}
+        activity={liveActivity}
+        activeTab={activeTab || (variant === 'wishlist' ? 'wishlist' : (liveActivity.dayNumber ? `day${liveActivity.dayNumber}` : 'wishlist'))}
+        currentUserRole={currentUserRole}
+      />
     </GestureHandlerRootView>
   );
 }
@@ -525,30 +765,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#D1D5DB',
     borderRadius: 3,
   },
-  fixedHeader: {
-    paddingHorizontal: 20,
-    paddingTop: 0,
-    paddingBottom: 10,
-    zIndex: 1000,
-  },
-  nameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingRight: 40,
-  },
   closeButton: {
     position: 'absolute',
-    top: -10,
-    right: -15,
-    width: 40,
-    height: 40,
+    top: 16,
+    right: 20,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E5E7EB',
-    borderRadius: 20,
-    zIndex: 2000,
-    elevation: 4,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 18,
+    zIndex: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   closeButtonWishlist: {
     top: 12,
@@ -556,66 +788,111 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 7,
+    paddingTop: 0,
   },
-  imageContainer: {
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 25,
-  },
-  activityImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 15,
+  heroImageContainer: {
+    width: '100%',
+    marginTop: 8,
+    marginBottom: 16,
   },
   spacerLine: {
     height: 1,
     backgroundColor: '#D9DCE0',
     marginVertical: 15,
   },
-  editorialContainer: {
-    marginBottom: 10,
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 20,
+    gap: 8,
   },
-  editorialText: {
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    gap: 4,
+  },
+  categoryText: {
+    fontSize: 13,
+    color: '#6B7280',
+    textTransform: 'capitalize',
+  },
+  hoursStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  hoursStatusBadgeOpen: {
+    backgroundColor: '#ECFDF5',
+  },
+  hoursStatusBadgeClosed: {
+    backgroundColor: '#FEF2F2',
+  },
+  hoursStatusBadgeText: {
+    fontSize: 12,
+  },
+  hoursStatusBadgeTextOpen: {
+    color: '#059669',
+  },
+  hoursStatusBadgeTextClosed: {
+    color: '#DC2626',
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusDotOpen: {
+    backgroundColor: '#10B981',
+  },
+  statusDotClosed: {
+    backgroundColor: '#EF4444',
+  },
+  summaryCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 0,
+    paddingHorizontal: 20,
+    marginBottom: 8,
+  },
+  summaryText: {
     fontFamily: 'outfit',
-    fontSize: 16,
-    color: '#333',
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#6B7280',
     lineHeight: 22,
-    textAlign: 'left',
-  },
-  activityName: {
-    fontFamily: 'outfit-bold',
-    fontSize: 24,
-    color: Colors.PRIMARY,
-    textAlign: 'left',
-    flex: 1,
-    marginRight: 10,
+    letterSpacing: 0.1,
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    marginBottom: 5,
+    marginBottom: 12,
+    paddingHorizontal: 20,
   },
   starsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: 6,
   },
   ratingText: {
-    fontFamily: 'outfit',
+    fontFamily: 'outfit-medium',
     fontSize: 16,
-    color: Colors.GRAY,
-    marginRight: 8,
+    fontWeight: '500',
+    color: '#374151',
+    marginRight: 6,
   },
   ratingsCountText: {
-    fontFamily: 'outfit',
     fontSize: 16,
-    color: Colors.GRAY,
+    color: '#6B7280',
   },
   typeText: {
-    fontFamily: 'outfit',
     fontSize: 16,
     color: Colors.GRAY,
     textTransform: 'capitalize',
@@ -628,7 +905,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   infoText: {
-    fontFamily: 'outfit',
     fontSize: 16,
     color: '#333',
     lineHeight: 22,
@@ -639,7 +915,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   cityText: {
-    fontFamily: 'outfit',
     fontSize: 16,
     color: '#333',
   },
@@ -649,13 +924,11 @@ const styles = StyleSheet.create({
   coordinatesText: {
     fontSize: 14,
     color: '#666',
-    fontFamily: 'monospace',
   },
   placeIdContainer: {
     marginBottom: 20,
   },
   placeIdLabel: {
-    fontFamily: 'outfit-bold',
     fontSize: 16,
     color: Colors.PRIMARY,
     marginBottom: 5,
@@ -663,19 +936,16 @@ const styles = StyleSheet.create({
   placeIdText: {
     fontSize: 12,
     color: '#666',
-    fontFamily: 'monospace',
   },
   recommendationContainer: {
     marginBottom: 30,
   },
   recommendationLabel: {
-    fontFamily: 'outfit-bold',
     fontSize: 16,
     color: Colors.PRIMARY,
     marginBottom: 5,
   },
   recommendationText: {
-    fontFamily: 'outfit',
     fontSize: 16,
     color: '#333',
   },
@@ -683,13 +953,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   hoursLabel: {
-    fontFamily: 'outfit-bold',
     fontSize: 16,
     color: Colors.PRIMARY,
     marginBottom: 8,
   },
   hoursText: {
-    fontFamily: 'outfit',
     fontSize: 14,
     color: '#333',
     lineHeight: 20,
@@ -700,7 +968,6 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   websiteText: {
-    fontFamily: 'outfit',
     fontSize: 14,
     color: '#333',
     lineHeight: 22,
@@ -719,15 +986,13 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   hoursStatusText: {
-    fontFamily: 'outfit',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
-    lineHeight: 22,
+    lineHeight: 21,
+    flex: 1,
   },
   expandedHoursContainer: {
-    marginTop: 8,
-    paddingLeft: 41,
-    paddingRight: 5,
+    marginTop: 12,
   },
   sourceRow: {
     flexDirection: 'row',
@@ -745,12 +1010,13 @@ const styles = StyleSheet.create({
   },
   reviewsContainer: {
     marginBottom: 30,
+    paddingHorizontal: 20,
   },
   reviewsLabel: {
-    fontFamily: 'outfit-bold',
-    fontSize: 16,
-    color: Colors.PRIMARY,
-    marginBottom: 15,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 16,
   },
   reviewItem: {
     marginBottom: 20,
@@ -773,14 +1039,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   reviewAuthorName: {
-    fontFamily: 'outfit',
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
     marginBottom: 2,
   },
   reviewTime: {
-    fontFamily: 'outfit',
     fontSize: 12,
     color: Colors.GRAY,
   },
@@ -795,7 +1059,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   reviewText: {
-    fontFamily: 'outfit',
     fontSize: 14,
     color: '#333',
     lineHeight: 20,
@@ -809,20 +1072,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   ellipsisText: {
-    fontFamily: 'outfit',
     fontSize: 14,
     color: '#333',
     lineHeight: 20,
   },
   moreText: {
-    fontFamily: 'outfit',
     fontSize: 14,
     color: Colors.GRAY,
     textDecorationLine: 'underline',
     lineHeight: 20,
   },
   moreButton: {
-    fontFamily: 'outfit',
     fontSize: 14,
     color: Colors.GRAY,
     textDecorationLine: 'underline',
@@ -864,5 +1124,180 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 5,
+  },
+  // Activity Name (in content)
+  activityNameMain: {
+    fontFamily: 'outfit-semibold',
+    fontSize: 26,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 8,
+    paddingHorizontal: 20,
+    letterSpacing: 0.2,
+  },
+  // Action Buttons Row
+  actionButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  actionButtonText: {
+    fontFamily: 'outfit',
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#4B5563',
+    letterSpacing: 0.2,
+  },
+  // Planned Time Section
+  plannedTimeContainer: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 10,
+    borderWidth: 0.5,
+    borderColor: '#DBEAFE',
+    padding: 14,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    shadowColor: '#60A5FA',
+    shadowOffset: { width: 0, height: 0.5 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  plannedTimeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  plannedTimeTitle: {
+    fontFamily: 'outfit-medium',
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#374151',
+    letterSpacing: 0.2,
+  },
+  plannedTimeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  timeColumn: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  timeDivider: {
+    width: 0.5,
+    backgroundColor: '#DBEAFE',
+    marginHorizontal: 10,
+  },
+  timeLabel: {
+    fontFamily: 'outfit-medium',
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#94A3B8',
+    marginBottom: 5,
+    letterSpacing: 0.8,
+  },
+  timeValue: {
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#334155',
+    letterSpacing: 0.3,
+  },
+  // Your Notes Section
+  notesContainer: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  notesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  notesTitle: {
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#374151',
+    letterSpacing: 0.2,
+  },
+  notesText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#4B5563',
+    lineHeight: 20,
+    letterSpacing: 0.1,
+  },
+  // Info Card Wrapper (Address, Hours, Phone)
+  infoCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  // Info Sections (Address, Hours, Phone)
+  infoSection: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoLabel: {
+    fontFamily: 'outfit-medium',
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  infoText: {
+    fontFamily: 'outfit',
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#374151',
+    lineHeight: 21,
+    letterSpacing: 0.1,
+  },
+  hoursToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
 });

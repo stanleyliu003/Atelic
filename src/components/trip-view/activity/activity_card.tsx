@@ -246,48 +246,38 @@ export function ActivityCard({
                   */}
               </View>
 
-              {/* Add Notes Button - Always on a new line - Hide in CategoryModal */}
+              {/* Add Notes/Time Section - Always on a new line - Hide in CategoryModal */}
               {!hideNotesButton && (
                 <TouchableOpacity
-                  style={[styles.notesButton, hasNotes && styles.notesButtonActive]}
+                  style={styles.notesSection}
                   onPress={() => setNotesModalVisible(true)}
                   disabled={disabled}
+                  activeOpacity={0.7}
                 >
-                  <View style={styles.notesButtonWrapper}>
-                    {hasNotes ? (
-                      <View style={styles.notesButtonContentColumn}>
-                        {/* If both time and notes exist: show time on first line, notes on second line (1 line max) */}
-                        {(activity.startTime && activity.endTime) && activity.notes ? (
-                          <>
-                            <Text style={styles.notesTimeText} numberOfLines={1}>
-                              {getNotesButtonText()}
-                            </Text>
-                            <Text style={styles.notesPreviewText} numberOfLines={1}>
-                              {activity.notes}
-                            </Text>
-                          </>
-                        ) : (
-                          <>
-                            {/* Show time only if no notes */}
-                            {(activity.startTime && activity.endTime) && !activity.notes && (
-                              <Text style={styles.notesTimeText} numberOfLines={1}>
-                                {getNotesButtonText()}
-                              </Text>
-                            )}
-                            {/* Show notes (2 lines max) if no time */}
-                            {activity.notes && !activity.startTime && !activity.endTime && (
-                              <Text style={styles.notesPreviewText} numberOfLines={2}>
-                                {activity.notes}
-                              </Text>
-                            )}
-                          </>
-                        )}
-                      </View>
-                    ) : (
-                      <Text style={styles.notesButtonText}>Add Notes</Text>
-                    )}
-                    <MaterialIcons name="edit" size={12} color={Colors.GRAY} style={styles.pencilIcon} />
-                  </View>
+                  {hasNotes ? (
+                    <View style={styles.notesContentContainer}>
+                      {/* Time Section with clock icon */}
+                      {(activity.startTime && activity.endTime) && (
+                        <View style={styles.timeRow}>
+                          <Text style={styles.timeText}>
+                            {getNotesButtonText()}
+                          </Text>
+                          <MaterialIcons name="access-time" size={16} color="#60A5FA" style={styles.clockIcon} />
+                        </View>
+                      )}
+                      {/* Notes Section */}
+                      {activity.notes && (
+                        <Text style={styles.notesText} numberOfLines={1}>
+                          {activity.notes}
+                        </Text>
+                      )}
+                    </View>
+                  ) : (
+                    <View style={styles.addNotesButton}>
+                      <MaterialIcons name="edit" size={14} color="#94A3B8" />
+                      <Text style={styles.addNotesText}>Add Notes</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               )}
             </View>
@@ -296,6 +286,9 @@ export function ActivityCard({
               photo_reference={activity.photo_reference || ''}
               place_id={activity.place_id}
               style={[styles.activityImage, disabled && styles.disabledImage]}
+              activityName={activity.name}
+              primaryType={activity.primaryType}
+              types={activity.types}
             />
           </TouchableOpacity>
         </View>
@@ -541,65 +534,53 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: Colors.GRAY,
   },
-  notesButton: {
-    backgroundColor: '#e9ecef',
+  notesSection: {
     marginTop: 8,
-    borderRadius: 10,
-    paddingVertical: 3,
-    paddingLeft: 8,
-    paddingRight: 5,
-    marginLeft: -3,
-    marginRight: 25,
+    marginRight: 10,
+  },
+  notesContentContainer: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    gap: 1,
     alignSelf: 'flex-start',
   },
-  notesButtonActive: {
-    backgroundColor: '#e9ecef', // Light blue when active
-  },
-  notesButtonWrapper: {
+  timeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
-  notesButtonContent: {
+  timeText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 13,
+    color: '#60A5FA',
+    fontWeight: '600',
+  },
+  clockIcon: {
+    marginTop: 1,
+  },
+  notesText: {
+    fontFamily: 'outfit',
+    fontSize: 13,
+    color: '#9CA3AF',
+    lineHeight: 18,
+  },
+  addNotesButton: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    alignSelf: 'flex-start',
   },
-  notesButtonContentColumn: {
-    flexDirection: 'column',
-    gap: 2,
-    flexShrink: 1,
-  },
-  notesButtonText: {
-    fontFamily: 'outfit',
-    fontSize: 13.5,
-    color: Colors.GRAY,
-  },
-  notesTimeText: {
-    fontFamily: 'outfit-bold',
-    fontSize: 12,
-    color: Colors.GRAY,
-    fontWeight: 'normal',
-  },
-  notesInlineText: {
+  addNotesText: {
     fontFamily: 'outfit',
     fontSize: 12,
-    color: Colors.GRAY,
-    fontWeight: 'normal',
-  },
-  notesPreviewText: {
-    fontFamily: 'outfit',
-    fontSize: 10.5,
-    color: Colors.GRAY,
-    lineHeight: 16,
-  },
-  notesLabelText: {
-    fontFamily: 'outfit',
-    fontSize: 10,
-    color: Colors.GRAY,
-    marginRight: 4,
-  },
-  pencilIcon: {
-    marginLeft: 2,
+    color: '#94A3B8',
   },
 });

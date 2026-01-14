@@ -1,11 +1,13 @@
 import { useFonts } from 'expo-font';
 import { Stack, useRouter } from "expo-router";
 import { CreateTripProvider } from '../context/CreateTripContext';
-import { View, Text } from 'react-native';
+import { View, Text, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef } from 'react';
 import { Auth } from 'aws-amplify';
 import { retrieveTripFromCloud } from '../src/services/lambdaService';
+import appsFlyer from 'react-native-appsflyer';
+import * as Tracking from 'expo-tracking-transparency';
 
 // Configure how notifications are displayed when app is in foreground
 Notifications.setNotificationHandler({
@@ -26,6 +28,73 @@ export default function RootLayout() {
     'outfit-medium': require('../assets/fonts/Outfit-Medium.ttf'),
     'outfit-bold': require('../assets/fonts/Outfit-Bold.ttf'),
   });
+
+  // Initialize AppsFlyer SDK
+  useEffect(() => {
+    const initAppsFlyer = async () => {
+      try {
+        // Request App Tracking Transparency (ATT) permission on iOS 14.5+
+        if (Platform.OS === 'ios') {
+          const { status } = await Tracking.requestTrackingPermissionsAsync();
+          console.log('[AppsFlyer] ATT Permission Status:', status);
+        }
+
+        // Initialize AppsFlyer SDK
+        appsFlyer.initSdk(
+          {
+            devKey: process.env.EXPO_PUBLIC_APPSFLYER_DEV_KEY,
+            appId: process.env.EXPO_PUBLIC_APPSFLYER_APPLE_APP_ID,
+            isDebug: __DEV__, // Enable debug logs in development
+            onInstallConversionDataListener: true, // Listen for attribution data
+            onDeepLinkListener: false, // Deep linking disabled for now
+            timeToWaitForATTUserAuthorization: 10, // Wait up to 10 seconds for ATT
+          },
+          (result) => {
+            console.log('[AppsFlyer] SDK initialized successfully:', result);
+          },
+          (error) => {
+            console.error('[AppsFlyer] SDK initialization error:', error);
+          }
+        );
+
+        // Listen for install attribution data
+        appsFlyer.onInstallConversionData((data) => {
+          console.log('[AppsFlyer] Attribution data received:', JSON.stringify(data, null, 2));
+          
+          // Attribution data structure:
+          // {
+          //   status: "success",
+          //   type: "onInstallConversionDataLoaded",
+          //   data: {
+          //     af_status: "Organic" or "Non-organic",
+          //     media_source: "facebook", "instagram", etc.
+          //     campaign: "summer_sale_2026",
+          //     is_first_launch: true/false,
+          //     ...
+          //   }
+          // }
+        });
+
+        // Set CUID (Customer User ID) if user is already logged in
+        // This enables cross-device tracking for returning users
+        try {
+          const user = await Auth.currentAuthenticatedUser();
+          if (user?.username) {
+            appsFlyer.setCustomerUserId(user.username);
+            console.log('[AppsFlyer] Set CUID for logged-in user:', user.username);
+          }
+        } catch (authErr) {
+          // User not logged in yet - CUID will be set after signup/login
+          console.log('[AppsFlyer] No authenticated user yet, CUID will be set after login');
+        }
+
+      } catch (error) {
+        console.error('[AppsFlyer] Failed to initialize:', error);
+      }
+    };
+
+    initAppsFlyer();
+  }, []);
 
   // Set up notification listeners
   useEffect(() => {

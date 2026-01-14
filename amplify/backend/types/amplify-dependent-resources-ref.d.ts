@@ -73,6 +73,13 @@ export type AmplifyDependentResourcesAttributes = {
       "Name": "string",
       "Region": "string"
     },
+    "getFlightInfo": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
     "getLocationCoordinates": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
@@ -109,6 +116,13 @@ export type AmplifyDependentResourcesAttributes = {
       "Region": "string"
     },
     "manageCollaborators": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
+    "processAppsFlyerAttributionV2": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",
