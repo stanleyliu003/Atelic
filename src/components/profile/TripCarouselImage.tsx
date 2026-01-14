@@ -133,7 +133,18 @@ export function TripCarouselImage({
   };
 
   const fetchGooglePlacesPhoto = async () => {
-    // Try to fetch from Google Places API if we have place_id
+    // If we already have a photo_reference, use it directly (don't refetch)
+    // This is important for activity carousels where each item has a specific photo
+    if (photo_reference) {
+      console.log(`[TripCarouselImage] Using provided photo_reference directly`);
+      const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photo_reference}&key=${GOOGLE_PLACES_API_KEY}`;
+      setImageUrl(photoUrl);
+      setImageError(false);
+      return;
+    }
+
+    // Only fetch from API if we don't have a photo_reference but have a place_id
+    // This is useful for city carousels or when we need to refresh expired photos
     if (place_id) {
       try {
         console.log(`[TripCarouselImage] Fetching Google Places photo for place_id: ${place_id}`);
@@ -162,17 +173,11 @@ export function TripCarouselImage({
       }
     }
 
-    // Fallback to existing photo_reference
-    if (photo_reference) {
-      const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photo_reference}&key=${GOOGLE_PLACES_API_KEY}`;
-      setImageUrl(photoUrl);
-      setImageError(false);
-    } else {
-      console.log('[TripCarouselImage] No photo available');
-      setImageError(true);
-      if (onPhotoRefUpdate) {
-        onPhotoRefUpdate(null);
-      }
+    // No photo available
+    console.log('[TripCarouselImage] No photo available');
+    setImageError(true);
+    if (onPhotoRefUpdate) {
+      onPhotoRefUpdate(null);
     }
   };
 

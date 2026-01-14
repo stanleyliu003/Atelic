@@ -162,6 +162,25 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
   // Use live activity data for display
   const liveActivity = getLiveActivity();
 
+  // Determine which day/tab this activity belongs to
+  const getActivityTab = (): 'wishlist' | string => {
+    // Check if activity is in wishlist
+    if (activities.find((a: Activity) => a.instanceId === activity.instanceId)) {
+      return 'wishlist';
+    }
+
+    // Check which day it's in
+    for (const dayNum of Object.keys(dayActivities)) {
+      const dayActivity = dayActivities[dayNum]?.activities?.find(
+        (a: Activity) => a.instanceId === activity.instanceId
+      );
+      if (dayActivity) return `day${dayNum}`;
+    }
+
+    // Fallback to wishlist
+    return 'wishlist';
+  };
+
   const handleDuplicate = () => {
     if (onDuplicate) {
       onDuplicate(activity);
@@ -733,7 +752,7 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
         visible={notesModalVisible}
         onClose={() => setNotesModalVisible(false)}
         activity={liveActivity}
-        activeTab={activeTab || (variant === 'wishlist' ? 'wishlist' : (liveActivity.dayNumber ? `day${liveActivity.dayNumber}` : 'wishlist'))}
+        activeTab={activeTab || (variant === 'wishlist' ? 'wishlist' : getActivityTab())}
         currentUserRole={currentUserRole}
       />
     </GestureHandlerRootView>
@@ -903,13 +922,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
     paddingHorizontal: 5,
-  },
-  infoText: {
-    fontSize: 16,
-    color: '#333',
-    lineHeight: 22,
-    marginLeft: 12,
-    flex: 1,
   },
   cityContainer: {
     marginBottom: 20,
