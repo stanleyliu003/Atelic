@@ -57,7 +57,8 @@
       "Bash(eas build:*)",
       "Bash(aws lambda update-function-code:*)",
       "Bash(tee:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(aws cloudformation list-stacks:*)"
     ],
     "deny": [],
     "ask": [],

@@ -7,20 +7,6 @@
       "permissions": {
         "setting": "open"
       }
-    },
-    "/attribution/appsflyer": {
-      "name": "/attribution/appsflyer",
-      "lambdaFunction": "processAppsFlyerAttributionV2",
-      "permissions": {
-        "setting": "open"
-      }
-    },
-    "/getFlightInfo": {
-      "name": "/getFlightInfo",
-      "lambdaFunction": "getFlightInfo",
-      "permissions": {
-        "setting": "open"
-      }
     }
   }
 }
