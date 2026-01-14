@@ -310,6 +310,30 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "getFlightInfo": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "ApiName",
+            "ApiId"
+          ],
+          "category": "api",
+          "resourceName": "WishlistRestAPI"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "getLocationCoordinates": {
       "build": true,
       "dependsOn": [
@@ -417,6 +441,30 @@
           ],
           "category": "storage",
           "resourceName": "TripStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "processAppsFlyerAttributionV2": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "ApiName",
+            "ApiId"
+          ],
+          "category": "api",
+          "resourceName": "WishlistRestAPI"
         },
         {
           "attributes": [
@@ -761,6 +809,38 @@
         }
       ]
     },
+    "AMPLIFY_function_getFlightInfo_amadeusApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFlightInfo_amadeusApiSecretKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFlightInfo_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFlightInfo_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
     "AMPLIFY_function_getLocationCoordinates_deploymentBucketName": {
       "usedBy": [
         {
@@ -870,6 +950,22 @@
         {
           "category": "function",
           "resourceName": "manageCollaborators"
+        }
+      ]
+    },
+    "AMPLIFY_function_processAppsFlyerAttributionV2_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processAppsFlyerAttributionV2"
+        }
+      ]
+    },
+    "AMPLIFY_function_processAppsFlyerAttributionV2_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processAppsFlyerAttributionV2"
         }
       ]
     },

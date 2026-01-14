@@ -1,0 +1,1230 @@
+{
+  "providers": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-amplifybackend-devstan-0b448-authRole",
+      "UnauthRoleArn": "arn:aws:iam::036284794661:role/amplify-amplifybackend-devstan-0b448-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::036284794661:role/amplify-amplifybackend-devstan-0b448-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+      "UnauthRoleName": "amplify-amplifybackend-devstan-0b448-unauthRole",
+      "StackName": "amplify-amplifybackend-devstan-0b448",
+      "StackId": "arn:aws:cloudformation:us-east-1:036284794661:stack/amplify-amplifybackend-devstan-0b448/c859cab0-f179-11f0-9d1d-0e22faae9b4d",
+      "AmplifyAppId": "di3vqm2fsgqsv"
+    }
+  },
+  "api": {
+    "WishListAPI": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        }
+      ],
+      "output": {
+        "authConfig": {
+          "additionalAuthenticationProviders": [
+            {
+              "authenticationType": "AMAZON_COGNITO_USER_POOLS",
+              "userPoolConfig": {
+                "userPoolId": "authamplifybackend59ccdbf8"
+              }
+            }
+          ],
+          "defaultAuthentication": {
+            "apiKeyConfig": {
+              "apiKeyExpirationDate": "2026-07-07T12:30:35.329Z",
+              "apiKeyExpirationDays": 365,
+              "description": "API Key #2"
+            },
+            "authenticationType": "API_KEY"
+          }
+        },
+        "GraphQLAPIIdOutput": "7dw4pb2mybdkhbrqgywgyv2udy",
+        "GraphQLAPIEndpointOutput": "https://bzcyfiwmhfalvf6umejpwyks34.appsync-api.us-east-1.amazonaws.com/graphql",
+        "GraphQLAPIKeyOutput": "da2-62uluiuuynhl3lwww5gsupukau"
+      },
+      "providerPlugin": "awscloudformation",
+      "service": "AppSync",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/api/cloudformation-template.json",
+        "logicalId": "apiWishListAPI"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:48.389Z",
+      "lastPushDirHash": "okmjbH2We1fiMBnkQh9uzKIMMWs="
+    },
+    "WishlistRestAPI": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "wishlistAnalyzer"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "API Gateway",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/api/WishlistRestAPI-cloudformation-template.json",
+        "logicalId": "apiWishlistRestAPI"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.800Z",
+      "output": {
+        "ApiName": "WishlistRestAPI",
+        "RootUrl": "https://g21florvnk.execute-api.us-east-1.amazonaws.com/devstan",
+        "ApiId": "g21florvnk"
+      },
+      "lastPushDirHash": "n4vRSGpZViv41PVlKgstjVTEDxQ="
+    }
+  },
+  "auth": {
+    "amplifybackend59ccdbf8": {
+      "customAuth": false,
+      "dependsOn": [],
+      "frontendAuthConfig": {
+        "mfaConfiguration": "OFF",
+        "mfaTypes": [
+          "SMS"
+        ],
+        "passwordProtectionSettings": {
+          "passwordPolicyMinLength": 8,
+          "passwordPolicyCharacters": []
+        },
+        "signupAttributes": [
+          "EMAIL"
+        ],
+        "socialProviders": [
+          "GOOGLE",
+          "APPLE"
+        ],
+        "usernameAttributes": [
+          "EMAIL"
+        ],
+        "verificationMechanisms": [
+          "EMAIL"
+        ]
+      },
+      "providerPlugin": "awscloudformation",
+      "service": "Cognito",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/auth/amplifybackend59ccdbf8-cloudformation-template.json",
+        "logicalId": "authamplifybackend59ccdbf8"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.801Z",
+      "output": {
+        "UserPoolId": "us-east-1_jupoBmxJI",
+        "AppClientIDWeb": "79vrt88lrj1abtm4trk1v3vgli",
+        "AppClientID": "2d77hdeit5ml72r2j8bdlel9u0",
+        "HostedUIDomain": "atelictravel-devstan",
+        "UserPoolArn": "arn:aws:cognito-idp:us-east-1:036284794661:userpool/us-east-1_jupoBmxJI",
+        "OAuthMetadata": "{\"AllowedOAuthFlows\":[\"code\"],\"AllowedOAuthScopes\":[\"phone\",\"email\",\"openid\",\"profile\",\"aws.cognito.signin.user.admin\"],\"CallbackURLs\":[\"atelicstable://\"],\"LogoutURLs\":[\"atelicstable://\"]}",
+        "UserPoolName": "amplifybackend59ccdbf8_userpool_59ccdbf8"
+      },
+      "lastPushDirHash": "W7mCeWPUXTj6H1cGT+UgEf8R/Dc="
+    }
+  },
+  "function": {
+    "CityCategories": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "categoryStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:02.564Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:02.668Z",
+      "distZipFilename": "CityCategories-70675336487437334e34-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/CityCategories-70675336487437334e34-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/CityCategories-cloudformation-template.json",
+        "logicalId": "functionCityCategories"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.805Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRolea734ecc9-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:CityCategories-devstan",
+        "Name": "CityCategories-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRolea734ecc9-devstan"
+      },
+      "lastPushDirHash": "9R2sOWRqVKhCGbGRPBWUlegTPXM="
+    },
+    "CreateTripStorage": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "WishListAPI"
+        },
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "getUserProfile"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "updateUserProfile"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:04.697Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:06.977Z",
+      "distZipFilename": "CreateTripStorage-466a6c65574173636834-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/CreateTripStorage-466a6c65574173636834-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/CreateTripStorage-cloudformation-template.json",
+        "logicalId": "functionCreateTripStorage"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.807Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRolea01113eb-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:CreateTripStorage-devstan",
+        "Name": "CreateTripStorage-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRolea01113eb-devstan"
+      },
+      "lastPushDirHash": "8YBE6QEU+YbTsAtTXjSbVubgyOw="
+    },
+    "GetRoute": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "WishListAPI"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "wishlistAnalyzer"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "getLocationCoordinates"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:08.841Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:08.852Z",
+      "distZipFilename": "GetRoute-53517a594c6f4b6b3137-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/GetRoute-53517a594c6f4b6b3137-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/GetRoute-cloudformation-template.json",
+        "logicalId": "functionGetRoute"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.809Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole17b9ea04-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:GetRoute-devstan",
+        "Name": "GetRoute-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRole17b9ea04-devstan"
+      },
+      "lastPushDirHash": "P1W2A5GPbF9vQpn0dz/Ahu0ZNOc="
+    },
+    "deleteAccount": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "CreateTripStorage"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "deleteTrip"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "getTripIDs"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "getUserTrips"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "manageCollaborators"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "updateUserProfile"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:09.493Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:09.501Z",
+      "distZipFilename": "deleteAccount-3770576e4f556155476b-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/deleteAccount-3770576e4f556155476b-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/deleteAccount-cloudformation-template.json",
+        "logicalId": "functiondeleteAccount"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.810Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole9e16ea69-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:deleteAccount-devstan",
+        "Name": "deleteAccount-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRole9e16ea69-devstan"
+      },
+      "lastPushDirHash": "Lg9v3RfyiB1Qrs2zWbDDcdujCTY="
+    },
+    "deleteTrip": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:10.127Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:10.134Z",
+      "distZipFilename": "deleteTrip-6c37796c796a614e6762-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/deleteTrip-6c37796c796a614e6762-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/deleteTrip-cloudformation-template.json",
+        "logicalId": "functiondeleteTrip"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.811Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRolebbbeb914-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:deleteTrip-devstan",
+        "Name": "deleteTrip-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRolebbbeb914-devstan"
+      },
+      "lastPushDirHash": "TvlQGV1VjUiltFFOWFYiWRn+ODE="
+    },
+    "exportUserDataAnalytics": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:11.617Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:12.923Z",
+      "distZipFilename": "exportUserDataAnalytics-63434864593143757075-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/exportUserDataAnalytics-63434864593143757075-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/exportUserDataAnalytics-cloudformation-template.json",
+        "logicalId": "functionexportUserDataAnalytics"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.815Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRolebfc0ae81-devstan",
+        "Region": "us-east-1",
+        "CloudWatchEventRule": "amplify-amplifybackend-devstan-0b44-CloudWatchEvent-ZdPIiyuNLzgt",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:exportUserDataAnalytics-devstan",
+        "Name": "exportUserDataAnalytics-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRolebfc0ae81-devstan"
+      },
+      "lastPushDirHash": "tITsDzzpRQ2Q2dDofo1Q3wzfmwU="
+    },
+    "generateCategoryActivities": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "getLocationCoordinates"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "PlacesAPIActivityStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:15.689Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:18.056Z",
+      "distZipFilename": "generateCategoryActivities-77385833495576665041-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/generateCategoryActivities-77385833495576665041-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/generateCategoryActivities-cloudformation-template.json",
+        "logicalId": "functiongenerateCategoryActivities"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.816Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole22c64322-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:generateCategoryActivities-devstan",
+        "Name": "generateCategoryActivities-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRole22c64322-devstan"
+      },
+      "lastPushDirHash": "VP8Wt46ETNbdZkGQJuqDdRsOyxs="
+    },
+    "getLocationCoordinates": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "PlacesAPIActivityStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T20:32:36.686Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T20:32:38.335Z",
+      "distZipFilename": "getLocationCoordinates-3164524f79412f594f74-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/getLocationCoordinates-3164524f79412f594f74-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/getLocationCoordinates-cloudformation-template.json",
+        "logicalId": "functiongetLocationCoordinates"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:48.350Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole910be44f-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:getLocationCoordinates-devstan",
+        "Name": "getLocationCoordinates-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRole910be44f-devstan"
+      },
+      "lastPushDirHash": "YkPIcKCHkq/zLA9hmuXMxv8RXJI="
+    },
+    "getTripIDs": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:23.683Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:23.692Z",
+      "distZipFilename": "getTripIDs-7a76665552444548656f-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/getTripIDs-7a76665552444548656f-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/getTripIDs-cloudformation-template.json",
+        "logicalId": "functiongetTripIDs"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.819Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole2a81a6a1-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:getTripIDs-devstan",
+        "Name": "getTripIDs-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRole2a81a6a1-devstan"
+      },
+      "lastPushDirHash": "P+r27Yhz6P0OT4ohBKcQWkSIXDo="
+    },
+    "getUserProfile": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:25.134Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:26.256Z",
+      "distZipFilename": "getUserProfile-773854767868634e736e-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/getUserProfile-773854767868634e736e-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/getUserProfile-cloudformation-template.json",
+        "logicalId": "functiongetUserProfile"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.820Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRoleea2dd26d-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:getUserProfile-devstan",
+        "Name": "getUserProfile-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRoleea2dd26d-devstan"
+      },
+      "lastPushDirHash": "lIJI1UAlQQ3yE7QvZ/u3SsQKn7w="
+    },
+    "getUserTrips": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripOperationsStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:27.516Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:27.527Z",
+      "distZipFilename": "getUserTrips-6b73306b65784931367a-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/getUserTrips-6b73306b65784931367a-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/getUserTrips-cloudformation-template.json",
+        "logicalId": "functiongetUserTrips"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.821Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRolec1c6831a-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:getUserTrips-devstan",
+        "Name": "getUserTrips-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRolec1c6831a-devstan"
+      },
+      "lastPushDirHash": "I97E3F5DDgcE55TnOEUlbvVNVtY="
+    },
+    "getVersionConfig": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "AppVersionManager"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:28.763Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:29.926Z",
+      "distZipFilename": "getVersionConfig-512f4667484d36715078-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/getVersionConfig-512f4667484d36715078-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/getVersionConfig-cloudformation-template.json",
+        "logicalId": "functiongetVersionConfig"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.821Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole9456a8cd-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:getVersionConfig-devstan",
+        "Name": "getVersionConfig-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRole9456a8cd-devstan"
+      },
+      "lastPushDirHash": "plI8W4nvWskOOSenRdAFKaaWDi0="
+    },
+    "manageCollaborators": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:31.865Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:33.526Z",
+      "distZipFilename": "manageCollaborators-755859303452766d6572-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/manageCollaborators-755859303452766d6572-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/manageCollaborators-cloudformation-template.json",
+        "logicalId": "functionmanageCollaborators"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.822Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole556b06e4-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:manageCollaborators-devstan",
+        "Name": "manageCollaborators-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRole556b06e4-devstan"
+      },
+      "lastPushDirHash": "nFVipOmoOtSO+W0RYlSktbpreDU="
+    },
+    "registerDeviceToken": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:34.719Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:34.726Z",
+      "distZipFilename": "registerDeviceToken-55593867623957366c76-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/registerDeviceToken-55593867623957366c76-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/registerDeviceToken-cloudformation-template.json",
+        "logicalId": "functionregisterDeviceToken"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.823Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole75e6f2d0-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:registerDeviceToken-devstan",
+        "Name": "registerDeviceToken-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRole75e6f2d0-devstan"
+      },
+      "lastPushDirHash": "RPbxOec6sorwOHQITdoED4TbcnU="
+    },
+    "searchAutocomplete": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "getLocationCoordinates"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T20:32:40.061Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T20:32:41.863Z",
+      "distZipFilename": "searchAutocomplete-6b7a667246597a704276-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/searchAutocomplete-6b7a667246597a704276-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/searchAutocomplete-cloudformation-template.json",
+        "logicalId": "functionsearchAutocomplete"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:48.354Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole92e3178a-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:searchAutocomplete-devstan",
+        "Name": "searchAutocomplete-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRole92e3178a-devstan"
+      },
+      "lastPushDirHash": "1KyHafppM1ZsJKtwpc/y08lXbHc="
+    },
+    "searchBarActivities": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "getLocationCoordinates"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "PlacesAPIActivityStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:38.660Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:39.551Z",
+      "distZipFilename": "searchBarActivities-424862704d6c644e4356-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/searchBarActivities-424862704d6c644e4356-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/searchBarActivities-cloudformation-template.json",
+        "logicalId": "functionsearchBarActivities"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.825Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole84a60930-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:searchBarActivities-devstan",
+        "Name": "searchBarActivities-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRole84a60930-devstan"
+      },
+      "lastPushDirHash": "CoFDnqLyQjEVnV1gfRMey61J56c="
+    },
+    "searchUsers": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:41.332Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:42.375Z",
+      "distZipFilename": "searchUsers-463349636a377739396b-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/searchUsers-463349636a377739396b-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/searchUsers-cloudformation-template.json",
+        "logicalId": "functionsearchUsers"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.826Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole95f659dd-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:searchUsers-devstan",
+        "Name": "searchUsers-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRole95f659dd-devstan"
+      },
+      "lastPushDirHash": "/bhFaORphdL+9w5BlWjgsO3USq4="
+    },
+    "sendPushNotification": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:43.574Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:43.583Z",
+      "distZipFilename": "sendPushNotification-2b544b56763975727937-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/sendPushNotification-2b544b56763975727937-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/sendPushNotification-cloudformation-template.json",
+        "logicalId": "functionsendPushNotification"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.828Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole46d40963-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:sendPushNotification-devstan",
+        "Name": "sendPushNotification-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRole46d40963-devstan"
+      },
+      "lastPushDirHash": "cR/1vzsS51N3mmhDFPlZBVkvgB8="
+    },
+    "syncUserProfilesAmplitudeBI": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:44.862Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:45.864Z",
+      "distZipFilename": "syncUserProfilesAmplitudeBI-384133437a71544c4851-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/syncUserProfilesAmplitudeBI-384133437a71544c4851-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/syncUserProfilesAmplitudeBI-cloudformation-template.json",
+        "logicalId": "functionsyncUserProfilesAmplitudeBI"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.829Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole03fdc6c1-devstan",
+        "Region": "us-east-1",
+        "CloudWatchEventRule": "amplify-amplifybackend-devstan-0b44-CloudWatchEvent-B9xU72WmtUWn",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:syncUserProfilesAmplitudeBI-devstan",
+        "Name": "syncUserProfilesAmplitudeBI-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRole03fdc6c1-devstan"
+      },
+      "lastPushDirHash": "lByBrrfmqxcCQv4vlMh8/IpT1rk="
+    },
+    "updateUserProfile": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T20:32:43.823Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T20:32:45.235Z",
+      "distZipFilename": "updateUserProfile-54717364475a57374b50-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/updateUserProfile-54717364475a57374b50-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/updateUserProfile-cloudformation-template.json",
+        "logicalId": "functionupdateUserProfile"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:48.391Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRoleeaacb507-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:updateUserProfile-devstan",
+        "Name": "updateUserProfile-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRoleeaacb507-devstan"
+      },
+      "lastPushDirHash": "//MhDxglW3jOteUnzCi04M38u0E="
+    },
+    "wishlistAnalyzer": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "WishListAPI"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "getLocationCoordinates"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2026-01-14T19:25:50.966Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2026-01-14T19:25:51.062Z",
+      "distZipFilename": "wishlistAnalyzer-37304f75714d65654364-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+        "s3Key": "amplify-builds/wishlistAnalyzer-37304f75714d65654364-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/function/wishlistAnalyzer-cloudformation-template.json",
+        "logicalId": "functionwishlistAnalyzer"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.835Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::036284794661:role/amplifybackendLambdaRole6253b02e-devstan",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:036284794661:function:wishlistAnalyzer-devstan",
+        "Name": "wishlistAnalyzer-devstan",
+        "LambdaExecutionRole": "amplifybackendLambdaRole6253b02e-devstan"
+      },
+      "lastPushDirHash": "ieSy3ZZ80eQHqPK0gs2axnITZyQ="
+    }
+  },
+  "storage": {
+    "AppVersionManager": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/storage/AppVersionManager-cloudformation-template.json",
+        "logicalId": "storageAppVersionManager"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.839Z",
+      "output": {
+        "PartitionKeyName": "id",
+        "SortKeyName": "platform",
+        "SortKeyType": "S",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:dynamodb:us-east-1:036284794661:table/AppVersions-devstan",
+        "StreamArn": "arn:aws:dynamodb:us-east-1:036284794661:table/AppVersions-devstan/stream/2026-01-14T19:26:04.517",
+        "PartitionKeyType": "S",
+        "Name": "AppVersions-devstan"
+      },
+      "lastPushDirHash": "YjIYLGw8V8eV+Dg5xjfVqH9n0hU="
+    },
+    "PlacesAPIActivityStorage": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/storage/PlacesAPIActivityStorage-cloudformation-template.json",
+        "logicalId": "storagePlacesAPIActivityStorage"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.840Z",
+      "output": {
+        "PartitionKeyName": "cache_type",
+        "SortKeyName": "cache_key",
+        "SortKeyType": "S",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:dynamodb:us-east-1:036284794661:table/PlacesAPIActivityCache-devstan",
+        "StreamArn": "arn:aws:dynamodb:us-east-1:036284794661:table/PlacesAPIActivityCache-devstan/stream/2026-01-14T19:26:05.271",
+        "PartitionKeyType": "S",
+        "Name": "PlacesAPIActivityCache-devstan"
+      },
+      "lastPushDirHash": "c7/+CE9eYE5Mvj7Jhqw7rtq/QYU="
+    },
+    "TripOperationsStorage": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/storage/TripOperationsStorage-cloudformation-template.json",
+        "logicalId": "storageTripOperationsStorage"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.841Z",
+      "output": {
+        "PartitionKeyName": "tripID",
+        "SortKeyName": "timestamp",
+        "SortKeyType": "N",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:dynamodb:us-east-1:036284794661:table/TripOperations-devstan",
+        "StreamArn": "arn:aws:dynamodb:us-east-1:036284794661:table/TripOperations-devstan/stream/2026-01-14T19:26:04.982",
+        "PartitionKeyType": "S",
+        "Name": "TripOperations-devstan"
+      },
+      "lastPushDirHash": "IpbbX+ctP4tx7eczhnHN7UfcPUI="
+    },
+    "TripStorage": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/storage/TripStorage-cloudformation-template.json",
+        "logicalId": "storageTripStorage"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.842Z",
+      "output": {
+        "PartitionKeyName": "userID",
+        "SortKeyName": "tripID",
+        "SortKeyType": "S",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:dynamodb:us-east-1:036284794661:table/Trips-devstan",
+        "StreamArn": "arn:aws:dynamodb:us-east-1:036284794661:table/Trips-devstan/stream/2026-01-14T19:26:04.527",
+        "PartitionKeyType": "S",
+        "Name": "Trips-devstan"
+      },
+      "lastPushDirHash": "GvAN25BHugTLG1VtUV8YcMZgo0U="
+    },
+    "UserProfilesStorage": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/storage/UserProfilesStorage-cloudformation-template.json",
+        "logicalId": "storageUserProfilesStorage"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.843Z",
+      "output": {
+        "PartitionKeyName": "username",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:dynamodb:us-east-1:036284794661:table/UserProfiles-devstan",
+        "StreamArn": "arn:aws:dynamodb:us-east-1:036284794661:table/UserProfiles-devstan/stream/2026-01-14T19:26:04.580",
+        "PartitionKeyType": "S",
+        "Name": "UserProfiles-devstan"
+      },
+      "lastPushDirHash": "WMpFmfNClo/MUR/iJR0wJI1zd1o="
+    },
+    "categoryStorage": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/storage/categoryStorage-cloudformation-template.json",
+        "logicalId": "storagecategoryStorage"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.844Z",
+      "output": {
+        "PartitionKeyName": "regionName",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:dynamodb:us-east-1:036284794661:table/categoryTable-devstan",
+        "StreamArn": "arn:aws:dynamodb:us-east-1:036284794661:table/categoryTable-devstan/stream/2026-01-14T19:26:04.876",
+        "PartitionKeyType": "S",
+        "Name": "categoryTable-devstan"
+      },
+      "lastPushDirHash": "g6Qzeu7QBzMEEKVB94ayXhAnMD0="
+    },
+    "regionImageStorage": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-amplifybackend-devstan-0b448-deployment/amplify-cfn-templates/storage/regionImageStorage-cloudformation-template.json",
+        "logicalId": "storageregionImageStorage"
+      },
+      "lastPushTimeStamp": "2026-01-14T20:32:30.845Z",
+      "output": {
+        "PartitionKeyName": "regionName",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:dynamodb:us-east-1:036284794661:table/regionImagesTable-devstan",
+        "StreamArn": "arn:aws:dynamodb:us-east-1:036284794661:table/regionImagesTable-devstan/stream/2026-01-14T19:26:04.677",
+        "PartitionKeyType": "S",
+        "Name": "regionImagesTable-devstan"
+      },
+      "lastPushDirHash": "4wbLQpe8n9qS9/+0t7sEIlLPWNE="
+    }
+  }
+}

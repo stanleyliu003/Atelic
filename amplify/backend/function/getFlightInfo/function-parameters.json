@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "api": {
+      "WishlistRestAPI": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    },
+    "storage": {
+      "UserProfilesStorage": [
+        "read"
+      ]
+    }
+  },
+  "lambdaLayers": [],
+  "environmentVariableList": [
+    {
+      "cloudFormationParameterName": "amadeusApiKey",
+      "environmentVariableName": "Amadeus_API_Key"
+    },
+    {
+      "cloudFormationParameterName": "amadeusApiSecretKey",
+      "environmentVariableName": "Amadeus_API_Secret_Key"
+    }
+  ]
+}
