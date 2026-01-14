@@ -28,10 +28,10 @@
       "Type": "String",
       "Default": "storagePlacesAPIActivityStorageStreamArn"
     },
-    "googlePlacesApiKey": {
+    "geminiApiKey": {
       "Type": "String"
     },
-    "geminiApiKey": {
+    "googlePlacesApiKey": {
       "Type": "String"
     }
   },
@@ -97,11 +97,11 @@
             "STORAGE_PLACESAPIACTIVITYSTORAGE_STREAMARN": {
               "Ref": "storagePlacesAPIActivityStorageStreamArn"
             },
-            "GOOGLE_PLACES_API_KEY": {
-              "Ref": "googlePlacesApiKey"
-            },
             "GEMINI_API_KEY": {
               "Ref": "geminiApiKey"
+            },
+            "GOOGLE_PLACES_API_KEY": {
+              "Ref": "googlePlacesApiKey"
             }
           }
         },

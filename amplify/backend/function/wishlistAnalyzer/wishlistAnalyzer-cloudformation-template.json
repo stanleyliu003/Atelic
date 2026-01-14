@@ -32,10 +32,10 @@
       "Type": "String",
       "Default": "apiWishListAPIGraphQLAPIKeyOutput"
     },
-    "geminiApiKey": {
+    "googlePlacesApiKey": {
       "Type": "String"
     },
-    "googlePlacesApiKey": {
+    "geminiApiKey": {
       "Type": "String"
     }
   },
@@ -130,11 +130,11 @@
                 ]
               ]
             },
-            "GEMINI_API_KEY": {
-              "Ref": "geminiApiKey"
-            },
             "GOOGLE_PLACES_API_KEY": {
               "Ref": "googlePlacesApiKey"
+            },
+            "GEMINI_API_KEY": {
+              "Ref": "geminiApiKey"
             }
           }
         },

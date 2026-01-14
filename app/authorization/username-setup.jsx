@@ -987,32 +987,6 @@ export default function UsernameSetup() {
                       );
                     })}
                   </View>
-
-                  {/* Terms and Privacy Policy - Inside scrollable content */}
-                  <View style={{ marginTop: 40, paddingHorizontal: 0 }}>
-                    <Text style={{
-                      fontFamily: 'outfit',
-                      fontSize: 12,
-                      color: Colors.GRAY,
-                      textAlign: 'center',
-                      lineHeight: 20
-                    }}>
-                      By continuing you agree to Atelic's{' '}
-                      <Text
-                        style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-                        onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
-                      >
-                        Terms of Service
-                      </Text>
-                      {' '}and acknowledge you've read our{' '}
-                      <Text
-                        style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-                        onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
-                      >
-                        Privacy Policy
-                      </Text>
-                    </Text>
-                  </View>
                 </View>
               </>
             )}
@@ -1076,57 +1050,34 @@ export default function UsernameSetup() {
               </>
             )}
 
-            {error && (currentPage !== 6 && currentPage !== 7) ? (
-              <Text style={styles.errorText}>{error}</Text>
-            ) : null}
+            {/* Only show error and button for pages that DON'T have fixed bottom button */}
+            {currentPage !== 6 && currentPage !== 7 && (
+              <>
+                {error ? (
+                  <Text style={styles.errorText}>{error}</Text>
+                ) : null}
 
-            <TouchableOpacity
-              onPress={handleNext}
-              disabled={isNextDisabled()}
-              style={[
-                styles.button,
-                {
-                  opacity: isNextDisabled() ? 0.3 : 1,
-                  marginTop: currentPage === 6 ? 0 : 35
-                }
-              ]}
-            >
-              {isLoading ? (
-                <ActivityIndicator color={Colors.WHITE} />
-              ) : (
-                <Text style={styles.buttonText}>
-                  {currentPage === 9 ? 'Start planning' : currentPage === 8 ? 'Choose permissions' : 'Continue'}
-                </Text>
-              )}
-            </TouchableOpacity>
-
-                {/* Terms and Privacy Policy - Show on use cases page */}
-                {currentPage === 7 && (
-                  <View style={{ marginTop: 40, paddingHorizontal: 0 }}>
-                    <Text style={{
-                      fontFamily: 'outfit',
-                      fontSize: 12,
-                      color: Colors.GRAY,
-                      textAlign: 'center',
-                      lineHeight: 20
-                    }}>
-                      By continuing you agree to Atelic's{' '}
-                      <Text
-                        style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-                        onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
-                      >
-                        Terms of Service
-                      </Text>
-                      {' '}and acknowledge you've read our{' '}
-                      <Text
-                        style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-                        onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
-                      >
-                        Privacy Policy
-                      </Text>
+                <TouchableOpacity
+                  onPress={handleNext}
+                  disabled={isNextDisabled()}
+                  style={[
+                    styles.button,
+                    {
+                      opacity: isNextDisabled() ? 0.3 : 1,
+                      marginTop: 35
+                    }
+                  ]}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color={Colors.WHITE} />
+                  ) : (
+                    <Text style={styles.buttonText}>
+                      {currentPage === 9 ? 'Start planning' : currentPage === 8 ? 'Choose permissions' : 'Continue'}
                     </Text>
-                  </View>
-                )}
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
 
           </View>
         </View>
@@ -1135,6 +1086,34 @@ export default function UsernameSetup() {
       {/* Fixed button at bottom for pages 6 and 7 */}
       {(currentPage === 6 || currentPage === 7) && (
         <View style={styles.fixedButtonContainer}>
+          {/* Terms and Privacy Policy - Only show on page 7 */}
+          {currentPage === 7 && (
+            <View style={{ marginBottom: 15, paddingHorizontal: 0 }}>
+              <Text style={{
+                fontFamily: 'outfit',
+                fontSize: 12,
+                color: Colors.GRAY,
+                textAlign: 'center',
+                lineHeight: 20
+              }}>
+                By continuing you agree to Atelic's{' '}
+                <Text
+                  style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+                  onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
+                >
+                  Terms of Service
+                </Text>
+                {' '}and acknowledge you've read our{' '}
+                <Text
+                  style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+                  onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
+                >
+                  Privacy Policy
+                </Text>
+              </Text>
+            </View>
+          )}
+
           {error ? (
             <Text style={[styles.errorText, { marginBottom: 10 }]}>{error}</Text>
           ) : null}
