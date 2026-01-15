@@ -16,6 +16,11 @@ interface TripCarouselImageProps {
    * - Passes null when the image is definitively unusable (expired and cannot be refreshed).
    */
   onPhotoRefUpdate?: (newPhotoRef: string | null) => void;
+  /**
+   * Called when the component determines the total number of available photos for this city.
+   * This allows the parent to render the correct number of pagination dots.
+   */
+  onPhotoCountUpdate?: (count: number) => void;
 }
 
 // Cache to store fetched Unsplash photos by city name
@@ -44,7 +49,8 @@ export function TripCarouselImage({
   cityName,
   photoIndex = 0,
   style,
-  onPhotoRefUpdate
+  onPhotoRefUpdate,
+  onPhotoCountUpdate
 }: TripCarouselImageProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,6 +101,12 @@ export function TripCarouselImage({
         const photos = unsplashCache[query];
         const photoUrl = photos[index % photos.length];
         console.log(`[TripCarouselImage] Using cached Unsplash image ${index} for: ${query}`);
+
+        // Notify parent of the total photo count (only on first image)
+        if (index === 0 && onPhotoCountUpdate) {
+          onPhotoCountUpdate(photos.length);
+        }
+
         return photoUrl;
       }
 
@@ -119,6 +131,11 @@ export function TripCarouselImage({
         unsplashCache[query] = photoUrls;
 
         console.log(`[TripCarouselImage] Successfully fetched ${photoUrls.length} Unsplash images for: ${query}`);
+
+        // Notify parent of the total photo count (only on first image)
+        if (index === 0 && onPhotoCountUpdate) {
+          onPhotoCountUpdate(photoUrls.length);
+        }
 
         // Return the photo at the given index (with wrapping)
         return photoUrls[index % photoUrls.length];

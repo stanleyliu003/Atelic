@@ -36,6 +36,7 @@ export default function Profile() {
   const [currentUserID, setCurrentUserID] = useState('');
   const [isLoadingTripData, setIsLoadingTripData] = useState(false);
   const [carouselIndices, setCarouselIndices] = useState({}); // Track current index per trip
+  const [tripPhotoCounts, setTripPhotoCounts] = useState({}); // Track photo count per trip
   const [refreshing, setRefreshing] = useState(false);
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
@@ -91,8 +92,9 @@ export default function Profile() {
   // Reload data every time the screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      // Reset carousel indices when coming back to this screen
+      // Reset carousel indices and photo counts when coming back to this screen
       setCarouselIndices({});
+      setTripPhotoCounts({});
       loadUserData();
     }, [loadUserData])
   );
@@ -421,6 +423,7 @@ export default function Profile() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setCarouselIndices({});
+    setTripPhotoCounts({});
     await loadUserData();
     setRefreshing(false);
   }, [loadUserData]);
@@ -691,22 +694,32 @@ export default function Profile() {
                               onPhotoRefUpdate={(newRef) =>
                                 handleTripCarouselPhotoUpdate(trip.tripId, index, newRef)
                               }
+                              onPhotoCountUpdate={(count) =>
+                                setTripPhotoCounts(prev => ({ ...prev, [trip.tripId]: count }))
+                              }
                             />
                           )}
                         />
-                        {(!trip.tripPhotoReference || trip.tripPhotoReference.length !== 1) && (
-                          <View style={styles.paginationDots}>
-                            {[0, 1, 2, 3, 4].map((index) => (
-                              <View
-                                key={index}
-                                style={[
-                                  styles.dot,
-                                  (carouselIndices[trip.tripId] || 0) === index && styles.activeDot
-                                ]}
-                              />
-                            ))}
-                          </View>
-                        )}
+                        {(() => {
+                          const photoCount = tripPhotoCounts[trip.tripId] || 5;
+                          // Only show dots if there's more than 1 photo
+                          if (trip.tripPhotoReference?.length === 1 || photoCount === 1) {
+                            return null;
+                          }
+                          return (
+                            <View style={styles.paginationDots}>
+                              {Array.from({ length: photoCount }, (_, index) => (
+                                <View
+                                  key={index}
+                                  style={[
+                                    styles.dot,
+                                    (carouselIndices[trip.tripId] || 0) === index && styles.activeDot
+                                  ]}
+                                />
+                              ))}
+                            </View>
+                          );
+                        })()}
                       </View>
                     ) : (
                       <Image
@@ -853,22 +866,32 @@ export default function Profile() {
                               onPhotoRefUpdate={(newRef) =>
                                 handleTripCarouselPhotoUpdate(trip.tripId, index, newRef)
                               }
+                              onPhotoCountUpdate={(count) =>
+                                setTripPhotoCounts(prev => ({ ...prev, [`shared-${trip.tripId}`]: count }))
+                              }
                             />
                           )}
                         />
-                        {(!trip.tripPhotoReference || trip.tripPhotoReference.length !== 1) && (
-                          <View style={styles.paginationDots}>
-                            {[0, 1, 2, 3, 4].map((index) => (
-                              <View
-                                key={index}
-                                style={[
-                                  styles.dot,
-                                  (carouselIndices[`shared-${trip.tripId}`] || 0) === index && styles.activeDot
-                                ]}
-                              />
-                            ))}
-                          </View>
-                        )}
+                        {(() => {
+                          const photoCount = tripPhotoCounts[`shared-${trip.tripId}`] || 5;
+                          // Only show dots if there's more than 1 photo
+                          if (trip.tripPhotoReference?.length === 1 || photoCount === 1) {
+                            return null;
+                          }
+                          return (
+                            <View style={styles.paginationDots}>
+                              {Array.from({ length: photoCount }, (_, index) => (
+                                <View
+                                  key={index}
+                                  style={[
+                                    styles.dot,
+                                    (carouselIndices[`shared-${trip.tripId}`] || 0) === index && styles.activeDot
+                                  ]}
+                                />
+                              ))}
+                            </View>
+                          );
+                        })()}
                       </View>
                     ) : (
                       <Image
