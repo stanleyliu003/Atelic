@@ -58,7 +58,8 @@
       "Bash(aws lambda update-function-code:*)",
       "Bash(tee:*)",
       "Bash(python3:*)",
-      "Bash(aws cloudformation list-stacks:*)"
+      "Bash(aws cloudformation list-stacks:*)",
+      "Bash(git check-ignore:*)"
     ],
     "deny": [],
     "ask": [],
