@@ -16,9 +16,9 @@ import { CategoryModal } from '../../src/components/explore/CategoryModal';
 import { useActivitySelection } from '../../src/hooks/use_activity_selection';
 import { useDayActivities } from '../../src/hooks/use_day_activities';
 import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
-import { fetchRoutePolyline, fetchRoutePolylineWithMode, RouteData } from '../../src/services/getRoute_graphQL_call';
+import { fetchRoutePolyline, fetchRoutePolylineWithMode, RouteData as BasicRouteData } from '../../src/services/getRoute_graphQL_call';
 import { optimizeRouteWithHaversine } from '../../src/components/trip-view/logic/optimize_route';
-import { Activity, TabType, TravelMode, EnhancedRouteLeg, RouteLegModeData } from '../../src/types/activity.types';
+import { Activity, TabType, TravelMode, EnhancedRouteLeg, RouteLegModeData, RouteData } from '../../src/types/activity.types';
 import type { FlightReservation } from '../../src/types/flight.types';
 import TransportationSettingsModal from '../../src/components/trip-view/transportation_settings_modal';
 import { decodePolyline } from '../../src/utils/polyline';
@@ -937,8 +937,8 @@ export default function TripViewMain() {
                             console.log('[syncNewOperations] Using latest routeData with', currentRouteData.legs.length, 'legs');
                             console.log('[syncNewOperations] Applying', relevantModes.length, 'transport mode changes to current day');
 
-                            // Create a copy of legs to update
-                            const updatedLegs = [...currentRouteData.legs];
+                            // Create a copy of legs to update (currentRouteData.legs is already EnhancedRouteLeg[])
+                            const updatedLegs: EnhancedRouteLeg[] = currentRouteData.legs.map(leg => ({ ...leg }));
 
                             // Find legs that need mode data fetched
                             const legsNeedingFetch: { index: number; mode: TravelMode; leg: EnhancedRouteLeg }[] = [];
@@ -952,23 +952,21 @@ export default function TripViewMain() {
                                 const legKey = `${currentDayNumber}_${originActivity.instanceId}`;
                                 const overrideMode = updatedState.transportModes?.[legKey];
 
-                                if (overrideMode && (leg as EnhancedRouteLeg).selectedMode !== overrideMode) {
+                                if (overrideMode && leg.selectedMode !== overrideMode) {
                                     console.log('[syncNewOperations] Updating leg', index, 'mode to', overrideMode);
 
-                                    const enhancedLeg = leg as EnhancedRouteLeg;
-
                                     // Check if mode data exists for the new mode
-                                    if (!enhancedLeg.modeData[overrideMode]) {
+                                    if (!leg.modeData[overrideMode]) {
                                         // Need to fetch this mode's route data
                                         legsNeedingFetch.push({
                                             index,
                                             mode: overrideMode,
-                                            leg: { ...enhancedLeg, selectedMode: overrideMode }
+                                            leg: { ...leg, selectedMode: overrideMode }
                                         });
                                     }
 
                                     updatedLegs[index] = {
-                                        ...enhancedLeg,
+                                        ...leg,
                                         selectedMode: overrideMode,
                                     };
                                 }
@@ -1005,20 +1003,20 @@ export default function TripViewMain() {
                                 // Apply fetched data to legs
                                 fetchResults.forEach(({ index, mode, data }) => {
                                     if (data) {
-                                        const enhancedLeg = updatedLegs[index] as EnhancedRouteLeg;
+                                        const leg = updatedLegs[index];
                                         updatedLegs[index] = {
-                                            ...enhancedLeg,
+                                            ...leg,
                                             modeData: {
-                                                ...enhancedLeg.modeData,
+                                                ...leg.modeData,
                                                 [mode]: data
                                             }
                                         };
                                         console.log(`[syncNewOperations] Updated leg ${index} with ${mode} data: ${data.duration}, ${data.distance}m`);
                                     } else {
                                         // Fallback to DRIVE if fetch failed
-                                        const enhancedLeg = updatedLegs[index] as EnhancedRouteLeg;
+                                        const leg = updatedLegs[index];
                                         updatedLegs[index] = {
-                                            ...enhancedLeg,
+                                            ...leg,
                                             selectedMode: 'DRIVE'
                                         };
                                         console.warn(`[syncNewOperations] Fallback to DRIVE for leg ${index} - fetch failed`);
@@ -1032,7 +1030,7 @@ export default function TripViewMain() {
                             let totalDurationSeconds = 0;
 
                             for (let i = 0; i < updatedLegs.length; i++) {
-                                const leg = updatedLegs[i] as EnhancedRouteLeg;
+                                const leg = updatedLegs[i];
                                 const modeData = leg.modeData[leg.selectedMode];
                                 if (modeData?.polyline) {
                                     const legCoords = decodePolyline(modeData.polyline);
@@ -1056,7 +1054,7 @@ export default function TripViewMain() {
                             if (routeCache.current[currentActiveTab]) {
                                 routeCache.current[currentActiveTab].routeData = {
                                     ...routeCache.current[currentActiveTab].routeData,
-                                    legs: updatedLegs,
+                                    legs: updatedLegs as EnhancedRouteLeg[],
                                     polyline: newPolylineCoords,
                                     totalDistance,
                                     totalDuration: formatDuration(totalDurationSeconds),
@@ -2279,7 +2277,8 @@ export default function TripViewMain() {
     const handleSaveSearchResults = (selectedActivities: Activity[], wishlistActivityIds?: string[], lodgingData?: any, flightData?: FlightReservation) => {
         // Handle flight data if provided
         if (flightData) {
-            handleAddFlightToTrip(flightData);
+            // TODO: Implement flight handling
+            console.log('[trip-view_main] Flight data received but not yet implemented:', flightData);
             return;
         }
 
@@ -2865,7 +2864,8 @@ export default function TripViewMain() {
 
     useEffect(() => {
         navigation.setOptions({
-          headerShown: false
+          headerShown: false,
+          gestureEnabled: false, // Disable swipe-back gesture to prevent returning to create_trip_1_city
         });
     }, []);
 

@@ -1,7 +1,6 @@
 import { Colors } from '../../../constants/Colors';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { RouteLeg } from '../../services/getRoute_graphQL_call';
-import { Activity } from '../../types/activity.types';
+import { Activity, EnhancedRouteLeg } from '../../types/activity.types';
 import { ActivityList } from './activity/activity_list';
 
 interface DayScheduleProps {
@@ -15,7 +14,7 @@ interface DayScheduleProps {
   onOptimizeRoute?: (dayNumber: number) => void;
   showSelectionIndicator?: boolean;
   disabled?: boolean;
-  routeLegs?: RouteLeg[]; // Add route legs prop
+  routeLegs?: EnhancedRouteLeg[]; // Add route legs prop
   onAddPlace?: () => void; // Search bar trigger
   searchQuery?: string; // Search query value
   onSearchQueryChange?: (text: string) => void; // Search query change handler

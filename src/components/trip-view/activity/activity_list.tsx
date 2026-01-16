@@ -275,7 +275,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   showSelectionIndicator?: boolean;
   emptyStateActionPress?: () => void; // Action button callback for empty state
   emptyStateActionText?: string; // Action button text for empty state
-  routeLegs?: RouteLeg[];
+  routeLegs?: EnhancedRouteLeg[];
   scrollable?: boolean;
   travelMode?: string;
   enableDragDrop?: boolean; // New prop to enable drag and drop
