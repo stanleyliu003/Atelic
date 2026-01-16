@@ -2253,11 +2253,23 @@ export default function TripViewMain() {
             }
 
             // Reorder the day's activities
-            reorderDayActivities(dayNumber, newOrder);
+            const reorderTimestamp = Date.now();
+            const orderedActivities = newOrder.map(a => ({
+                ...a,
+                lastReordered: reorderTimestamp
+            }));
+            reorderDayActivities(dayNumber, orderedActivities);
 
-            // Track the operation
-            const op = createOperation('add', 'day', activitiesToAdd, dayNumber);
-            queueSave(op);
+            // Track the ADD operation for the lodging activities
+            const addOp = createOperation('add', 'day', activitiesToAdd, dayNumber);
+            queueSave(addOp);
+
+            // Track the REORDER operation to ensure correct positioning
+            const reorderOp = createOperation('reorder', 'day', {
+                reorderedIds: orderedActivities.map(a => a.instanceId),
+                lastReordered: reorderTimestamp
+            }, dayNumber);
+            queueSave(reorderOp);
         }
 
         console.log('[trip-view_main] Successfully added lodging to days', checkInDayNumber, 'through', checkOutDayNumber);

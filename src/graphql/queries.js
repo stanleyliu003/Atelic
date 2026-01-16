@@ -29,6 +29,9 @@ export const analyzeWishlist = /* GraphQL */ `
         notes
         startTime
         endTime
+        isLodging
+        lodgingCheckIn
+        lodgingCheckOut
         __typename
       }
       __typename
@@ -130,6 +133,14 @@ export const addAdditionalPlace = /* GraphQL */ `
       notes
       startTime
       endTime
+      isLodging
+      lodgingCheckIn
+      lodgingCheckOut
+      lodgingTime {
+        checkIn
+        checkOut
+        __typename
+      }
       __typename
     }
   }
@@ -167,6 +178,9 @@ export const generateCategoryActivities = /* GraphQL */ `
         notes
         startTime
         endTime
+        isLodging
+        lodgingCheckIn
+        lodgingCheckOut
         __typename
       }
       category
@@ -220,6 +234,9 @@ export const getPlaceDetails = /* GraphQL */ `
         notes
         startTime
         endTime
+        isLodging
+        lodgingCheckIn
+        lodgingCheckOut
         __typename
       }
       query
@@ -262,6 +279,9 @@ export const searchActivities = /* GraphQL */ `
         notes
         startTime
         endTime
+        isLodging
+        lodgingCheckIn
+        lodgingCheckOut
         __typename
       }
       query
@@ -316,6 +336,9 @@ export const getUserTrips = /* GraphQL */ `
         notes
         startTime
         endTime
+        isLodging
+        lodgingCheckIn
+        lodgingCheckOut
         __typename
       }
       tripLength
@@ -511,6 +534,9 @@ export const getWishlistAnalysis = /* GraphQL */ `
         notes
         startTime
         endTime
+        isLodging
+        lodgingCheckIn
+        lodgingCheckOut
         __typename
       }
       createdAt

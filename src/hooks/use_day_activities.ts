@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { Activity, DayWithPolyline } from '../types/activity.types';
 import { useCreateTrip } from '../../context/CreateTripContext';
+import { findRelatedLodgingInstances, enforceLodgingAnchors } from '../utils/lodging_enforcement';
 
 export function useDayActivities() {
   const {
@@ -10,32 +11,48 @@ export function useDayActivities() {
   } = useCreateTrip();
 
   const addActivityToDay = useCallback((activity: Activity, dayNumber: number) => {
-    setDayActivities((prev: any) => ({
-      ...prev,
-      [dayNumber]: {
-        ...prev[dayNumber],
-        activities: [...(prev[dayNumber]?.activities || []), activity],
-      },
-    }));
+    setDayActivities((prev: any) => {
+      const currentActivities = prev[dayNumber]?.activities || [];
+      const updatedActivities = [...currentActivities, activity];
+      // Enforce lodging anchors when adding new activities (e.g., from "add places" button)
+      const enforcedActivities = enforceLodgingAnchors(updatedActivities);
+
+      return {
+        ...prev,
+        [dayNumber]: {
+          ...prev[dayNumber],
+          activities: enforcedActivities,
+        },
+      };
+    });
   }, [setDayActivities]);
 
   const removeActivityFromDay = useCallback((activityInstanceId: string, dayNumber: number) => {
-    setDayActivities((prev: any) => ({
-      ...prev,
-      [dayNumber]: {
-        ...prev[dayNumber],
-        activities: (prev[dayNumber]?.activities || []).filter((activity: Activity) => activity.instanceId !== activityInstanceId),
-      },
-    }));
+    setDayActivities((prev: any) => {
+      const currentActivities = prev[dayNumber]?.activities || [];
+      const filteredActivities = currentActivities.filter((activity: Activity) => activity.instanceId !== activityInstanceId);
+      const updatedActivities = filteredActivities;
+
+      return {
+        ...prev,
+        [dayNumber]: {
+          ...prev[dayNumber],
+          activities: updatedActivities,
+        },
+      };
+    });
   }, [setDayActivities]);
 
   const removeActivitiesFromAllDays = useCallback((activityInstanceIds: string[]) => {
     setDayActivities((prev: any) => {
       const newDayActivities: { [dayNumber: number]: DayWithPolyline } = {};
       Object.entries(prev).forEach(([day, dayObj]: any) => {
+        const filteredActivities = dayObj.activities.filter((act: Activity) => !act.instanceId || !activityInstanceIds.includes(act.instanceId));
+        const updatedActivities = filteredActivities;
+
         newDayActivities[Number(day)] = {
           ...dayObj,
-          activities: dayObj.activities.filter((act: Activity) => !act.instanceId || !activityInstanceIds.includes(act.instanceId)),
+          activities: updatedActivities,
         };
       });
       return newDayActivities;
@@ -46,19 +63,31 @@ export function useDayActivities() {
     setDayActivities((prev: any) => {
       const transferIds = activities.map(a => a.instanceId).filter(Boolean);
       const newDayActivities: { [dayNumber: number]: DayWithPolyline } = {};
+
+      // First, remove transferred activities from all other days
       Object.entries(prev).forEach(([day, dayObj]: any) => {
+        const filteredActivities = dayObj.activities.filter((act: Activity) => !transferIds.includes(act.instanceId));
+        const updatedActivities = filteredActivities;
+
         newDayActivities[Number(day)] = {
           ...dayObj,
-          activities: dayObj.activities.filter((act: Activity) => !transferIds.includes(act.instanceId)),
+          activities: updatedActivities,
         };
       });
+
+      // Then, add activities to the target day and enforce anchors
+      const targetDayActivities = [
+        ...(newDayActivities[dayNumber]?.activities || []),
+        ...activities,
+      ];
+      // Enforce lodging anchors when transferring activities (e.g., from different tabs)
+      const updatedTargetActivities = enforceLodgingAnchors(targetDayActivities);
+
       newDayActivities[dayNumber] = {
         ...newDayActivities[dayNumber],
-        activities: [
-          ...(newDayActivities[dayNumber]?.activities || []),
-          ...activities,
-        ],
+        activities: updatedTargetActivities,
       };
+
       return newDayActivities;
     });
   }, [setDayActivities]);
@@ -66,11 +95,14 @@ export function useDayActivities() {
   const transferActivitiesToWishlist = useCallback((activityInstanceIds: string[], dayNumber: number) => {
     setDayActivities((prev: any) => {
       const dayObj = prev[dayNumber] || { dayNumber, activities: [] };
+      const filteredActivities = dayObj.activities.filter((activity: Activity) => !activity.instanceId || !activityInstanceIds.includes(activity.instanceId));
+      const updatedActivities = filteredActivities;
+
       const newDayActivities = {
         ...prev,
         [dayNumber]: {
           ...dayObj,
-          activities: dayObj.activities.filter((activity: Activity) => !activity.instanceId || !activityInstanceIds.includes(activity.instanceId)),
+          activities: updatedActivities,
         },
       };
       return newDayActivities;
@@ -97,13 +129,17 @@ export function useDayActivities() {
   }, [dayActivities]);
 
   const reorderDayActivities = useCallback((dayNumber: number, newOrder: Activity[]) => {
-    setDayActivities((prev: any) => ({
-      ...prev,
-      [dayNumber]: {
-        ...prev[dayNumber],
-        activities: newOrder,
-      },
-    }));
+    setDayActivities((prev: any) => {
+      // Use the new order directly without enforcing lodging anchors
+      // Users can now freely reorder hotels anywhere in the day
+      return {
+        ...prev,
+        [dayNumber]: {
+          ...prev[dayNumber],
+          activities: newOrder,
+        },
+      };
+    });
   }, [setDayActivities]);
 
   const setDayPolyline = useCallback((dayNumber: number, encodedPolyline: string) => {
@@ -161,31 +197,69 @@ export function useDayActivities() {
   const deleteDayAndRenumber = useCallback((dayToDelete: number) => {
     // Get activities from the day being deleted
     const deletedDayActivities = dayActivities[dayToDelete]?.activities || [];
-    
+
     setDayActivities((prev: any) => {
       const newDayActivities: { [dayNumber: number]: DayWithPolyline } = {};
-      
+
       // Go through all days and renumber them
       Object.entries(prev).forEach(([dayStr, dayObj]: any) => {
         const dayNum = Number(dayStr);
-        
+
         // Skip the day we're deleting
         if (dayNum === dayToDelete) return;
-        
+
         // Renumber days that come after the deleted day
         const newDayNum = dayNum > dayToDelete ? dayNum - 1 : dayNum;
+
+        // Keep activities as-is after day deletion
+        const enforcedActivities = dayObj.activities || [];
+
         newDayActivities[newDayNum] = {
           ...dayObj,
           dayNumber: newDayNum,
+          activities: enforcedActivities,
         };
       });
-      
+
       return newDayActivities;
     });
-    
+
     // Return the activities from the deleted day
     return deletedDayActivities;
   }, [setDayActivities, dayActivities]);
+
+  const removeLodgingStayByPlaceId = useCallback((placeId: string) => {
+    // Find all instances of this lodging across all days
+    const instanceIdsToRemove = findRelatedLodgingInstances(placeId, dayActivities);
+
+    if (instanceIdsToRemove.length === 0) {
+      console.log('[useDayActivities] No lodging instances found for place_id:', placeId);
+      return [];
+    }
+
+    console.log('[useDayActivities] Removing', instanceIdsToRemove.length, 'lodging instances for place_id:', placeId);
+
+    // Remove all instances from all days
+    setDayActivities((prev: any) => {
+      const newDayActivities: { [dayNumber: number]: DayWithPolyline } = {};
+
+      Object.entries(prev).forEach(([day, dayObj]: any) => {
+        const filteredActivities = dayObj.activities.filter((act: Activity) =>
+          !instanceIdsToRemove.includes(act.instanceId || '')
+        );
+        const updatedActivities = filteredActivities;
+
+        newDayActivities[Number(day)] = {
+          ...dayObj,
+          activities: updatedActivities,
+        };
+      });
+
+      return newDayActivities;
+    });
+
+    return instanceIdsToRemove;
+  }, [dayActivities, setDayActivities]);
 
   return {
     dayActivities,
@@ -203,5 +277,6 @@ export function useDayActivities() {
     getAllDayActivities,
     getDayCount,
     deleteDayAndRenumber,
+    removeLodgingStayByPlaceId,
   };
 } 

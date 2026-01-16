@@ -9,6 +9,7 @@ import {
   OperationUpdateTransportMode,
   AnyOperation,
 } from '../types/operation.types';
+import { enforceLodgingAnchors } from '../utils/lodging_enforcement';
 
 /**
  * Transportation mode override for a route leg
@@ -146,13 +147,15 @@ function applyAddOperation(
       if (insertIndex >= 0) {
         const newActivities = [...existingDay.activities];
         newActivities.splice(insertIndex + 1, 0, ...activitiesToAdd);
+        // Enforce lodging anchors when adding activities during reconstruction
+        const enforcedActivities = enforceLodgingAnchors(newActivities);
         return {
           ...state,
           dayActivities: {
             ...state.dayActivities,
             [dayNumber]: {
               ...existingDay,
-              activities: newActivities,
+              activities: enforcedActivities,
             },
           },
         };
@@ -160,13 +163,16 @@ function applyAddOperation(
     }
 
     // Default: append to end
+    const updatedActivities = [...existingDay.activities, ...activitiesToAdd];
+    // Enforce lodging anchors when adding activities during reconstruction
+    const enforcedActivities = enforceLodgingAnchors(updatedActivities);
     return {
       ...state,
       dayActivities: {
         ...state.dayActivities,
         [dayNumber]: {
           ...existingDay,
-          activities: [...existingDay.activities, ...activitiesToAdd],
+          activities: enforcedActivities,
         },
       },
     };
@@ -485,13 +491,17 @@ function applyMoveOperation(
         (act) => act.instanceId === activity.instanceId
       );
 
+      const updatedActivities = existsInDay
+        ? toDay.activities
+        : [...toDay.activities, activity];
+      // Enforce lodging anchors when moving activities to a day during reconstruction
+      const enforcedActivities = enforceLodgingAnchors(updatedActivities);
+
       newState.dayActivities = {
         ...newState.dayActivities,
         [toLocation]: {
           ...toDay,
-          activities: existsInDay
-            ? toDay.activities
-            : [...toDay.activities, activity],
+          activities: enforcedActivities,
         },
       };
     }

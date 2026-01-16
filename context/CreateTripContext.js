@@ -71,6 +71,10 @@ export const CreateTripProvider = ({ children }) => {
     // Recent searches state
     const [recentSearches, setRecentSearches] = useState([]);
 
+    // Lodging/Hotel state - Track lodging activities per day
+    // Format: { [dayNumber]: { checkIn: Activity | null, checkOut: Activity | null } }
+    const [dayLodgings, setDayLodgings] = useState({});
+
     // Permission helpers
     const canEdit = () => ['owner','editor'].includes(currentUserRole);
     const canInviteEditors = () => currentUserRole === 'owner';
@@ -124,7 +128,8 @@ export const CreateTripProvider = ({ children }) => {
     const setAllDayActivities = (days) => {
         const activitiesByDay = {};
         days.forEach(day => {
-            activitiesByDay[day.dayNumber] = { activities: day.activities };
+            // Keep activities in their original order when restoring from cloud
+            activitiesByDay[day.dayNumber] = { activities: day.activities || [] };
         });
         setDayActivities(activitiesByDay);
     };
@@ -724,6 +729,53 @@ export const CreateTripProvider = ({ children }) => {
         }
     };
 
+    // Lodging/Hotel helper functions
+
+    /**
+     * Check if an activity is a lodging activity
+     */
+    const isActivityLodging = (activity) => {
+        return activity?.isLodging === true || activity?.primaryType === 'lodging';
+    };
+
+    /**
+     * Set lodging for a specific day
+     * @param {number} dayNumber - The day number to set lodging for
+     * @param {Activity} lodgingActivity - The lodging activity (hotel/accommodation)
+     * @param {Date} checkInDate - Check-in date
+     * @param {Date} checkOutDate - Check-out date
+     */
+    const setDayLodging = (dayNumber, lodgingActivity, checkInDate, checkOutDate) => {
+        setDayLodgings(prev => ({
+            ...prev,
+            [dayNumber]: {
+                checkIn: lodgingActivity,
+                checkOut: lodgingActivity // Same activity for both check-in and check-out
+            }
+        }));
+    };
+
+    /**
+     * Remove lodging from a specific day
+     * @param {number} dayNumber - The day number to remove lodging from
+     */
+    const removeDayLodging = (dayNumber) => {
+        setDayLodgings(prev => {
+            const updated = { ...prev };
+            delete updated[dayNumber];
+            return updated;
+        });
+    };
+
+    /**
+     * Get lodging for a specific day
+     * @param {number} dayNumber - The day number to get lodging for
+     * @returns {{ checkIn: Activity | null, checkOut: Activity | null } | null}
+     */
+    const getDayLodging = (dayNumber) => {
+        return dayLodgings[dayNumber] || null;
+    };
+
     const value = {
         tripId,
         setTripId: setTripIdWithLog,
@@ -827,6 +879,12 @@ export const CreateTripProvider = ({ children }) => {
         recentSearches,
         setRecentSearches,
         addToRecentSearches,
+        // Lodging/Hotel management
+        dayLodgings,
+        setDayLodging,
+        removeDayLodging,
+        getDayLodging,
+        isActivityLodging,
     };
 
     return (

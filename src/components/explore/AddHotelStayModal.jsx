@@ -229,9 +229,23 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
       return; // Don't allow adding without complete information
     }
 
+    // Prepare hotel activity with lodging flags
+    const hotelActivity = {
+      ...selectedPlace,
+      // Add lodging-specific flags and metadata
+      primaryType: 'lodging',
+      isLodging: true,
+      lodgingCheckIn: checkInDate.toISOString(),
+      lodgingCheckOut: checkOutDate.toISOString(),
+      lodgingTime: {
+        checkIn: checkInTime,
+        checkOut: checkOutTime,
+      },
+    };
+
     // Prepare lodging data
     const lodgingData = {
-      hotel: selectedPlace,
+      hotel: hotelActivity,
       checkInDate,
       checkOutDate,
       stayLength,

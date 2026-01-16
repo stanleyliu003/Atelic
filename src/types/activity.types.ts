@@ -55,6 +55,15 @@ export type Activity = {
   startTime?: string; // Format: "HH:mm" (e.g., "09:30")
   endTime?: string;   // Format: "HH:mm" (e.g., "17:45")
 
+  // Lodging/Hotel specific fields
+  isLodging?: boolean; // Flag to identify lodging activities (hotels, accommodations)
+  lodgingCheckIn?: string; // ISO date string for check-in date
+  lodgingCheckOut?: string; // ISO date string for check-out date
+  lodgingTime?: { // Check-in and check-out times
+    checkIn: string; // Format: "HH:mm" (e.g., "15:00")
+    checkOut: string; // Format: "HH:mm" (e.g., "11:00")
+  };
+
   // Real-time collaboration timestamps
   lastModified?: number; // Timestamp when this activity was last modified
   modifiedBy?: string; // UserID who last modified

@@ -28,8 +28,9 @@
         "scheme": "AtelicStable",
         "image": "macos-sonoma-14.6-xcode-16.0"
       },
-      "prebuildCommand": "node scripts/generate-aws-exports.js",
+      "prebuildCommand": "node scripts/generate-aws-exports.js && AMPLIFY_ENV=production node scripts/update-oauth-domain.js",
       "env": {
+        "AMPLIFY_ENV": "production",
         "EXPO_PUBLIC_GOOGLE_PLACES_API_KEY": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
         "EXPO_PUBLIC_GOOGLE_MAP_KEY": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
         "EXPO_PUBLIC_UNSPLASH_ACCESS_KEY": "yn2QK-2i5D4As5qcKEriMb31MQjrM6z8a0K4xERjGJ8"

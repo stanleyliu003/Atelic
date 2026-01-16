@@ -33,6 +33,11 @@
     notes: String
     startTime: String  # Format: "HH:mm" (e.g., "09:30")
     endTime: String    # Format: "HH:mm" (e.g., "17:45")
+    # Lodging/Hotel specific fields
+    isLodging: Boolean  # Flag to identify lodging activities (hotels, accommodations)
+    lodgingCheckIn: String  # ISO date string for check-in date
+    lodgingCheckOut: String  # ISO date string for check-out date
+    lodgingTime: LodgingTimeInput  # Check-in and check-out times
   }
 
    type WishlistAnalysisResult {
@@ -65,6 +70,11 @@
      time: Int
      author_url: String
      profile_photo_url: String
+   }
+
+   type LodgingTimeInput {
+     checkIn: String  # Format: "HH:mm" (e.g., "15:00")
+     checkOut: String  # Format: "HH:mm" (e.g., "11:00")
    }
 
    type RouteLeg {
@@ -462,6 +472,11 @@ type AppVersionConfig {
      notes: String
      startTime: String  # Format: "HH:mm" (e.g., "09:30")
      endTime: String    # Format: "HH:mm" (e.g., "17:45")
+     # Lodging/Hotel specific fields
+     isLodging: Boolean  # Flag to identify lodging activities (hotels, accommodations)
+     lodgingCheckIn: String  # ISO date string for check-in date
+     lodgingCheckOut: String  # ISO date string for check-out date
+     lodgingTime: LodgingTimeInputType  # Check-in and check-out times
    }
 
    input DayInput {
@@ -545,4 +560,9 @@ type AppVersionConfig {
      time: Int
      author_url: String
      profile_photo_url: String
+   }
+
+   input LodgingTimeInputType {
+     checkIn: String  # Format: "HH:mm" (e.g., "15:00")
+     checkOut: String  # Format: "HH:mm" (e.g., "11:00")
    }

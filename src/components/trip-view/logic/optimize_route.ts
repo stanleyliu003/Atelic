@@ -1,4 +1,5 @@
 import { Activity } from '../../../types/activity.types';
+import { isLodgingActivity } from '../../../utils/lodging_enforcement';
 
 // Haversine distance calculation
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -159,23 +160,67 @@ export function optimizeRouteWithHaversine(activities: Activity[]): { result: Ac
   if (!activities || activities.length < 2) {
     return { result: activities, wasCached: false };
   }
-  
-  // Build distance matrix using Haversine
+
+  // Separate lodging from non-lodging activities
+  const lodgingActivities: Activity[] = [];
+  const nonLodgingActivities: Activity[] = [];
+
+  activities.forEach(activity => {
+    if (isLodgingActivity(activity)) {
+      lodgingActivities.push(activity);
+    } else {
+      nonLodgingActivities.push(activity);
+    }
+  });
+
+  // If there are lodging activities, only optimize the non-lodging ones
+  if (lodgingActivities.length > 0) {
+    // If there are no non-lodging activities to optimize, return as-is
+    if (nonLodgingActivities.length === 0) {
+      console.log('[HAVERSINE OPTIMIZATION] Only lodging activities found, no optimization needed');
+      return { result: activities, wasCached: false };
+    }
+
+    // Optimize only the non-lodging activities
+    const distances = buildDistanceMatrix(nonLodgingActivities);
+    const initialRoute = nearestNeighborOrder(distances);
+    const optimizedRoute = twoOptOptimize(initialRoute, distances);
+    const optimizedNonLodging = optimizedRoute.map(idx => nonLodgingActivities[idx]);
+
+    // Log the optimal starting point among non-lodging activities
+    const optimalStartIndex = optimizedRoute[0];
+    const optimalStartActivity = nonLodgingActivities[optimalStartIndex];
+    console.log(`[HAVERSINE OPTIMIZATION] Optimal starting point (non-lodging): "${optimalStartActivity.name}" (index ${optimalStartIndex})`);
+
+    // Reconstruct with lodging anchored at start and end
+    let result: Activity[];
+    if (lodgingActivities.length === 1) {
+      // Single lodging: place at both start and end
+      const lodging = lodgingActivities[0];
+      result = [lodging, ...optimizedNonLodging, lodging];
+      console.log(`[HAVERSINE OPTIMIZATION] Anchored lodging "${lodging.name}" at start and end`);
+    } else {
+      // Multiple lodgings: place first at start, last at end
+      const firstLodging = lodgingActivities[0];
+      const lastLodging = lodgingActivities[lodgingActivities.length - 1];
+      const middleLodgings = lodgingActivities.slice(1, -1);
+      result = [firstLodging, ...optimizedNonLodging, ...middleLodgings, lastLodging];
+      console.log(`[HAVERSINE OPTIMIZATION] Anchored first lodging "${firstLodging.name}" at start and last lodging "${lastLodging.name}" at end`);
+    }
+
+    return { result, wasCached: false };
+  }
+
+  // No lodging activities - optimize everything normally
   const distances = buildDistanceMatrix(activities);
-  
-  // Get initial route with nearest neighbor
   const initialRoute = nearestNeighborOrder(distances);
-  
-  // Improve with 2-opt
   const optimizedRoute = twoOptOptimize(initialRoute, distances);
-  
-  // Return activities in optimized order
   const result = optimizedRoute.map(idx => activities[idx]);
-  
+
   // Log the optimal starting point
   const optimalStartIndex = optimizedRoute[0];
   const optimalStartActivity = activities[optimalStartIndex];
   console.log(`[HAVERSINE OPTIMIZATION] Optimal starting point: "${optimalStartActivity.name}" (index ${optimalStartIndex})`);
-  
+
   return { result, wasCached: false };
 } 
