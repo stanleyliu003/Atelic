@@ -16,7 +16,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "AtelicStable",
       "deploymentTarget": "15.0",
-      "buildNumber": "37",
+      "buildNumber": "38",
       "infoPlist": {
         "CFBundleName": "Atelic",
         "LSApplicationQueriesSchemes": [
