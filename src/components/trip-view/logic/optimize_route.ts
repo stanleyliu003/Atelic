@@ -195,10 +195,18 @@ export function optimizeRouteWithHaversine(activities: Activity[]): { result: Ac
     // Reconstruct with lodging anchored at start and end
     let result: Activity[];
     if (lodgingActivities.length === 1) {
-      // Single lodging: place at both start and end
       const lodging = lodgingActivities[0];
-      result = [lodging, ...optimizedNonLodging, lodging];
-      console.log(`[HAVERSINE OPTIMIZATION] Anchored lodging "${lodging.name}" at start and end`);
+
+      // Check if this is a check-out only activity (last day scenario)
+      if (lodging.notes === 'Check-out') {
+        // Only place at start, don't duplicate at end
+        result = [lodging, ...optimizedNonLodging];
+        console.log(`[HAVERSINE OPTIMIZATION] Anchored check-out lodging "${lodging.name}" at start only (last day)`);
+      } else {
+        // Same-day check-in/check-out or middle day - place at start and end
+        result = [lodging, ...optimizedNonLodging, lodging];
+        console.log(`[HAVERSINE OPTIMIZATION] Anchored lodging "${lodging.name}" at start and end`);
+      }
     } else {
       // Multiple lodgings: place first at start, last at end
       const firstLodging = lodgingActivities[0];
