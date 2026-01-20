@@ -992,7 +992,23 @@
         }
       ]
     },
+    "AMPLIFY_function_processInstagramShare_apifyApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processInstagramShare"
+        }
+      ]
+    },
     "AMPLIFY_function_processInstagramShare_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processInstagramShare"
+        }
+      ]
+    },
+    "AMPLIFY_function_processInstagramShare_geminiApiKey": {
       "usedBy": [
         {
           "category": "function",

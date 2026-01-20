@@ -31,6 +31,12 @@
     "storageSavedPlacesStorageStreamArn": {
       "Type": "String",
       "Default": "storageSavedPlacesStorageStreamArn"
+    },
+    "geminiApiKey": {
+      "Type": "String"
+    },
+    "apifyApiKey": {
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -97,6 +103,12 @@
             },
             "STORAGE_SAVEDPLACESSTORAGE_STREAMARN": {
               "Ref": "storageSavedPlacesStorageStreamArn"
+            },
+            "GEMINI_API_KEY": {
+              "Ref": "geminiApiKey"
+            },
+            "APIFY_API_KEY": {
+              "Ref": "apifyApiKey"
             }
           }
         },
@@ -108,7 +120,8 @@
         },
         "Runtime": "nodejs22.x",
         "Layers": [],
-        "Timeout": 25
+        "Timeout": 120,
+        "MemorySize": 1024
       }
     },
     "LambdaExecutionRole": {

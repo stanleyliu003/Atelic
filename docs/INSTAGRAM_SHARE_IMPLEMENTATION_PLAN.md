@@ -2,6 +2,37 @@
 
 ## Overview
 
+User experience
+User opens a travel reel or video
+User clicks “share” button on Instagram
+User clicks “share to” button
+Atelic custom UI opens within Instagram through iOS Share Extension
+Opens the Share Extension view (lightweight native iOS view) 
+Sends the link to the instagram post/reel
+Sends a user’s Atelic userID associated with their account
+Shows loading state while processing
+*Note: iOS Share Extension view only opens for 30 seconds before iOS automatically closes it 
+
+
+
+Backend logic
+processInstagramShare Lambda function 
+sends Instagram link to Instagram scrapper API to retrieve meta data
+Caption text
+Media type (reel/post/carousel)
+Media URLs (video or images)
+locationTag
+Temporarily stores videos or image files (from URLs) in AWS memory (no S3)
+Sends meta data to Gemini 2.0-flash to process reel or image information on the recommended places
+Media type dependent processing
+If video, prompted to scrape the audio / frames / audio (combined w/ caption text)
+If images / carousel prompted to scrape the text on the images (combined w/ caption text)
+Extracts place names
+Extract the city that the nearest place is associated with
+Place names sent to getLocationCoordinates lambda function to call Google Place API to extract the information about each place 
+Display all the activities in “saved places” tab 
+
+
 Enable users to share Instagram reels/posts directly to Atelic, automatically extracting travel destinations and adding them to their saved places.
 
 ---

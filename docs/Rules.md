@@ -1,0 +1,1 @@
+Never run any AWS Amplify Push commands. I will do it manually. Just code and assist me with planning and logic
