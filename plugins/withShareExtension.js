@@ -58,8 +58,10 @@ function withShareExtension(config) {
   // Add Share Extension files to iOS project
   config = withXcodeProject(config, async (config) => {
     const xcodeProject = config.modResults;
-    const iosPath = path.join(config.modRequest.projectRoot, 'ios');
+    const projectRoot = config.modRequest.projectRoot;
+    const iosPath = path.join(projectRoot, 'ios');
     const shareExtensionPath = path.join(iosPath, SHARE_EXTENSION_NAME);
+    const sourceFilesPath = path.join(projectRoot, 'native-files', 'ios', SHARE_EXTENSION_NAME);
 
     // Create Share Extension directory if it doesn't exist
     if (!fs.existsSync(shareExtensionPath)) {
@@ -67,8 +69,24 @@ function withShareExtension(config) {
       console.log(`✅ Created Share Extension directory: ${shareExtensionPath}`);
     }
 
-    // Note: The actual Xcode target setup happens in Stage 1.2
-    // This plugin mainly ensures directories and entitlements are set up
+    // Copy Swift and Info.plist files from native-files to ios directory
+    if (fs.existsSync(sourceFilesPath)) {
+      const filesToCopy = ['ShareViewController.swift', 'Info.plist'];
+      
+      filesToCopy.forEach(file => {
+        const sourcePath = path.join(sourceFilesPath, file);
+        const destPath = path.join(shareExtensionPath, file);
+        
+        if (fs.existsSync(sourcePath)) {
+          fs.copyFileSync(sourcePath, destPath);
+          console.log(`✅ Copied ${file} to Share Extension`);
+        } else {
+          console.warn(`⚠️ Warning: ${file} not found in native-files/ios/${SHARE_EXTENSION_NAME}/`);
+        }
+      });
+    } else {
+      console.warn(`⚠️ Warning: Source files not found at ${sourceFilesPath}`);
+    }
     
     return config;
   });
