@@ -91,15 +91,22 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places }) {
         )}
 
         {/* Description Card Modal */}
-        {selectedActivity && descriptionCardVisible && (
-          <ActivityDetailView
-            activity={selectedActivity}
-            onClose={handleDescriptionCardClose}
-            variant="wishlist"
-            showDragIndicator={false}
-            currentUserRole="owner"
-          />
-        )}
+        <Modal
+          visible={descriptionCardVisible}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={handleDescriptionCardClose}
+        >
+          {selectedActivity && (
+            <ActivityDetailView
+              activity={selectedActivity}
+              onClose={handleDescriptionCardClose}
+              variant="wishlist"
+              showDragIndicator={false}
+              currentUserRole="owner"
+            />
+          )}
+        </Modal>
       </SafeAreaView>
     </Modal>
   );

@@ -4,6 +4,7 @@ import { Auth } from 'aws-amplify';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -14,6 +15,10 @@ import {
 import { getSavedPlaces } from '../../src/graphql/queries';
 import { CitySavedPlacesModal } from '../../src/components/saved-places/CitySavedPlacesModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Carousel from 'react-native-reanimated-carousel';
+import { TripCarouselImage } from '../../src/components/profile/TripCarouselImage';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function SavedPlaces() {
   const [loading, setLoading] = useState(true);
@@ -24,6 +29,8 @@ export default function SavedPlaces() {
   const [selectedCity, setSelectedCity] = useState(null);
   const [cityModalVisible, setCityModalVisible] = useState(false);
   const [allSavedPlaces, setAllSavedPlaces] = useState([]);
+  const [carouselIndices, setCarouselIndices] = useState({}); // Track current index per city
+  const [cityPhotoCounts, setCityPhotoCounts] = useState({}); // Track photo count per city
 
   const fetchSavedPlaces = useCallback(async () => {
     try {
@@ -62,6 +69,8 @@ export default function SavedPlaces() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    setCarouselIndices({});
+    setCityPhotoCounts({});
     fetchSavedPlaces();
   }, [fetchSavedPlaces]);
 
@@ -120,11 +129,6 @@ export default function SavedPlaces() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Saved Places</Text>
-        {totalCount > 0 && (
-          <Text style={styles.headerSubtitle}>
-            {totalCount} place{totalCount !== 1 ? 's' : ''} saved
-          </Text>
-        )}
       </View>
 
       <ScrollView
@@ -149,24 +153,78 @@ export default function SavedPlaces() {
           </View>
         ) : (
           <View style={styles.citiesGrid}>
-            {cities.map((cityData, index) => (
-              <TouchableOpacity
-                key={`${cityData.city}-${index}`}
-                style={styles.cityButton}
-                onPress={() => handleCityPress(cityData)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.cityContent}>
-                  <Text style={styles.cityName} numberOfLines={1}>
-                    {cityData.city}
-                  </Text>
-                  <Text style={styles.cityCount}>
-                    {cityData.count} place{cityData.count !== 1 ? 's' : ''}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
-              </TouchableOpacity>
-            ))}
+            {cities.map((cityData, index) => {
+              // Calculate dimensions for 2-column layout with 1.5x vertical aspect ratio
+              const cardWidth = (screenWidth - 60) * 0.5; // 49% width with reduced spacing
+              const imageHeight = cardWidth * 1.5; // 1.5x vertical height
+
+              return (
+                <TouchableOpacity
+                  key={`${cityData.city}-${index}`}
+                  style={[styles.cityCard, { width: cardWidth }]}
+                  onPress={() => handleCityPress(cityData)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.carouselContainer}>
+                    <Carousel
+                      loop={false}
+                      width={cardWidth}
+                      height={imageHeight}
+                      data={[{}, {}, {}, {}, {}]} // Default 5 empty objects for Unsplash
+                      scrollAnimationDuration={300}
+                      defaultIndex={0}
+                      onSnapToItem={(carouselIndex) =>
+                        setCarouselIndices(prev => ({ 
+                          ...prev, 
+                          [cityData.city]: carouselIndex 
+                        }))
+                      }
+                      renderItem={({ item, index: carouselIndex }) => (
+                        <TripCarouselImage
+                          cityName={cityData.city}
+                          photoIndex={carouselIndex}
+                          style={[styles.cityCardImage, { height: imageHeight }]}
+                          onPhotoCountUpdate={(count) =>
+                            setCityPhotoCounts(prev => ({ 
+                              ...prev, 
+                              [cityData.city]: count 
+                            }))
+                          }
+                        />
+                      )}
+                    />
+                    {(() => {
+                      const photoCount = cityPhotoCounts[cityData.city] || 5;
+                      // Only show dots if there's more than 1 photo
+                      if (photoCount === 1) {
+                        return null;
+                      }
+                      return (
+                        <View style={styles.paginationDots}>
+                          {Array.from({ length: photoCount }, (_, dotIndex) => (
+                            <View
+                              key={dotIndex}
+                              style={[
+                                styles.dot,
+                                (carouselIndices[cityData.city] || 0) === dotIndex && styles.activeDot
+                              ]}
+                            />
+                          ))}
+                        </View>
+                      );
+                    })()}
+                  </View>
+                  <View style={styles.cityCardInfo}>
+                    <Text style={styles.cityName} numberOfLines={1}>
+                      {cityData.city}
+                    </Text>
+                    <Text style={styles.cityCount}>
+                      {cityData.count} place{cityData.count !== 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -277,20 +335,57 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 10,
   },
-  cityButton: {
-    width: '48%',
-    backgroundColor: '#F9FAFB',
+  cityCard: {
+    backgroundColor: Colors.WHITE,
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+    overflow: 'hidden',
   },
-  cityContent: {
-    flex: 1,
+  carouselContainer: {
+    position: 'relative',
+    overflow: 'hidden',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  cityCardImage: {
+    width: '100%',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  paginationDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    bottom: 8,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginHorizontal: 3,
+  },
+  activeDot: {
+    backgroundColor: Colors.WHITE,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  cityCardInfo: {
+    padding: 12,
+    alignItems: 'flex-start',
   },
   cityName: {
     fontFamily: 'outfit-medium',
