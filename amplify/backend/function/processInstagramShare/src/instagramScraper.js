@@ -76,6 +76,7 @@ async function scrapeInstagram(instagramUrl) {
         shortCode: post.shortCode,
         captionLength: post.caption?.length || 0,
         hasDisplayUrl: !!post.displayUrl,
+        hasVideoUrl: !!post.videoUrl,
         mediaCount: post.displayResourceUrls?.length || 1,
         ownerUsername: post.ownerUsername
     });
@@ -91,22 +92,18 @@ async function scrapeInstagram(instagramUrl) {
         type: post.type, // 'Image', 'Video', 'Sidecar'
 
         // Media URLs (CDN URLs - will expire)
-        displayUrl: post.displayUrl,
-        displayResourceUrls: post.displayResourceUrls || [post.displayUrl],
+        // For videos, use videoUrl; for images use displayUrl
+        displayUrl: post.type === 'Video' ? post.videoUrl : post.displayUrl,
+        displayResourceUrls:
+            post.type === 'Video'
+                ? [post.videoUrl] // Videos have single videoUrl
+                : post.displayResourceUrls || [post.displayUrl], // Images/carousels use displayResourceUrls
 
         // Owner info
         ownerUsername: post.ownerUsername,
-        ownerFullName: post.ownerFullName,
-        ownerId: post.ownerId,
-
-        // Metadata
-        timestamp: post.timestamp,
-        likesCount: post.likesCount,
-        commentsCount: post.commentsCount,
 
         // Location (if tagged)
-        locationName: post.locationName || null,
-        locationId: post.locationId || null
+        locationName: post.locationName || null
     };
 }
 

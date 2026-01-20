@@ -9,6 +9,18 @@
     "fieldName": "savedPlaceId",
     "fieldType": "string"
   },
-  "gsi": [],
+  "gsi": [
+    {
+      "name": "CityIndex",
+      "partitionKey": {
+        "fieldName": "userID",
+        "fieldType": "string"
+      },
+      "sortKey": {
+        "fieldName": "city",
+        "fieldType": "string"
+      }
+    }
+  ],
   "triggerFunctions": []
 }
