@@ -8,6 +8,7 @@ import DeviceInfo from 'react-native-device-info';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
 import appsFlyer from 'react-native-appsflyer';
+import { clearAuthData } from '../../src/services/appGroupsService';
 
 const updateUserProfileMutation = /* GraphQL */ `
   mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
@@ -650,6 +651,8 @@ export default function UsernameSetup() {
     } else {
       // Sign out and go back to login
       Auth.signOut({ global: false }).catch(() => {});
+      clearAuthData();
+      console.log('[UsernameSetup] Cleared auth data from App Groups');
       router.replace('/');
     }
   };

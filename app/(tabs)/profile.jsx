@@ -14,6 +14,7 @@ import { removeCollaborator } from '../../src/graphql/mutations';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import Carousel from 'react-native-reanimated-carousel';
 import { TripCarouselImage } from '../../src/components/profile/TripCarouselImage';
+import { clearAuthData } from '../../src/services/appGroupsService';
 
 export default function Profile() {
   const { restoreTripFromObject, setSelectedCity } = useCreateTrip();
@@ -444,6 +445,9 @@ export default function Profile() {
             onPress: async () => {
               try {
                 await Auth.signOut({ global: false });
+                // Clear App Groups auth data for Share Extension
+                clearAuthData();
+                console.log('[Profile] Cleared auth data from App Groups');
                 // Clear any stored user data
                 setFullName('');
                 setUsername('');
@@ -501,6 +505,10 @@ export default function Profile() {
         if (deletionResult.success) {
           // Sign out the user
           await Auth.signOut({ global: false });
+          
+          // Clear App Groups auth data for Share Extension
+          clearAuthData();
+          console.log('[Profile] Cleared auth data from App Groups (account deletion)');
 
           // Clear user data
           setFullName('');

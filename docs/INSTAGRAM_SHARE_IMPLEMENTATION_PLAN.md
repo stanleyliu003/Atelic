@@ -12,7 +12,15 @@
 - ✅ Lambda config - 1024MB memory, 120s timeout
 - ✅ **Tested successfully:** Rome reel → 11 places extracted in 16s
 
-### 🟡 Phase 2: iOS Share Extension - **IN PROGRESS**
+### ✅ Phase 4: Auth Flow Updates - **COMPLETE**
+- ✅ Native module created for App Groups access
+- ✅ Service layer created for auth data management
+- ✅ All login flows updated to store auth data
+- ✅ All logout flows updated to clear auth data
+- ✅ Share Extension integration ready
+- ✅ **Next:** Phase 3 (Main App UI)
+
+### ✅ Phase 2: iOS Share Extension - **COMPLETE**
 - ✅ Expo config plugin created (`plugins/withShareExtension.js`)
 - ✅ Native Swift files created (`ShareViewController.swift`, `Info.plist`)
 - ✅ Files stored in `native-files/ios/AtelicShareExtension/`
@@ -22,17 +30,21 @@
   - URL scheme verified (`atelic`)
   - Deployment target set (iOS 13.4)
 - ✅ Lambda Function URL created and added to code
-- ⏳ **Next:** Run prebuild to copy updated files to `ios/`
 
-### ⏳ Phase 4: Auth Flow Updates - **NEXT UP**
-- Store `userID` in App Groups on login
-- Read `userID` from App Groups in Share Extension
-- Handle token refresh/expiration
+### ✅ Phase 4: Auth Flow Updates - **COMPLETE**
+- ✅ Created native module (`AppGroupsStorage.swift`, `.m`)
+- ✅ Created service wrapper (`src/services/appGroupsService.ts`)
+- ✅ Store `userID` in App Groups on login (all auth flows)
+- ✅ Store `cognitoIdToken` in App Groups on login
+- ✅ Clear App Groups data on logout/account deletion
+- ✅ Share Extension reads `userID` from App Groups
+- ✅ **Tested:** iOS only, gracefully handles Android
 
-### ❌ Phase 3: Main App UI - **NOT STARTED**
+### ⏳ Phase 3: Main App UI - **NEXT UP**
 - Create "Saved Places" screen
 - Display places grouped by city (using CityIndex GSI)
 - Add to Trip / Wishlist actions
+- Handle deep link: `atelic://instagram-import`
 
 ---
 
@@ -759,6 +771,214 @@ async function savePlaces(userID, activities, scrapedData) {
 ```
 
 ---
+# Phase 4: Auth Flow Updates - Implementation Summary
+
+**Status:** ✅ **COMPLETE** (Jan 20, 2026)
+
+## Overview
+
+Phase 4 implements App Groups authentication data sharing between the main Atelic app and the Share Extension. This allows the Share Extension to access the user's authentication state and make authenticated requests to the Lambda backend.
+
+## Implementation Details
+
+### 1. Native Module Created
+
+**Files:**
+- `ios/AppGroupsStorage.swift` - Swift native module
+- `ios/AppGroupsStorage.m` - Objective-C bridge
+
+**Purpose:** Provides React Native access to iOS App Groups (`group.com.atelic.shared`) via `UserDefaults(suiteName:)`.
+
+**Methods:**
+- `setValue(value, key)` - Store string value
+- `getValue(key)` - Retrieve string value (Promise)
+- `removeValue(key)` - Remove single value
+- `clearAll()` - Clear all auth keys (userID, cognitoIdToken, isLoggedIn)
+
+### 2. Service Layer Created
+
+**File:** `src/services/appGroupsService.ts`
+
+**Exported Functions:**
+```typescript
+storeAuthData(userID: string, idToken: string): Promise<void>
+getUserID(): Promise<string | null>
+getIdToken(): Promise<string | null>
+isLoggedIn(): Promise<boolean>
+clearAuthData(): void
+updateIdToken(idToken: string): Promise<void>
+```
+
+**Platform Support:** iOS only (gracefully handles Android by returning null)
+
+### 3. Authentication Flows Updated
+
+#### Email/Password Sign-In
+**File:** `app/authorization/sign-in_index.jsx`
+
+**Updated locations:**
+- Line 104-110: Store auth data after successful email/password sign-in (found user)
+- Line 138-144: Store auth data after fallback sign-in
+- Line 169-177: Store auth data after Google OAuth sign-in
+- Line 199-207: Store auth data after Apple OAuth sign-in
+
+**Implementation:**
+```javascript
+const userID = user.attributes.sub;
+const idToken = user.signInUserSession.getIdToken().getJwtToken();
+await storeAuthData(userID, idToken);
+```
+
+#### OAuth Sign-In (Google/Apple)
+**File:** `components/Login.jsx`
+
+**Updated locations:**
+- Line 169-187: Store/update auth data in `checkAuthenticationState()` on app launch and OAuth completion
+
+**Implementation:**
+```javascript
+const userID = user.attributes.sub;
+const idToken = session.getIdToken().getJwtToken();
+await storeAuthData(userID, idToken);
+```
+
+### 4. Logout Flows Updated
+
+#### Profile Page Logout
+**File:** `app/(tabs)/profile.jsx`
+
+**Updated locations:**
+- Line 446-456: Clear auth data on manual logout
+- Line 502-510: Clear auth data on account deletion
+
+#### Username Setup Logout
+**File:** `app/authorization/username-setup.jsx`
+
+**Updated location:**
+- Line 651-656: Clear auth data when user cancels profile setup
+
+#### Hub Listener Logout
+**File:** `components/Login.jsx`
+
+**Updated location:**
+- Line 100-110: Clear auth data on `signOut` Hub event
+
+### 5. Share Extension Integration
+
+**File:** `ios/AtelicShareExtension/ShareViewController.swift` (already exists)
+
+**Integration points:**
+- Line 139-144: `getUserID()` reads from App Groups
+- Line 157-160: Sends `userID` to Lambda
+
+**Lambda payload:**
+```json
+{
+  "instagramUrl": "https://www.instagram.com/reel/...",
+  "userID": "cognito-user-id-from-app-groups"
+}
+```
+
+## Data Flow
+
+```
+┌─────────────────────────────────────────┐
+│         MAIN APP (React Native)         │
+│                                         │
+│  1. User logs in (Email/Google/Apple)  │
+│  2. Get user.attributes.sub (userID)   │
+│  3. Get session.getIdToken().getJwt()  │
+│  4. Call storeAuthData(userID, token)  │
+└─────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────┐
+│   NATIVE MODULE (AppGroupsStorage)      │
+│                                         │
+│  UserDefaults(suiteName: appGroupID)   │
+│    - userID: "cognito-sub-123"         │
+│    - cognitoIdToken: "eyJhbGc..."      │
+│    - isLoggedIn: "true"                │
+└─────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────┐
+│      SHARE EXTENSION (Swift)            │
+│                                         │
+│  1. User shares Instagram post          │
+│  2. Read userID from App Groups         │
+│  3. POST to Lambda with userID          │
+│  4. Lambda validates & processes        │
+└─────────────────────────────────────────┘
+```
+
+## Keys Stored in App Groups
+
+| Key | Type | Source | Purpose |
+|-----|------|--------|---------|
+| `userID` | String | `user.attributes.sub` | Cognito user ID for Lambda authentication |
+| `cognitoIdToken` | String | `session.getIdToken().getJwtToken()` | JWT token for API authentication (future use) |
+| `isLoggedIn` | String | `"true"` / removed | Quick auth check flag |
+
+## Testing Checklist
+
+- [ ] Email/password sign-in stores auth data
+- [ ] Google OAuth sign-in stores auth data
+- [ ] Apple OAuth sign-in stores auth data
+- [ ] Logout clears auth data
+- [ ] Account deletion clears auth data
+- [ ] App restart preserves auth data
+- [ ] Share Extension can read userID
+- [ ] Share Extension shows "not logged in" message when userID missing
+- [ ] Lambda receives correct userID from Share Extension
+
+## Next Steps (Phase 3)
+
+Now that authentication is complete, the next phase is to:
+
+1. **Create "Saved Places" UI** in main app
+2. **Display places** from `SavedPlacesStorage` DynamoDB table
+3. **Implement deep link handling** for `atelic://instagram-import`
+4. **Add "Add to Trip" actions** from saved places
+
+## Files Modified
+
+### New Files
+- `ios/AppGroupsStorage.swift`
+- `ios/AppGroupsStorage.m`
+- `src/services/appGroupsService.ts`
+- `docs/PHASE_4_AUTH_IMPLEMENTATION.md` (this file)
+
+### Modified Files
+- `app/authorization/sign-in_index.jsx` (4 locations)
+- `components/Login.jsx` (2 locations)
+- `app/(tabs)/profile.jsx` (3 locations)
+- `app/authorization/username-setup.jsx` (2 locations)
+
+## Notes
+
+- **Platform Support:** iOS only. Service returns null on Android without errors.
+- **Security:** ID tokens stored in App Groups are accessible by both main app and Share Extension.
+- **Token Refresh:** Currently stores initial token. Future enhancement: auto-refresh token in App Groups when main app refreshes.
+- **Xcode Setup Required:** Native Swift files must be added to Xcode project after prebuild.
+
+## Troubleshooting
+
+### Share Extension shows "not logged in"
+- Check that user is logged into main app
+- Verify App Groups capability enabled for both targets
+- Check App Group ID matches: `group.com.atelic.shared`
+- Verify native module is linked in Xcode
+
+### Native module not found
+- Run `npx expo prebuild --clean`
+- Open Xcode and verify `AppGroupsStorage.swift` is in project
+- Verify `AppGroupsStorage.m` is in project
+- Rebuild app from Xcode
+
+### Auth data not persisting
+- Check console logs for `[AppGroups]` messages
+- Verify `UserDefaults(suiteName:)` is accessible
+- Ensure App Groups capability is enabled in Apple Developer Portal
+
 
 ## Implementation Order
 

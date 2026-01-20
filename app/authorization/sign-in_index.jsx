@@ -5,6 +5,7 @@ import { Auth, API } from 'aws-amplify';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, ScrollView, Platform, Image } from 'react-native';
+import { storeAuthData } from '../../src/services/appGroupsService';
 
 const searchUsers = /* GraphQL */ `
   query SearchUsers($searchTerm: String!) {
@@ -107,7 +108,12 @@ export default function SignIn() {
             // User is not confirmed, redirect to confirm-signup
             router.replace('/authorization/confirm_sign-up_index?email=' + encodeURIComponent(existingUser.email));
           } else if (user.signInUserSession) {
-            // Successful sign in
+            // Successful sign in - store auth data in App Groups
+            const userID = user.attributes.sub;
+            const idToken = user.signInUserSession.getIdToken().getJwtToken();
+            await storeAuthData(userID, idToken);
+            console.log('[SignIn] Stored auth data in App Groups');
+            
             router.replace('(tabs)/create_new_trip');
           } else {
             setError('Sign in failed. Please try again.');
@@ -141,7 +147,12 @@ export default function SignIn() {
         // User is not confirmed, redirect to confirm-signup
         router.replace('/authorization/confirm_sign-up_index?email=' + encodeURIComponent(username));
       } else if (user.signInUserSession) {
-        // Successful sign in
+        // Successful sign in - store auth data in App Groups
+        const userID = user.attributes.sub;
+        const idToken = user.signInUserSession.getIdToken().getJwtToken();
+        await storeAuthData(userID, idToken);
+        console.log('[SignIn] Stored auth data in App Groups (fallback)');
+        
         router.replace('(tabs)/create_new_trip');
       } else {
         setError('Sign in failed. Please try again.');
@@ -172,6 +183,13 @@ export default function SignIn() {
         try {
           const user = await Auth.currentAuthenticatedUser();
           if (user) {
+            // Store auth data in App Groups
+            const userID = user.attributes.sub;
+            const session = await Auth.currentSession();
+            const idToken = session.getIdToken().getJwtToken();
+            await storeAuthData(userID, idToken);
+            console.log('[SignIn] Stored auth data in App Groups (Google)');
+            
             const preferredUsername = user?.attributes?.preferred_username;
             if (!preferredUsername) {
               router.replace('/authorization/username-setup');
@@ -202,6 +220,13 @@ export default function SignIn() {
         try {
           const user = await Auth.currentAuthenticatedUser();
           if (user) {
+            // Store auth data in App Groups
+            const userID = user.attributes.sub;
+            const session = await Auth.currentSession();
+            const idToken = session.getIdToken().getJwtToken();
+            await storeAuthData(userID, idToken);
+            console.log('[SignIn] Stored auth data in App Groups (Apple)');
+            
             const preferredUsername = user?.attributes?.preferred_username;
             if (!preferredUsername) {
               router.replace('/authorization/username-setup');

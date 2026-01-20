@@ -9,6 +9,7 @@ import * as WebBrowser from 'expo-web-browser';
 import DeviceInfo from 'react-native-device-info';
 import { checkUpdateRequired, getCurrentAppVersion } from '../src/services/versionCheckService';
 import { UpdateRequired } from '../src/components/UpdateRequired';
+import { storeAuthData } from '../src/services/appGroupsService';
 
 // Warm up the browser for better performance (recommended by Expo)
 WebBrowser.maybeCompleteAuthSession();
@@ -102,6 +103,8 @@ export default function Login() {
           checkAuthenticationState();
           break;
         case 'signOut':
+          clearAuthData();
+          console.log('[Login] Cleared auth data from App Groups (signOut event)');
           router.replace('/');
           break;
         case 'tokenRefresh_failure':
@@ -185,6 +188,12 @@ export default function Login() {
       if (expiresIn < 1800) {
         await Auth.currentSession(); // This triggers refresh
       }
+
+      // Store/update auth data in App Groups for Share Extension
+      const userID = user.attributes.sub;
+      const idToken = session.getIdToken().getJwtToken();
+      await storeAuthData(userID, idToken);
+      console.log('[Login] Stored/updated auth data in App Groups');
 
       // Check if user has complete profile (username, name, birthdate, gender)
       // Important for both OAuth users and email sign-up users
