@@ -1,0 +1,610 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-amplifybackend-dev-e7348-authRole",
+      "UnauthRoleArn": "arn:aws:iam::036284794661:role/amplify-amplifybackend-dev-e7348-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::036284794661:role/amplify-amplifybackend-dev-e7348-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+      "UnauthRoleName": "amplify-amplifybackend-dev-e7348-unauthRole",
+      "StackName": "amplify-amplifybackend-dev-e7348",
+      "StackId": "arn:aws:cloudformation:us-east-1:036284794661:stack/amplify-amplifybackend-dev-e7348/064d5f90-4846-11f0-9581-0afffd03a6d5",
+      "AmplifyAppId": "di3vqm2fsgqsv"
+    },
+    "categories": {
+      "function": {
+        "GetRoute": {
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/GetRoute-53517a594c6f4b6b3137-build.zip"
+        },
+        "getLocationCoordinates": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/getLocationCoordinates-4a507a64676a5348546f-build.zip",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
+        },
+        "wishlistAnalyzer": {
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/wishlistAnalyzer-37304f75714d65654364-build.zip"
+        },
+        "CreateTripStorage": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/CreateTripStorage-39726c686165752f4171-build.zip"
+        },
+        "RetrieveTripStorage": {},
+        "CityCategories": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/CityCategories-70675336487437334e34-build.zip",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
+        },
+        "getUserTrips": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/getUserTrips-6b73306b65784931367a-build.zip"
+        },
+        "getTripIDs": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/getTripIDs-7a76665552444548656f-build.zip"
+        },
+        "deleteTrip": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/deleteTrip-6c37796c796a614e6762-build.zip"
+        },
+        "searchUsers": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/searchUsers-463349636a377739396b-build.zip"
+        },
+        "manageCollaborators": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/manageCollaborators-7461393539794f463371-build.zip"
+        },
+        "categoryStorage": {},
+        "amplifybackend59ccdbf8": {},
+        "WishListAPI": {},
+        "TripStorage": {},
+        "PlacesAPIActivityStorage": {},
+        "regionImageStorage": {},
+        "generateCategoryActivities": {
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/generateCategoryActivities-77385833495576665041-build.zip"
+        },
+        "searchAutocomplete": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/searchAutocomplete-6452465946352b4d6b31-build.zip",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
+        },
+        "searchBarActivities": {
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/searchBarActivities-424862704d6c644e4356-build.zip"
+        },
+        "deleteAccount": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/deleteAccount-3770576e4f556155476b-build.zip"
+        },
+        "getUserProfile": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/getUserProfile-5931673041692f706269-build.zip"
+        },
+        "updateUserProfile": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/updateUserProfile-43766a6b6e476556634a-build.zip"
+        },
+        "exportUserAnalytics": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/exportUserAnalytics-build.zip"
+        },
+        "exportUserDataAnalytics": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/exportUserDataAnalytics-63434864593143757075-build.zip"
+        },
+        "registerDeviceToken": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/registerDeviceToken-55593867623957366c76-build.zip"
+        },
+        "sendPushNotification": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/sendPushNotification-2b544b56763975727937-build.zip"
+        },
+        "getVersionConfig": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/getVersionConfig-512f4667484d36715078-build.zip"
+        },
+        "AppVersionManager": {},
+        "processAppsFlyerAttributionV2": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/processAppsFlyerAttributionV2-733351732f596771795a-build.zip"
+        },
+        "getFlightInfo": {
+          "deploymentBucketName": "amplify-amplifybackend-dev-e7348-deployment",
+          "s3Key": "amplify-builds/getFlightInfo-516261744d754a6d6468-build.zip",
+          "flightawareApiKey": "DSWQmqhqksUtiCUsM6mdW6fGGdfOgBOJ",
+          "amadeusApiKey": "mUxfirFDJDUUBNyQhIi8UuhCXBmGwL6q",
+          "amadeusApiSecretKey": "lmKsC6UPN151os21"
+        },
+        "syncUserProfilesToAmplitude": {
+          "amplitudeApiKey": "3279109aad9e03ba305c1621058551b1"
+        }
+      },
+      "auth": {
+        "amplifybackend59ccdbf8": {}
+      },
+      "api": {
+        "WishListAPI": {},
+        "WishlistRestAPI": {}
+      },
+      "storage": {
+        "TripStorage": {},
+        "regionImageStorage": {},
+        "PlacesAPIActivityStorage": {},
+        "categoryStorage": {},
+        "UserProfilesStorage": {},
+        "TripOperationsStorage": {},
+        "AppVersionManager": {}
+      }
+    }
+  },
+  "staging": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-amplifybackend-staging-233e9-authRole",
+      "UnauthRoleArn": "arn:aws:iam::036284794661:role/amplify-amplifybackend-staging-233e9-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::036284794661:role/amplify-amplifybackend-staging-233e9-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+      "UnauthRoleName": "amplify-amplifybackend-staging-233e9-unauthRole",
+      "StackName": "amplify-amplifybackend-staging-233e9",
+      "StackId": "arn:aws:cloudformation:us-east-1:036284794661:stack/amplify-amplifybackend-staging-233e9/108c9040-97a9-11f0-b066-0affe96c6ee1",
+      "AmplifyAppId": "di3vqm2fsgqsv"
+    },
+    "categories": {
+      "auth": {
+        "amplifybackend59ccdbf8": {}
+      },
+      "function": {
+        "CityCategories": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/CityCategories-70675336487437334e34-build.zip",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
+        },
+        "CreateTripStorage": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/CreateTripStorage-466a6c65574173636834-build.zip"
+        },
+        "GetRoute": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/GetRoute-53517a594c6f4b6b3137-build.zip",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds"
+        },
+        "deleteTrip": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/deleteTrip-6c37796c796a614e6762-build.zip"
+        },
+        "getLocationCoordinates": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/getLocationCoordinates-3164524f79412f594f74-build.zip",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds"
+        },
+        "getTripIDs": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/getTripIDs-7a76665552444548656f-build.zip"
+        },
+        "getUserTrips": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/getUserTrips-6b73306b65784931367a-build.zip"
+        },
+        "manageCollaborators": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/manageCollaborators-755859303452766d6572-build.zip"
+        },
+        "searchUsers": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/searchUsers-463349636a377739396b-build.zip"
+        },
+        "wishlistAnalyzer": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/wishlistAnalyzer-37304f75714d65654364-build.zip",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
+        },
+        "categoryStorage": {},
+        "amplifybackend59ccdbf8": {},
+        "WishListAPI": {},
+        "TripStorage": {},
+        "PlacesAPIActivityStorage": {},
+        "regionImageStorage": {},
+        "generateCategoryActivities": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/generateCategoryActivities-77385833495576665041-build.zip",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds"
+        },
+        "searchAutocomplete": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/searchAutocomplete-6b7a667246597a704276-build.zip",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
+        },
+        "searchBarActivities": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/searchBarActivities-424862704d6c644e4356-build.zip",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
+        },
+        "deleteAccount": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/deleteAccount-3770576e4f556155476b-build.zip"
+        },
+        "getUserProfile": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/getUserProfile-773854767868634e736e-build.zip"
+        },
+        "migrateUserProfiles": {},
+        "updateUserProfile": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/updateUserProfile-54717364475a57374b50-build.zip"
+        },
+        "UserProfilesStorage": {},
+        "exportUserDataAnalytics": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/exportUserDataAnalytics-63434864593143757075-build.zip"
+        },
+        "registerDeviceToken": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/registerDeviceToken-55593867623957366c76-build.zip"
+        },
+        "sendPushNotification": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/sendPushNotification-2b544b56763975727937-build.zip"
+        },
+        "getVersionConfig": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/getVersionConfig-512f4667484d36715078-build.zip"
+        },
+        "AppVersionManager": {},
+        "syncUserProfilesAmplitudeBI": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/syncUserProfilesAmplitudeBI-384133437a71544c4851-build.zip",
+          "amplitudeApiKey": "3279109aad9e03ba305c1621058551b1"
+        },
+        "getFlightInfo": {
+          "amadeusApiKey": "mUxfirFDJDUUBNyQhIi8UuhCXBmGwL6q",
+          "amadeusApiSecretKey": "lmKsC6UPN151os21",
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/getFlightInfo-64317476744574653239-build.zip"
+        },
+        "processAppsFlyerAttributionV2": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/processAppsFlyerAttributionV2-76576253497a50545877-build.zip"
+        },
+        "processInstagramShare": {
+          "deploymentBucketName": "amplify-amplifybackend-staging-233e9-deployment",
+          "s3Key": "amplify-builds/processInstagramShare-6834596a73374d746f75-build.zip",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "apifyApiKey": "apify_api_Y3EEdpDIlyW0Q1fbH9YJcOdeXGzHdS0TRFEa"
+        }
+      },
+      "api": {
+        "WishListAPI": {},
+        "WishlistRestAPI": {}
+      },
+      "storage": {
+        "PlacesAPIActivityStorage": {},
+        "TripStorage": {},
+        "categoryStorage": {},
+        "regionImageStorage": {},
+        "UserProfilesStorage": {},
+        "TripOperationsStorage": {},
+        "AppVersionManager": {},
+        "SavedPlacesStorage": {}
+      }
+    }
+  },
+  "production": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-amplifybackend-production-f2c84-authRole",
+      "UnauthRoleArn": "arn:aws:iam::036284794661:role/amplify-amplifybackend-production-f2c84-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::036284794661:role/amplify-amplifybackend-production-f2c84-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+      "UnauthRoleName": "amplify-amplifybackend-production-f2c84-unauthRole",
+      "StackName": "amplify-amplifybackend-production-f2c84",
+      "StackId": "arn:aws:cloudformation:us-east-1:036284794661:stack/amplify-amplifybackend-production-f2c84/a4d12ec0-b075-11f0-80ef-0affd8d6328b",
+      "AmplifyAppId": "di3vqm2fsgqsv"
+    },
+    "categories": {
+      "auth": {
+        "amplifybackend59ccdbf8": {}
+      },
+      "function": {
+        "CityCategories": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/CityCategories-70675336487437334e34-build.zip",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
+        },
+        "CreateTripStorage": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/CreateTripStorage-466a6c65574173636834-build.zip"
+        },
+        "GetRoute": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/GetRoute-53517a594c6f4b6b3137-build.zip",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds"
+        },
+        "deleteTrip": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/deleteTrip-6c37796c796a614e6762-build.zip"
+        },
+        "generateCategoryActivities": {
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/generateCategoryActivities-77385833495576665041-build.zip"
+        },
+        "getLocationCoordinates": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/getLocationCoordinates-3164524f79412f594f74-build.zip",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds"
+        },
+        "getTripIDs": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/getTripIDs-7a76665552444548656f-build.zip"
+        },
+        "getUserTrips": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/getUserTrips-6b73306b65784931367a-build.zip"
+        },
+        "manageCollaborators": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/manageCollaborators-755859303452766d6572-build.zip"
+        },
+        "searchAutocomplete": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/searchAutocomplete-6b7a667246597a704276-build.zip",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
+        },
+        "searchBarActivities": {
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/searchBarActivities-424862704d6c644e4356-build.zip"
+        },
+        "searchUsers": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/searchUsers-463349636a377739396b-build.zip"
+        },
+        "wishlistAnalyzer": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/wishlistAnalyzer-37304f75714d65654364-build.zip",
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU"
+        },
+        "categoryStorage": {},
+        "WishListAPI": {},
+        "amplifybackend59ccdbf8": {},
+        "TripStorage": {},
+        "PlacesAPIActivityStorage": {},
+        "deleteAccount": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/deleteAccount-3770576e4f556155476b-build.zip"
+        },
+        "exportUserDataAnalytics": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/exportUserDataAnalytics-63434864593143757075-build.zip"
+        },
+        "getUserProfile": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/getUserProfile-773854767868634e736e-build.zip"
+        },
+        "updateUserProfile": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/updateUserProfile-54717364475a57374b50-build.zip"
+        },
+        "UserProfilesStorage": {},
+        "getVersionConfig": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/getVersionConfig-512f4667484d36715078-build.zip"
+        },
+        "registerDeviceToken": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/registerDeviceToken-55593867623957366c76-build.zip"
+        },
+        "sendPushNotification": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/sendPushNotification-2b544b56763975727937-build.zip"
+        },
+        "getFlightInfo": {
+          "amadeusApiKey": "mUxfirFDJDUUBNyQhIi8UuhCXBmGwL6q",
+          "amadeusApiSecretKey": "lmKsC6UPN151os21",
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/getFlightInfo-64317476744574653239-build.zip"
+        },
+        "processAppsFlyerAttributionV2": {
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/processAppsFlyerAttributionV2-76576253497a50545877-build.zip"
+        },
+        "syncUserProfilesAmplitudeBI": {
+          "amplitudeApiKey": "3279109aad9e03ba305c1621058551b1",
+          "deploymentBucketName": "amplify-amplifybackend-production-f2c84-deployment",
+          "s3Key": "amplify-builds/syncUserProfilesAmplitudeBI-384133437a71544c4851-build.zip"
+        }
+      },
+      "api": {
+        "WishListAPI": {},
+        "WishlistRestAPI": {}
+      },
+      "storage": {
+        "PlacesAPIActivityStorage": {},
+        "TripStorage": {},
+        "categoryStorage": {},
+        "regionImageStorage": {},
+        "UserProfilesStorage": {},
+        "TripOperationsStorage": {},
+        "AppVersionManager": {}
+      }
+    }
+  },
+  "devstan": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-amplifybackend-devstan-0b448-authRole",
+      "UnauthRoleArn": "arn:aws:iam::036284794661:role/amplify-amplifybackend-devstan-0b448-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::036284794661:role/amplify-amplifybackend-devstan-0b448-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+      "UnauthRoleName": "amplify-amplifybackend-devstan-0b448-unauthRole",
+      "StackName": "amplify-amplifybackend-devstan-0b448",
+      "StackId": "arn:aws:cloudformation:us-east-1:036284794661:stack/amplify-amplifybackend-devstan-0b448/c859cab0-f179-11f0-9d1d-0e22faae9b4d",
+      "AmplifyAppId": "di3vqm2fsgqsv"
+    },
+    "categories": {
+      "auth": {
+        "amplifybackend59ccdbf8": {}
+      },
+      "function": {
+        "CityCategories": {
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/CityCategories-70675336487437334e34-build.zip"
+        },
+        "CreateTripStorage": {
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/CreateTripStorage-466a6c65574173636834-build.zip"
+        },
+        "GetRoute": {
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/GetRoute-53517a594c6f4b6b3137-build.zip"
+        },
+        "deleteAccount": {
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/deleteAccount-3770576e4f556155476b-build.zip"
+        },
+        "deleteTrip": {
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/deleteTrip-6c37796c796a614e6762-build.zip"
+        },
+        "exportUserDataAnalytics": {
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/exportUserDataAnalytics-63434864593143757075-build.zip"
+        },
+        "generateCategoryActivities": {
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/generateCategoryActivities-77385833495576665041-build.zip"
+        },
+        "getLocationCoordinates": {
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/getLocationCoordinates-3164524f79412f594f74-build.zip"
+        },
+        "getTripIDs": {
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/getTripIDs-7a76665552444548656f-build.zip"
+        },
+        "getUserProfile": {
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/getUserProfile-773854767868634e736e-build.zip"
+        },
+        "getUserTrips": {
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/getUserTrips-6b73306b65784931367a-build.zip"
+        },
+        "getVersionConfig": {
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/getVersionConfig-512f4667484d36715078-build.zip"
+        },
+        "manageCollaborators": {
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/manageCollaborators-755859303452766d6572-build.zip"
+        },
+        "registerDeviceToken": {
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/registerDeviceToken-55593867623957366c76-build.zip"
+        },
+        "searchAutocomplete": {
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/searchAutocomplete-6b7a667246597a704276-build.zip"
+        },
+        "searchBarActivities": {
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/searchBarActivities-424862704d6c644e4356-build.zip"
+        },
+        "searchUsers": {
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/searchUsers-463349636a377739396b-build.zip"
+        },
+        "sendPushNotification": {
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/sendPushNotification-2b544b56763975727937-build.zip"
+        },
+        "syncUserProfilesAmplitudeBI": {
+          "amplitudeApiKey": "3279109aad9e03ba305c1621058551b1",
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/syncUserProfilesAmplitudeBI-384133437a71544c4851-build.zip"
+        },
+        "updateUserProfile": {
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/updateUserProfile-54717364475a57374b50-build.zip"
+        },
+        "wishlistAnalyzer": {
+          "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
+          "googlePlacesApiKey": "AIzaSyCL9ltc7QruVtujOLJ2IBH9Xb9_E5vf5WU",
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/wishlistAnalyzer-37304f75714d65654364-build.zip"
+        },
+        "categoryStorage": {},
+        "WishListAPI": {},
+        "amplifybackend59ccdbf8": {},
+        "TripStorage": {},
+        "UserProfilesStorage": {},
+        "PlacesAPIActivityStorage": {},
+        "TripOperationsStorage": {},
+        "AppVersionManager": {},
+        "getFlightInfo": {
+          "amadeusApiKey": "mUxfirFDJDUUBNyQhIi8UuhCXBmGwL6q",
+          "amadeusApiSecretKey": "lmKsC6UPN151os21",
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/getFlightInfo-64317476744574653239-build.zip"
+        },
+        "processAppsFlyerAttributionV2": {
+          "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
+          "s3Key": "amplify-builds/processAppsFlyerAttributionV2-76576253497a50545877-build.zip"
+        },
+        "processInstagramShare": {},
+        "SavedPlacesStorage": {}
+      },
+      "api": {
+        "WishListAPI": {},
+        "WishlistRestAPI": {}
+      },
+      "storage": {
+        "AppVersionManager": {},
+        "PlacesAPIActivityStorage": {},
+        "TripOperationsStorage": {},
+        "TripStorage": {},
+        "UserProfilesStorage": {},
+        "categoryStorage": {},
+        "regionImageStorage": {}
+      }
+    }
+  }
+}

@@ -38,7 +38,7 @@ yarn-error.*
 SECURITY_FIXES_REQUIRED.md
 
 # Amplify team provider info contains API keys - DO NOT COMMIT
-amplify/team-provider-info.json
+# amplify/team-provider-info.json - temporarilly comenting out for multideveloper environment setup
 
 # Amplify hooks
 amplify/hooks/post-push.sh
