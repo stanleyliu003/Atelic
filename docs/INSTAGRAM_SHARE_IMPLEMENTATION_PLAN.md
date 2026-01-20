@@ -70,17 +70,44 @@ Enable users to share Instagram reels/posts directly to Atelic, automatically ex
 - `src/geminiExtractor.js` - Gemini 2.0 Flash integration
 - `src/placeResolver.js` - Google Places API integration
 
-#### 1.2 Instagram Scraping Integration
+#### 1.2 Instagram Scraping Integration (Apify)
 
-**API Choice:** RapidAPI Instagram Scraper (MVP) → Apify (Production)
+**API:** Apify Instagram Scraper (`apify~instagram-scraper`)
 
-**Data to extract:**
-- Caption text
-- Media type (reel/post/carousel)
-- Media URLs (video URL or array of image URLs)
-- Location tag (if user tagged a location)
+**Endpoint:**
+```
+POST https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token={APIFY_API_KEY}
+```
 
-**Environment variable:** `RAPIDAPI_KEY`
+**Request Body:**
+```json
+{
+  "directUrls": ["https://www.instagram.com/p/ABC123/"],
+  "resultsType": "posts",
+  "resultsLimit": 1
+}
+```
+
+**Response Fields We Use:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `caption` | string | Full caption text for AI extraction |
+| `type` | string | `Image`, `Video`, or `Sidecar` (carousel) |
+| `displayUrl` | string | Main media CDN URL |
+| `displayResourceUrls` | array | All media URLs for carousels |
+| `locationName` | string | Tagged location (bonus context) |
+| `hashtags` | array | Extracted hashtags |
+| `ownerUsername` | string | Post creator |
+
+**Media Type Mapping:**
+- `Video` → Reel/Video post → Send video to Gemini
+- `Image` → Single image post → Send image to Gemini
+- `Sidecar` → Carousel → Send all images from `displayResourceUrls` to Gemini
+
+**Environment variable:** `APIFY_API_KEY`
+
+**Cost:** ~$0.0023 per post scraped (pay-per-result model)
 
 #### 1.3 Media Processing
 
@@ -155,7 +182,7 @@ Enable users to share Instagram reels/posts directly to Atelic, automatically ex
 - Memory: 1024 MB (for video processing)
 - Timeout: 120 seconds
 - Environment variables:
-  - `RAPIDAPI_KEY`
+  - `APIFY_API_KEY`
   - `GEMINI_API_KEY`
   - `GOOGLE_PLACES_API_KEY`
 
@@ -300,7 +327,7 @@ interface Activity {
 |----------|--------|-----------|
 | Lambda count | 1 combined Lambda | Share Extension needs speed; operations always run together |
 | Media storage | In-memory (no S3) | Simpler; Instagram reels are small enough |
-| Scraping API | RapidAPI (MVP) → Apify (prod) | Cost-effective for testing; reliable for production |
+| Scraping API | **Apify Instagram Scraper** | 95%+ reliability, excellent anti-bot handling, consistent data structure |
 | Gemini model | 2.0 Flash | Multimodal (video + images); good balance of speed/quality |
 | Auth sharing | App Groups | Standard iOS pattern for extension ↔ app communication |
 
@@ -310,7 +337,7 @@ interface Activity {
 
 | Component | Cost per Share |
 |-----------|----------------|
-| Instagram Scraping (RapidAPI) | ~$0.01 |
+| Instagram Scraping (Apify) | ~$0.0023 |
 | Gemini 2.0 Flash (video/images) | ~$0.05-0.10 |
 | Google Places API (3-5 places) | ~$0.05-0.10 |
 | Lambda execution | ~$0.001 |
@@ -322,7 +349,7 @@ interface Activity {
 
 ### Instagram API Reliability
 - **Risk:** Scraping API may fail or be rate-limited
-- **Mitigation:** Implement retry logic; have fallback to Apify; cache successful scrapes
+- **Mitigation:** Implement retry logic with exponential backoff; Apify has 95%+ reliability; cache successful scrapes
 
 ### Video Size Limits
 - **Risk:** Long videos may exceed Lambda memory
