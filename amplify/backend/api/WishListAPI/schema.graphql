@@ -132,6 +132,32 @@ type DeleteAccountResult {
   errors: [String]
 }
 
+# Saved Places types (Instagram Share Extension)
+type SavedPlace {
+  userID: String!
+  savedPlaceId: String!
+  activity: Activity!
+  source: String!
+  sourceUrl: String
+  sourcePostId: String
+  sourceUsername: String
+  city: String
+  savedAt: String!
+}
+
+type CityGroup {
+  city: String!
+  count: Int!
+  places: [SavedPlace!]!
+}
+
+type SavedPlacesResult {
+  savedPlaces: [SavedPlace!]!
+  cities: [CityGroup!]
+  city: String
+  totalCount: Int!
+}
+
 type RegisterDeviceTokenResult {
   success: Boolean!
   message: String!
@@ -360,6 +386,7 @@ type AppVersionConfig {
    searchUsers(searchTerm: String!): [UserProfile] @function(name: "searchUsers-${env}") @auth(rules: [{ allow: public }])
    getUserProfile(username: String, userID: String): UserProfileStorage @function(name: "getUserProfile-${env}") @auth(rules: [{ allow: public }])
    getVersionConfig(platform: String!, environment: String!): AppVersionConfig @function(name: "getVersionConfig-${env}") @auth(rules: [{ allow: public }])
+   getSavedPlaces(userID: String!, city: String): SavedPlacesResult @function(name: "getSavedPlaces-${env}") @auth(rules: [{ allow: public }])
  }
 
    input WaypointInput {

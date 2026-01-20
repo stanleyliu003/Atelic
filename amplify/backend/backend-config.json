@@ -350,6 +350,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "getSavedPlaces": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "SavedPlacesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "getTripIDs": {
       "build": true,
       "dependsOn": [
@@ -893,6 +909,22 @@
         {
           "category": "function",
           "resourceName": "getLocationCoordinates"
+        }
+      ]
+    },
+    "AMPLIFY_function_getSavedPlaces_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getSavedPlaces"
+        }
+      ]
+    },
+    "AMPLIFY_function_getSavedPlaces_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getSavedPlaces"
         }
       ]
     },

@@ -12,27 +12,16 @@ export default function TabLayout() {
         tabBarActiveTintColor:Colors.PRIMARY
     }}>
 
+      <Tabs.Screen name = "saved_places"
+        options={{
+            tabBarLabel:"Saved Places",
+            tabBarIcon:({color, focused})=><Ionicons name={focused ? "bookmark" : "bookmark-outline"} 
+            size={24} color={color} />
+        }}
+      />
       <Tabs.Screen name = "mytrip"
         options={{
-            tabBarLabel:"Coming Soon",
-            tabBarIcon:({color})=><Ionicons name="location-sharp" 
-            size={24} color={Colors.GRAY} />,
-            tabBarButton: () => (
-              <View style={{
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center',
-                opacity: 0.5
-              }}>
-                <Ionicons name="location-sharp" size={24} color={Colors.GRAY} />
-                <Text style={{
-                  fontSize: 12,
-                  color: Colors.GRAY,
-                  fontFamily: 'outfit',
-                  marginTop: 2
-                }}>Coming Soon</Text>
-              </View>
-            )
+            href: null, // Hide this tab from the tab bar
         }}
       />
       <Tabs.Screen name = "create_new_trip"

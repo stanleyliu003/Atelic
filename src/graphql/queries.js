@@ -504,6 +504,80 @@ export const getVersionConfig = /* GraphQL */ `
     }
   }
 `;
+export const getSavedPlaces = /* GraphQL */ `
+  query GetSavedPlaces($userID: String!, $city: String) {
+    getSavedPlaces(userID: $userID, city: $city) {
+      savedPlaces {
+        userID
+        savedPlaceId
+        source
+        sourceUrl
+        sourcePostId
+        sourceUsername
+        city
+        savedAt
+        activity {
+          instanceId
+          name
+          city
+          lat
+          lng
+          rating
+          user_ratings_total
+          formatted_address
+          types
+          primaryType
+          place_id
+          photo_reference
+          is_recommended
+          display_name
+          website_uri
+          editorial_summary
+          primary_type_display_name
+          international_phone_number
+          notes
+          startTime
+          endTime
+          isLodging
+          lodgingCheckIn
+          lodgingCheckOut
+          regular_opening_hours {
+            open_now
+            periods {
+              open {
+                day
+                time
+              }
+              close {
+                day
+                time
+              }
+            }
+            weekday_text
+          }
+          reviews {
+            author_name
+            rating
+            text
+            time
+            author_url
+            profile_photo_url
+          }
+          __typename
+        }
+        __typename
+      }
+      cities {
+        city
+        count
+        __typename
+      }
+      city
+      totalCount
+      __typename
+    }
+  }
+`;
 export const getWishlistAnalysis = /* GraphQL */ `
   query GetWishlistAnalysis($id: ID!) {
     getWishlistAnalysis(id: $id) {
