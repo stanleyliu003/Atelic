@@ -14,7 +14,7 @@ class ShareViewController: UIViewController {
     
     // MARK: - Properties
     private let appGroupID = "group.com.atelic.shared"
-    private let lambdaEndpoint = "YOUR_LAMBDA_URL_HERE" // TODO: Add your Lambda URL
+    private let lambdaEndpoint = "https://adetk4ycvtm7wkwbzppbleegra0auhxi.lambda-url.us-east-1.on.aws/"
     
     private var loadingLabel: UILabel!
     private var activityIndicator: UIActivityIndicatorView!

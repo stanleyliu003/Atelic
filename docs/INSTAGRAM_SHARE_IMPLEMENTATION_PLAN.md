@@ -1,5 +1,41 @@
 # Instagram Share-to-App Implementation Plan
 
+## 🚀 Implementation Status (Updated: Jan 20, 2026)
+
+### ✅ Phase 1: Lambda Backend Development - **COMPLETE**
+- ✅ Lambda function structure created (`processInstagramShare`)
+- ✅ Instagram scraping (Apify) - working with video fix
+- ✅ Media processing - downloads actual videos (not thumbnails)
+- ✅ Gemini 2.0 Flash integration - separate prompts for video/images
+- ✅ Google Places resolution - **parallel processing** (11 places in ~3s)
+- ✅ DynamoDB storage - `SavedPlacesStorage` with `CityIndex` GSI
+- ✅ Lambda config - 1024MB memory, 120s timeout
+- ✅ **Tested successfully:** Rome reel → 11 places extracted in 16s
+
+### 🟡 Phase 2: iOS Share Extension - **IN PROGRESS**
+- ✅ Expo config plugin created (`plugins/withShareExtension.js`)
+- ✅ Native Swift files created (`ShareViewController.swift`, `Info.plist`)
+- ✅ Files stored in `native-files/ios/AtelicShareExtension/`
+- ✅ Xcode manual setup completed:
+  - Share Extension target added (`AtelicStable.AtelicShareExtension`)
+  - App Groups configured (`group.com.atelic.shared`)
+  - URL scheme verified (`atelic`)
+  - Deployment target set (iOS 13.4)
+- ✅ Lambda Function URL created and added to code
+- ⏳ **Next:** Run prebuild to copy updated files to `ios/`
+
+### ⏳ Phase 4: Auth Flow Updates - **NEXT UP**
+- Store `userID` in App Groups on login
+- Read `userID` from App Groups in Share Extension
+- Handle token refresh/expiration
+
+### ❌ Phase 3: Main App UI - **NOT STARTED**
+- Create "Saved Places" screen
+- Display places grouped by city (using CityIndex GSI)
+- Add to Trip / Wishlist actions
+
+---
+
 ## Overview
 
 User experience
@@ -34,6 +70,35 @@ Display all the activities in “saved places” tab
 
 
 Enable users to share Instagram reels/posts directly to Atelic, automatically extracting travel destinations and adding them to their saved places.
+
+---
+
+## 🔧 Key Technical Decisions & Fixes
+
+### Lambda Performance Optimization
+- **Issue:** Sequential place resolution took 11-15s for 11 places
+- **Solution:** Implemented parallel `Promise.all()` resolution
+- **Result:** Reduced to ~2.9s (79% faster!)
+
+### Video Download Fix
+- **Issue:** Apify `displayUrl` returns thumbnail (60KB JPEG) for videos
+- **Solution:** Use `videoUrl` field for videos, `displayUrl` for images
+- **Impact:** Now downloads actual video files (2-5MB MP4) for Gemini processing
+
+### Gemini Prompt Optimization
+- **Issue:** Generic prompt for all media types
+- **Solution:** Separate prompts for videos (audio/frames) vs images (text/visual)
+- **Result:** Simplified response format (just `name` and `city`)
+
+### DynamoDB Schema
+- **Design:** 1 item per place (not array per city)
+- **Benefit:** Atomic operations, no size limits, concurrent-safe
+- **GSI:** Added `CityIndex` (userID + city) for profile page queries
+
+### iOS Share Extension Pattern
+- **Challenge:** `expo prebuild --clean` deletes native files
+- **Solution:** Store files in `native-files/ios/`, copy via config plugin
+- **Lambda URL:** Created Function URL for public HTTPS endpoint
 
 ---
 
@@ -86,9 +151,15 @@ Enable users to share Instagram reels/posts directly to Atelic, automatically ex
 
 ## Implementation Phases
 
-### Phase 1: Lambda Backend Development
+### Phase 1: Lambda Backend Development ✅ **COMPLETE**
 
 **Goal:** Create the `processInstagramShare` Lambda function that handles the entire extraction pipeline.
+
+**Status:** ✅ Completed and tested (Jan 20, 2026)
+- Successfully extracts places from Instagram posts/reels
+- Parallel processing reduces place resolution from 11-15s to ~3s
+- Tested with 30s Rome reel: 11 places extracted in 16.2 seconds
+- Lambda Function URL created for iOS integration
 
 #### 1.1 Create Lambda Function Structure
 
@@ -341,9 +412,17 @@ amplify add storage
 
 ---
 
-### Phase 2: iOS Share Extension Development
+### Phase 2: iOS Share Extension Development 🟡 **IN PROGRESS**
 
 **Goal:** Create native iOS Share Extension that integrates with Instagram's share sheet.
+
+**Status:** 🟡 80% Complete (Jan 20, 2026)
+- ✅ Expo config plugin created and configured
+- ✅ Native Swift files created and stored in `native-files/`
+- ✅ Xcode project manually configured with Share Extension target
+- ✅ App Groups set up (`group.com.atelic.shared`)
+- ✅ Lambda Function URL integrated
+- ⏳ **Next:** Phase 4 (Auth) to store userID in App Groups
 
 #### 2.1 Expo Configuration
 
