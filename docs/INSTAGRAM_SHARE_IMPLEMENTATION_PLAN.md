@@ -160,19 +160,104 @@ POST https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-
 3. Fetch full place details (coordinates, photos, ratings, hours)
 4. Construct Activity object matching existing schema
 
-#### 1.6 DynamoDB Storage
+#### 1.6 DynamoDB Storage (SavedPlacesStorage)
 
-**Option A:** Add to existing TripStorage with a "saved places" structure
-**Option B:** Create new SavedPlacesStorage table
+**Table:** Create new `SavedPlacesStorage` table
 
-**Schema consideration:**
-```json
-{
-  "userId": "user-123",
-  "savedPlaces": [
-    { "activity": {...}, "source": "instagram", "sourceUrl": "https://...", "savedAt": "2024-..." }
-  ]
+**Table Schema:**
+
+| Field | Type | Key | Description |
+|-------|------|-----|-------------|
+| `userID` | String | Partition Key (PK) | Cognito user ID (matches existing pattern) |
+| `savedPlaceId` | String | Sort Key (SK) | UUID for this saved place entry |
+| `activity` | Object | - | Full Activity object (matches existing schema) |
+| `source` | String | - | `"instagram"` / `"manual"` / `"tiktok"` (future) |
+| `sourceUrl` | String | - | Instagram permalink: `https://www.instagram.com/reel/ABC123/` |
+| `sourcePostId` | String | - | Instagram shortcode: `ABC123` (for deduplication) |
+| `sourceUsername` | String | - | `@travelblogger` (who posted it) |
+| `city` | String | - | City context (for filtering/grouping) |
+| `savedAt` | String | - | ISO timestamp |
+
+**Note on URLs:**
+- `sourceUrl` stores the **permanent Instagram permalink** (e.g., `https://www.instagram.com/reel/ABC123/`)
+- This URL never expires unless the post is deleted
+- We do NOT store CDN media URLs (those expire within hours)
+
+**DynamoDB Access Pattern (following existing codebase patterns):**
+
+```javascript
+// Reference: amplify/backend/function/getUserProfile/src/index.js
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, QueryCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
+
+const client = new DynamoDBClient();
+const docClient = DynamoDBDocumentClient.from(client);
+
+// Table name from environment variable (Amplify pattern)
+const SAVED_PLACES_TABLE = process.env.STORAGE_SAVEDPLACESSTORAGE_NAME;
+
+// Query all saved places for a user
+const result = await docClient.send(new QueryCommand({
+  TableName: SAVED_PLACES_TABLE,
+  KeyConditionExpression: 'userID = :uid',
+  ExpressionAttributeValues: {
+    ':uid': userID
+  }
+}));
+
+// Save a new place
+await docClient.send(new PutCommand({
+  TableName: SAVED_PLACES_TABLE,
+  Item: {
+    userID,
+    savedPlaceId: uuid(),
+    activity: { /* Activity object */ },
+    source: 'instagram',
+    sourceUrl: 'https://www.instagram.com/reel/ABC123/',
+    sourcePostId: 'ABC123',
+    sourceUsername: 'travelblogger',
+    city: 'Bali',
+    savedAt: new Date().toISOString()
+  }
+}));
+```
+
+**Deduplication (prevent saving same post twice):**
+
+```javascript
+// Check if user already saved from this Instagram post
+const existing = await docClient.send(new QueryCommand({
+  TableName: SAVED_PLACES_TABLE,
+  KeyConditionExpression: 'userID = :uid',
+  FilterExpression: 'sourcePostId = :postId',
+  ExpressionAttributeValues: {
+    ':uid': userID,
+    ':postId': 'ABC123'  // Instagram shortcode
+  }
+}));
+
+if (existing.Items && existing.Items.length > 0) {
+  // User already saved from this post - return existing or merge
 }
+```
+
+**Amplify Storage Configuration:**
+
+Add to `amplify/backend/storage/`:
+```
+storage/
+└── SavedPlacesStorage/
+    ├── cli-inputs.json
+    └── parameters.json
+```
+
+Or create via Amplify CLI:
+```bash
+amplify add storage
+# Select: NoSQL Database
+# Table name: SavedPlacesStorage
+# Partition key: userID (String)
+# Sort key: savedPlaceId (String)
 ```
 
 #### 1.7 Lambda Configuration
@@ -181,10 +266,47 @@ POST https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-
 - Runtime: Node.js 18.x
 - Memory: 1024 MB (for video processing)
 - Timeout: 120 seconds
-- Environment variables:
-  - `APIFY_API_KEY`
-  - `GEMINI_API_KEY`
-  - `GOOGLE_PLACES_API_KEY`
+
+**Environment variables:**
+- `APIFY_API_KEY` - Apify Instagram Scraper token
+- `GEMINI_API_KEY` - Gemini 2.0 Flash API key
+- `GOOGLE_PLACES_API_KEY` - Google Places API key
+- `STORAGE_SAVEDPLACESSTORAGE_NAME` - DynamoDB table name (auto-injected by Amplify)
+- `AUTH_AMPLIFYBACKEND59CCDBF8_USERPOOLID` - Cognito User Pool ID (for validation)
+- `ENV` - Environment (dev/prod)
+- `REGION` - AWS region
+
+**Lambda Request Schema:**
+
+```json
+{
+  "instagramUrl": "https://www.instagram.com/reel/ABC123/",
+  "userID": "cognito-user-id-123"
+}
+```
+
+**Note on `userID`:**
+- This is the Cognito user ID (sub claim from JWT)
+- Matches the pattern used in `getUserProfile` and other existing Lambdas
+- The Share Extension reads this from App Groups (stored on login)
+
+**Lambda Response Schema:**
+
+```json
+{
+  "success": true,
+  "savedPlaces": [
+    {
+      "savedPlaceId": "uuid-123",
+      "activity": { /* Full Activity object */ },
+      "source": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/ABC123/",
+      "city": "Bali"
+    }
+  ],
+  "message": "Found 3 places from this post"
+}
+```
 
 ---
 
@@ -330,6 +452,9 @@ interface Activity {
 | Scraping API | **Apify Instagram Scraper** | 95%+ reliability, excellent anti-bot handling, consistent data structure |
 | Gemini model | 2.0 Flash | Multimodal (video + images); good balance of speed/quality |
 | Auth sharing | App Groups | Standard iOS pattern for extension ↔ app communication |
+| DynamoDB table | New `SavedPlacesStorage` | Clean separation; easy per-user queries; matches existing Amplify patterns |
+| User identifier | `userID` (Cognito sub) | Consistent with existing codebase (`getUserProfile`, `CreateTripStorage`) |
+| URL storage | Permalink only | CDN URLs expire; permalinks are permanent |
 
 ---
 
@@ -375,12 +500,18 @@ interface Activity {
 amplify/backend/function/
 └── processInstagramShare/
     ├── src/
-    │   ├── index.js
-    │   ├── instagramScraper.js
-    │   ├── mediaProcessor.js
-    │   ├── geminiExtractor.js
-    │   └── placeResolver.js
-    └── function-parameters.json
+    │   ├── index.js              # Main handler (reference: getUserProfile/src/index.js)
+    │   ├── instagramScraper.js   # Apify API integration
+    │   ├── mediaProcessor.js     # Download and prepare media
+    │   ├── geminiExtractor.js    # Gemini 2.0 Flash integration
+    │   └── placeResolver.js      # Google Places API integration
+    ├── function-parameters.json
+    └── package.json
+
+amplify/backend/storage/
+└── SavedPlacesStorage/           # New DynamoDB table
+    ├── cli-inputs.json
+    └── parameters.json
 
 plugins/
 └── withShareExtension.js
@@ -400,6 +531,121 @@ src/
     └── activity.types.ts (update)
 
 app.json (update)
+```
+
+---
+
+## Code Reference: Lambda Handler Pattern
+
+**Based on existing codebase pattern from `amplify/backend/function/getUserProfile/src/index.js`:**
+
+```javascript
+/* Amplify Params - DO NOT EDIT
+  AUTH_AMPLIFYBACKEND59CCDBF8_USERPOOLID
+  ENV
+  REGION
+  STORAGE_SAVEDPLACESSTORAGE_NAME
+Amplify Params - DO NOT EDIT */
+
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, QueryCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
+const { v4: uuid } = require('uuid');
+
+const client = new DynamoDBClient();
+const docClient = DynamoDBDocumentClient.from(client);
+
+const SAVED_PLACES_TABLE = process.env.STORAGE_SAVEDPLACESSTORAGE_NAME;
+
+/**
+ * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
+ */
+exports.handler = async (event) => {
+  console.log('processInstagramShare event:', JSON.stringify(event));
+
+  const { instagramUrl, userID } = event.arguments || JSON.parse(event.body || '{}');
+
+  if (!instagramUrl || !userID) {
+    throw new Error('instagramUrl and userID are required');
+  }
+
+  try {
+    // 1. Scrape Instagram
+    const scrapedData = await scrapeInstagram(instagramUrl);
+
+    // 2. Check for duplicate (same post already saved by this user)
+    const isDuplicate = await checkDuplicate(userID, scrapedData.shortCode);
+    if (isDuplicate) {
+      return {
+        success: true,
+        savedPlaces: [],
+        message: 'You already saved places from this post'
+      };
+    }
+
+    // 3. Download media
+    const mediaBuffers = await downloadMedia(scrapedData);
+
+    // 4. Extract places with Gemini
+    const extractedPlaces = await extractPlacesWithGemini(scrapedData.caption, mediaBuffers);
+
+    // 5. Resolve places via Google Places API
+    const activities = await resolvePlaces(extractedPlaces);
+
+    // 6. Save to DynamoDB
+    const savedPlaces = await savePlaces(userID, activities, scrapedData);
+
+    return {
+      success: true,
+      savedPlaces,
+      message: `Found ${savedPlaces.length} places from this post`
+    };
+
+  } catch (error) {
+    console.error('Error processing Instagram share:', error);
+    throw new Error(`Failed to process Instagram share: ${error.message}`);
+  }
+};
+
+async function checkDuplicate(userID, sourcePostId) {
+  const result = await docClient.send(new QueryCommand({
+    TableName: SAVED_PLACES_TABLE,
+    KeyConditionExpression: 'userID = :uid',
+    FilterExpression: 'sourcePostId = :postId',
+    ExpressionAttributeValues: {
+      ':uid': userID,
+      ':postId': sourcePostId
+    }
+  }));
+  return result.Items && result.Items.length > 0;
+}
+
+async function savePlaces(userID, activities, scrapedData) {
+  const savedPlaces = [];
+  const now = new Date().toISOString();
+
+  for (const activity of activities) {
+    const savedPlace = {
+      userID,
+      savedPlaceId: uuid(),
+      activity,
+      source: 'instagram',
+      sourceUrl: scrapedData.url,           // Permanent permalink
+      sourcePostId: scrapedData.shortCode,  // For deduplication
+      sourceUsername: scrapedData.ownerUsername,
+      city: activity.city || '',
+      savedAt: now
+    };
+
+    await docClient.send(new PutCommand({
+      TableName: SAVED_PLACES_TABLE,
+      Item: savedPlace
+    }));
+
+    savedPlaces.push(savedPlace);
+  }
+
+  return savedPlaces;
+}
 ```
 
 ---

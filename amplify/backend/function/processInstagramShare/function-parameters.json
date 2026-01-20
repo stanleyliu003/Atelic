@@ -1,0 +1,19 @@
+{
+  "lambdaLayers": [],
+  "permissions": {
+    "function": {
+      "getLocationCoordinates": [
+        "create",
+        "read",
+        "update"
+      ]
+    },
+    "storage": {
+      "SavedPlacesStorage": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  }
+}

@@ -129,6 +129,13 @@ export type AmplifyDependentResourcesAttributes = {
       "Name": "string",
       "Region": "string"
     },
+    "processInstagramShare": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
     "registerDeviceToken": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
@@ -199,6 +206,16 @@ export type AmplifyDependentResourcesAttributes = {
       "StreamArn": "string"
     },
     "PlacesAPIActivityStorage": {
+      "Arn": "string",
+      "Name": "string",
+      "PartitionKeyName": "string",
+      "PartitionKeyType": "string",
+      "Region": "string",
+      "SortKeyName": "string",
+      "SortKeyType": "string",
+      "StreamArn": "string"
+    },
+    "SavedPlacesStorage": {
       "Arn": "string",
       "Name": "string",
       "PartitionKeyName": "string",

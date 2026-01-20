@@ -1,0 +1,14 @@
+{
+  "resourceName": "SavedPlacesStorage",
+  "tableName": "SavedPlaces",
+  "partitionKey": {
+    "fieldName": "userID",
+    "fieldType": "string"
+  },
+  "sortKey": {
+    "fieldName": "savedPlaceId",
+    "fieldType": "string"
+  },
+  "gsi": [],
+  "triggerFunctions": []
+}

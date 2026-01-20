@@ -479,6 +479,29 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "processInstagramShare": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "getLocationCoordinates"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "SavedPlacesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "registerDeviceToken": {
       "build": true,
       "dependsOn": [
@@ -969,6 +992,22 @@
         }
       ]
     },
+    "AMPLIFY_function_processInstagramShare_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processInstagramShare"
+        }
+      ]
+    },
+    "AMPLIFY_function_processInstagramShare_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processInstagramShare"
+        }
+      ]
+    },
     "AMPLIFY_function_registerDeviceToken_deploymentBucketName": {
       "usedBy": [
         {
@@ -1160,6 +1199,10 @@
       "service": "DynamoDB"
     },
     "PlacesAPIActivityStorage": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    },
+    "SavedPlacesStorage": {
       "providerPlugin": "awscloudformation",
       "service": "DynamoDB"
     },
