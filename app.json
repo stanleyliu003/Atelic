@@ -68,7 +68,8 @@
             "ios": "yZTo4qHBjVjMgSCoMqGG4f"
           }
         }
-      ]
+      ],
+      "./plugins/withShareExtension"
     ],
     "extra": {
       "router": {
