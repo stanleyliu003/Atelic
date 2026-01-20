@@ -18,6 +18,7 @@
       "deploymentTarget": "15.0",
       "buildNumber": "39",
       "infoPlist": {
+        "CFBundleDisplayName": "Atelic", 
         "CFBundleName": "Atelic",
         "LSApplicationQueriesSchemes": [
           "comgooglemaps",

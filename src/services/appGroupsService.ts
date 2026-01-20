@@ -13,7 +13,7 @@
 import { NativeModules, Platform } from 'react-native';
 
 interface AppGroupsStorageModule {
-  setValue: (value: string, key: string) => void;
+  setGroupValue: (value: string, key: string) => void;
   getValue: (key: string) => Promise<string | null>;
   removeValue: (key: string) => void;
   clearAll: () => void;
@@ -33,9 +33,9 @@ export const storeAuthData = async (userID: string, idToken: string): Promise<vo
   }
 
   try {
-    AppGroupsStorage.setValue(userID, 'userID');
-    AppGroupsStorage.setValue(idToken, 'cognitoIdToken');
-    AppGroupsStorage.setValue('true', 'isLoggedIn');
+    AppGroupsStorage.setGroupValue(userID, 'userID');
+    AppGroupsStorage.setGroupValue(idToken, 'cognitoIdToken');
+    AppGroupsStorage.setGroupValue('true', 'isLoggedIn');
     console.log('[AppGroups] Stored auth data for userID:', userID);
   } catch (error) {
     console.error('[AppGroups] Failed to store auth data:', error);
@@ -122,7 +122,7 @@ export const updateIdToken = async (idToken: string): Promise<void> => {
   }
 
   try {
-    AppGroupsStorage.setValue(idToken, 'cognitoIdToken');
+    AppGroupsStorage.setGroupValue(idToken, 'cognitoIdToken');
     console.log('[AppGroups] Updated ID token');
   } catch (error) {
     console.error('[AppGroups] Failed to update ID token:', error);

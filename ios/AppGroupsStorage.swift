@@ -15,7 +15,7 @@ class AppGroupsStorage: NSObject {
   
   // MARK: - Set Value
   @objc
-  func setValue(_ value: String, forKey key: String) {
+  func setGroupValue(_ value: String, forKey key: String) {
     guard let sharedDefaults = UserDefaults(suiteName: appGroupID) else {
       print("[AppGroups] Failed to access App Group: \(appGroupID)")
       return

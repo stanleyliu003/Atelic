@@ -55,13 +55,14 @@ function withShareExtension(config) {
     return config;
   });
 
-  // Add Share Extension files to iOS project
+  // Add Share Extension files and AppGroupsStorage native module to iOS project
   config = withXcodeProject(config, async (config) => {
     const xcodeProject = config.modResults;
     const projectRoot = config.modRequest.projectRoot;
     const iosPath = path.join(projectRoot, 'ios');
     const shareExtensionPath = path.join(iosPath, SHARE_EXTENSION_NAME);
     const sourceFilesPath = path.join(projectRoot, 'native-files', 'ios', SHARE_EXTENSION_NAME);
+    const nativeModulesSourcePath = path.join(projectRoot, 'native-files', 'ios');
 
     // Create Share Extension directory if it doesn't exist
     if (!fs.existsSync(shareExtensionPath)) {
@@ -69,7 +70,7 @@ function withShareExtension(config) {
       console.log(`✅ Created Share Extension directory: ${shareExtensionPath}`);
     }
 
-    // Copy Swift and Info.plist files from native-files to ios directory
+    // Copy Share Extension files from native-files to ios directory
     if (fs.existsSync(sourceFilesPath)) {
       const filesToCopy = ['ShareViewController.swift', 'Info.plist'];
       
@@ -87,6 +88,22 @@ function withShareExtension(config) {
     } else {
       console.warn(`⚠️ Warning: Source files not found at ${sourceFilesPath}`);
     }
+
+    // Copy AppGroupsStorage native module files to ios directory
+    console.log('\n📦 Copying AppGroupsStorage native module...');
+    const appGroupsFiles = ['AppGroupsStorage.swift', 'AppGroupsStorage.m'];
+    
+    appGroupsFiles.forEach(file => {
+      const sourcePath = path.join(nativeModulesSourcePath, file);
+      const destPath = path.join(iosPath, file);
+      
+      if (fs.existsSync(sourcePath)) {
+        fs.copyFileSync(sourcePath, destPath);
+        console.log(`✅ Copied ${file} to ios/`);
+      } else {
+        console.warn(`⚠️ Warning: ${file} not found in native-files/ios/`);
+      }
+    });
     
     return config;
   });
