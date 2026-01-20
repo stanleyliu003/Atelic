@@ -651,8 +651,8 @@ export default function UsernameSetup() {
     } else {
       // Sign out and go back to login
       Auth.signOut({ global: false }).catch(() => {});
-      clearAuthData();
-      console.log('[UsernameSetup] Cleared auth data from App Groups');
+      const cleared = clearAuthData();
+      console.log('[UsernameSetup] Auth data clear result:', cleared ? '✅ Cleared' : '⚠️ Not available');
       router.replace('/');
     }
   };

@@ -103,8 +103,8 @@ export default function Login() {
           checkAuthenticationState();
           break;
         case 'signOut':
-          clearAuthData();
-          console.log('[Login] Cleared auth data from App Groups (signOut event)');
+          const cleared = clearAuthData();
+          console.log('[Login] Auth data clear result (signOut event):', cleared ? '✅ Cleared' : '⚠️ Not available');
           router.replace('/');
           break;
         case 'tokenRefresh_failure':
@@ -192,8 +192,15 @@ export default function Login() {
       // Store/update auth data in App Groups for Share Extension
       const userID = user.attributes.sub;
       const idToken = session.getIdToken().getJwtToken();
-      await storeAuthData(userID, idToken);
-      console.log('[Login] Stored/updated auth data in App Groups');
+      console.log('[Login] Attempting to store auth data in App Groups...');
+      const authStored = await storeAuthData(userID, idToken);
+      if (authStored) {
+        console.log('[Login] ✅ Successfully stored auth data in App Groups');
+      } else {
+        console.log('[Login] ⚠️ Could not store auth data in App Groups (native module unavailable)');
+        console.log('[Login]    This is expected if running in Expo Go or non-iOS platform');
+        console.log('[Login]    Share Extension will not have access to auth until running on device');
+      }
 
       // Check if user has complete profile (username, name, birthdate, gender)
       // Important for both OAuth users and email sign-up users

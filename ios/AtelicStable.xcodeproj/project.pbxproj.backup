@@ -8,8 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		020DAFBE2F1FA383005BA59A /* AtelicShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 020DAFB42F1FA382005BA59A /* AtelicShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		14E349E4FAF747B783443F27 /* AppGroupsStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D1F56BFE494572AA5F31E2 /* AppGroupsStorage.swift */; };
-		160BFB793B714681BC4710D5 /* AppGroupsStorage.m in Sources */ = {isa = PBXBuildFile; fileRef = 9F4647A0ECCB41CA8E63E199 /* AppGroupsStorage.m */; };
+		02F364FD2F1FD03100C4CD26 /* AppGroupsStorage 2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02F364FC2F1FD03100C4CD26 /* AppGroupsStorage 2.swift */; };
+		02F364FE2F1FD03100C4CD26 /* AppGroupsStorage 2.m in Sources */ = {isa = PBXBuildFile; fileRef = 02F364FB2F1FD03100C4CD26 /* AppGroupsStorage 2.m */; };
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
@@ -47,8 +47,8 @@
 
 /* Begin PBXFileReference section */
 		020DAFB42F1FA382005BA59A /* AtelicShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AtelicShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		61D1F56BFE494572AA5F31E2 /* AppGroupsStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupsStorage.swift; sourceTree = "<group>"; };
-		9F4647A0ECCB41CA8E63E199 /* AppGroupsStorage.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppGroupsStorage.m; sourceTree = "<group>"; };
+		02F364FB2F1FD03100C4CD26 /* AppGroupsStorage 2.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "AppGroupsStorage 2.m"; sourceTree = "<group>"; };
+		02F364FC2F1FD03100C4CD26 /* AppGroupsStorage 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppGroupsStorage 2.swift"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* AtelicStable.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AtelicStable.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = AtelicStable/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = AtelicStable/AppDelegate.mm; sourceTree = "<group>"; };
@@ -103,8 +103,8 @@
 		13B07FAE1A68108700A75B9A /* AtelicStable */ = {
 			isa = PBXGroup;
 			children = (
-				61D1F56BFE494572AA5F31E2 /* AppGroupsStorage.swift */,
-				9F4647A0ECCB41CA8E63E199 /* AppGroupsStorage.m */,
+				02F364FB2F1FD03100C4CD26 /* AppGroupsStorage 2.m */,
+				02F364FC2F1FD03100C4CD26 /* AppGroupsStorage 2.swift */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
@@ -433,8 +433,8 @@
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,
-				14E349E4FAF747B783443F27 /* AppGroupsStorage.swift in Sources */,
-				160BFB793B714681BC4710D5 /* AppGroupsStorage.m in Sources */,
+				02F364FD2F1FD03100C4CD26 /* AppGroupsStorage 2.swift in Sources */,
+				02F364FE2F1FD03100C4CD26 /* AppGroupsStorage 2.m in Sources */,
 				8A6442FE4E3C41CDB10D51AD /* noop-file.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

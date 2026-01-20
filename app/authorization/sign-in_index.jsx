@@ -111,8 +111,8 @@ export default function SignIn() {
             // Successful sign in - store auth data in App Groups
             const userID = user.attributes.sub;
             const idToken = user.signInUserSession.getIdToken().getJwtToken();
-            await storeAuthData(userID, idToken);
-            console.log('[SignIn] Stored auth data in App Groups');
+            const authStored = await storeAuthData(userID, idToken);
+            console.log('[SignIn] Auth data storage result:', authStored ? '✅ Stored' : '⚠️ Not available');
             
             router.replace('(tabs)/create_new_trip');
           } else {
@@ -150,8 +150,8 @@ export default function SignIn() {
         // Successful sign in - store auth data in App Groups
         const userID = user.attributes.sub;
         const idToken = user.signInUserSession.getIdToken().getJwtToken();
-        await storeAuthData(userID, idToken);
-        console.log('[SignIn] Stored auth data in App Groups (fallback)');
+        const authStored = await storeAuthData(userID, idToken);
+        console.log('[SignIn] Auth data storage result (fallback):', authStored ? '✅ Stored' : '⚠️ Not available');
         
         router.replace('(tabs)/create_new_trip');
       } else {
@@ -187,8 +187,8 @@ export default function SignIn() {
             const userID = user.attributes.sub;
             const session = await Auth.currentSession();
             const idToken = session.getIdToken().getJwtToken();
-            await storeAuthData(userID, idToken);
-            console.log('[SignIn] Stored auth data in App Groups (Google)');
+            const authStored = await storeAuthData(userID, idToken);
+            console.log('[SignIn] Auth data storage result (Google):', authStored ? '✅ Stored' : '⚠️ Not available');
             
             const preferredUsername = user?.attributes?.preferred_username;
             if (!preferredUsername) {
@@ -224,8 +224,8 @@ export default function SignIn() {
             const userID = user.attributes.sub;
             const session = await Auth.currentSession();
             const idToken = session.getIdToken().getJwtToken();
-            await storeAuthData(userID, idToken);
-            console.log('[SignIn] Stored auth data in App Groups (Apple)');
+            const authStored = await storeAuthData(userID, idToken);
+            console.log('[SignIn] Auth data storage result (Apple):', authStored ? '✅ Stored' : '⚠️ Not available');
             
             const preferredUsername = user?.attributes?.preferred_username;
             if (!preferredUsername) {

@@ -446,8 +446,8 @@ export default function Profile() {
               try {
                 await Auth.signOut({ global: false });
                 // Clear App Groups auth data for Share Extension
-                clearAuthData();
-                console.log('[Profile] Cleared auth data from App Groups');
+                const cleared = clearAuthData();
+                console.log('[Profile] Auth data clear result (Logout):', cleared ? '✅ Cleared' : '⚠️ Not available');
                 // Clear any stored user data
                 setFullName('');
                 setUsername('');
@@ -507,8 +507,8 @@ export default function Profile() {
           await Auth.signOut({ global: false });
           
           // Clear App Groups auth data for Share Extension
-          clearAuthData();
-          console.log('[Profile] Cleared auth data from App Groups (account deletion)');
+          const cleared = clearAuthData();
+          console.log('[Profile] Auth data clear result (Account deletion):', cleared ? '✅ Cleared' : '⚠️ Not available');
 
           // Clear user data
           setFullName('');
