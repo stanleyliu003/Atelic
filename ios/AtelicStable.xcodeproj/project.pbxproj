@@ -8,11 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		020DAFBE2F1FA383005BA59A /* AtelicShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 020DAFB42F1FA382005BA59A /* AtelicShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		14E349E4FAF747B783443F27 /* AppGroupsStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D1F56BFE494572AA5F31E2 /* AppGroupsStorage.swift */; };
-		160BFB793B714681BC4710D5 /* AppGroupsStorage.m in Sources */ = {isa = PBXBuildFile; fileRef = 9F4647A0ECCB41CA8E63E199 /* AppGroupsStorage.m */; };
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
+		14E349E4FAF747B783443F27 /* AppGroupsStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D1F56BFE494572AA5F31E2 /* AppGroupsStorage.swift */; };
+		160BFB793B714681BC4710D5 /* AppGroupsStorage.m in Sources */ = {isa = PBXBuildFile; fileRef = 9F4647A0ECCB41CA8E63E199 /* AppGroupsStorage.m */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		8A6442FE4E3C41CDB10D51AD /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2837367B4C26409BBAF7C934 /* noop-file.swift */; };
 		96905EF65AED1B983A6B3ABC /* libPods-AtelicStable.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-AtelicStable.a */; };
@@ -47,8 +47,6 @@
 
 /* Begin PBXFileReference section */
 		020DAFB42F1FA382005BA59A /* AtelicShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AtelicShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		61D1F56BFE494572AA5F31E2 /* AppGroupsStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupsStorage.swift; sourceTree = "<group>"; };
-		9F4647A0ECCB41CA8E63E199 /* AppGroupsStorage.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppGroupsStorage.m; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* AtelicStable.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AtelicStable.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = AtelicStable/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = AtelicStable/AppDelegate.mm; sourceTree = "<group>"; };
@@ -58,8 +56,10 @@
 		2837367B4C26409BBAF7C934 /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "AtelicStable/noop-file.swift"; sourceTree = "<group>"; };
 		44DFB53660E7922F3B3B05ED /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = AtelicStable/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		58EEBF8E8E6FB1BC6CAF49B5 /* libPods-AtelicStable.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AtelicStable.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		61D1F56BFE494572AA5F31E2 /* AppGroupsStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupsStorage.swift; sourceTree = "<group>"; };
 		6C2E3173556A471DD304B334 /* Pods-AtelicStable.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AtelicStable.debug.xcconfig"; path = "Target Support Files/Pods-AtelicStable/Pods-AtelicStable.debug.xcconfig"; sourceTree = "<group>"; };
 		7A4D352CD337FB3A3BF06240 /* Pods-AtelicStable.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AtelicStable.release.xcconfig"; path = "Target Support Files/Pods-AtelicStable/Pods-AtelicStable.release.xcconfig"; sourceTree = "<group>"; };
+		9F4647A0ECCB41CA8E63E199 /* AppGroupsStorage.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppGroupsStorage.m; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = AtelicStable/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		DB16677F1B6B44C2B2830014 /* AtelicStable-Bridging-Header.h */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "AtelicStable-Bridging-Header.h"; path = "AtelicStable/AtelicStable-Bridging-Header.h"; sourceTree = "<group>"; };
