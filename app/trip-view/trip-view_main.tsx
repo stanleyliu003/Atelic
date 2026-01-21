@@ -6,6 +6,7 @@ import { useCreateTrip } from '../../context/CreateTripContext';
 import { encodePolyline } from '../../src/utils/polyline';
 import { DaySchedule, TabBar, WishlistActivities } from '../../src/components/trip-view';
 import { TripMapView } from '../../src/components/trip-view/map_view';
+import { ActivityCard } from '../../src/components/trip-view/activity/activity_card';
 import { TransferActivitiesModal } from '../../src/components/trip-view/transfer_activities_modal';
 import { TransferButtonContainer } from '../../src/components/trip-view/transfer_delete_button_containor';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
@@ -27,10 +28,12 @@ import { createTrip } from '../../src/graphql/mutations';
 import { onCreateTripOperation } from '../../src/graphql/subscriptions';
 import { retrieveTripFromCloud } from '../../src/services/lambdaService';
 import Entypo from '@expo/vector-icons/Entypo';
-import { duplicateActivity } from '../../src/utils/activityInstanceId';
+import { duplicateActivity, ensureActivitiesHaveInstanceIds } from '../../src/utils/activityInstanceId';
 import { Operation } from '../../src/types/operation.types';
 import { saveOperation, listOperations } from '../../src/services/tripOperationsService';
 import { verifyStateReconstruction, applyOperation, ReconstructedTripState, TransportModeOverrides } from '../../src/services/tripReconstructionService';
+import { getSavedPlaces } from '../../src/graphql/queries';
+import { filterSavedPlacesByCity } from '../../src/utils/cityMatching';
 
 // GraphQL subscription for real-time trip updates
 const onTripUpdated = /* GraphQL */ `
@@ -127,6 +130,10 @@ export default function TripViewMain() {
     const [selectedCategory, setSelectedCategory] = useState('');
     const [loadingCategoryActivities, setLoadingCategoryActivities] = useState(false);
     const [loadingMoreCategoryActivities, setLoadingMoreCategoryActivities] = useState(false);
+
+    // State for saved places
+    const [allSavedPlaces, setAllSavedPlaces] = useState<any[]>([]);
+    const [loadingSavedPlaces, setLoadingSavedPlaces] = useState(false);
 
     // State for activity detail view
     const [selectedActivityForDetail, setSelectedActivityForDetail] = useState<Activity | null>(null);
@@ -494,12 +501,12 @@ export default function TripViewMain() {
         }
     };
 
-    // Get all activities from the entire trip (wishlist + all days)
+    // Get all activities from the entire trip (trip saved places + all days)
     const getAllActivitiesFromTrip = () => {
-        const wishlistActivities = activities || [];
+        const trip_saved_places_activities = activities || [];
         const allDayActivities = Object.values(dayActivities || {})
             .flatMap(dayObj => Array.isArray((dayObj as any).activities) ? (dayObj as any).activities : []);
-        return [...wishlistActivities, ...allDayActivities];
+        return [...trip_saved_places_activities, ...allDayActivities];
     };
 
     // Get activities for the current tab
@@ -797,7 +804,7 @@ export default function TripViewMain() {
             console.log('[syncNewOperations] 🆕 Found', newOperations.length, 'new operations from other users');
 
             // 3. Get current state from context
-            // Calculate wishlist (activities not assigned to any day) using instanceId membership
+            // Calculate trip saved places (activities not assigned to any day) using instanceId membership
             const dayActivityInstanceIds = Object.values(dayActivities || {})
                 .flatMap((day: any) =>
                     Array.isArray(day.activities)
@@ -806,13 +813,13 @@ export default function TripViewMain() {
                 )
                 .filter((id): id is string => Boolean(id));
 
-            const wishlistActivities =
+            const trip_saved_places_activities =
                 (activities || []).filter(
                     (a: Activity) =>
                         !a.instanceId || !dayActivityInstanceIds.includes(a.instanceId)
                 ) || [];
             const currentState: ReconstructedTripState = {
-                wishlist: wishlistActivities,
+                wishlist: trip_saved_places_activities,
                 dayActivities: dayActivities || {}
             };
 
@@ -837,7 +844,7 @@ export default function TripViewMain() {
             isApplyingRemoteOperationsRef.current = true;
 
             try {
-                // Update wishlist
+                // Update trip saved places
                 if (JSON.stringify(currentState.wishlist) !== JSON.stringify(updatedState.wishlist)) {
                     console.log('[syncNewOperations] Updating wishlist...');
                     updateActivities(updatedState.wishlist);
@@ -1200,7 +1207,7 @@ export default function TripViewMain() {
         }
     }, [tripId, currentUserID, activities, dayActivities, updateActivities, setLegTravelMode]);
 
-    // Function to add activities back to the wishlist
+    // Function to add activities back to the trip saved places
     const addActivitiesToWishlist = (newActivities: Activity[], prependToTop: boolean = false) => {
         // Combine activities - prepend to top if transferring from days, append to end if adding new
         const combinedActivities = prependToTop
@@ -1367,7 +1374,7 @@ export default function TripViewMain() {
         handleTransferToWishlist,
         handleDaySelection,
     } = useTransferActivities({
-        activities: getActivitiesForTab(activeTab), // Pass current tab's activities instead of just wishlist
+        activities: getActivitiesForTab(activeTab), // Pass current tab's activities instead of just trip saved places
         activeTab,
         getSelectedActivities,
         transferActivitiesToDay,
@@ -1375,7 +1382,7 @@ export default function TripViewMain() {
         clearSelection,
         getDayCount,
         onTabChange: handleTabChange, // Pass the tab change handler
-        updateWishlistActivities: addActivitiesToWishlist, // Pass function to add activities back to wishlist
+        updateWishlistActivities: addActivitiesToWishlist, // Pass function to add activities back to trip saved places
     });
 
     // Helper to hash activities for cache key
@@ -1531,10 +1538,10 @@ export default function TripViewMain() {
         });
     }, [dayActivities, activities, daysArray]);
 
-    // Get all available days as an array, and add 'wishlist' as the last option
+    // Get all available days as an array, and add 'wishlist' (trip saved places) as the last option
     const dayCount = getDayCount();
 
-    // Prepare tab order: wishlist first, then all days
+    // Prepare tab order: trip saved places first, then all days
     const tabLabels: TabType[] = [
         'wishlist',
         ...daysArray.filter((d): d is number => typeof d === 'number').map(d => `day${d}` as TabType)
@@ -1771,9 +1778,9 @@ export default function TripViewMain() {
 
         // ✨ NEW: Track deletion of each activity before removing
         selectedActivities.forEach(instanceId => {
-            // Determine if activity is in wishlist or a day
-            const wishlistActivities = getActivitiesForTab('wishlist');
-            const inWishlist = wishlistActivities.some(a => a.instanceId === instanceId);
+            // Determine if activity is in trip saved places or a day
+            const trip_saved_places_activities = getActivitiesForTab('wishlist');
+            const inWishlist = trip_saved_places_activities.some(a => a.instanceId === instanceId);
 
             if (inWishlist) {
                 const op = createOperation('remove', 'wishlist', instanceId);
@@ -2853,12 +2860,7 @@ export default function TripViewMain() {
                 console.log('As date:', new Date(timestamp).toLocaleString());
                 return timestamp;
             };
-            console.log('[trip-view_main] 🛠️ Debug utilities available:');
-            console.log('  - global.verifyTrip() - Run reconstruction verification');
-            console.log('  - global.getOperationLog() - View all operations');
-            console.log('  - global.getSaveQueue() - View pending save queue');
-            console.log('  - global.syncOperations() - Manually trigger operation sync (Stage 3)');
-            console.log('  - global.getLastProcessedTimestamp() - View last synced timestamp');
+
         }
     }, []);
 
@@ -2924,21 +2926,21 @@ export default function TripViewMain() {
     useEffect(() => {
         // Only subscribe if we have a tripId, a current user, and the screen is focused
         if (!tripId) {
-            console.log('[trip-view_main] Skipping operation subscription - no tripId');
+            // console.log('[trip-view_main] Skipping operation subscription - no tripId');
             return;
         }
 
         if (!currentUserID) {
-            console.log('[trip-view_main] Skipping operation subscription - no currentUserID');
+            // console.log('[trip-view_main] Skipping operation subscription - no currentUserID');
             return;
         }
 
         if (!isScreenFocused) {
-            console.log('[trip-view_main] Skipping operation subscription - screen not focused');
+            // console.log('[trip-view_main] Skipping operation subscription - screen not focused');
             return;
         }
 
-        console.log('[trip-view_main] Subscribing to TripOperation events for trip:', tripId);
+        // console.log('[trip-view_main] Subscribing to TripOperation events for trip:', tripId);
 
         const subscription = (API.graphql(
             graphqlOperation(onCreateTripOperation, {
@@ -2974,7 +2976,7 @@ export default function TripViewMain() {
         });
 
         return () => {
-            console.log('[trip-view_main] Unsubscribing from TripOperation events');
+            // console.log('[trip-view_main] Unsubscribing from TripOperation events');
             subscription.unsubscribe();
         };
     }, [tripId, currentUserID, isScreenFocused, syncNewOperations]);
@@ -3058,6 +3060,92 @@ export default function TripViewMain() {
         getCurrentUser();
     }, []);
 
+    // Fetch saved places when component mounts or user changes
+    useEffect(() => {
+        const fetchSavedPlaces = async () => {
+            if (!currentUserID) return;
+
+            try {
+                setLoadingSavedPlaces(true);
+                
+                // IMPORTANT: Saved places are stored using Cognito sub (user.attributes.sub)
+                // not username (user.username), so we need to fetch the user to get the sub
+                const user = await Auth.currentAuthenticatedUser();
+                const cognitoSub = user.attributes.sub;
+                
+                console.log('[trip-view_main] Fetching saved places for Cognito sub:', cognitoSub);
+
+                const result = await API.graphql({
+                    query: getSavedPlaces,
+                    variables: { userID: cognitoSub },
+                });
+
+                const data = (result as any).data.getSavedPlaces;
+                console.log('[trip-view_main] Received saved places:', {
+                    totalCount: data.totalCount,
+                    savedPlacesCount: data.savedPlaces?.length || 0,
+                });
+
+                setAllSavedPlaces(data.savedPlaces || []);
+            } catch (error) {
+                console.error('[trip-view_main] Error fetching saved places:', error);
+            } finally {
+                setLoadingSavedPlaces(false);
+            }
+        };
+
+        fetchSavedPlaces();
+    }, [currentUserID]);
+
+    // Filter saved places by matching city and normalize them into trip activities
+    useEffect(() => {
+        if (!selectedCity) {
+            console.log('[trip-view_main] No selectedCity - skipping saved places filter');
+            return;
+        }
+
+        if (!allSavedPlaces.length) {
+            console.log('[trip-view_main] No saved places to filter for city:', selectedCity);
+            return;
+        }
+
+        console.log('[trip-view_main] Filtering', allSavedPlaces.length, 'saved places for city:', selectedCity);
+        const filtered = filterSavedPlacesByCity(allSavedPlaces, selectedCity);
+        console.log('[trip-view_main] Found', filtered.length, 'matching saved places');
+
+        // Extract activity objects from saved places
+        const savedPlacesActivities = filtered
+            .map((savedPlace) => savedPlace.activity)
+            .filter((activity): activity is Activity => activity != null);
+
+        if (savedPlacesActivities.length === 0) {
+            console.log('[trip-view_main] No saved places activities to add');
+            return;
+        }
+
+        // Normalize saved places: add instanceIds and set correct city
+        const normalizedActivities = ensureActivitiesHaveInstanceIds(
+            savedPlacesActivities.map(activity => ({
+                ...activity,
+                city: selectedCity // Ensure they group under the same city
+            }))
+        );
+
+        // Check which activities are not already in the trip (by place_id to avoid duplicates)
+        const existingPlaceIds = new Set(
+            (activities || []).map(a => a.place_id).filter(Boolean)
+        );
+        
+        const newActivities = normalizedActivities.filter(
+            activity => activity.place_id && !existingPlaceIds.has(activity.place_id)
+        );
+
+        // Add new Instagram saved places to the trip's activities
+        if (newActivities.length > 0) {
+            console.log('[trip-view_main] Adding', newActivities.length, 'new Instagram saved places to trip');
+            updateActivities([...activities, ...newActivities]);
+        }
+    }, [selectedCity, allSavedPlaces, activities, updateActivities]);
 
     // Handle collaboration modal
     const handleShareTrip = async () => {
@@ -3182,9 +3270,9 @@ export default function TripViewMain() {
                 ) : (
                     <>
                         {activeTab === 'wishlist' && (() => {
-                            const wishlistActivities = getActivitiesForTab('wishlist');
-                            const activitiesByCity = wishlistActivities.reduce((acc: { [key: string]: Activity[] }, activity) => {
-                                const city = activity.city || 'Unknown City';
+                            const trip_saved_places_activities = getActivitiesForTab('wishlist');
+                            const activitiesByCity = trip_saved_places_activities.reduce((acc: { [key: string]: Activity[] }, activity) => {
+                                const city = activity.city || selectedCity || 'Unknown City';
                                 if (!acc[city]) acc[city] = [];
                                 acc[city].push(activity);
                                 return acc;
@@ -3196,7 +3284,7 @@ export default function TripViewMain() {
                                     contentContainerStyle={styles.wishlistContent}
                                     showsVerticalScrollIndicator={false}
                                 >
-                                    {wishlistActivities.length === 0 ? (
+                                    {trip_saved_places_activities.length === 0 ? (
                                         <View>
                                             {selectedCity && (
                                                 <Text style={styles.cityTitle}>{selectedCity}</Text>
@@ -3266,6 +3354,7 @@ export default function TripViewMain() {
                                                         onDuplicate={currentUserRole !== 'viewer' ? handleDuplicateActivity : undefined}
                                                         activeTab={activeTab}
                                                         currentUserRole={currentUserRole}
+                                                        hideNotesButton={true}
                                                     />
                                                 </View>
                                             ))}
@@ -3589,7 +3678,7 @@ const styles = StyleSheet.create({
     },
     cityTitle: {
         fontFamily: 'outfit-bold',
-        fontSize: 24,
+        fontSize: 20,
         marginTop: 0,
         textAlign: 'center',
         marginBottom: 13,
@@ -3688,5 +3777,22 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#666',
         marginLeft: 8,
+    },
+    savedPlacesSection: {
+        marginTop: 20,
+        marginBottom: 20,
+    },
+    savedPlacesTitle: {
+        fontFamily: 'outfit-bold',
+        fontSize: 18,
+        color: '#333',
+        marginBottom: 15,
+        textAlign: 'center',
+    },
+    savedPlacesContainer: {
+        gap: 10,
+    },
+    savedPlaceCard: {
+        marginBottom: 5,
     },
 });

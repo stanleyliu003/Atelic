@@ -135,11 +135,11 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
             if (imageUrl && imageUrl.includes('googleapis.com')) {
                 try {
                     const cachePath = await Image.getCachePathAsync(imageUrl);
-                    if (cachePath) {
-                        console.log(`[ActivityImage] ✅ CACHE HIT - Google image loaded from disk cache: ${cachePath}`);
-                    } else {
-                        console.log(`[ActivityImage] ❌ CACHE MISS - Google image will be fetched from network: ${imageUrl.substring(0, 80)}...`);
-                    }
+                    // if (cachePath) {
+                    //     console.log(`[ActivityImage] ✅ CACHE HIT - Google image loaded from disk cache: ${cachePath}`);
+                    // } else {
+                    //     console.log(`[ActivityImage] ❌ CACHE MISS - Google image will be fetched from network: ${imageUrl.substring(0, 80)}...`);
+                    // }
                 } catch (error) {
                     console.log(`[ActivityImage] Cache check error:`, error);
                 }
@@ -159,7 +159,7 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
             // Check cache first
             if (cacheKey && thumbnailCache[cacheKey]) {
                 const cached = thumbnailCache[cacheKey];
-                console.log(`[ActivityImage] Using cached ${cached.source} thumbnail for: ${cacheKey}`);
+                // console.log(`[ActivityImage] Using cached ${cached.source} thumbnail for: ${cacheKey}`);
                 setImageUrl(cached.url);
 
                 // Trigger onPhotoRefUpdate callback if we have a cached photo reference

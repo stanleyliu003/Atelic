@@ -60,7 +60,7 @@ export function TabBar({ activeTab, onTabChange, dayCount, onAddDay, onDeleteDay
           >
             <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
               {tab === 'wishlist'
-                ? 'WishList'
+                ? 'Saved places'
                 : startDate
                   ? formatDayTab(startDate, parseInt(tab.replace('day', '')))
                   : `Day ${tab.replace('day', '')}`

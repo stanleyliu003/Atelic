@@ -98,15 +98,6 @@ export const AutocompleteModal = ({
     setLocalQuery(query);
   }, [query]);
 
-  // Focus search input when modal opens
-  useEffect(() => {
-    if (visible && searchInputRef.current) {
-      // Small delay to ensure modal is fully rendered
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 100);
-    }
-  }, [visible]);
 
   // Debounced fetch autocomplete suggestions
   useEffect(() => {
@@ -415,10 +406,10 @@ export const AutocompleteModal = ({
               </View>
             )}
 
-            {/* Wishlist Activities Section - Show when query is empty, not on wishlist tab, and wishlist has activities */}
+            {/* Trip Saved Places Activities Section - Show when query is empty, not on saved places tab, and saved places has activities */}
             {!addingPlace && !loading && localQuery.length === 0 && activeTab !== 'wishlist' && wishlistActivities.length > 0 && (
               <View style={styles.wishlistSection}>
-                <Text style={styles.recentTitle}>Wishlist</Text>
+                <Text style={styles.recentTitle}>Saved places</Text>
                 <WishlistActivities
                   activities={wishlistActivities}
                   selectedActivities={selectedWishlistActivities}
@@ -509,7 +500,7 @@ export const AutocompleteModal = ({
               <TouchableOpacity style={styles.saveButton} onPress={handleSaveWishlistActivities} activeOpacity={0.8}>
                 <Text style={styles.saveButtonText}>
                   Save
-                  to {activeTab === 'wishlist' ? 'Wishlist' : `Day ${activeTab.replace('day', '')}`}
+                  to {activeTab === 'wishlist' ? 'Saved places' : `Day ${activeTab.replace('day', '')}`}
                 </Text>
               </TouchableOpacity>
             </View>
