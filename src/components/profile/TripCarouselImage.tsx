@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Image, View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { GOOGLE_PLACES_API_KEY, UNSPLASH_ACCESS_KEY } from '../../constants/api';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Colors } from '../../../constants/Colors';
+
+// expo-image blurhash placeholder for smooth loading
+const PLACEHOLDER_BLURHASH = '|rF?hV%2WCj[ayj[a|j[az_NaeWBj@ayfRayfQfQM{M|azj[azf6telebu~qayj[j[fQayWBofofayayayj[fQj[ayayj[ayfjj[ay';
 
 interface TripCarouselImageProps {
   photo_reference?: string | null;
@@ -21,10 +25,24 @@ interface TripCarouselImageProps {
    * This allows the parent to render the correct number of pagination dots.
    */
   onPhotoCountUpdate?: (count: number) => void;
+  /**
+   * Controls whether this image should load. Used for lazy loading carousels.
+   * When false, shows a placeholder instead of fetching the image.
+   * Defaults to true for backward compatibility.
+   */
+  shouldLoad?: boolean;
 }
 
 // Cache to store fetched Unsplash photos by city name
 const unsplashCache: { [cityName: string]: string[] } = {};
+
+// Cache to store Google Places photo URLs by photo_reference or place_id
+// This prevents re-fetching the same photo when navigating back to the list
+interface GooglePhotosCacheEntry {
+  url: string;
+  photoReference?: string; // Store for onPhotoRefUpdate callback
+}
+const googlePhotosCache: { [key: string]: GooglePhotosCacheEntry } = {};
 
 /**
  * TripCarouselImage Component
@@ -50,20 +68,52 @@ export function TripCarouselImage({
   photoIndex = 0,
   style,
   onPhotoRefUpdate,
-  onPhotoCountUpdate
+  onPhotoCountUpdate,
+  shouldLoad = true // Default to true for backward compatibility
 }: TripCarouselImageProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
 
+  // Determine if this is an Unsplash-based image (free) or Google Places (costs money)
+  // Unsplash is used when cityName is provided without a specific photo_reference
+  const isUnsplashImage = !!cityName && !photo_reference;
+
   // Reset state when props change
   useEffect(() => {
+    // Only apply lazy loading to Google Places images (they cost money)
+    // Unsplash images are free, so always load them immediately
+    if (!shouldLoad && !isUnsplashImage) {
+      setIsLoading(false);
+      return;
+    }
+
     setHasAttemptedFetch(false);
     setImageError(false);
     setIsLoading(true);
     fetchImage();
-  }, [cityName, photo_reference, place_id, photoIndex]);
+  }, [cityName, photo_reference, place_id, photoIndex, shouldLoad, isUnsplashImage]);
+
+  // Check if image is in expo-image disk cache and log for verification
+  // This hook must be at the top level, not inside conditional returns
+  useEffect(() => {
+    const checkCacheStatus = async () => {
+      if (imageUrl && imageUrl.includes('googleapis.com')) {
+        try {
+          const cachePath = await Image.getCachePathAsync(imageUrl);
+          if (cachePath) {
+            console.log(`[TripCarouselImage] ✅ CACHE HIT - Google image loaded from disk cache: ${cachePath}`);
+          } else {
+            console.log(`[TripCarouselImage] ❌ CACHE MISS - Google image will be fetched from network: ${imageUrl.substring(0, 80)}...`);
+          }
+        } catch (error) {
+          console.log(`[TripCarouselImage] Cache check error:`, error);
+        }
+      }
+    };
+    checkCacheStatus();
+  }, [imageUrl]);
 
   const fetchImage = async () => {
     if (hasAttemptedFetch) return;
@@ -150,6 +200,23 @@ export function TripCarouselImage({
   };
 
   const fetchGooglePlacesPhoto = async () => {
+    // Generate cache key - prefer photo_reference, fallback to place_id
+    const cacheKey = photo_reference || place_id || '';
+
+    // Check cache first
+    if (cacheKey && googlePhotosCache[cacheKey]) {
+      const cached = googlePhotosCache[cacheKey];
+      console.log(`[TripCarouselImage] Using cached Google Places photo for: ${cacheKey}`);
+      setImageUrl(cached.url);
+      setImageError(false);
+
+      // Trigger onPhotoRefUpdate callback if we have a cached photo reference
+      if (cached.photoReference && onPhotoRefUpdate) {
+        onPhotoRefUpdate(cached.photoReference);
+      }
+      return;
+    }
+
     // If we already have a photo_reference, use it directly (don't refetch)
     // This is important for activity carousels where each item has a specific photo
     if (photo_reference) {
@@ -157,6 +224,11 @@ export function TripCarouselImage({
       const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photo_reference}&key=${GOOGLE_PLACES_API_KEY}`;
       setImageUrl(photoUrl);
       setImageError(false);
+
+      // Cache the result
+      if (cacheKey) {
+        googlePhotosCache[cacheKey] = { url: photoUrl, photoReference: photo_reference };
+      }
       return;
     }
 
@@ -179,6 +251,10 @@ export function TripCarouselImage({
           setImageUrl(photoUrl);
           setImageError(false);
 
+          // Cache the result (cache by both place_id and the new photo_reference)
+          googlePhotosCache[place_id] = { url: photoUrl, photoReference: photoRef };
+          googlePhotosCache[photoRef] = { url: photoUrl, photoReference: photoRef };
+
           // Notify parent of updated photo reference
           if (onPhotoRefUpdate) {
             onPhotoRefUpdate(photoRef);
@@ -198,6 +274,16 @@ export function TripCarouselImage({
     }
   };
 
+  // Show placeholder when lazy loading is deferred (shouldLoad is false)
+  // Only for Google Places images - Unsplash images always load immediately
+  if (!shouldLoad && !isUnsplashImage) {
+    return (
+      <View style={[styles.placeholderContainer, style]}>
+        <FontAwesome name="image" size={40} color={Colors.GRAY} />
+      </View>
+    );
+  }
+
   // Show loading state
   if (isLoading) {
     return (
@@ -216,16 +302,16 @@ export function TripCarouselImage({
     <Image
       style={style}
       source={{ uri: imageUrl }}
-      resizeMode="cover"
+      placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
+      contentFit="cover"
+      transition={200}
+      cachePolicy="disk"
       onError={() => {
         console.log('[TripCarouselImage] Image failed to load');
         setImageError(true);
         if (onPhotoRefUpdate) {
           onPhotoRefUpdate(null);
         }
-      }}
-      onLoad={() => {
-        // Successfully loaded
       }}
     />
   );

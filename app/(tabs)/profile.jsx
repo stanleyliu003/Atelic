@@ -1,8 +1,7 @@
 import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking, PanResponder, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking, PanResponder } from 'react-native';
 import { Auth, API } from 'aws-amplify';
 import { useEffect, useState, useRef } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -12,8 +11,7 @@ import { listUserTripsFromCloud, retrieveTripFromCloud, deleteUserAccountFromClo
 import { deleteTrip } from '../../src/graphql/customMutations';
 import { removeCollaborator } from '../../src/graphql/mutations';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
-import Carousel from 'react-native-reanimated-carousel';
-import { TripCarouselImage } from '../../src/components/profile/TripCarouselImage';
+import { TripCard } from '../../src/components/profile/TripCard';
 import { clearAuthData } from '../../src/services/appGroupsService';
 
 export default function Profile() {
@@ -661,169 +659,28 @@ export default function Profile() {
 
             {/* Owned Trips */}
             {ownedTrips.map((trip) => (
-              <View
+              <TripCard
                 key={`owned-${trip.tripId}`}
-                style={[
-                  styles.tripCard,
-                  selectedTripId === trip.tripId && isLoadingTrip && styles.tripCardLoading
-                ]}
-              >
-                <TouchableOpacity
-                  style={styles.tripCardMainArea}
-                  onPress={() => {
-                    setSelectedTripId(trip.tripId);
-                    handleLoadTrip(trip.tripId);
-                  }}
-                  disabled={isLoadingTrip || deletingTripId === trip.tripId}
-                  activeOpacity={1}
-                >
-                  <View style={styles.tripCardContent}>
-                    {trip.selectedCity ? (
-                      <View style={styles.carouselContainer}>
-                        <Carousel
-                          loop={false}
-                          width={350}
-                          height={170}
-                          data={trip.tripPhotoReference && trip.tripPhotoReference.length > 0
-                            ? trip.tripPhotoReference
-                            : [{}, {}, {}, {}, {}]} // Default 5 empty objects for Unsplash
-                          scrollAnimationDuration={300}
-                          defaultIndex={0}
-                          onSnapToItem={(index) =>
-                            setCarouselIndices(prev => ({ ...prev, [trip.tripId]: index }))
-                          }
-                          renderItem={({ item, index }) => (
-                            <TripCarouselImage
-                              photo_reference={item?.photo_reference}
-                              place_id={item?.place_id}
-                              cityName={trip.selectedCity}
-                              photoIndex={index}
-                              style={styles.tripCardImage}
-                              onPhotoRefUpdate={(newRef) =>
-                                handleTripCarouselPhotoUpdate(trip.tripId, index, newRef)
-                              }
-                              onPhotoCountUpdate={(count) =>
-                                setTripPhotoCounts(prev => ({ ...prev, [trip.tripId]: count }))
-                              }
-                            />
-                          )}
-                        />
-                        {(() => {
-                          const photoCount = tripPhotoCounts[trip.tripId] || 5;
-                          // Only show dots if there's more than 1 photo
-                          if (trip.tripPhotoReference?.length === 1 || photoCount === 1) {
-                            return null;
-                          }
-                          return (
-                            <View style={styles.paginationDots}>
-                              {Array.from({ length: photoCount }, (_, index) => (
-                                <View
-                                  key={index}
-                                  style={[
-                                    styles.dot,
-                                    (carouselIndices[trip.tripId] || 0) === index && styles.activeDot
-                                  ]}
-                                />
-                              ))}
-                            </View>
-                          );
-                        })()}
-                      </View>
-                    ) : (
-                      <Image
-                        source={require('../../assets/images/default_trip.jpg')}
-                        style={styles.tripCardImage}
-                        resizeMode="cover"
-                      />
-                    )}
-                    <View style={styles.tripCardInfo}>
-                      <View style={styles.tripCardTitleRow}>
-                        <Text style={styles.tripCardTitle}>
-                          {trip.selectedCity || 'Unknown City'}
-                        </Text>
-                        {/* Show loading indicator in place of menu button when loading this trip */}
-                        {selectedTripId === trip.tripId && isLoadingTrip ? (
-                          <ActivityIndicator size="small" color={Colors.PRIMARY} style={styles.menuButton} />
-                        ) : (
-                          /* Menu button - show for all users */
-                          <TouchableOpacity
-                            style={styles.menuButton}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              setMenuVisible(trip.tripId);
-                            }}
-                            disabled={isLoadingTrip || deletingTripId === trip.tripId}
-                          >
-                            <FontAwesome6 name="ellipsis" size={24} color={Colors.GRAY} />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                      <Text style={styles.tripCardLength}>
-                        {(() => {
-                          if (trip.startDate && trip.endDate) {
-                            const startDate = new Date(trip.startDate);
-                            const endDate = new Date(trip.endDate);
-                            const sameMonth = startDate.getMonth() === endDate.getMonth() && startDate.getFullYear() === endDate.getFullYear();
-                            
-                            if (sameMonth) {
-                              // Same month/year: "Jan 15 - 20, 2025"
-                              const startFormatted = startDate.toLocaleDateString(undefined, {
-                                month: 'short',
-                                day: 'numeric'
-                              });
-                              const endDay = endDate.getDate();
-                              const year = endDate.getFullYear();
-                              return `${startFormatted} - ${endDay}, ${year}`;
-                            } else if (startDate.getFullYear() === endDate.getFullYear()) {
-                              // Different month but same year: "Dec 28 - Jan 7, 2026"
-                              const startFormatted = startDate.toLocaleDateString(undefined, {
-                                month: 'short',
-                                day: 'numeric'
-                              });
-                              const endFormatted = endDate.toLocaleDateString(undefined, {
-                                month: 'short',
-                                day: 'numeric'
-                              });
-                              const year = endDate.getFullYear();
-                              return `${startFormatted} - ${endFormatted}, ${year}`;
-                            } else {
-                              // Different month/year: "Dec 28, 2025 - Jan 7, 2026"
-                              const startFormatted = startDate.toLocaleDateString(undefined, {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric'
-                              });
-                              const endFormatted = endDate.toLocaleDateString(undefined, {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric'
-                              });
-                              return `${startFormatted} - ${endFormatted}`;
-                            }
-                          } else if (trip.startDate) {
-                            // Only start date
-                            return new Date(trip.startDate).toLocaleDateString(undefined, {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            });
-                          } else if (trip.endDate) {
-                            // Only end date
-                            return new Date(trip.endDate).toLocaleDateString(undefined, {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            });
-                          } else {
-                            // No dates - show trip duration
-                            return trip.tripLength != null ? `${trip.tripLength} day trip` : 'Unknown length';
-                          }
-                        })()}
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              </View>
+                trip={trip}
+                tripKey={trip.tripId}
+                isLoading={isLoadingTrip}
+                isDeleting={deletingTripId === trip.tripId}
+                isSelected={selectedTripId === trip.tripId}
+                onPress={() => {
+                  setSelectedTripId(trip.tripId);
+                  handleLoadTrip(trip.tripId);
+                }}
+                onMenuPress={() => setMenuVisible(trip.tripId)}
+                onPhotoRefUpdate={handleTripCarouselPhotoUpdate}
+                onPhotoCountUpdate={(key, count) =>
+                  setTripPhotoCounts(prev => ({ ...prev, [key]: count }))
+                }
+                photoCount={tripPhotoCounts[trip.tripId] || 5}
+                currentCarouselIndex={carouselIndices[trip.tripId] || 0}
+                onCarouselIndexChange={(key, index) =>
+                  setCarouselIndices(prev => ({ ...prev, [key]: index }))
+                }
+              />
             ))}
 
             {/* Shared With Me Section Header */}
@@ -833,171 +690,28 @@ export default function Profile() {
 
             {/* Shared Trips */}
             {sharedTrips.map((trip) => (
-              <View
+              <TripCard
                 key={`shared-${trip.tripId}`}
-                style={[
-                  styles.tripCard,
-                  selectedTripId === trip.tripId && isLoadingTrip && styles.tripCardLoading
-                ]}
-              >
-                <TouchableOpacity
-                  style={styles.tripCardMainArea}
-                  onPress={() => {
-                    setSelectedTripId(trip.tripId);
-                    handleLoadTrip(trip.tripId);
-                  }}
-                  disabled={isLoadingTrip || deletingTripId === trip.tripId}
-                  activeOpacity={1}
-                >
-                  <View style={styles.tripCardContent}>
-                    {trip.selectedCity ? (
-                      <View style={styles.carouselContainer}>
-                        <Carousel
-                          loop={false}
-                          width={350}
-                          height={170}
-                          data={trip.tripPhotoReference && trip.tripPhotoReference.length > 0
-                            ? trip.tripPhotoReference
-                            : [{}, {}, {}, {}, {}]} // Default 5 empty objects for Unsplash
-                          scrollAnimationDuration={300}
-                          defaultIndex={0}
-                          onSnapToItem={(index) =>
-                            setCarouselIndices(prev => ({ ...prev, [`shared-${trip.tripId}`]: index }))
-                          }
-                          renderItem={({ item, index }) => (
-                            <TripCarouselImage
-                              photo_reference={item?.photo_reference}
-                              place_id={item?.place_id}
-                              cityName={trip.selectedCity}
-                              photoIndex={index}
-                              style={styles.tripCardImage}
-                              onPhotoRefUpdate={(newRef) =>
-                                handleTripCarouselPhotoUpdate(trip.tripId, index, newRef)
-                              }
-                              onPhotoCountUpdate={(count) =>
-                                setTripPhotoCounts(prev => ({ ...prev, [`shared-${trip.tripId}`]: count }))
-                              }
-                            />
-                          )}
-                        />
-                        {(() => {
-                          const photoCount = tripPhotoCounts[`shared-${trip.tripId}`] || 5;
-                          // Only show dots if there's more than 1 photo
-                          if (trip.tripPhotoReference?.length === 1 || photoCount === 1) {
-                            return null;
-                          }
-                          return (
-                            <View style={styles.paginationDots}>
-                              {Array.from({ length: photoCount }, (_, index) => (
-                                <View
-                                  key={index}
-                                  style={[
-                                    styles.dot,
-                                    (carouselIndices[`shared-${trip.tripId}`] || 0) === index && styles.activeDot
-                                  ]}
-                                />
-                              ))}
-                            </View>
-                          );
-                        })()}
-                      </View>
-                    ) : (
-                      <Image
-                        source={require('../../assets/images/default_trip.jpg')}
-                        style={styles.tripCardImage}
-                        resizeMode="cover"
-                      />
-                    )}
-                    <View style={styles.tripCardInfo}>
-                      <View style={styles.tripCardTitleRow}>
-                        <Text style={styles.tripCardTitle}>
-                          {trip.selectedCity || 'Unknown City'}
-                        </Text>
-                        {/* Show loading indicator in place of menu button when loading this trip */}
-                        {selectedTripId === trip.tripId && isLoadingTrip ? (
-                          <ActivityIndicator size="small" color={Colors.PRIMARY} style={styles.menuButton} />
-                        ) : (
-                          /* Menu button - show for all users */
-                          <TouchableOpacity
-                            style={styles.menuButton}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              setMenuVisible(trip.tripId);
-                            }}
-                            disabled={isLoadingTrip || deletingTripId === trip.tripId}
-                          >
-                            <FontAwesome6 name="ellipsis" size={24} color={Colors.GRAY} />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                      <Text style={styles.tripCardLength}>
-                        {(() => {
-                          const referenceDate = trip.startDate ? new Date(trip.startDate) : (trip.createdAt ? new Date(trip.createdAt) : null);
-                          
-                          if (referenceDate && trip.endDate) {
-                            const endDate = new Date(trip.endDate);
-                            const sameMonth = referenceDate.getMonth() === endDate.getMonth() && referenceDate.getFullYear() === endDate.getFullYear();
-                            
-                            if (sameMonth) {
-                              // Same month/year: "Jan 15 - 20, 2025"
-                              const startFormatted = referenceDate.toLocaleDateString(undefined, {
-                                month: 'short',
-                                day: 'numeric'
-                              });
-                              const endDay = endDate.getDate();
-                              const year = endDate.getFullYear();
-                              return `${startFormatted} - ${endDay}, ${year}`;
-                            } else if (referenceDate.getFullYear() === endDate.getFullYear()) {
-                              // Different month but same year: "Dec 28 - Jan 7, 2026"
-                              const startFormatted = referenceDate.toLocaleDateString(undefined, {
-                                month: 'short',
-                                day: 'numeric'
-                              });
-                              const endFormatted = endDate.toLocaleDateString(undefined, {
-                                month: 'short',
-                                day: 'numeric'
-                              });
-                              const year = endDate.getFullYear();
-                              return `${startFormatted} - ${endFormatted}, ${year}`;
-                            } else {
-                              // Different month/year: "Dec 28, 2025 - Jan 7, 2026"
-                              const startFormatted = referenceDate.toLocaleDateString(undefined, {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric'
-                              });
-                              const endFormatted = endDate.toLocaleDateString(undefined, {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric'
-                              });
-                              return `${startFormatted} - ${endFormatted}`;
-                            }
-                          } else if (referenceDate) {
-                            // Only reference date (startDate or createdAt)
-                            return referenceDate.toLocaleDateString(undefined, {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            });
-                          } else if (trip.endDate) {
-                            // Only end date
-                            return new Date(trip.endDate).toLocaleDateString(undefined, {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            });
-                          } else {
-                            // No dates - show trip duration
-                            return trip.tripLength != null ? `${trip.tripLength} day trip` : 'Unknown length';
-                          }
-                        })()}
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-
-              </View>
+                trip={trip}
+                tripKey={`shared-${trip.tripId}`}
+                isLoading={isLoadingTrip}
+                isDeleting={deletingTripId === trip.tripId}
+                isSelected={selectedTripId === trip.tripId}
+                onPress={() => {
+                  setSelectedTripId(trip.tripId);
+                  handleLoadTrip(trip.tripId);
+                }}
+                onMenuPress={() => setMenuVisible(trip.tripId)}
+                onPhotoRefUpdate={handleTripCarouselPhotoUpdate}
+                onPhotoCountUpdate={(key, count) =>
+                  setTripPhotoCounts(prev => ({ ...prev, [key]: count }))
+                }
+                photoCount={tripPhotoCounts[`shared-${trip.tripId}`] || 5}
+                currentCarouselIndex={carouselIndices[`shared-${trip.tripId}`] || 0}
+                onCarouselIndexChange={(key, index) =>
+                  setCarouselIndices(prev => ({ ...prev, [key]: index }))
+                }
+              />
             ))}
               </>
             ) : (

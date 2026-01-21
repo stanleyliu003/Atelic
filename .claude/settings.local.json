@@ -59,7 +59,8 @@
       "Bash(tee:*)",
       "Bash(python3:*)",
       "Bash(aws cloudformation list-stacks:*)",
-      "Bash(git check-ignore:*)"
+      "Bash(git check-ignore:*)",
+      "Bash(npx expo install:*)"
     ],
     "deny": [],
     "ask": [],

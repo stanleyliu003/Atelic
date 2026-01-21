@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Image, Text, View, ActivityIndicator } from 'react-native';
+import { Text, View, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { GOOGLE_PLACES_API_KEY, UNSPLASH_ACCESS_KEY } from '../../../constants/api';
+
+// expo-image blurhash placeholder for smooth loading
+const PLACEHOLDER_BLURHASH = '|rF?hV%2WCj[ayj[a|j[az_NaeWBj@ayfRayfQfQM{M|azj[azf6telebu~qayj[j[fQayWBofofayayayj[fQj[ayayj[ayfjj[ay';
 
 interface ActivityImageProps {
     photo_reference: string;
@@ -56,6 +60,15 @@ const GOOGLE_PLACES_PRIORITY_TYPES = [
   'hair_care',
   'beauty_salon',
 ];
+
+// Module-level cache for thumbnail URLs to prevent re-fetching
+// Keyed by place_id (preferred) or activityName as fallback
+interface ThumbnailCacheEntry {
+  url: string;
+  source: 'unsplash' | 'google';
+  photoReference?: string; // Store for onPhotoRefUpdate callback
+}
+const thumbnailCache: { [key: string]: ThumbnailCacheEntry } = {};
 
 // Helper function to determine if we should use Unsplash first
 const shouldUseUnsplashFirst = (primaryType?: string, types?: string[]): boolean => {
@@ -115,10 +128,47 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
         fetchPhoto();
     }, [activityName, photo_reference, place_id]);
 
+    // Check if image is in expo-image disk cache and log for verification
+    // This hook must be at the top level, not inside conditional returns
+    useEffect(() => {
+        const checkCacheStatus = async () => {
+            if (imageUrl && imageUrl.includes('googleapis.com')) {
+                try {
+                    const cachePath = await Image.getCachePathAsync(imageUrl);
+                    if (cachePath) {
+                        console.log(`[ActivityImage] ✅ CACHE HIT - Google image loaded from disk cache: ${cachePath}`);
+                    } else {
+                        console.log(`[ActivityImage] ❌ CACHE MISS - Google image will be fetched from network: ${imageUrl.substring(0, 80)}...`);
+                    }
+                } catch (error) {
+                    console.log(`[ActivityImage] Cache check error:`, error);
+                }
+            }
+        };
+        checkCacheStatus();
+    }, [imageUrl]);
+
     const fetchPhoto = async () => {
         try {
             setIsLoading(true);
             setImageError(false);
+
+            // Generate cache key - prefer place_id, fallback to activityName
+            const cacheKey = place_id || activityName || '';
+
+            // Check cache first
+            if (cacheKey && thumbnailCache[cacheKey]) {
+                const cached = thumbnailCache[cacheKey];
+                console.log(`[ActivityImage] Using cached ${cached.source} thumbnail for: ${cacheKey}`);
+                setImageUrl(cached.url);
+
+                // Trigger onPhotoRefUpdate callback if we have a cached photo reference
+                if (cached.photoReference && onPhotoRefUpdate) {
+                    onPhotoRefUpdate(cached.photoReference);
+                }
+                setIsLoading(false);
+                return;
+            }
 
             const useUnsplashFirst = shouldUseUnsplashFirst(primaryType, types);
 
@@ -128,23 +178,31 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
 
                 if (unsplashUrl) {
                     setImageUrl(unsplashUrl);
+                    // Cache the result
+                    if (cacheKey) {
+                        thumbnailCache[cacheKey] = { url: unsplashUrl, source: 'unsplash' };
+                    }
                     setIsLoading(false);
                     return;
                 }
 
                 // Fallback to Google Places
-                await fetchGooglePlacesPhoto();
+                await fetchGooglePlacesPhoto(cacheKey);
             } else {
                 // For local businesses: Use Google Places first
                 const hasGooglePhoto = !!photo_reference;
 
                 if (hasGooglePhoto) {
-                    await fetchGooglePlacesPhoto();
+                    await fetchGooglePlacesPhoto(cacheKey);
                 } else {
                     // No Google Places photos available, fallback to Unsplash
                     const unsplashUrl = await fetchUnsplashImage(activityName || '');
                     if (unsplashUrl) {
                         setImageUrl(unsplashUrl);
+                        // Cache the result
+                        if (cacheKey) {
+                            thumbnailCache[cacheKey] = { url: unsplashUrl, source: 'unsplash' };
+                        }
                     } else {
                         setImageError(true);
                     }
@@ -152,7 +210,8 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
             }
         } catch (error) {
             console.error('[ActivityImage] Error fetching photo:', error);
-            await fetchGooglePlacesPhoto();
+            const cacheKey = place_id || activityName || '';
+            await fetchGooglePlacesPhoto(cacheKey);
         } finally {
             setIsLoading(false);
         }
@@ -183,7 +242,7 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
         }
     };
 
-    const fetchGooglePlacesPhoto = async () => {
+    const fetchGooglePlacesPhoto = async (cacheKey: string) => {
         // Try to fetch from Google Places API if we have place_id
         if (place_id) {
             try {
@@ -195,6 +254,11 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
                     const photoRef = data.result.photos[0].photo_reference;
                     const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoRef}&key=${GOOGLE_PLACES_API_KEY}`;
                     setImageUrl(photoUrl);
+
+                    // Cache the result
+                    if (cacheKey) {
+                        thumbnailCache[cacheKey] = { url: photoUrl, source: 'google', photoReference: photoRef };
+                    }
 
                     // Notify parent of updated photo reference
                     if (onPhotoRefUpdate) {
@@ -211,6 +275,11 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
         if (photo_reference) {
             const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photo_reference}&key=${GOOGLE_PLACES_API_KEY}`;
             setImageUrl(photoUrl);
+
+            // Cache the result
+            if (cacheKey) {
+                thumbnailCache[cacheKey] = { url: photoUrl, source: 'google', photoReference: photo_reference };
+            }
         } else {
             setImageError(true);
         }
@@ -240,6 +309,10 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
         <Image
             style={style}
             source={{ uri: imageUrl }}
+            placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="disk"
             onError={() => {
                 // If image fails to load, show error
                 setImageError(true);

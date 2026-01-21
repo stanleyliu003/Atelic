@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Image, Dimensions, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Dimensions, ActivityIndicator, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import Carousel from 'react-native-reanimated-carousel';
 import { Activity } from '../../../types/activity.types';
 import { Colors } from '../../../../constants/Colors';
 import { TripCarouselImage } from '../../profile/TripCarouselImage';
+import { useLazyCarousel } from '../../../hooks/useLazyCarousel';
 import { GOOGLE_PLACES_API_KEY, UNSPLASH_ACCESS_KEY } from '../../../constants/api';
+
+// expo-image blurhash placeholder for smooth loading
+const PLACEHOLDER_BLURHASH = '|rF?hV%2WCj[ayj[a|j[az_NaeWBj@ayfRayfQfQM{M|azj[azf6telebu~qayj[j[fQayWBofofayayayj[fQj[ayayj[ayfjj[ay';
 
 interface ActivityPhotoCarouselProps {
   activity: Activity;
@@ -131,6 +136,9 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const width = Dimensions.get('window').width - 32;
+
+  // Lazy loading for Google Places photos (Unsplash is free, so no need to lazy load)
+  const { onSnapToItem: onGoogleSnapToItem, shouldLoad: shouldLoadGoogle } = useLazyCarousel(photos.length || 5);
 
   useEffect(() => {
     fetchPhotos();
@@ -304,7 +312,10 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
           <Image
             source={{ uri: unsplashUrls[0] }}
             style={[styles.carouselImage, { width, height }]}
-            resizeMode="cover"
+            placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="disk"
           />
         </View>
       );
@@ -325,7 +336,10 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
             <Image
               source={{ uri: item }}
               style={[styles.carouselImage, { width, height }]}
-              resizeMode="cover"
+              placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
+              contentFit="cover"
+              transition={200}
+              cachePolicy="disk"
             />
           )}
         />
@@ -367,7 +381,12 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
     );
   }
 
-  // Multiple Google Places photos
+  // Multiple Google Places photos - with lazy loading to reduce API costs
+  const handleGoogleCarouselSnap = (index: number) => {
+    setCurrentIndex(index);
+    onGoogleSnapToItem(index);
+  };
+
   return (
     <View style={styles.container}>
       <Carousel
@@ -377,12 +396,13 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
         data={photos}
         scrollAnimationDuration={300}
         defaultIndex={0}
-        onSnapToItem={setCurrentIndex}
+        onSnapToItem={handleGoogleCarouselSnap}
         renderItem={({ item, index }) => (
           <TripCarouselImage
             photo_reference={item.photo_reference}
             place_id={item.place_id}
             style={[styles.carouselImage, { width, height }]}
+            shouldLoad={shouldLoadGoogle(index)}
             onPhotoRefUpdate={(newRef) => handlePhotoRefUpdate(index, newRef)}
           />
         )}

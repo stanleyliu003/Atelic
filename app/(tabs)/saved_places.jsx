@@ -14,9 +14,8 @@ import {
 } from 'react-native';
 import { getSavedPlaces } from '../../src/graphql/queries';
 import { CitySavedPlacesModal } from '../../src/components/saved-places/CitySavedPlacesModal';
+import { CityCard } from '../../src/components/saved-places/CityCard';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import Carousel from 'react-native-reanimated-carousel';
-import { TripCarouselImage } from '../../src/components/profile/TripCarouselImage';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -159,70 +158,21 @@ export default function SavedPlaces() {
               const imageHeight = cardWidth * 1.5; // 1.5x vertical height
 
               return (
-                <TouchableOpacity
+                <CityCard
                   key={`${cityData.city}-${index}`}
-                  style={[styles.cityCard, { width: cardWidth }]}
+                  cityData={cityData}
+                  cardWidth={cardWidth}
+                  imageHeight={imageHeight}
                   onPress={() => handleCityPress(cityData)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.carouselContainer}>
-                    <Carousel
-                      loop={false}
-                      width={cardWidth}
-                      height={imageHeight}
-                      data={[{}, {}, {}, {}, {}]} // Default 5 empty objects for Unsplash
-                      scrollAnimationDuration={300}
-                      defaultIndex={0}
-                      onSnapToItem={(carouselIndex) =>
-                        setCarouselIndices(prev => ({ 
-                          ...prev, 
-                          [cityData.city]: carouselIndex 
-                        }))
-                      }
-                      renderItem={({ item, index: carouselIndex }) => (
-                        <TripCarouselImage
-                          cityName={cityData.city}
-                          photoIndex={carouselIndex}
-                          style={[styles.cityCardImage, { height: imageHeight }]}
-                          onPhotoCountUpdate={(count) =>
-                            setCityPhotoCounts(prev => ({ 
-                              ...prev, 
-                              [cityData.city]: count 
-                            }))
-                          }
-                        />
-                      )}
-                    />
-                    {(() => {
-                      const photoCount = cityPhotoCounts[cityData.city] || 5;
-                      // Only show dots if there's more than 1 photo
-                      if (photoCount === 1) {
-                        return null;
-                      }
-                      return (
-                        <View style={styles.paginationDots}>
-                          {Array.from({ length: photoCount }, (_, dotIndex) => (
-                            <View
-                              key={dotIndex}
-                              style={[
-                                styles.dot,
-                                (carouselIndices[cityData.city] || 0) === dotIndex && styles.activeDot
-                              ]}
-                            />
-                          ))}
-                        </View>
-                      );
-                    })()}
-                  </View>
-                  <View style={styles.cityCardInfo}>
-                    <Text style={styles.cityName} numberOfLines={1}>
-                      {cityData.city}
-                    </Text>
-                    <Text style={styles.cityCount}>
-                      {cityData.count} place{cityData.count !== 1 ? 's' : ''}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                  onPhotoCountUpdate={(city, count) =>
+                    setCityPhotoCounts(prev => ({ ...prev, [city]: count }))
+                  }
+                  photoCount={cityPhotoCounts[cityData.city] || 5}
+                  currentCarouselIndex={carouselIndices[cityData.city] || 0}
+                  onCarouselIndexChange={(city, idx) =>
+                    setCarouselIndices(prev => ({ ...prev, [city]: idx }))
+                  }
+                />
               );
             })}
           </View>
@@ -334,68 +284,5 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginTop: 10,
-  },
-  cityCard: {
-    backgroundColor: Colors.WHITE,
-    borderRadius: 12,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-    overflow: 'hidden',
-  },
-  carouselContainer: {
-    position: 'relative',
-    overflow: 'hidden',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-  },
-  cityCardImage: {
-    width: '100%',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-  },
-  paginationDots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'absolute',
-    bottom: 8,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    marginHorizontal: 3,
-  },
-  activeDot: {
-    backgroundColor: Colors.WHITE,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  cityCardInfo: {
-    padding: 12,
-    alignItems: 'flex-start',
-  },
-  cityName: {
-    fontFamily: 'outfit-medium',
-    fontSize: 16,
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  cityCount: {
-    fontFamily: 'outfit',
-    fontSize: 13,
-    color: Colors.GRAY,
   },
 });
