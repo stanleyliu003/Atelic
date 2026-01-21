@@ -300,7 +300,7 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
               <View style={styles.footer}>
                 <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.8}>
                   <Text style={styles.saveButtonText}>
-                    Save to Wishlist
+                    Save Place
                   </Text>
                 </TouchableOpacity>
               </View>

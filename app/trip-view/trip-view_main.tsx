@@ -134,6 +134,7 @@ export default function TripViewMain() {
     // State for saved places
     const [allSavedPlaces, setAllSavedPlaces] = useState<any[]>([]);
     const [loadingSavedPlaces, setLoadingSavedPlaces] = useState(false);
+    const [displayCityName, setDisplayCityName] = useState<string>(''); // Short city name for display
 
     // State for activity detail view
     const [selectedActivityForDetail, setSelectedActivityForDetail] = useState<Activity | null>(null);
@@ -3123,11 +3124,17 @@ export default function TripViewMain() {
             return;
         }
 
+        // Save the short city name from Instagram saved places for display
+        // Use the first activity's city name (more concise than selectedCity)
+        if (savedPlacesActivities.length > 0 && savedPlacesActivities[0].city) {
+            setDisplayCityName(savedPlacesActivities[0].city);
+        }
+
         // Normalize saved places: add instanceIds and set correct city
         const normalizedActivities = ensureActivitiesHaveInstanceIds(
             savedPlacesActivities.map(activity => ({
                 ...activity,
-                city: selectedCity // Ensure they group under the same city
+                city: selectedCity // Ensure they group under the same city for grouping
             }))
         );
 
@@ -3286,8 +3293,8 @@ export default function TripViewMain() {
                                 >
                                     {trip_saved_places_activities.length === 0 ? (
                                         <View>
-                                            {selectedCity && (
-                                                <Text style={styles.cityTitle}>{selectedCity}</Text>
+                                            {(displayCityName || selectedCity) && (
+                                                <Text style={styles.cityTitle}>{displayCityName || selectedCity}</Text>
                                             )}
                                             {/* SearchBar hide for viewers */}
                                             {currentUserRole !== 'viewer' && (
@@ -3343,7 +3350,7 @@ export default function TripViewMain() {
                                         <>
                                             {Object.entries(activitiesByCity).map(([city, cityActivities]: [string, Activity[]]) => (
                                                 <View key={`wishlist-${city}`} style={styles.citySection}>
-                                                    <Text style={styles.cityTitle}>{city}</Text>
+                                                    <Text style={styles.cityTitle}>{displayCityName || city}</Text>
                                                     <WishlistActivities
                                                         activities={cityActivities}
                                                         selectedActivities={selectedActivities}
@@ -3678,7 +3685,7 @@ const styles = StyleSheet.create({
     },
     cityTitle: {
         fontFamily: 'outfit-bold',
-        fontSize: 20,
+        fontSize: 25,
         marginTop: 0,
         textAlign: 'center',
         marginBottom: 13,
