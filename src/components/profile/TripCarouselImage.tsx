@@ -82,6 +82,11 @@ export function TripCarouselImage({
 
   // Reset state when props change
   useEffect(() => {
+    // If image is already loaded successfully, don't re-fetch
+    if (imageUrl && !imageError) {
+      return;
+    }
+
     // Only apply lazy loading to Google Places images (they cost money)
     // Unsplash images are free, so always load them immediately
     if (!shouldLoad && !isUnsplashImage) {
@@ -116,7 +121,8 @@ export function TripCarouselImage({
   }, [imageUrl]);
 
   const fetchImage = async () => {
-    if (hasAttemptedFetch) return;
+    // Note: hasAttemptedFetch guard removed - useEffect controls when to fetch
+    // The guard was causing a race condition with async state updates
 
     try {
       setIsLoading(true);
@@ -150,7 +156,6 @@ export function TripCarouselImage({
         // Return the photo at the given index (with wrapping)
         const photos = unsplashCache[query];
         const photoUrl = photos[index % photos.length];
-        console.log(`[TripCarouselImage] Using cached Unsplash image ${index} for: ${query}`);
 
         // Notify parent of the total photo count (only on first image)
         if (index === 0 && onPhotoCountUpdate) {
@@ -163,8 +168,6 @@ export function TripCarouselImage({
       // Search for city landscape/skyline photos - fetch 5 different photos
       const searchQuery = `${query} city skyline landmark`;
       const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchQuery)}&per_page=5&orientation=landscape&client_id=${UNSPLASH_ACCESS_KEY}`;
-
-      console.log(`[TripCarouselImage] Fetching 5 Unsplash images for: ${query}`);
 
       const response = await fetch(url);
 
@@ -180,8 +183,6 @@ export function TripCarouselImage({
         const photoUrls = data.results.map((photo: any) => photo.urls.regular);
         unsplashCache[query] = photoUrls;
 
-        console.log(`[TripCarouselImage] Successfully fetched ${photoUrls.length} Unsplash images for: ${query}`);
-
         // Notify parent of the total photo count (only on first image)
         if (index === 0 && onPhotoCountUpdate) {
           onPhotoCountUpdate(photoUrls.length);
@@ -191,7 +192,6 @@ export function TripCarouselImage({
         return photoUrls[index % photoUrls.length];
       }
 
-      console.log(`[TripCarouselImage] No Unsplash results for: ${query}`);
       return null;
     } catch (error) {
       console.error('[TripCarouselImage] Error fetching Unsplash images:', error);
