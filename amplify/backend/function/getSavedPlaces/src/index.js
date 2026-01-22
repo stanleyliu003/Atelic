@@ -100,7 +100,7 @@ async function getSavedPlacesByCity(userID, city) {
 /**
  * Group saved places by city
  * @param {Array<object>} savedPlaces - All saved places
- * @returns {Array<object>} - Cities with counts
+ * @returns {Array<object>} - Cities with counts, sorted by most recently updated
  */
 function groupByCity(savedPlaces) {
     const cityMap = {};
@@ -111,17 +111,36 @@ function groupByCity(savedPlaces) {
             cityMap[city] = {
                 city: city,
                 count: 0,
-                places: []
+                places: [],
+                lastUpdatedAt: null
             };
         }
         cityMap[city].count++;
         cityMap[city].places.push(place);
+
+        // Track the most recent savedAt timestamp for this city
+        const placeSavedAt = place.savedAt;
+        if (placeSavedAt) {
+            if (!cityMap[city].lastUpdatedAt || placeSavedAt > cityMap[city].lastUpdatedAt) {
+                cityMap[city].lastUpdatedAt = placeSavedAt;
+            }
+        }
     }
 
-    // Convert to array and sort by count (descending)
-    const cities = Object.values(cityMap).sort((a, b) => b.count - a.count);
+    // Convert to array and sort by lastUpdatedAt (most recent first)
+    const cities = Object.values(cityMap).sort((a, b) => {
+        // If both have timestamps, sort by most recent first
+        if (a.lastUpdatedAt && b.lastUpdatedAt) {
+            return b.lastUpdatedAt.localeCompare(a.lastUpdatedAt);
+        }
+        // If only one has a timestamp, prioritize the one with timestamp
+        if (a.lastUpdatedAt && !b.lastUpdatedAt) return -1;
+        if (!a.lastUpdatedAt && b.lastUpdatedAt) return 1;
+        // If neither has a timestamp, sort by count (descending)
+        return b.count - a.count;
+    });
 
-    console.log(`[getSavedPlaces] Grouped into ${cities.length} cities`);
+    console.log(`[getSavedPlaces] Grouped into ${cities.length} cities, sorted by lastUpdatedAt`);
     return cities;
 }
 
