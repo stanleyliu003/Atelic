@@ -2,7 +2,7 @@ import 'react-native-get-random-values';
 import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
-import { useNavigation, useRouter } from 'expo-router';
+import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Animated, PanResponder, Switch, TouchableWithoutFeedback, Keyboard, ActivityIndicator, Alert } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
@@ -14,9 +14,10 @@ import CalendarPicker from 'react-native-calendar-picker';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import { createTrip } from '../../src/graphql/mutations';
 
-export default function create_trip_1_city({ showBackButton = true }) {
+export default function create_trip_1_city({ showBackButton = true, prefilledCity: prefilledCityProp = null }) {
     const router = useRouter();
     const navigation = useNavigation();
+    const params = useLocalSearchParams();
     const {
         setIsCreatingTrip,
         selectedCity,
@@ -164,6 +165,30 @@ export default function create_trip_1_city({ showBackButton = true }) {
             setCityCategories(null);
         }
     }, [selectedCity, setCityCategories])
+
+    // Handle prefilled city from props or route params (e.g., from Saved Places)
+    useEffect(() => {
+        // Prefer prop over route params (prop is used when rendered as component)
+        const prefilledCity = prefilledCityProp || params.prefilledCity;
+
+        if (prefilledCity) {
+            // Use setTimeout to ensure the GooglePlacesAutocomplete ref is ready
+            setTimeout(() => {
+                if (googlePlacesRef.current) {
+                    // Set the text in the search field
+                    googlePlacesRef.current.setAddressText(prefilledCity);
+                    setSearchText(prefilledCity);
+                    setSelectedCity(prefilledCity);
+                    selectedCityRef.current = prefilledCity;
+                    setHasSelectedPlace(true);
+                    // Fetch city categories for this city
+                    fetchCityCategories(prefilledCity);
+                } else {
+                    console.warn('[create_trip_1_city] googlePlacesRef not ready after timeout');
+                }
+            }, 150);
+        }
+    }, [prefilledCityProp, params.prefilledCity])
 
 
 

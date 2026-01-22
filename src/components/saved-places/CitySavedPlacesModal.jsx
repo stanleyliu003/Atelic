@@ -12,10 +12,21 @@ import { Colors } from '../../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ActivityCard } from '../trip-view/activity/activity_card';
 import { ActivityDetailView } from '../trip-view/description_card';
+import { useRouter } from 'expo-router';
 
 export function CitySavedPlacesModal({ visible, onClose, cityName, places }) {
+  const router = useRouter();
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [descriptionCardVisible, setDescriptionCardVisible] = useState(false);
+
+  const handleCreateTrip = () => {
+    console.log('[CitySavedPlacesModal] handleCreateTrip called with cityName:', cityName);
+    onClose(); // Close the modal first
+    router.push({
+      pathname: '/(tabs)/create_new_trip',
+      params: { prefilledCity: cityName }
+    });
+  };
 
   const handleActivityPress = (activity) => {
     setSelectedActivity(activity);
@@ -90,6 +101,16 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places }) {
           </View>
         )}
 
+        {/* Create Trip Button */}
+        <View style={styles.createTripButtonContainer}>
+          <TouchableOpacity
+            style={styles.createTripButton}
+            onPress={handleCreateTrip}
+          >
+            <Text style={styles.createTripButtonText}>Create Trip</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Description Card Modal */}
         <Modal
           visible={descriptionCardVisible}
@@ -139,7 +160,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 100, // Extra padding for the fixed button at bottom
   },
   emptyContainer: {
     flex: 1,
@@ -153,5 +174,29 @@ const styles = StyleSheet.create({
     color: Colors.GRAY,
     marginTop: 16,
     textAlign: 'center',
+  },
+  createTripButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingBottom: 34,
+    paddingTop: 12,
+    backgroundColor: Colors.WHITE,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e5e5',
+  },
+  createTripButton: {
+    backgroundColor: '#F36406',
+    borderRadius: 15,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createTripButtonText: {
+    color: Colors.WHITE,
+    fontFamily: 'outfit-bold',
+    fontSize: 17,
   },
 });

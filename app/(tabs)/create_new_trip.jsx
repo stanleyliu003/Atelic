@@ -1,9 +1,12 @@
 import { useEffect } from 'react';
+import { useLocalSearchParams } from 'expo-router';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import CreateTrip1City from '../create-trip/create_trip_1_city';
 
 export default function Create_New_Trip() {
   const { completeReset } = useCreateTrip();
+  const params = useLocalSearchParams();
+
 
   useEffect(() => {
     // Always clear cached data when this tab opens
@@ -14,5 +17,6 @@ export default function Create_New_Trip() {
   }, []); // Empty dependency array - only run on mount
 
   // Render the city selection component directly within this tab
-  return <CreateTrip1City showBackButton={false} />;
+  // Pass prefilledCity prop if it exists in params
+  return <CreateTrip1City showBackButton={false} prefilledCity={params.prefilledCity} />;
 }
