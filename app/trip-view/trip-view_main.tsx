@@ -513,15 +513,39 @@ export default function TripViewMain() {
     // Get activities for the current tab
     const getActivitiesForTab = (tab: TabType) => {
         if (tab === 'wishlist') {
-            // Filter out activities that are already in days (by instanceId)
-            const dayActivityInstanceIds = Object.values(dayActivities || {})
-                .flatMap(dayObj => Array.isArray((dayObj as any).activities) ? (dayObj as any).activities : [])
-                .map((activity: Activity) => activity.instanceId)
-                .filter(Boolean);
+            // Get all activities from days
+            const allDayActivitiesList = Object.values(dayActivities || {})
+                .flatMap(dayObj => Array.isArray((dayObj as any).activities) ? (dayObj as any).activities : []) as Activity[];
 
-            return (activities || []).filter((activity: Activity) =>
-                !activity.instanceId || !dayActivityInstanceIds.includes(activity.instanceId)
+            // Create a set of instanceIds from day activities for quick lookup
+            const dayActivityInstanceIds = new Set(
+                allDayActivitiesList.map((activity: Activity) => activity.instanceId).filter(Boolean)
             );
+
+            // Create a set of savedPlaceId + place_id combinations from day activities
+            // This is used to filter out Instagram-saved places that have been moved to days
+            const dayActivitySavedPlaceKeys = new Set(
+                allDayActivitiesList
+                    .filter((activity: Activity) => activity.savedPlaceId && activity.place_id)
+                    .map((activity: Activity) => `${activity.savedPlaceId}_${activity.place_id}`)
+            );
+
+            return (activities || []).filter((activity: Activity) => {
+                // First check: filter by instanceId (existing logic)
+                if (activity.instanceId && dayActivityInstanceIds.has(activity.instanceId)) {
+                    return false;
+                }
+
+                // Second check: for Instagram-saved places, filter if same savedPlaceId AND place_id exists in days
+                if (activity.savedPlaceId && activity.place_id) {
+                    const key = `${activity.savedPlaceId}_${activity.place_id}`;
+                    if (dayActivitySavedPlaceKeys.has(key)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
         } else {
             // Extract day number from tab (e.g., 'day2' -> 2)
             const dayNumber = parseInt(tab.replace('day', ''));
@@ -3127,9 +3151,16 @@ export default function TripViewMain() {
         const filtered = filterSavedPlacesByCity(allSavedPlaces, selectedCity);
         console.log('[trip-view_main] Found', filtered.length, 'matching saved places');
 
-        // Extract activity objects from saved places
+        // Extract activity objects from saved places, preserving savedPlaceId
         const savedPlacesActivities = filtered
-            .map((savedPlace) => savedPlace.activity)
+            .map((savedPlace) => {
+                if (!savedPlace.activity) return null;
+                // Attach savedPlaceId from the SavedPlace wrapper to the activity
+                return {
+                    ...savedPlace.activity,
+                    savedPlaceId: savedPlace.savedPlaceId
+                };
+            })
             .filter((activity): activity is Activity => activity != null);
 
         if (savedPlacesActivities.length === 0) {
@@ -3143,7 +3174,7 @@ export default function TripViewMain() {
             setDisplayCityName(savedPlacesActivities[0].city);
         }
 
-        // Normalize saved places: add instanceIds and set correct city
+        // Normalize saved places: add instanceIds and set correct city (preserving savedPlaceId)
         const normalizedActivities = ensureActivitiesHaveInstanceIds(
             savedPlacesActivities.map(activity => ({
                 ...activity,
@@ -3151,14 +3182,18 @@ export default function TripViewMain() {
             }))
         );
 
-        // Check which activities are not already in the trip (by place_id to avoid duplicates)
-        const existingPlaceIds = new Set(
-            (activities || []).map(a => a.place_id).filter(Boolean)
+        // Check which activities are not already in the trip
+        // Use savedPlaceId + place_id combination to identify exact matches
+        const existingSavedPlaceIds = new Set(
+            (activities || [])
+                .filter((a: Activity) => a.savedPlaceId)
+                .map((a: Activity) => `${a.savedPlaceId}_${a.place_id}`)
         );
-        
-        const newActivities = normalizedActivities.filter(
-            activity => activity.place_id && !existingPlaceIds.has(activity.place_id)
-        );
+
+        const newActivities = normalizedActivities.filter(activity => {
+            const key = `${activity.savedPlaceId}_${activity.place_id}`;
+            return !existingSavedPlaceIds.has(key);
+        });
 
         // Add new Instagram saved places to the trip's activities
         if (newActivities.length > 0) {

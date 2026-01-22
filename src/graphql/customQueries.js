@@ -9,6 +9,7 @@ export const getUserTripsDetailed = /* GraphQL */ `
         dayNumber
         activities {
           instanceId
+          savedPlaceId
           name
           city
           lat
@@ -67,6 +68,7 @@ export const getUserTripsDetailed = /* GraphQL */ `
       }
       wishlist {
         instanceId
+        savedPlaceId
         name
         city
         lat

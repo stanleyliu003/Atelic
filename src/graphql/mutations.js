@@ -5,6 +5,7 @@ export const optimizeRoute = /* GraphQL */ `
   mutation OptimizeRoute($activities: [ActivityInput!]!) {
     optimizeRoute(activities: $activities) {
       instanceId
+      savedPlaceId
       name
       city
       lat
@@ -63,6 +64,7 @@ export const createTrip = /* GraphQL */ `
       }
       wishlist {
         instanceId
+        savedPlaceId
         name
         city
         lat
@@ -183,6 +185,7 @@ export const addCollaborator = /* GraphQL */ `
       }
       wishlist {
         instanceId
+        savedPlaceId
         name
         city
         lat
@@ -262,6 +265,7 @@ export const removeCollaborator = /* GraphQL */ `
       }
       wishlist {
         instanceId
+        savedPlaceId
         name
         city
         lat
@@ -345,6 +349,7 @@ export const updateCollaboratorRole = /* GraphQL */ `
       }
       wishlist {
         instanceId
+        savedPlaceId
         name
         city
         lat
@@ -425,6 +430,7 @@ export const createWishlistAnalysis = /* GraphQL */ `
       status
       activities {
         instanceId
+        savedPlaceId
         name
         city
         lat
@@ -469,6 +475,7 @@ export const updateWishlistAnalysis = /* GraphQL */ `
       status
       activities {
         instanceId
+        savedPlaceId
         name
         city
         lat
@@ -513,6 +520,7 @@ export const deleteWishlistAnalysis = /* GraphQL */ `
       status
       activities {
         instanceId
+        savedPlaceId
         name
         city
         lat

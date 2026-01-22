@@ -30,6 +30,7 @@ export type PlaceReview = {
 // Define a type for our activity data for better type safety
 export type Activity = {
   instanceId?: string; // Unique identifier for each activity instance (allows duplicates of same place)
+  savedPlaceId?: string; // Unique identifier from SavedPlaces DynamoDB table (for Instagram-saved places)
   name: string;
   city?: string;
   lat: number | null;

@@ -9,6 +9,7 @@ export const analyzeWishlist = /* GraphQL */ `
     ) {
       wishlist_activities {
         instanceId
+        savedPlaceId
         name
         city
         lat
@@ -99,6 +100,7 @@ export const addAdditionalPlace = /* GraphQL */ `
   query AddAdditionalPlace($placeName: String!, $selectedCity: String!) {
     addAdditionalPlace(placeName: $placeName, selectedCity: $selectedCity) {
       instanceId
+      savedPlaceId
       name
       city
       lat
@@ -158,6 +160,7 @@ export const generateCategoryActivities = /* GraphQL */ `
     ) {
       activities {
         instanceId
+        savedPlaceId
         name
         city
         lat
@@ -214,6 +217,7 @@ export const getPlaceDetails = /* GraphQL */ `
     getPlaceDetails(place_id: $place_id, selectedCity: $selectedCity) {
       activity {
         instanceId
+        savedPlaceId
         name
         city
         lat
@@ -259,6 +263,7 @@ export const searchActivities = /* GraphQL */ `
     ) {
       activities {
         instanceId
+        savedPlaceId
         name
         city
         lat
@@ -316,6 +321,7 @@ export const getUserTrips = /* GraphQL */ `
       }
       wishlist {
         instanceId
+        savedPlaceId
         name
         city
         lat
@@ -518,6 +524,7 @@ export const getSavedPlaces = /* GraphQL */ `
         savedAt
         activity {
           instanceId
+          savedPlaceId
           name
           city
           lat
@@ -588,6 +595,7 @@ export const getWishlistAnalysis = /* GraphQL */ `
       status
       activities {
         instanceId
+        savedPlaceId
         name
         city
         lat

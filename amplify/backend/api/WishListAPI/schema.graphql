@@ -9,6 +9,7 @@
 
   type Activity {
     instanceId: String  # Unique identifier for each activity instance (allows duplicates of same place)
+    savedPlaceId: String  # Unique identifier from SavedPlaces DynamoDB table (for Instagram-saved places)
     name: String!
     city: String
     lat: Float
