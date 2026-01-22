@@ -34,6 +34,18 @@ IMPORTANT RULES:
 - Do NOT include countries without specific places
 - Do NOT include hashtags or user mentions unless they are actual place names
 
+GEOGRAPHIC SPECIFICITY RULES FOR "city" FIELD:
+- Use MAJOR CITIES or well-known TRAVEL DESTINATIONS, not neighborhoods or small towns
+- Consolidate to their parent city:
+  * "Shibuya" → "Tokyo, Japan"
+  * "Le Marais" → "Paris, France"
+  * "Brooklyn" → "New York City, USA"
+- For small towns in famous regions, use the region name:
+  * "Agrigento, Modica, Noto" → "Sicily, Italy"
+- For all cities, include state/region for clarity:
+  * "Portland, Oregon, USA""
+  * "Kyoto, Japan"
+
 CAPTION:
 ${caption || '(no caption)'}
 `;
@@ -50,7 +62,7 @@ RESPONSE FORMAT:
 [
   {
     "name": "Place Name",
-    "city": "City or Region"
+    "city": "Major City or Travel Region"
   }
 ]
 
@@ -81,6 +93,18 @@ IMPORTANT RULES:
 - Do NOT include countries without specific places
 - Do NOT include hashtags or user mentions unless they are actual place names
 
+GEOGRAPHIC SPECIFICITY RULES FOR "city" FIELD:
+- Use MAJOR CITIES or well-known TRAVEL DESTINATIONS, not neighborhoods or small towns
+- Consolidate to their parent city:
+  * "Shibuya" → "Tokyo, Japan"
+  * "Le Marais" → "Paris, France"
+  * "Brooklyn" → "New York City, USA"
+- For small towns in famous regions, use the region name:
+  * "Agrigento, Modica, Noto" → "Sicily, Italy"
+- For all cities, include state/region for clarity:
+  * "Portland, Oregon, USA""
+  * "Kyoto, Japan"
+
 CAPTION:
 ${caption || '(no caption)'}
 `;
@@ -97,7 +121,7 @@ RESPONSE FORMAT:
 [
   {
     "name": "Place Name",
-    "city": "City or Region"
+    "city": "Major City or Travel Region"
   }
 ]
 
