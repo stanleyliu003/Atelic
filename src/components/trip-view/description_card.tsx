@@ -24,6 +24,7 @@ interface ActivityDetailViewProps {
   onDelete?: (activity: Activity) => void;
   currentUserRole?: 'owner' | 'editor' | 'viewer';
   activeTab?: 'wishlist' | string;
+  onScrollStateChange?: (isScrolledDown: boolean) => void;
 }
 
 const formatNumber = (num: number) => {
@@ -133,10 +134,25 @@ const renderStars = (rating: number) => {
   return stars;
 };
 
-export function ActivityDetailView({ activity, onClose, variant = 'trip', showDragIndicator = true, onDuplicate, onDelete, currentUserRole, activeTab }: ActivityDetailViewProps) {
+export function ActivityDetailView({ activity, onClose, variant = 'trip', showDragIndicator = true, onDuplicate, onDelete, currentUserRole, activeTab, onScrollStateChange }: ActivityDetailViewProps) {
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const [notesModalVisible, setNotesModalVisible] = useState(false);
   const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
+  const [isScrolledDown, setIsScrolledDown] = useState(false);
+
+  // Threshold for considering scroll as "scrolled down" (in pixels)
+  const SCROLL_THRESHOLD = 50;
+
+  // Handle scroll events to track scroll position
+  const handleScroll = (event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    const newIsScrolledDown = offsetY > SCROLL_THRESHOLD;
+
+    if (newIsScrolledDown !== isScrolledDown) {
+      setIsScrolledDown(newIsScrolledDown);
+      onScrollStateChange?.(newIsScrolledDown);
+    }
+  };
 
   // Get live activity data from context for real-time updates
   const { activities, dayActivities } = useCreateTrip();
@@ -437,7 +453,12 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
       </TouchableOpacity>
 
       {/* Scrollable Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
 
         {/* Activity Photo Carousel */}
         <View style={styles.heroImageContainer}>

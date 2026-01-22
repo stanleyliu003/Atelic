@@ -176,8 +176,8 @@ export default function TripViewMain() {
             Animated.spring(bottomHeight, {
                 toValue: heightStates[newState],
                 useNativeDriver: false,
-                tension: 80,
-                friction: 8,
+                tension: 40,
+                friction: 12,
             }).start();
         }
     };
@@ -2086,6 +2086,19 @@ export default function TripViewMain() {
         if (activity.place_id) {
             setSelectedMarker(activity.place_id);
         }
+        // Set height to DEFAULT_HEIGHT when opening activity detail
+        changeHeightState(1); // 1 = DEFAULT_HEIGHT
+    };
+
+    // Handler for activity detail scroll state change
+    const handleActivityDetailScrollStateChange = (isScrolledDown: boolean) => {
+        if (isScrolledDown) {
+            // When scrolled down, expand to MAX_HEIGHT
+            changeHeightState(2); // 2 = MAX_HEIGHT
+        } else {
+            // When scrolled back to top, return to DEFAULT_HEIGHT
+            changeHeightState(1); // 1 = DEFAULT_HEIGHT
+        }
     };
 
     // Handler for closing activity detail view
@@ -3273,6 +3286,7 @@ export default function TripViewMain() {
                         onDuplicate={(activity) => handleDuplicateActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
                         onDelete={(activity) => handleDeleteActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
                         currentUserRole={currentUserRole}
+                        onScrollStateChange={handleActivityDetailScrollStateChange}
                     />
                 ) : (
                     <>
