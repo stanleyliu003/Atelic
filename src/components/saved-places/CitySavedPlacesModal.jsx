@@ -43,7 +43,9 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places }) {
       savedPlaceId: item.savedPlaceId,
       city: item.city,
       hasActivity: !!item.activity,
-      activityName: item.activity?.name
+      activityName: item.activity?.name,
+      source: item.source,
+      sourceUrl: item.sourceUrl
     });
     
     // Extract the activity data from the saved place
@@ -55,10 +57,17 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places }) {
       return null;
     }
     
+    // Copy source and sourceUrl from SavedPlace to Activity for display in description card
+    const activityWithSource = {
+      ...activity,
+      source: item.source,
+      sourceUrl: item.sourceUrl,
+    };
+    
     return (
       <ActivityCard
-        activity={activity}
-        onDescriptionCardPress={() => handleActivityPress(activity)}
+        activity={activityWithSource}
+        onDescriptionCardPress={() => handleActivityPress(activityWithSource)}
         hideNotesButton={true}
         hideRouteInfo={true}
       />

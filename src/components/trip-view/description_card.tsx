@@ -6,6 +6,7 @@ import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Feather from '@expo/vector-icons/Feather';
+import AntDesign from '@expo/vector-icons/AntDesign';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Image } from 'react-native';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -472,7 +473,7 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
         <View style={styles.badgeRow}>
           {liveActivity.primary_type_display_name && (
             <View style={styles.categoryBadge}>
-              <MaterialCommunityIcons name="tag" size={12} color="#9CA3AF" />
+              <MaterialCommunityIcons name="tag" size={16} color="#9CA3AF" />
               <Text style={styles.categoryText}>{liveActivity.primary_type_display_name}</Text>
             </View>
           )}
@@ -497,6 +498,22 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
                 {hoursStatus.statusText}
               </Text>
             </View>
+          )}
+
+          {/* Instagram Source Badge */}
+          {liveActivity.source === 'instagram' && liveActivity.sourceUrl && (
+            <TouchableOpacity
+              style={styles.instagramBadge}
+              onPress={() => Linking.openURL(liveActivity.sourceUrl)}
+              activeOpacity={0.7}
+            >
+              <Image
+                source={require('../../../assets/IG_Logo.png')}
+                style={styles.igLogo}
+              />
+              <Text style={styles.instagramText}>Saved from</Text>
+              <AntDesign name="link" size={16} color="#0000FF" />
+            </TouchableOpacity>
           )}
         </View>
 
@@ -857,7 +874,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   categoryText: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#6B7280',
     textTransform: 'capitalize',
   },
@@ -876,7 +893,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
   },
   hoursStatusBadgeText: {
-    fontSize: 12,
+    fontSize: 14,
   },
   hoursStatusBadgeTextOpen: {
     color: '#059669',
@@ -894,6 +911,28 @@ const styles = StyleSheet.create({
   },
   statusDotClosed: {
     backgroundColor: '#EF4444',
+  },
+  instagramBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+    borderWidth: 0.5,
+    borderColor: '#E5E7EB',
+    marginLeft: 'auto',
+  },
+  igLogo: {
+    width: 20,
+    height: 20,
+    resizeMode: 'contain',
+  },
+  instagramText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontFamily: 'outfit',
   },
   summaryCard: {
     backgroundColor: '#FFFFFF',

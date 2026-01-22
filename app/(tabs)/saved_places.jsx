@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { getSavedPlaces } from '../../src/graphql/queries';
+import { getSavedPlacesDetailed } from '../../src/graphql/customQueries';
 import { CitySavedPlacesModal } from '../../src/components/saved-places/CitySavedPlacesModal';
 import { CityCard } from '../../src/components/saved-places/CityCard';
 import { SavedPlacesSearchBar } from '../../src/components/saved-places/SavedPlacesSearchBar';
@@ -53,7 +53,7 @@ export default function SavedPlaces() {
       console.log('[SavedPlaces] Fetching saved places for userID:', userID);
 
       const result = await API.graphql({
-        query: getSavedPlaces,
+        query: getSavedPlacesDetailed,
         variables: { userID },
       });
 

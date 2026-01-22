@@ -39,6 +39,9 @@
     lodgingCheckIn: String  # ISO date string for check-in date
     lodgingCheckOut: String  # ISO date string for check-out date
     lodgingTime: LodgingTimeInput  # Check-in and check-out times
+    # Source tracking (from SavedPlaces)
+    source: String  # Source platform (e.g., "instagram", "google", etc.)
+    sourceUrl: String  # Original URL from the source platform
   }
 
    type WishlistAnalysisResult {
@@ -476,6 +479,7 @@ type AppVersionConfig {
 
    input ActivityInput {
      instanceId: String  # Unique identifier for each activity instance (allows duplicates of same place)
+     savedPlaceId: String  # Unique identifier from SavedPlaces DynamoDB table (for Instagram-saved places)
      place_id: String!
      name: String!
      city: String
@@ -505,6 +509,9 @@ type AppVersionConfig {
      lodgingCheckIn: String  # ISO date string for check-in date
      lodgingCheckOut: String  # ISO date string for check-out date
      lodgingTime: LodgingTimeInputType  # Check-in and check-out times
+     # Source tracking (from SavedPlaces)
+     source: String  # Source platform (e.g., "instagram", "google", etc.)
+     sourceUrl: String  # Original URL from the source platform
    }
 
    input DayInput {

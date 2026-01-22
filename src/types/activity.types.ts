@@ -65,6 +65,10 @@ export type Activity = {
     checkOut: string; // Format: "HH:mm" (e.g., "11:00")
   };
 
+  // Source tracking (from SavedPlaces)
+  source?: string; // Source platform (e.g., "instagram", "google", etc.)
+  sourceUrl?: string; // Original URL from the source platform
+
   // Real-time collaboration timestamps
   lastModified?: number; // Timestamp when this activity was last modified
   modifiedBy?: string; // UserID who last modified

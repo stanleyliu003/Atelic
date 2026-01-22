@@ -37,6 +37,8 @@ export const onTripUpdated = /* GraphQL */ `
         isLodging
         lodgingCheckIn
         lodgingCheckOut
+        source
+        sourceUrl
         __typename
       }
       tripLength
@@ -117,6 +119,8 @@ export const onCreateWishlistAnalysis = /* GraphQL */ `
         isLodging
         lodgingCheckIn
         lodgingCheckOut
+        source
+        sourceUrl
         __typename
       }
       createdAt
@@ -161,6 +165,8 @@ export const onUpdateWishlistAnalysis = /* GraphQL */ `
         isLodging
         lodgingCheckIn
         lodgingCheckOut
+        source
+        sourceUrl
         __typename
       }
       createdAt
@@ -205,6 +211,8 @@ export const onDeleteWishlistAnalysis = /* GraphQL */ `
         isLodging
         lodgingCheckIn
         lodgingCheckOut
+        source
+        sourceUrl
         __typename
       }
       createdAt

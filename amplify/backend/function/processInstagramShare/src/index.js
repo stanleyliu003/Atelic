@@ -133,28 +133,69 @@ async function checkDuplicate(userID, sourcePostId) {
 }
 
 /**
- * Save extracted places to DynamoDB
+ * Check if a place already exists for a user
+ * @param {string} userID - Cognito user ID
+ * @param {string} placeId - Google place_id (globally unique)
+ * @returns {Promise<boolean>} - True if place already exists
+ */
+async function placeExistsForUser(userID, placeId) {
+    const result = await docClient.send(
+        new QueryCommand({
+            TableName: SAVED_PLACES_TABLE,
+            KeyConditionExpression: 'userID = :uid',
+            FilterExpression: 'activity.place_id = :placeId',
+            ExpressionAttributeValues: {
+                ':uid': userID,
+                ':placeId': placeId
+            },
+            Limit: 1
+        })
+    );
+    return result.Items && result.Items.length > 0;
+}
+
+/**
+ * Save extracted places to DynamoDB (skips duplicates by place_id)
+ * Note: place_id is globally unique across all locations, so no city filtering needed
  * @param {string} userID - Cognito user ID
  * @param {Array<object>} activities - Activity objects from place resolver
  * @param {object} scrapedData - Original Instagram post data
- * @returns {Promise<Array<object>>} - Saved place records
+ * @returns {Promise<{savedPlaces: Array<object>, skippedCount: number}>} - Saved place records and skipped count
  */
 async function savePlaces(userID, activities, scrapedData) {
     console.log(`[index] Saving ${activities.length} places for user ${userID}`);
 
     const savedPlaces = [];
     const now = new Date().toISOString();
+    let skippedCount = 0;
 
     for (const activity of activities) {
+        const city = activity.city || '';
+
+        // Skip if this place_id already exists for this user (place_id is globally unique)
+        if (activity.place_id && await placeExistsForUser(userID, activity.place_id)) {
+            console.log(`[index] Skipping duplicate: ${activity.name} (${activity.place_id})`);
+            skippedCount++;
+            continue;
+        }
+
+        // Copy source and sourceUrl into the activity object itself
+        // This ensures they persist when activities are added to trips
+        const activityWithSource = {
+            ...activity,
+            source: 'instagram',
+            sourceUrl: scrapedData.url
+        };
+
         const savedPlace = {
             userID,
             savedPlaceId: crypto.randomUUID(),
-            activity,
+            activity: activityWithSource,
             source: 'instagram',
-            sourceUrl: scrapedData.url, // Permanent permalink
-            sourcePostId: scrapedData.shortCode, // For deduplication
+            sourceUrl: scrapedData.url,
+            sourcePostId: scrapedData.shortCode,
             sourceUsername: scrapedData.ownerUsername,
-            city: activity.city || '',
+            city: city,
             savedAt: now
         };
 
@@ -169,8 +210,8 @@ async function savePlaces(userID, activities, scrapedData) {
         savedPlaces.push(savedPlace);
     }
 
-    console.log(`[index] Successfully saved ${savedPlaces.length} places`);
-    return savedPlaces;
+    console.log(`[index] Saved ${savedPlaces.length} places, skipped ${skippedCount} duplicates`);
+    return { savedPlaces, skippedCount };
 }
 
 /**
@@ -281,9 +322,19 @@ exports.handler = async (event) => {
             };
         }
 
-        // Step 6: Save to DynamoDB
+        // Step 6: Save to DynamoDB (skips duplicates by place_id)
         console.log('[index] Step 6: Saving places to DynamoDB...');
-        const savedPlaces = await savePlaces(userID, activities, scrapedData);
+        const { savedPlaces, skippedCount } = await savePlaces(userID, activities, scrapedData);
+
+        // Build response message
+        let message;
+        if (savedPlaces.length === 0 && skippedCount > 0) {
+            message = `All ${skippedCount} place${skippedCount !== 1 ? 's' : ''} from this post were already saved`;
+        } else if (skippedCount > 0) {
+            message = `Saved ${savedPlaces.length} new place${savedPlaces.length !== 1 ? 's' : ''}, ${skippedCount} already saved`;
+        } else {
+            message = `Found ${savedPlaces.length} place${savedPlaces.length !== 1 ? 's' : ''} from this post`;
+        }
 
         // Build response
         const response = {
@@ -295,7 +346,8 @@ exports.handler = async (event) => {
                 sourceUrl: sp.sourceUrl,
                 city: sp.city
             })),
-            message: `Found ${savedPlaces.length} place${savedPlaces.length !== 1 ? 's' : ''} from this post`
+            skippedCount,
+            message
         };
 
         console.log('[index] Processing complete:', response.message);

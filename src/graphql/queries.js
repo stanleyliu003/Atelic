@@ -33,6 +33,8 @@ export const analyzeWishlist = /* GraphQL */ `
         isLodging
         lodgingCheckIn
         lodgingCheckOut
+        source
+        sourceUrl
         __typename
       }
       __typename
@@ -143,6 +145,8 @@ export const addAdditionalPlace = /* GraphQL */ `
         checkOut
         __typename
       }
+      source
+      sourceUrl
       __typename
     }
   }
@@ -184,6 +188,8 @@ export const generateCategoryActivities = /* GraphQL */ `
         isLodging
         lodgingCheckIn
         lodgingCheckOut
+        source
+        sourceUrl
         __typename
       }
       category
@@ -241,6 +247,8 @@ export const getPlaceDetails = /* GraphQL */ `
         isLodging
         lodgingCheckIn
         lodgingCheckOut
+        source
+        sourceUrl
         __typename
       }
       query
@@ -287,6 +295,8 @@ export const searchActivities = /* GraphQL */ `
         isLodging
         lodgingCheckIn
         lodgingCheckOut
+        source
+        sourceUrl
         __typename
       }
       query
@@ -345,6 +355,8 @@ export const getUserTrips = /* GraphQL */ `
         isLodging
         lodgingCheckIn
         lodgingCheckOut
+        source
+        sourceUrl
         __typename
       }
       tripLength
@@ -522,56 +534,6 @@ export const getSavedPlaces = /* GraphQL */ `
         sourceUsername
         city
         savedAt
-        activity {
-          instanceId
-          savedPlaceId
-          name
-          city
-          lat
-          lng
-          rating
-          user_ratings_total
-          formatted_address
-          types
-          primaryType
-          place_id
-          photo_reference
-          is_recommended
-          display_name
-          website_uri
-          editorial_summary
-          primary_type_display_name
-          international_phone_number
-          notes
-          startTime
-          endTime
-          isLodging
-          lodgingCheckIn
-          lodgingCheckOut
-          regular_opening_hours {
-            open_now
-            periods {
-              open {
-                day
-                time
-              }
-              close {
-                day
-                time
-              }
-            }
-            weekday_text
-          }
-          reviews {
-            author_name
-            rating
-            text
-            time
-            author_url
-            profile_photo_url
-          }
-          __typename
-        }
         __typename
       }
       cities {
@@ -619,6 +581,8 @@ export const getWishlistAnalysis = /* GraphQL */ `
         isLodging
         lodgingCheckIn
         lodgingCheckOut
+        source
+        sourceUrl
         __typename
       }
       createdAt
