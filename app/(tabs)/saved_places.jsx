@@ -1,7 +1,7 @@
 import { Colors } from '../../constants/Colors';
 import { API } from 'aws-amplify';
 import { Auth } from 'aws-amplify';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -15,6 +15,7 @@ import {
 import { getSavedPlaces } from '../../src/graphql/queries';
 import { CitySavedPlacesModal } from '../../src/components/saved-places/CitySavedPlacesModal';
 import { CityCard } from '../../src/components/saved-places/CityCard';
+import { SavedPlacesSearchBar } from '../../src/components/saved-places/SavedPlacesSearchBar';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -30,6 +31,18 @@ export default function SavedPlaces() {
   const [allSavedPlaces, setAllSavedPlaces] = useState([]);
   const [carouselIndices, setCarouselIndices] = useState({}); // Track current index per city
   const [cityPhotoCounts, setCityPhotoCounts] = useState({}); // Track photo count per city
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter cities based on search query
+  const filteredCities = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return cities;
+    }
+    const query = searchQuery.toLowerCase().trim();
+    return cities.filter((cityData) =>
+      cityData.city?.toLowerCase().includes(query)
+    );
+  }, [cities, searchQuery]);
 
   const fetchSavedPlaces = useCallback(async () => {
     try {
@@ -142,6 +155,14 @@ export default function SavedPlaces() {
         }
         showsVerticalScrollIndicator={false}
       >
+        {/* Search Bar */}
+        {cities.length > 0 && (
+          <SavedPlacesSearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        )}
+
         {cities.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="bookmark-outline" size={64} color={Colors.GRAY} />
@@ -150,9 +171,14 @@ export default function SavedPlaces() {
               Share Instagram travel posts to Atelic to save places here
             </Text>
           </View>
+        ) : filteredCities.length === 0 ? (
+          <View style={styles.noResultsContainer}>
+            <Ionicons name="search-outline" size={48} color={Colors.GRAY} />
+            <Text style={styles.noResultsText}>No cities match "{searchQuery}"</Text>
+          </View>
         ) : (
           <View style={styles.citiesGrid}>
-            {cities.map((cityData, index) => {
+            {filteredCities.map((cityData, index) => {
               // Calculate dimensions for 2-column layout with 1.5x vertical aspect ratio
               const cardWidth = (screenWidth - 60) * 0.5; // 49% width with reduced spacing
               const imageHeight = cardWidth * 1.5; // 1.5x vertical height
@@ -284,5 +310,19 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginTop: 10,
+  },
+  noResultsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingHorizontal: 40,
+  },
+  noResultsText: {
+    fontFamily: 'outfit',
+    fontSize: 16,
+    color: Colors.GRAY,
+    textAlign: 'center',
+    marginTop: 12,
   },
 });
