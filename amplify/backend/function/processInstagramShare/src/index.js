@@ -22,7 +22,7 @@ Amplify Params - DO NOT EDIT */
 
 const crypto = require('crypto');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, QueryCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, QueryCommand, PutCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
 const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
 
 // Import modules
@@ -37,6 +37,10 @@ const lambdaClient = new LambdaClient({ region: process.env.REGION });
 
 const SAVED_PLACES_TABLE = process.env.STORAGE_SAVEDPLACESSTORAGE_NAME;
 const GET_LOCATION_COORDINATES_FUNCTION = process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME;
+
+// Cache configuration
+const EXTRACTION_CACHE_TTL_DAYS = 90; // Instagram posts rarely change
+const CACHE_TABLE = process.env.STORAGE_PLACESAPIACTIVITYSTORAGE_NAME || 'PlacesAPIActivityStorage';
 
 /**
  * Resolve extracted places to Activity objects by invoking getLocationCoordinates Lambda
@@ -130,6 +134,71 @@ async function checkDuplicate(userID, sourcePostId) {
     console.log(`[index] Duplicate check result: ${isDuplicate}`);
 
     return isDuplicate;
+}
+
+/**
+ * Check if extraction results are cached for this Instagram post
+ * @param {string} shortCode - Instagram post shortcode
+ * @returns {Promise<object|null>} - Cached extraction data or null
+ */
+async function getCachedExtraction(shortCode) {
+    try {
+        const result = await docClient.send(new GetCommand({
+            TableName: CACHE_TABLE,
+            Key: {
+                cache_type: 'instagram_extraction',
+                cache_key: shortCode
+            }
+        }));
+
+        if (result.Item) {
+            const now = Math.floor(Date.now() / 1000);
+            if (result.Item.ttl && result.Item.ttl > now) {
+                console.log(`[index] Extraction cache HIT for shortCode: ${shortCode}`);
+                return result.Item.data;
+            }
+            console.log(`[index] Extraction cache EXPIRED for shortCode: ${shortCode}`);
+        }
+
+        console.log(`[index] Extraction cache MISS for shortCode: ${shortCode}`);
+        return null;
+    } catch (error) {
+        console.error(`[index] Extraction cache lookup error:`, error);
+        return null; // Continue with normal flow on cache error
+    }
+}
+
+/**
+ * Cache extraction results for future users sharing the same post
+ * @param {string} shortCode - Instagram post shortcode
+ * @param {Array} extractedPlaces - Places extracted by Gemini
+ * @param {object} scrapedData - Original scraped data
+ */
+async function cacheExtraction(shortCode, extractedPlaces, scrapedData) {
+    try {
+        const ttl = Math.floor(Date.now() / 1000) + (EXTRACTION_CACHE_TTL_DAYS * 24 * 60 * 60);
+
+        await docClient.send(new PutCommand({
+            TableName: CACHE_TABLE,
+            Item: {
+                cache_type: 'instagram_extraction',
+                cache_key: shortCode,
+                data: {
+                    extractedPlaces: extractedPlaces,
+                    postType: scrapedData.type,
+                    caption: scrapedData.caption?.substring(0, 500), // Truncate for storage
+                    ownerUsername: scrapedData.ownerUsername,
+                    extractedAt: new Date().toISOString()
+                },
+                ttl: ttl
+            }
+        }));
+
+        console.log(`[index] Cached extraction for shortCode: ${shortCode}, TTL: ${EXTRACTION_CACHE_TTL_DAYS} days`);
+    } catch (error) {
+        console.error(`[index] Failed to cache extraction:`, error);
+        // Non-fatal: continue even if caching fails
+    }
 }
 
 /**
@@ -266,10 +335,10 @@ exports.handler = async (event) => {
         const scrapedData = await scrapeInstagram(instagramUrl);
 
         // Step 2: Check for duplicate (same post already saved by this user)
-        console.log('[index] Step 2: Checking for duplicates...');
+        console.log('[index] Step 2: Checking for user-level duplicates...');
         const isDuplicate = await checkDuplicate(userID, scrapedData.shortCode);
         if (isDuplicate) {
-            console.log('[index] Duplicate detected, returning early');
+            console.log('[index] User-level duplicate detected, returning early');
             return {
                 statusCode: 200,
                 body: JSON.stringify({
@@ -281,20 +350,39 @@ exports.handler = async (event) => {
             };
         }
 
-        // Step 3: Download media
-        console.log('[index] Step 3: Downloading media...');
-        const mediaBuffers = await downloadAllMedia(scrapedData);
+        // Step 3: Check extraction cache (cross-user optimization)
+        console.log('[index] Step 3: Checking extraction cache...');
+        let extractedPlaces = null;
+        const cachedExtraction = await getCachedExtraction(scrapedData.shortCode);
 
-        // Step 4: Extract places with Gemini (media type dependent processing)
-        console.log(`[index] Step 4: Extracting places with Gemini (media type: ${scrapedData.type})...`);
-        const extractedPlaces = await extractPlacesWithGemini(
-            scrapedData.caption,
-            mediaBuffers,
-            scrapedData.type, // 'Video', 'Image', or 'Sidecar' from Apify
-            scrapedData.locationName
-        );
+        if (cachedExtraction) {
+            // Cache HIT - skip Apify media download and Gemini processing
+            console.log('[index] ✓ Cache HIT - Using cached extraction (skipping media download and Gemini)');
+            extractedPlaces = cachedExtraction.extractedPlaces;
+        } else {
+            // Cache MISS - full processing
+            console.log('[index] ✗ Cache MISS - Performing full extraction');
+            
+            // Step 4: Download media
+            console.log('[index] Step 4: Downloading media...');
+            const mediaBuffers = await downloadAllMedia(scrapedData);
 
-        if (extractedPlaces.length === 0) {
+            // Step 5: Extract places with Gemini (media type dependent processing)
+            console.log(`[index] Step 5: Extracting places with Gemini (media type: ${scrapedData.type})...`);
+            extractedPlaces = await extractPlacesWithGemini(
+                scrapedData.caption,
+                mediaBuffers,
+                scrapedData.type, // 'Video', 'Image', or 'Sidecar' from Apify
+                scrapedData.locationName
+            );
+
+            // Cache the extraction for future users
+            if (extractedPlaces && extractedPlaces.length > 0) {
+                await cacheExtraction(scrapedData.shortCode, extractedPlaces, scrapedData);
+            }
+        }
+
+        if (!extractedPlaces || extractedPlaces.length === 0) {
             console.log('[index] No places found in content');
             return {
                 statusCode: 200,
@@ -306,8 +394,8 @@ exports.handler = async (event) => {
             };
         }
 
-        // Step 5: Resolve places via Google Places API
-        console.log('[index] Step 5: Resolving places via Google Places API...');
+        // Step 6: Resolve places via Google Places API
+        console.log('[index] Step 6: Resolving places via Google Places API...');
         const activities = await resolvePlaces(extractedPlaces);
 
         if (activities.length === 0) {
@@ -322,8 +410,8 @@ exports.handler = async (event) => {
             };
         }
 
-        // Step 6: Save to DynamoDB (skips duplicates by place_id)
-        console.log('[index] Step 6: Saving places to DynamoDB...');
+        // Step 7: Save to DynamoDB (skips duplicates by place_id)
+        console.log('[index] Step 7: Saving places to DynamoDB...');
         const { savedPlaces, skippedCount } = await savePlaces(userID, activities, scrapedData);
 
         // Build response message

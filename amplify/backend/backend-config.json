@@ -537,6 +537,15 @@
             "StreamArn"
           ],
           "category": "storage",
+          "resourceName": "PlacesAPIActivityStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
           "resourceName": "SavedPlacesStorage"
         }
       ],

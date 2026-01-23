@@ -9,6 +9,12 @@
       ]
     },
     "storage": {
+      "PlacesAPIActivityStorage": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ],
       "SavedPlacesStorage": [
         "create",
         "read",

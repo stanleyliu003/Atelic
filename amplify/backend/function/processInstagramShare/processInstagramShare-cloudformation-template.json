@@ -32,6 +32,18 @@
       "Type": "String",
       "Default": "storageSavedPlacesStorageStreamArn"
     },
+    "storagePlacesAPIActivityStorageName": {
+      "Type": "String",
+      "Default": "storagePlacesAPIActivityStorageName"
+    },
+    "storagePlacesAPIActivityStorageArn": {
+      "Type": "String",
+      "Default": "storagePlacesAPIActivityStorageArn"
+    },
+    "storagePlacesAPIActivityStorageStreamArn": {
+      "Type": "String",
+      "Default": "storagePlacesAPIActivityStorageStreamArn"
+    },
     "geminiApiKey": {
       "Type": "String"
     },
@@ -103,6 +115,15 @@
             },
             "STORAGE_SAVEDPLACESSTORAGE_STREAMARN": {
               "Ref": "storageSavedPlacesStorageStreamArn"
+            },
+            "STORAGE_PLACESAPIACTIVITYSTORAGE_NAME": {
+              "Ref": "storagePlacesAPIActivityStorageName"
+            },
+            "STORAGE_PLACESAPIACTIVITYSTORAGE_ARN": {
+              "Ref": "storagePlacesAPIActivityStorageArn"
+            },
+            "STORAGE_PLACESAPIACTIVITYSTORAGE_STREAMARN": {
+              "Ref": "storagePlacesAPIActivityStorageStreamArn"
             },
             "GEMINI_API_KEY": {
               "Ref": "geminiApiKey"
@@ -249,6 +270,43 @@
                       {
                         "Ref": "functiongetLocationCoordinatesName"
                       }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:Put*",
+                "dynamodb:Create*",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PartiQLInsert",
+                "dynamodb:Get*",
+                "dynamodb:BatchGetItem",
+                "dynamodb:List*",
+                "dynamodb:Describe*",
+                "dynamodb:Scan",
+                "dynamodb:Query",
+                "dynamodb:PartiQLSelect",
+                "dynamodb:Update*",
+                "dynamodb:RestoreTable*",
+                "dynamodb:PartiQLUpdate",
+                "dynamodb:Delete*",
+                "dynamodb:PartiQLDelete"
+              ],
+              "Resource": [
+                {
+                  "Ref": "storagePlacesAPIActivityStorageArn"
+                },
+                {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      {
+                        "Ref": "storagePlacesAPIActivityStorageArn"
+                      },
+                      "index/*"
                     ]
                   ]
                 }
