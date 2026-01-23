@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  Image,
+  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -96,6 +98,24 @@ export default function SavedPlaces() {
     setSelectedCity(null);
   };
 
+  const handleInstagramPress = async () => {
+    const instagramUrl = 'https://www.instagram.com';
+    try {
+      // Try to open Instagram app first
+      const canOpenApp = await Linking.canOpenURL('instagram://');
+      if (canOpenApp) {
+        await Linking.openURL('instagram://');
+      } else {
+        // Fall back to web browser
+        await Linking.openURL(instagramUrl);
+      }
+    } catch (error) {
+      console.error('[SavedPlaces] Error opening Instagram:', error);
+      // Final fallback to web URL
+      Linking.openURL(instagramUrl);
+    }
+  };
+
   // Get places for the selected city
   const getPlacesForCity = (cityName) => {
     const filtered = allSavedPlaces.filter((place) => place.city === cityName);
@@ -170,6 +190,18 @@ export default function SavedPlaces() {
             <Text style={styles.emptySubtitle}>
               Share Instagram travel posts to Atelic to save places here
             </Text>
+            <TouchableOpacity 
+              style={styles.instagramButton}
+              onPress={handleInstagramPress}
+              activeOpacity={0.7}
+            >
+              <Image
+                source={require('../../assets/IG_Logo.png')}
+                style={styles.instagramLogo}
+                resizeMode="contain"
+              />
+              <Text style={styles.instagramButtonText}>Open Instagram</Text>
+            </TouchableOpacity>
           </View>
         ) : filteredCities.length === 0 ? (
           <View style={styles.noResultsContainer}>
@@ -324,5 +356,34 @@ const styles = StyleSheet.create({
     color: Colors.GRAY,
     textAlign: 'center',
     marginTop: 12,
+  },
+  instagramButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginTop: 24,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  instagramLogo: {
+    width: 28,
+    height: 28,
+    marginRight: 12,
+  },
+  instagramButtonText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 16,
+    color: '#1F2937',
   },
 });
