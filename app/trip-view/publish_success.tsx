@@ -1,37 +1,67 @@
 import { Colors } from '../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { GOOGLE_PLACES_API_KEY } from '../../src/constants/api';
+import { getPhotoUrl as getCachedPhotoUrl } from '../../src/services/photoService';
 
 export default function PublishSuccess() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const { activities, selectedCity, dayActivities } = useCreateTrip();
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Extract data from navigation parameters
     const dayCount = parseInt(params.dayCount as string) || 1;
 
     // Get first activity from day 1; if none, fall back to first wishlist activity
-    const getFirstActivityPhotoRef = () => {
+    const getFirstActivity = () => {
         const day1Activities = dayActivities[1]?.activities;
         const firstDayActivity = day1Activities && day1Activities.length > 0 ? day1Activities[0] : null;
         const firstWishlistActivity = (!firstDayActivity && activities && activities.length > 0) ? activities[0] : null;
 
-        return firstDayActivity?.photo_reference || firstWishlistActivity?.photo_reference || null;
+        return firstDayActivity || firstWishlistActivity || null;
     };
 
-    const photoReference = getFirstActivityPhotoRef();
+    const firstActivity = getFirstActivity();
+    const photoReference = firstActivity?.photo_reference || null;
+    const placeId = firstActivity?.place_id || null;
+
+    // Fetch cached photo URL on mount
+    useEffect(() => {
+        const fetchPhoto = async () => {
+            if (!photoReference) {
+                setIsLoading(false);
+                return;
+            }
+
+            try {
+                if (placeId) {
+                    // Use S3/CloudFront cached service
+                    const url = await getCachedPhotoUrl(placeId, photoReference, 400);
+                    setImageUrl(url);
+                } else {
+                    // Fallback to direct Google URL if no place_id
+                    setImageUrl(`https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`);
+                }
+            } catch (error) {
+                console.error('[PublishSuccess] Error fetching photo:', error);
+                // Fallback to direct Google URL
+                setImageUrl(`https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchPhoto();
+    }, [photoReference, placeId]);
 
     const getDayCountText = () => {
         if (dayCount === 1) return '1 day';
         return `${dayCount} day`;
-    };
-
-    const getImageUrl = (photoReference: string) => {
-        return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`;
     };
 
     return (
@@ -39,9 +69,13 @@ export default function PublishSuccess() {
             {/* Main Content */}
             <View style={styles.content}>
                 {/* Activity Image */}
-                {photoReference ? (
+                {isLoading ? (
+                    <View style={styles.placeholderImage}>
+                        <ActivityIndicator size="large" color={Colors.PRIMARY} />
+                    </View>
+                ) : imageUrl ? (
                     <Image
-                        source={{ uri: getImageUrl(photoReference) }}
+                        source={{ uri: imageUrl }}
                         style={styles.activityImage}
                         resizeMode="cover"
                     />

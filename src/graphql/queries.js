@@ -547,6 +547,24 @@ export const getSavedPlaces = /* GraphQL */ `
     }
   }
 `;
+export const getPlacePhoto = /* GraphQL */ `
+  query GetPlacePhoto(
+    $placeId: String!
+    $photoReference: String!
+    $maxWidth: Int
+  ) {
+    getPlacePhoto(
+      placeId: $placeId
+      photoReference: $photoReference
+      maxWidth: $maxWidth
+    ) {
+      photoUrl
+      cached
+      fallback
+      __typename
+    }
+  }
+`;
 export const getWishlistAnalysis = /* GraphQL */ `
   query GetWishlistAnalysis($id: ID!) {
     getWishlistAnalysis(id: $id) {

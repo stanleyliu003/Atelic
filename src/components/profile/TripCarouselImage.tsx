@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { GOOGLE_PLACES_API_KEY, UNSPLASH_ACCESS_KEY } from '../../constants/api';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Colors } from '../../../constants/Colors';
+import { getPhotoUrl as getCachedPhotoUrl } from '../../services/photoService';
 
 // expo-image blurhash placeholder for smooth loading
 const PLACEHOLDER_BLURHASH = '|rF?hV%2WCj[ayj[a|j[az_NaeWBj@ayfRayfQfQM{M|azj[azf6telebu~qayj[j[fQayWBofofayayayj[fQj[ayayj[ayfjj[ay';
@@ -203,7 +204,7 @@ export function TripCarouselImage({
     // Generate cache key - prefer photo_reference, fallback to place_id
     const cacheKey = photo_reference || place_id || '';
 
-    // Check cache first
+    // Check session cache first
     if (cacheKey && googlePhotosCache[cacheKey]) {
       const cached = googlePhotosCache[cacheKey];
       console.log(`[TripCarouselImage] Using cached Google Places photo for: ${cacheKey}`);
@@ -217,10 +218,28 @@ export function TripCarouselImage({
       return;
     }
 
-    // If we already have a photo_reference, use it directly (don't refetch)
-    // This is important for activity carousels where each item has a specific photo
+    // If we already have a photo_reference and place_id, use the S3/CloudFront cached service
+    if (photo_reference && place_id) {
+      try {
+        console.log(`[TripCarouselImage] Using cached photo service for: ${place_id}`);
+        const photoUrl = await getCachedPhotoUrl(place_id, photo_reference, 800);
+        setImageUrl(photoUrl);
+        setImageError(false);
+
+        // Cache the result in session
+        if (cacheKey) {
+          googlePhotosCache[cacheKey] = { url: photoUrl, photoReference: photo_reference };
+        }
+        return;
+      } catch (error) {
+        console.error('[TripCarouselImage] Error with cached photo service:', error);
+        // Fall through to direct URL fallback
+      }
+    }
+
+    // Fallback: If we have photo_reference but no place_id, use direct Google URL
     if (photo_reference) {
-      console.log(`[TripCarouselImage] Using provided photo_reference directly`);
+      console.log(`[TripCarouselImage] Using direct Google URL (no place_id for caching)`);
       const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photo_reference}&key=${GOOGLE_PLACES_API_KEY}`;
       setImageUrl(photoUrl);
       setImageError(false);
@@ -238,6 +257,7 @@ export function TripCarouselImage({
       try {
         console.log(`[TripCarouselImage] Fetching Google Places photo for place_id: ${place_id}`);
 
+        // Fetch place details to get photo_reference (ID Only SKU - free)
         const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=photos&key=${GOOGLE_PLACES_API_KEY}`;
 
         const response = await fetch(url);
@@ -245,7 +265,9 @@ export function TripCarouselImage({
 
         if (data.status === 'OK' && data.result?.photos?.[0]) {
           const photoRef = data.result.photos[0].photo_reference;
-          const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photoRef}&key=${GOOGLE_PLACES_API_KEY}`;
+
+          // Use S3/CloudFront cached service
+          const photoUrl = await getCachedPhotoUrl(place_id, photoRef, 800);
 
           console.log(`[TripCarouselImage] Successfully fetched Google Places photo`);
           setImageUrl(photoUrl);

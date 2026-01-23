@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Text, View, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { GOOGLE_PLACES_API_KEY, UNSPLASH_ACCESS_KEY } from '../../../constants/api';
+import { getPhotoUrl as getCachedPhotoUrl } from '../../../services/photoService';
 
 // expo-image blurhash placeholder for smooth loading
 const PLACEHOLDER_BLURHASH = '|rF?hV%2WCj[ayj[a|j[az_NaeWBj@ayfRayfQfQM{M|azj[azf6telebu~qayj[j[fQayWBofofayayayj[fQj[ayayj[ayfjj[ay';
@@ -246,13 +247,32 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
         // Try to fetch from Google Places API if we have place_id
         if (place_id) {
             try {
+                // If we have a photo_reference, use the S3/CloudFront cached photo service
+                if (photo_reference) {
+                    const photoUrl = await getCachedPhotoUrl(place_id, photo_reference, 400);
+                    setImageUrl(photoUrl);
+
+                    // Cache the result in session
+                    if (cacheKey) {
+                        thumbnailCache[cacheKey] = { url: photoUrl, source: 'google', photoReference: photo_reference };
+                    }
+
+                    // Notify parent of photo reference
+                    if (onPhotoRefUpdate) {
+                        onPhotoRefUpdate(photo_reference);
+                    }
+                    return;
+                }
+
+                // No photo_reference - fetch place details to get one (ID Only SKU - free)
                 const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=photos&key=${GOOGLE_PLACES_API_KEY}`;
                 const response = await fetch(url);
                 const data = await response.json();
 
                 if (data.status === 'OK' && data.result?.photos?.[0]) {
                     const photoRef = data.result.photos[0].photo_reference;
-                    const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoRef}&key=${GOOGLE_PLACES_API_KEY}`;
+                    // Use the S3/CloudFront cached photo service
+                    const photoUrl = await getCachedPhotoUrl(place_id, photoRef, 400);
                     setImageUrl(photoUrl);
 
                     // Cache the result
@@ -271,12 +291,31 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
             }
         }
 
-        // Fallback to existing photo_reference
-        if (photo_reference) {
+        // Fallback to existing photo_reference with cached service
+        if (photo_reference && place_id) {
+            try {
+                const photoUrl = await getCachedPhotoUrl(place_id, photo_reference, 400);
+                setImageUrl(photoUrl);
+
+                // Cache the result
+                if (cacheKey) {
+                    thumbnailCache[cacheKey] = { url: photoUrl, source: 'google', photoReference: photo_reference };
+                }
+            } catch (error) {
+                console.error('[ActivityImage] Error with cached photo service, using direct URL:', error);
+                // Final fallback to direct Google URL
+                const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photo_reference}&key=${GOOGLE_PLACES_API_KEY}`;
+                setImageUrl(photoUrl);
+
+                if (cacheKey) {
+                    thumbnailCache[cacheKey] = { url: photoUrl, source: 'google', photoReference: photo_reference };
+                }
+            }
+        } else if (photo_reference) {
+            // No place_id, use direct Google URL as fallback
             const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photo_reference}&key=${GOOGLE_PLACES_API_KEY}`;
             setImageUrl(photoUrl);
 
-            // Cache the result
             if (cacheKey) {
                 thumbnailCache[cacheKey] = { url: photoUrl, source: 'google', photoReference: photo_reference };
             }

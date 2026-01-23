@@ -359,6 +359,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "getPlacePhoto": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "PlacesAPIActivityStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "getSavedPlaces": {
       "build": true,
       "dependsOn": [
@@ -918,6 +934,46 @@
         {
           "category": "function",
           "resourceName": "getLocationCoordinates"
+        }
+      ]
+    },
+    "AMPLIFY_function_getPlacePhoto_cloudfrontDomain": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getPlacePhoto"
+        }
+      ]
+    },
+    "AMPLIFY_function_getPlacePhoto_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getPlacePhoto"
+        }
+      ]
+    },
+    "AMPLIFY_function_getPlacePhoto_googlePlacesApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getPlacePhoto"
+        }
+      ]
+    },
+    "AMPLIFY_function_getPlacePhoto_photoS3BucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getPlacePhoto"
+        }
+      ]
+    },
+    "AMPLIFY_function_getPlacePhoto_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getPlacePhoto"
         }
       ]
     },
