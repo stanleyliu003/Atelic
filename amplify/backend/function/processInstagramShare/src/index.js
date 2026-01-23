@@ -110,7 +110,7 @@ async function resolvePlaces(extractedPlaces) {
 }
 
 /**
- * Check if user already saved places from this Instagram post
+ * Check if user already saved places from this Instagram post (with pagination)
  * @param {string} userID - Cognito user ID
  * @param {string} sourcePostId - Instagram shortcode
  * @returns {Promise<boolean>} - True if duplicate exists
@@ -118,8 +118,14 @@ async function resolvePlaces(extractedPlaces) {
 async function checkDuplicate(userID, sourcePostId) {
     console.log(`[index] Checking for duplicate: userID=${userID}, sourcePostId=${sourcePostId}`);
 
-    const result = await docClient.send(
-        new QueryCommand({
+    let lastEvaluatedKey = null;
+    let pageCount = 0;
+
+    do {
+        pageCount++;
+        console.log(`[index] Scanning page ${pageCount} for duplicate sourcePostId...`);
+
+        const params = {
             TableName: SAVED_PLACES_TABLE,
             KeyConditionExpression: 'userID = :uid',
             FilterExpression: 'sourcePostId = :postId',
@@ -127,13 +133,25 @@ async function checkDuplicate(userID, sourcePostId) {
                 ':uid': userID,
                 ':postId': sourcePostId
             }
-        })
-    );
+        };
 
-    const isDuplicate = result.Items && result.Items.length > 0;
-    console.log(`[index] Duplicate check result: ${isDuplicate}`);
+        if (lastEvaluatedKey) {
+            params.ExclusiveStartKey = lastEvaluatedKey;
+        }
 
-    return isDuplicate;
+        const result = await docClient.send(new QueryCommand(params));
+
+        // If we found a match, return immediately
+        if (result.Items && result.Items.length > 0) {
+            console.log(`[index] Duplicate found on page ${pageCount}`);
+            return true;
+        }
+
+        lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    console.log(`[index] No duplicate found after scanning ${pageCount} page(s)`);
+    return false;
 }
 
 /**
@@ -202,25 +220,46 @@ async function cacheExtraction(shortCode, extractedPlaces, scrapedData) {
 }
 
 /**
- * Check if a place already exists for a user
+ * Check if a place already exists for a user (with pagination)
  * @param {string} userID - Cognito user ID
  * @param {string} placeId - Google place_id (globally unique)
  * @returns {Promise<boolean>} - True if place already exists
  */
 async function placeExistsForUser(userID, placeId) {
-    const result = await docClient.send(
-        new QueryCommand({
+    let lastEvaluatedKey = null;
+    let pageCount = 0;
+
+    do {
+        pageCount++;
+        console.log(`[index] Scanning page ${pageCount} for place_id: ${placeId}...`);
+
+        const params = {
             TableName: SAVED_PLACES_TABLE,
             KeyConditionExpression: 'userID = :uid',
             FilterExpression: 'activity.place_id = :placeId',
             ExpressionAttributeValues: {
                 ':uid': userID,
                 ':placeId': placeId
-            },
-            Limit: 1
-        })
-    );
-    return result.Items && result.Items.length > 0;
+            }
+        };
+
+        if (lastEvaluatedKey) {
+            params.ExclusiveStartKey = lastEvaluatedKey;
+        }
+
+        const result = await docClient.send(new QueryCommand(params));
+
+        // If we found a match, return immediately
+        if (result.Items && result.Items.length > 0) {
+            console.log(`[index] Place exists - found on page ${pageCount}`);
+            return true;
+        }
+
+        lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    console.log(`[index] Place does not exist - scanned ${pageCount} page(s)`);
+    return false;
 }
 
 /**
