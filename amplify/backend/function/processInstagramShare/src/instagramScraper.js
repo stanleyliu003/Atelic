@@ -44,7 +44,7 @@ async function scrapeInstagram(instagramUrl) {
 
     const requestBody = {
         directUrls: [instagramUrl],
-        resultsType: 'posts',
+        resultsType: 'details',
         resultsLimit: 1
     };
 
@@ -71,13 +71,29 @@ async function scrapeInstagram(instagramUrl) {
     }
 
     const post = results[0];
-    console.log('[instagramScraper] Successfully scraped post:', {
+
+    // Extract media URLs - Apify returns carousel images in childPosts or images array
+    let mediaUrls = [];
+
+    if (post.type === 'Video') {
+        mediaUrls = [post.videoUrl];
+    } else if (post.childPosts && post.childPosts.length > 0) {
+        // Sidecar posts: extract from childPosts
+        mediaUrls = post.childPosts
+            .map(child => child.displayUrl || child.videoUrl)
+            .filter(url => url);
+    } else if (post.images && post.images.length > 0) {
+        // Alternative: images array
+        mediaUrls = post.images;
+    } else if (post.displayUrl) {
+        // Single image post
+        mediaUrls = [post.displayUrl];
+    }
+
+    console.log('[instagramScraper] Scraped post:', {
         type: post.type,
         shortCode: post.shortCode,
-        captionLength: post.caption?.length || 0,
-        hasDisplayUrl: !!post.displayUrl,
-        hasVideoUrl: !!post.videoUrl,
-        mediaCount: post.displayResourceUrls?.length || 1,
+        mediaCount: mediaUrls.length,
         ownerUsername: post.ownerUsername
     });
 
@@ -92,12 +108,8 @@ async function scrapeInstagram(instagramUrl) {
         type: post.type, // 'Image', 'Video', 'Sidecar'
 
         // Media URLs (CDN URLs - will expire)
-        // For videos, use videoUrl; for images use displayUrl
         displayUrl: post.type === 'Video' ? post.videoUrl : post.displayUrl,
-        displayResourceUrls:
-            post.type === 'Video'
-                ? [post.videoUrl] // Videos have single videoUrl
-                : post.displayResourceUrls || [post.displayUrl], // Images/carousels use displayResourceUrls
+        displayResourceUrls: mediaUrls,
 
         // Owner info
         ownerUsername: post.ownerUsername,
