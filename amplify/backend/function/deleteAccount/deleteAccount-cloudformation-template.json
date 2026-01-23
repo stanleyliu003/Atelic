@@ -67,6 +67,18 @@
     "storageUserProfilesStorageStreamArn": {
       "Type": "String",
       "Default": "storageUserProfilesStorageStreamArn"
+    },
+    "storageSavedPlacesStorageName": {
+      "Type": "String",
+      "Default": "storageSavedPlacesStorageName"
+    },
+    "storageSavedPlacesStorageArn": {
+      "Type": "String",
+      "Default": "storageSavedPlacesStorageArn"
+    },
+    "storageSavedPlacesStorageStreamArn": {
+      "Type": "String",
+      "Default": "storageSavedPlacesStorageStreamArn"
     }
   },
   "Conditions": {
@@ -160,6 +172,15 @@
             },
             "STORAGE_USERPROFILESSTORAGE_STREAMARN": {
               "Ref": "storageUserProfilesStorageStreamArn"
+            },
+            "STORAGE_SAVEDPLACESSTORAGE_NAME": {
+              "Ref": "storageSavedPlacesStorageName"
+            },
+            "STORAGE_SAVEDPLACESSTORAGE_ARN": {
+              "Ref": "storageSavedPlacesStorageArn"
+            },
+            "STORAGE_SAVEDPLACESSTORAGE_STREAMARN": {
+              "Ref": "storageSavedPlacesStorageStreamArn"
             }
           }
         },
@@ -583,6 +604,39 @@
                       {
                         "Ref": "functionupdateUserProfileName"
                       }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:Get*",
+                "dynamodb:BatchGetItem",
+                "dynamodb:List*",
+                "dynamodb:Describe*",
+                "dynamodb:Scan",
+                "dynamodb:Query",
+                "dynamodb:PartiQLSelect",
+                "dynamodb:Update*",
+                "dynamodb:RestoreTable*",
+                "dynamodb:PartiQLUpdate",
+                "dynamodb:Delete*",
+                "dynamodb:PartiQLDelete"
+              ],
+              "Resource": [
+                {
+                  "Ref": "storageSavedPlacesStorageArn"
+                },
+                {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      {
+                        "Ref": "storageSavedPlacesStorageArn"
+                      },
+                      "index/*"
                     ]
                   ]
                 }

@@ -8,6 +8,9 @@
 	FUNCTION_MANAGECOLLABORATORS_NAME
 	FUNCTION_UPDATEUSERPROFILE_NAME
 	REGION
+	STORAGE_SAVEDPLACESSTORAGE_ARN
+	STORAGE_SAVEDPLACESSTORAGE_NAME
+	STORAGE_SAVEDPLACESSTORAGE_STREAMARN
 	STORAGE_TRIPSTORAGE_ARN
 	STORAGE_TRIPSTORAGE_NAME
 	STORAGE_TRIPSTORAGE_STREAMARN
@@ -128,6 +131,15 @@ exports.handler = async (event) => {
             console.warn('Warning: Failed direct UserProfiles deletion:', e?.message || e);
         }
 
+        // 5c. Delete all saved places for the user from SavedPlacesStorage
+        let savedPlacesDeleted = 0;
+        try {
+            savedPlacesDeleted = await deleteAllSavedPlacesForUser(userID);
+            console.log(`Deleted ${savedPlacesDeleted} saved places for user ${userID}`);
+        } catch (e) {
+            console.warn('Warning: Failed to delete saved places:', e?.message || e);
+        }
+
         const result = {
             success: true,
             message: 'Account deleted successfully',
@@ -136,6 +148,7 @@ exports.handler = async (event) => {
             cognitoUserDeleted: !!cognitoUser,
             ownedTripsDeleted: deletionResults.ownedTripsDeleted,
             sharedTripsRemoved: deletionResults.sharedTripsRemoved,
+            savedPlacesDeleted: savedPlacesDeleted,
             errors: deletionResults.errors
         };
 
@@ -397,12 +410,84 @@ async function getUserInfo(userID) {
             UserPoolId: process.env.AUTH_AMPLIFYBACKEND59CCDBF8_USERPOOLID,
             Username: userID
         };
-        
+
         const result = await cognitoClient.send(new AdminGetUserCommand(getUserParams));
         return result;
 
     } catch (error) {
         console.error(`Error getting user info for ${userID}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Delete all saved places for a user from SavedPlacesStorage
+ * Uses pagination to handle large numbers of saved places
+ * @param {string} userID - The user's Cognito sub (partition key)
+ * @returns {number} - The number of saved places deleted
+ */
+async function deleteAllSavedPlacesForUser(userID) {
+    let totalDeleted = 0;
+    let lastEvaluatedKey = null;
+    let queryCount = 0;
+
+    try {
+        console.log(`[deleteAllSavedPlacesForUser] Starting deletion of saved places for user: ${userID}`);
+
+        do {
+            queryCount++;
+
+            // Query all saved places for this user (userID is the partition key)
+            const queryParams = {
+                TableName: process.env.STORAGE_SAVEDPLACESSTORAGE_NAME,
+                KeyConditionExpression: 'userID = :uid',
+                ExpressionAttributeValues: {
+                    ':uid': userID
+                },
+                // Only need the keys for deletion
+                ProjectionExpression: 'userID, savedPlaceId'
+            };
+
+            if (lastEvaluatedKey) {
+                queryParams.ExclusiveStartKey = lastEvaluatedKey;
+            }
+
+            console.log(`[deleteAllSavedPlacesForUser Query ${queryCount}] Fetching saved places...`);
+            const queryResult = await docClient.send(new QueryCommand(queryParams));
+
+            const items = queryResult.Items || [];
+            console.log(`[deleteAllSavedPlacesForUser Query ${queryCount}] Found ${items.length} saved places in this batch`);
+
+            // Delete each saved place
+            for (const item of items) {
+                try {
+                    await docClient.send(new DeleteCommand({
+                        TableName: process.env.STORAGE_SAVEDPLACESSTORAGE_NAME,
+                        Key: {
+                            userID: item.userID,
+                            savedPlaceId: item.savedPlaceId
+                        }
+                    }));
+                    totalDeleted++;
+                } catch (deleteError) {
+                    console.error(`[deleteAllSavedPlacesForUser] Failed to delete savedPlaceId ${item.savedPlaceId}:`, deleteError.message);
+                    // Continue with other deletions even if one fails
+                }
+            }
+
+            lastEvaluatedKey = queryResult.LastEvaluatedKey;
+
+            if (lastEvaluatedKey) {
+                console.log(`[deleteAllSavedPlacesForUser Query ${queryCount}] More results available, continuing pagination...`);
+            }
+
+        } while (lastEvaluatedKey);
+
+        console.log(`[deleteAllSavedPlacesForUser] Completed. Total saved places deleted: ${totalDeleted} across ${queryCount} query batch(es)`);
+        return totalDeleted;
+
+    } catch (error) {
+        console.error(`[deleteAllSavedPlacesForUser] Error deleting saved places for user ${userID}:`, error);
         throw error;
     }
 }

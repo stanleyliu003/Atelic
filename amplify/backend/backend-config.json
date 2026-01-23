@@ -240,6 +240,15 @@
             "StreamArn"
           ],
           "category": "storage",
+          "resourceName": "SavedPlacesStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
           "resourceName": "TripStorage"
         },
         {

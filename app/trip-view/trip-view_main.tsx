@@ -32,7 +32,7 @@ import { duplicateActivity, ensureActivitiesHaveInstanceIds } from '../../src/ut
 import { Operation } from '../../src/types/operation.types';
 import { saveOperation, listOperations } from '../../src/services/tripOperationsService';
 import { verifyStateReconstruction, applyOperation, ReconstructedTripState, TransportModeOverrides } from '../../src/services/tripReconstructionService';
-import { getSavedPlaces } from '../../src/graphql/queries';
+import { getSavedPlacesDetailed } from '../../src/graphql/customQueries';
 import { filterSavedPlacesByCity } from '../../src/utils/cityMatching';
 
 // GraphQL subscription for real-time trip updates
@@ -3114,7 +3114,7 @@ export default function TripViewMain() {
                 console.log('[trip-view_main] Fetching saved places for Cognito sub:', cognitoSub);
 
                 const result = await API.graphql({
-                    query: getSavedPlaces,
+                    query: getSavedPlacesDetailed,
                     variables: { userID: cognitoSub },
                 });
 

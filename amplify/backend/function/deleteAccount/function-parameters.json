@@ -47,6 +47,11 @@
       ]
     },
     "storage": {
+      "SavedPlacesStorage": [
+        "read",
+        "update",
+        "delete"
+      ],
       "TripStorage": [
         "create",
         "read",
