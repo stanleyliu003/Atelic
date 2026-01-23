@@ -32,7 +32,7 @@ exports.handler = async (event) => {
       ExpressionAttributeValues: {
         ':userID': userID
       },
-      ProjectionExpression: 'tripID, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators'
+      ProjectionExpression: 'tripID, tripTitle, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators'
     };
 
     console.log('Querying owned trips:', JSON.stringify(ownedTripsParams));
@@ -48,7 +48,7 @@ exports.handler = async (event) => {
       ExpressionAttributeValues: {
         ':userID': userID
       },
-      ProjectionExpression: 'tripID, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators, userID'
+      ProjectionExpression: 'tripID, tripTitle, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators, userID'
     };
 
     console.log('Scanning for collaborated trips with pagination...');
@@ -118,6 +118,7 @@ exports.handler = async (event) => {
     // Process owned trips
     const ownedTripSummaries = ownedTripsResult.Items.map(item => ({
       tripId: item.tripID,
+      tripTitle: item.tripTitle || null,
       selectedCity: item.selectedCity,
       tripPhotoReference: normalizePhotoReferences(item.tripPhotoReference),
       createdAt: item.createdAt,
@@ -138,6 +139,7 @@ exports.handler = async (event) => {
       })
       .map(item => ({
         tripId: item.tripID,
+        tripTitle: item.tripTitle || null,
         selectedCity: item.selectedCity,
         tripPhotoReference: normalizePhotoReferences(item.tripPhotoReference),
         createdAt: item.createdAt,
@@ -152,8 +154,52 @@ exports.handler = async (event) => {
     // Combine results
     const allTripSummaries = [...ownedTripSummaries, ...collaboratedTripSummaries];
 
+    console.log(`[Final Results] Total trips before operation reconstruction: ${allTripSummaries.length}`);
+
+    // 3. Fetch tripTitle from TripOperation table for each trip
+    console.log('[Operation Reconstruction] Fetching tripTitle from operations...');
+
+    for (const trip of allTripSummaries) {
+      try {
+        // Query for the most recent tripTitle modify operation
+        const operationsParams = {
+          TableName: process.env.STORAGE_TRIPOPERATIONSTORAGE_NAME,
+          KeyConditionExpression: 'tripID = :tripID',
+          ExpressionAttributeValues: {
+            ':tripID': trip.tripId,
+            ':modifyType': 'modify',
+            ':tripTarget': 'trip'
+          },
+          FilterExpression: '#type = :modifyType AND #target = :tripTarget',
+          ExpressionAttributeNames: {
+            '#type': 'type',
+            '#target': 'target'
+          },
+          ScanIndexForward: false, // Sort descending by timestamp
+          Limit: 50 // Get recent operations, filter for tripTitle
+        };
+
+        const operationsResult = await docClient.send(new QueryCommand(operationsParams));
+
+        // Find the most recent tripTitle modification
+        if (operationsResult.Items && operationsResult.Items.length > 0) {
+          for (const op of operationsResult.Items) {
+            // Check if this operation is for tripTitle
+            if (op.data && typeof op.data === 'object' && op.data.field === 'tripTitle') {
+              console.log(`[Operation Reconstruction] Found tripTitle for trip ${trip.tripId}:`, op.data.value);
+              trip.tripTitle = op.data.value;
+              break; // Use the most recent one
+            }
+          }
+        }
+      } catch (opError) {
+        console.error(`[Operation Reconstruction] Error fetching operations for trip ${trip.tripId}:`, opError);
+        // Continue with null tripTitle if operation fetch fails
+      }
+    }
+
     console.log(`[Final Results] Total trips: ${allTripSummaries.length} (${ownedTripSummaries.length} owned + ${collaboratedTripSummaries.length} collaborated)`);
-    console.log('Final trip summaries:', JSON.stringify(allTripSummaries, null, 2));
+    console.log('Final trip summaries with reconstructed titles:', JSON.stringify(allTripSummaries, null, 2));
     return allTripSummaries;
 
   } catch (error) {

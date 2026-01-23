@@ -26,6 +26,7 @@ export type ReconstructedTripState = {
   wishlist: Activity[];
   dayActivities: { [dayNumber: number]: DayWithPolyline };
   transportModes?: TransportModeOverrides; // Optional for backward compatibility
+  tripTitle?: string | null; // Trip title from modify operations
 };
 
 /**
@@ -337,6 +338,21 @@ function applyModifyOperation(
         },
       },
     };
+  }
+
+  // Handle trip-level modifications (like tripTitle)
+  if (operation.target === 'trip') {
+    const { field, value } = operation.data as any;
+    console.log('[applyModifyOperation] Trip-level modification:', field, '=', value);
+
+    if (field === 'tripTitle') {
+      return {
+        ...state,
+        tripTitle: value,
+      };
+    }
+    // Handle other trip-level fields here in the future
+    return state;
   }
 
   console.warn('[applyModifyOperation] Invalid target or missing dayNumber:', operation);

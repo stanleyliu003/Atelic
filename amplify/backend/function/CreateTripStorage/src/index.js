@@ -54,6 +54,7 @@ exports.handler = async (event) => {
   const item = {
     userID: userId,
     tripID: input.tripId,
+    tripTitle: input.tripTitle || null,
     days: input.days,
     tripLength: input.tripLength,
     selectedCity: input.selectedCity,
@@ -161,6 +162,7 @@ exports.handler = async (event) => {
     // Return a Trip object as required by the GraphQL schema
     return {
       tripId: input.tripId,
+      tripTitle: item.tripTitle,
       days: input.days || [],
       wishlist: input.wishlist || [],
       tripLength: input.tripLength,

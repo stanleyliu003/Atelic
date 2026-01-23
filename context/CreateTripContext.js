@@ -38,6 +38,7 @@ export const CreateTripProvider = ({ children }) => {
     const [endDate, setEndDate] = useState(null);
     const [isCreatingTrip, setIsCreatingTrip] = useState(false);
     const [selectedCity, setSelectedCity] = useState('');
+    const [tripTitle, setTripTitle] = useState(null);
     // Store the selected city's coordinates for map centering before activities exist
     const [selectedCityLocation, setSelectedCityLocation] = useState(null); // { lat, lng } | null
     const [tripLength, setTripLength] = useState(null);
@@ -315,6 +316,12 @@ export const CreateTripProvider = ({ children }) => {
             }
             if (trip.endDate) {
                 setEndDate(trip.endDate);
+            }
+
+            // Restore trip title and selected city
+            setTripTitle(trip.tripTitle || null);
+            if (trip.selectedCity) {
+                setSelectedCity(trip.selectedCity);
             }
 
             // Restore collaboration state
@@ -776,6 +783,17 @@ export const CreateTripProvider = ({ children }) => {
         return dayLodgings[dayNumber] || null;
     };
 
+    /**
+     * Get the default trip title if no custom title is set
+     * @returns {string} Default trip title in format "X Day [City] Trip"
+     */
+    const getDefaultTripTitle = () => {
+        if (tripTitle) return tripTitle;
+        const dayCount = tripLength || Object.keys(dayActivities).length || 0;
+        const cityName = selectedCity || 'Trip';
+        return `${dayCount} Day ${cityName} Trip`;
+    };
+
     const value = {
         tripId,
         setTripId: setTripIdWithLog,
@@ -816,6 +834,8 @@ export const CreateTripProvider = ({ children }) => {
         setIsCreatingTrip,
         selectedCity,
         setSelectedCity,
+        tripTitle,
+        setTripTitle,
         selectedCityLocation,
         setSelectedCityLocation,
         tripLength,
@@ -840,6 +860,7 @@ export const CreateTripProvider = ({ children }) => {
         ACTIVITY_GENERATION_LIMIT,
         tripPhotoReference,
         setTripPhotoReference,
+        getDefaultTripTitle,
         CACHE_KEYS,
         // Collaboration state and functions
         currentUserRole,

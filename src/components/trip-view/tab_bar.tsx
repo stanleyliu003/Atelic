@@ -4,7 +4,7 @@ import React, { useRef } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { formatDayTab } from '../../utils/dateFormatting';
 
-type TabType = 'wishlist' | `day${number}`;
+type TabType = 'overview' | 'wishlist' | `day${number}`;
 
 interface TabBarProps {
   activeTab: TabType;
@@ -16,13 +16,28 @@ interface TabBarProps {
   tabLabels?: TabType[];
   currentUserRole?: 'owner' | 'editor' | 'viewer';
   startDate?: string | null;
+  showOverviewTab?: boolean;
+  showDayButtons?: boolean;
 }
 
-export function TabBar({ activeTab, onTabChange, dayCount, onAddDay, onDeleteDay, shouldScrollToActive = false, tabLabels, currentUserRole, startDate }: TabBarProps) {
+export function TabBar({
+  activeTab,
+  onTabChange,
+  dayCount,
+  onAddDay,
+  onDeleteDay,
+  shouldScrollToActive = false,
+  tabLabels,
+  currentUserRole,
+  startDate,
+  showOverviewTab = false,
+  showDayButtons = true
+}: TabBarProps) {
   const scrollViewRef = useRef<ScrollView>(null);
-  
+
   // Generate tab order: use tabLabels if provided, otherwise default
   const tabs: TabType[] = tabLabels ?? ([
+    ...(showOverviewTab ? ['overview' as TabType] : []),
     'wishlist',
     ...Array.from({ length: dayCount }, (_, i) => `day${i + 1}` as TabType)
   ]);
@@ -59,7 +74,9 @@ export function TabBar({ activeTab, onTabChange, dayCount, onAddDay, onDeleteDay
             onPress={() => onTabChange(tab)}
           >
             <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-              {tab === 'wishlist'
+              {tab === 'overview'
+                ? 'Overview'
+                : tab === 'wishlist'
                 ? 'WishList'
                 : startDate
                   ? formatDayTab(startDate, parseInt(tab.replace('day', '')))
@@ -69,9 +86,9 @@ export function TabBar({ activeTab, onTabChange, dayCount, onAddDay, onDeleteDay
           </TouchableOpacity>
         ))}
       </ScrollView>
-      
-      {/* Delete Day Button - Only show when activeTab is a day and user is not a viewer */}
-      {activeTab.startsWith('day') && currentUserRole !== 'viewer' && (
+
+      {/* Delete Day Button - Only show when showDayButtons is true, activeTab is a day, and user is not a viewer */}
+      {showDayButtons && activeTab.startsWith('day') && currentUserRole !== 'viewer' && (
         <TouchableOpacity
           style={styles.deleteDayButton}
           onPress={onDeleteDay}
@@ -79,9 +96,9 @@ export function TabBar({ activeTab, onTabChange, dayCount, onAddDay, onDeleteDay
           <Ionicons name="remove" size={20} color="#dc3545" />
         </TouchableOpacity>
       )}
-      
-      {/* Add Day Button - Fixed position - hide for viewers */}
-      {currentUserRole !== 'viewer' && (
+
+      {/* Add Day Button - Only show when showDayButtons is true and user is not a viewer */}
+      {showDayButtons && currentUserRole !== 'viewer' && (
         <TouchableOpacity
           style={styles.addDayButton}
           onPress={onAddDay}

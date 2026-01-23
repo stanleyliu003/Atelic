@@ -130,6 +130,11 @@ export default function Profile() {
       setTripsError(null);
 
       const tripSummaries = await listUserTripsFromCloud(userID);
+      console.log('[Profile] Received trip summaries:', JSON.stringify(tripSummaries?.map(t => ({
+        tripId: t.tripId,
+        tripTitle: t.tripTitle,
+        selectedCity: t.selectedCity
+      })), null, 2));
       const allTrips = tripSummaries || [];
 
       // Normalize tripPhotoReference to an array of photo objects
@@ -731,7 +736,7 @@ export default function Profile() {
                     <View style={styles.tripCardInfo}>
                       <View style={styles.tripCardTitleRow}>
                         <Text style={styles.tripCardTitle}>
-                          {trip.selectedCity || 'Unknown City'}
+                          {trip.tripTitle || trip.selectedCity || 'Unknown Trip'}
                         </Text>
                         {/* Show loading indicator in place of menu button when loading this trip */}
                         {selectedTripId === trip.tripId && isLoadingTrip ? (
@@ -750,6 +755,9 @@ export default function Profile() {
                           </TouchableOpacity>
                         )}
                       </View>
+                      {trip.tripTitle && trip.selectedCity && (
+                        <Text style={styles.tripCardSubtitle}>{trip.selectedCity}</Text>
+                      )}
                       <Text style={styles.tripCardLength}>
                         {(() => {
                           if (trip.startDate && trip.endDate) {
@@ -903,7 +911,7 @@ export default function Profile() {
                     <View style={styles.tripCardInfo}>
                       <View style={styles.tripCardTitleRow}>
                         <Text style={styles.tripCardTitle}>
-                          {trip.selectedCity || 'Unknown City'}
+                          {trip.tripTitle || trip.selectedCity || 'Unknown Trip'}
                         </Text>
                         {/* Show loading indicator in place of menu button when loading this trip */}
                         {selectedTripId === trip.tripId && isLoadingTrip ? (
@@ -922,6 +930,9 @@ export default function Profile() {
                           </TouchableOpacity>
                         )}
                       </View>
+                      {trip.tripTitle && trip.selectedCity && (
+                        <Text style={styles.tripCardSubtitle}>{trip.selectedCity}</Text>
+                      )}
                       <Text style={styles.tripCardLength}>
                         {(() => {
                           const referenceDate = trip.startDate ? new Date(trip.startDate) : (trip.createdAt ? new Date(trip.createdAt) : null);
@@ -1489,6 +1500,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: Colors.PRIMARY,
     flex: 1,
+  },
+  tripCardSubtitle: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    marginBottom: 4,
   },
   tripCardLength: {
     fontFamily: 'outfit',

@@ -386,6 +386,7 @@ type AppVersionConfig {
 
   type Trip {
     tripId: String!
+    tripTitle: String
     days: [Day!]!
     wishlist: [Activity!]!
     tripLength: Int
@@ -411,6 +412,7 @@ type AppVersionConfig {
 
    type TripSummary {
      tripId: String!
+     tripTitle: String
      selectedCity: String
      tripPhotoReference: [String]
      createdAt: String
@@ -510,6 +512,7 @@ type AppVersionConfig {
 
   input CreateTripInput {
     tripId: String!
+    tripTitle: String  # Custom trip title
     userID: String!
     days: [DayInput!]!
     wishlist: [ActivityInput!]!

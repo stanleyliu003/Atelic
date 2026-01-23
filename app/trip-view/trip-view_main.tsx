@@ -1,15 +1,18 @@
 import { Colors } from '../../constants/Colors';
 import { useNavigation, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert, AppState, Animated, PanResponder, Dimensions, ActivityIndicator } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { encodePolyline } from '../../src/utils/polyline';
+import { getMarkerColor } from '../../src/constants/mapColors';
 import { DaySchedule, TabBar, WishlistActivities } from '../../src/components/trip-view';
 import { TripMapView } from '../../src/components/trip-view/map_view';
 import { TransferActivitiesModal } from '../../src/components/trip-view/transfer_activities_modal';
 import { TransferButtonContainer } from '../../src/components/trip-view/transfer_delete_button_containor';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import { ActivityDetailView } from '../../src/components/trip-view/description_card';
+import OverviewContent from '../../src/components/trip-view/OverviewContent';
+import DatePickerModal from '../../src/components/trip-view/DatePickerModal';
 import { SearchBar } from '../../src/components/explore/SearchBar';
 import { AutocompleteModal } from '../../src/components/explore/AutocompleteModal';
 import { CategoryModal } from '../../src/components/explore/CategoryModal';
@@ -96,9 +99,21 @@ export default function TripViewMain() {
         categoryActivities,
         recentSearches,
         selectedCityLocation,
+        tripTitle,
+        setTripTitle,
+        getDefaultTripTitle,
+        setStartDate,
+        setEndDate,
     } = useCreateTrip();
+    // Primary tab state for Overview/Itinerary toggle
+    type PrimaryTab = 'overview' | 'itinerary';
+    const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('overview');
+
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
+
+    // Date picker modal state
+    const [datePickerVisible, setDatePickerVisible] = useState(false);
     const [routeData, setRouteData] = useState<RouteData>({
         polyline: [],
         legs: [],
@@ -491,6 +506,291 @@ export default function TripViewMain() {
                     [dayNumber]: false
                 }));
             }, 100);
+        }
+    };
+
+    // Handler for when a day card is pressed in Overview mode
+    const handleOverviewDayPress = (dayNumber: number) => {
+        setPrimaryTab('itinerary');
+        setActiveTab(`day${dayNumber}` as TabType);
+        setShouldScrollToActive(true);
+    };
+
+    // Helper function to convert Activity to ActivityInput format for GraphQL
+    const formatActivityForInput = (activity: Activity): any => {
+        return {
+            instanceId: activity.instanceId || null,
+            place_id: activity.place_id || '',
+            name: activity.name || '',
+            city: activity.city || null,
+            lat: activity.lat || 0,
+            lng: activity.lng || 0,
+            rating: activity.rating || null,
+            types: activity.types || null,
+            primaryType: activity.primaryType || null,
+            photo_reference: activity.photo_reference || null,
+            formatted_address: activity.formatted_address || null,
+            user_ratings_total: activity.user_ratings_total || null,
+            is_recommended: activity.is_recommended || null,
+            display_name: activity.display_name || null,
+            website_uri: activity.website_uri || null,
+            regular_opening_hours: activity.regular_opening_hours ? {
+                open_now: activity.regular_opening_hours.open_now || null,
+                periods: activity.regular_opening_hours.periods || null,
+                weekday_text: activity.regular_opening_hours.weekday_text || null,
+            } : null,
+            reviews: activity.reviews ? activity.reviews.map((review: any) => ({
+                author_name: review.author_name || null,
+                rating: review.rating || null,
+                text: review.text || null,
+                time: review.time || null,
+                author_url: review.author_url || null,
+                profile_photo_url: review.profile_photo_url || null,
+            })) : null,
+            editorial_summary: activity.editorial_summary || null,
+            primary_type_display_name: activity.primary_type_display_name || null,
+            international_phone_number: activity.international_phone_number || null,
+            notes: activity.notes || null,
+            startTime: activity.startTime || null,
+            endTime: activity.endTime || null,
+            isLodging: activity.isLodging || null,
+            lodgingCheckIn: activity.lodgingCheckIn || null,
+            lodgingCheckOut: activity.lodgingCheckOut || null,
+            lodgingTime: activity.lodgingTime ? {
+                checkIn: activity.lodgingTime.checkIn || null,
+                checkOut: activity.lodgingTime.checkOut || null,
+            } : null,
+        };
+    };
+
+    // Helper function to convert Collaborator to CollaboratorInput format for GraphQL
+    const formatCollaboratorForInput = (collaborator: any): any => {
+        return {
+            email: collaborator.email || '',
+            fullName: collaborator.fullName || '',
+            username: collaborator.username || '',
+            userID: collaborator.userID || '',
+            role: collaborator.role || 'viewer',
+            addedBy: collaborator.addedBy || '',
+        };
+    };
+
+    // Helper function to convert CategoryItem to CategoryItemInput format for GraphQL
+    const formatCategoryItemForInput = (item: any): any => {
+        return {
+            category: item.category || '',
+            category_items: item.category_items || [],
+            emoji: item.emoji || null,
+        };
+    };
+
+    // Helper function to convert RecentSearch to RecentSearchInput format for GraphQL
+    const formatRecentSearchForInput = (search: any): any => {
+        return {
+            place_id: search.place_id || '',
+            name: search.name || '',
+            address_info: search.address_info || null,
+            timestamp: search.timestamp || '',
+        };
+    };
+
+    // Helper function to save trip to backend (updates main TripStorage record)
+    const saveTripToBackend = async (updatedTripTitle?: string) => {
+        if (!tripId || !currentUserID) {
+            console.log('[trip-view_main] Cannot save - missing tripId or currentUserID');
+            return;
+        }
+
+        try {
+            console.log('[trip-view_main] Saving trip to TripStorage...');
+
+            // Format days data
+            const sortedDayNumbers = Object.keys(dayActivities)
+                .map(Number)
+                .sort((a, b) => a - b);
+
+            const daysArray = sortedDayNumbers.map((dayNum) => {
+                const dayData = dayActivities[dayNum];
+                return {
+                    dayNumber: dayNum,
+                    activities: (dayData?.activities || []).map(formatActivityForInput),
+                    encodedPolyline: dayPolylines[dayNum] || null,
+                    travelModes: dayTravelModes[dayNum] ? JSON.stringify(dayTravelModes[dayNum]) : null
+                };
+            });
+
+            // Build input for createTrip mutation
+            const tripInput = {
+                tripId: tripId,
+                tripTitle: updatedTripTitle !== undefined ? updatedTripTitle : tripTitle,
+                userID: currentUserID,
+                days: daysArray,
+                wishlist: (activities || []).map(formatActivityForInput),
+                tripLength: tripLength,
+                selectedCity: selectedCity,
+                tripPhotoReference: tripPhotoReference || [],
+                createdAt: createdAt,
+                startDate: startDate,
+                endDate: endDate,
+                collaborators: (collaborators || []).map(formatCollaboratorForInput),
+                version: (version || 0) + 1,
+                updatedAt: new Date().toISOString(),
+                lastUpdatedBy: currentUserID,
+                cityCategories: (cityCategories || []).map(formatCategoryItemForInput),
+                recentSearches: (recentSearches || []).map(formatRecentSearchForInput)
+            };
+
+            // Log the trip input for debugging
+            console.log('[trip-view_main] Sending to createTrip mutation:', {
+                tripId: tripInput.tripId,
+                tripTitle: tripInput.tripTitle,
+                userID: tripInput.userID,
+                daysCount: tripInput.days.length,
+                wishlistCount: tripInput.wishlist.length,
+                collaboratorsCount: tripInput.collaborators.length,
+            });
+
+            // Log the FULL tripInput object to see everything
+            console.log('[trip-view_main] FULL tripInput object:', JSON.stringify({
+                tripId: tripInput.tripId,
+                tripTitle: tripInput.tripTitle,
+                userID: tripInput.userID,
+                selectedCity: tripInput.selectedCity,
+                tripLength: tripInput.tripLength,
+                version: tripInput.version,
+                startDate: tripInput.startDate,
+                endDate: tripInput.endDate,
+                createdAt: tripInput.createdAt,
+                updatedAt: tripInput.updatedAt,
+                lastUpdatedBy: tripInput.lastUpdatedBy,
+            }, null, 2));
+
+            // Call createTrip mutation via GraphQL
+            const result: any = await API.graphql(graphqlOperation(createTrip, { input: tripInput }));
+
+            console.log('[trip-view_main] createTrip mutation result:', {
+                tripId: result?.data?.createTrip?.tripId,
+                tripTitle: result?.data?.createTrip?.tripTitle,
+                version: result?.data?.createTrip?.version,
+                fullResult: JSON.stringify(result?.data?.createTrip).substring(0, 200),
+            });
+
+            // Verify the save worked
+            const savedTitle = result?.data?.createTrip?.tripTitle;
+            const savedVersion = result?.data?.createTrip?.version;
+
+            if (savedTitle !== tripInput.tripTitle) {
+                console.error('[trip-view_main] ⚠️ WARNING: Saved title mismatch!', {
+                    sent: tripInput.tripTitle,
+                    returned: savedTitle
+                });
+            }
+
+            if (savedVersion !== tripInput.version) {
+                console.error('[trip-view_main] ⚠️ WARNING: Version mismatch!', {
+                    sent: tripInput.version,
+                    returned: savedVersion
+                });
+            }
+
+            // Update local version number
+            setVersion(tripInput.version);
+
+            console.log('[trip-view_main] ✅ Trip saved to TripStorage successfully');
+        } catch (error) {
+            console.error('[trip-view_main] ❌ Failed to save trip to TripStorage:', error);
+            throw error;
+        }
+    };
+
+    // Handler for trip title changes
+    const handleTitleChange = async (newTitle: string) => {
+        console.log('[trip-view_main] handleTitleChange called with:', newTitle);
+        console.log('[trip-view_main] Current tripTitle:', tripTitle);
+        setTripTitle(newTitle);
+
+        // Save to backend if trip exists
+        if (tripId) {
+            try {
+                // 1. Log operation for event sourcing
+                console.log('[trip-view_main] Saving trip title to backend via operation');
+                const op = createOperation('modify', 'trip', {
+                    field: 'tripTitle',
+                    value: newTitle
+                });
+                await queueSave(op);
+                console.log('[trip-view_main] Trip title operation queued successfully');
+
+                // 2. Update main trip record in TripStorage
+                await saveTripToBackend(newTitle);
+                console.log('[trip-view_main] Trip title saved to TripStorage successfully');
+            } catch (error) {
+                console.error('[trip-view_main] Failed to save trip title:', error);
+            }
+        } else {
+            console.log('[trip-view_main] No tripId, skipping backend save');
+        }
+    };
+
+    // Handler for date changes (from DatePickerModal)
+    const handleDateChange = async (newStartDate: string | null, newEndDate: string | null, newTripLength: number) => {
+        const oldTripLength = tripLength;
+
+        // Update state
+        setStartDate(newStartDate);
+        setEndDate(newEndDate);
+        setTripLength(newTripLength);
+
+        // Handle day count changes
+        if (newTripLength > oldTripLength) {
+            // Add new empty days
+            const daysToAdd = newTripLength - oldTripLength;
+            for (let i = 0; i < daysToAdd; i++) {
+                await addNewDay();
+            }
+        } else if (newTripLength < oldTripLength) {
+            // Prompt user about removing days
+            Alert.alert(
+                'Remove Days',
+                `This will remove Day ${newTripLength + 1} through Day ${oldTripLength}. Activities will be moved to your wishlist.`,
+                [
+                    {
+                        text: 'Cancel',
+                        style: 'cancel',
+                        onPress: () => {
+                            // Revert dates
+                            setStartDate(startDate);
+                            setEndDate(endDate);
+                            setTripLength(oldTripLength);
+                        }
+                    },
+                    {
+                        text: 'Remove Days',
+                        style: 'destructive',
+                        onPress: async () => {
+                            // Remove days from highest to lowest to avoid index shifting issues
+                            for (let i = oldTripLength; i > newTripLength; i--) {
+                                await handleDeleteDay(i);
+                            }
+                        }
+                    }
+                ]
+            );
+        }
+
+        // Save dates to backend via operation tracking if trip exists
+        if (tripId) {
+            try {
+                const dateOp = createOperation('modify', 'trip', {
+                    field: 'dates',
+                    startDate: newStartDate,
+                    endDate: newEndDate,
+                    tripLength: newTripLength
+                });
+                await queueSave(dateOp);
+            } catch (error) {
+                console.error('[trip-view_main] Failed to save trip dates:', error);
+            }
         }
     };
 
@@ -1064,6 +1364,12 @@ export default function TripViewMain() {
                             console.log('[syncNewOperations] Route updated - total distance:', totalDistance, 'total duration:', formatDuration(totalDurationSeconds));
                         }
                     }
+                }
+
+                // Apply reconstructed tripTitle if it changed
+                if (updatedState.tripTitle !== undefined && updatedState.tripTitle !== tripTitle) {
+                    console.log('[syncNewOperations] Updating tripTitle from operations:', updatedState.tripTitle);
+                    setTripTitle(updatedState.tripTitle);
                 }
 
             } finally {
@@ -3106,10 +3412,86 @@ export default function TripViewMain() {
         }
     }, [dayActivities]);
 
+    // Render primary tab toggle (Overview/Itinerary)
+    const renderPrimaryTabs = () => (
+        <View style={styles.primaryTabContainer}>
+            <TouchableOpacity
+                style={[styles.primaryTab, primaryTab === 'overview' && styles.primaryTabActive]}
+                onPress={() => setPrimaryTab('overview')}
+                activeOpacity={0.7}
+            >
+                <Text style={[styles.primaryTabText, primaryTab === 'overview' && styles.primaryTabTextActive]}>
+                    Overview
+                </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+                style={[styles.primaryTab, primaryTab === 'itinerary' && styles.primaryTabActive]}
+                onPress={() => setPrimaryTab('itinerary')}
+                activeOpacity={0.7}
+            >
+                <Text style={[styles.primaryTabText, primaryTab === 'itinerary' && styles.primaryTabTextActive]}>
+                    Itinerary
+                </Text>
+            </TouchableOpacity>
+        </View>
+    );
+
+    // Prepare day polylines for overview mode with color coding
+    const overviewDayPolylines = useMemo(() => {
+        if (primaryTab !== 'overview') return [];
+
+        const sortedDayNumbers = Object.keys(dayActivities)
+            .map(Number)
+            .sort((a, b) => a - b);
+
+        return sortedDayNumbers
+            .map((dayNumber) => {
+                const encodedPolyline = dayPolylines[dayNumber];
+                if (!encodedPolyline) return null;
+
+                try {
+                    const coordinates = decodePolyline(encodedPolyline);
+                    if (coordinates.length < 2) return null;
+
+                    // Use the same color as the day marker in itinerary
+                    const color = getMarkerColor(`day${dayNumber}` as TabType);
+
+                    return {
+                        dayNumber,
+                        coordinates,
+                        color,
+                    };
+                } catch (error) {
+                    console.error(`[Overview] Failed to decode polyline for day ${dayNumber}:`, error);
+                    return null;
+                }
+            })
+            .filter((item): item is { dayNumber: number; coordinates: { latitude: number; longitude: number }[]; color: string } => item !== null);
+    }, [primaryTab, dayPolylines, dayActivities]);
+
+    // Create a map of activity instanceId to day number for marker coloring in overview mode
+    const activityDayMap = useMemo(() => {
+        if (primaryTab !== 'overview') return undefined;
+
+        const map = new Map<string, number>();
+        Object.keys(dayActivities).forEach((dayKey) => {
+            const dayNumber = parseInt(dayKey);
+            const dayData = dayActivities[dayNumber];
+            if (dayData?.activities) {
+                dayData.activities.forEach((activity: Activity) => {
+                    if (activity.instanceId) {
+                        map.set(activity.instanceId, dayNumber);
+                    }
+                });
+            }
+        });
+        return map;
+    }, [primaryTab, dayActivities]);
+
     return (
         <>
             <TripMapView
-                activities={getActivitiesForTab(activeTab)}
+                activities={primaryTab === 'overview' ? getAllActivitiesFromTrip() : getActivitiesForTab(activeTab)}
                 activeTab={activeTab}
                 routeCoordinates={
                   activeTab.startsWith('day') && getActivitiesForTab(activeTab).length > 0
@@ -3124,6 +3506,9 @@ export default function TripViewMain() {
                 heightStates={heightStates}
                 allActivities={getAllActivitiesFromTrip()}
                 selectedCityLocation={selectedCityLocation || undefined}
+                dayPolylines={primaryTab === 'overview' ? overviewDayPolylines : undefined}
+                activityDayMap={activityDayMap}
+                routeData={activeTab.startsWith('day') ? routeData : undefined}
                 onShareTrip={async () => {
                     if (!tripId) {
                         // Save trip first if it doesn't exist
@@ -3154,7 +3539,11 @@ export default function TripViewMain() {
                     <View style={styles.dragIndicator} />
                 </View>
 
-                {!showActivityDetail && (
+                {/* Primary Tab Toggle (Overview/Itinerary) */}
+                {!showActivityDetail && renderPrimaryTabs()}
+
+                {/* Secondary TabBar (only show in Itinerary mode) */}
+                {!showActivityDetail && primaryTab === 'itinerary' && (
                     <TabBar
                         activeTab={activeTab}
                         onTabChange={handleTabChange}
@@ -3165,6 +3554,8 @@ export default function TripViewMain() {
                         tabLabels={tabLabels}
                         currentUserRole={currentUserRole}
                         startDate={startDate}
+                        showOverviewTab={true}
+                        showDayButtons={false}
                     />
                 )}
 
@@ -3179,9 +3570,42 @@ export default function TripViewMain() {
                         onDelete={(activity) => handleDeleteActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
                         currentUserRole={currentUserRole}
                     />
+                ) : primaryTab === 'overview' ? (
+                    // OVERVIEW MODE: Show overview content
+                    <OverviewContent
+                        tripTitle={tripTitle}
+                        onTitleChange={handleTitleChange}
+                        startDate={startDate}
+                        endDate={endDate}
+                        tripLength={tripLength}
+                        selectedCity={selectedCity || ''}
+                        dayActivities={dayActivities || {}}
+                        activities={activities || []}
+                        onDayPress={handleOverviewDayPress}
+                        onDatePress={() => setDatePickerVisible(true)}
+                        currentUserRole={currentUserRole || 'owner'}
+                        collaborators={collaborators}
+                    />
                 ) : (
+                    // ITINERARY MODE: Show tabs (Overview, Wishlist, Days)
                     <>
-                        {activeTab === 'wishlist' && (() => {
+                        {activeTab === 'overview' ? (
+                            // Overview tab within Itinerary mode (same content as Overview mode)
+                            <OverviewContent
+                                tripTitle={tripTitle}
+                                onTitleChange={handleTitleChange}
+                                startDate={startDate}
+                                endDate={endDate}
+                                tripLength={tripLength}
+                                selectedCity={selectedCity || ''}
+                                dayActivities={dayActivities || {}}
+                                activities={activities || []}
+                                onDayPress={handleOverviewDayPress}
+                                onDatePress={() => setDatePickerVisible(true)}
+                                currentUserRole={currentUserRole || 'owner'}
+                                collaborators={collaborators}
+                            />
+                        ) : activeTab === 'wishlist' && (() => {
                             const wishlistActivities = getActivitiesForTab('wishlist');
                             const activitiesByCity = wishlistActivities.reduce((acc: { [key: string]: Activity[] }, activity) => {
                                 const city = activity.city || 'Unknown City';
@@ -3463,6 +3887,16 @@ export default function TripViewMain() {
                 />
             )}
 
+            {/* Date Picker Modal */}
+            <DatePickerModal
+                visible={datePickerVisible}
+                onClose={() => setDatePickerVisible(false)}
+                initialStartDate={startDate}
+                initialEndDate={endDate}
+                initialTripLength={tripLength}
+                onSave={handleDateChange}
+            />
+
             <TouchableOpacity
                 style={styles.homeButton}
                 onPress={async () => {
@@ -3540,6 +3974,36 @@ const styles = StyleSheet.create({
         height: 5,
         backgroundColor: '#D1D5DB',
         borderRadius: 3,
+    },
+    primaryTabContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        backgroundColor: Colors.WHITE,
+    },
+    primaryTab: {
+        flex: 1,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 8,
+        marginHorizontal: 4,
+        backgroundColor: '#F3F4F6',
+    },
+    primaryTabActive: {
+        backgroundColor: Colors.PRIMARY,
+    },
+    primaryTabText: {
+        fontSize: 16,
+        fontFamily: 'outfit-medium',
+        color: '#6B7280',
+    },
+    primaryTabTextActive: {
+        fontFamily: 'outfit-semibold',
+        color: Colors.WHITE,
     },
     homeButton: {
         position: 'absolute',
