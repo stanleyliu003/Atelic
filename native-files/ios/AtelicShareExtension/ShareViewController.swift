@@ -27,6 +27,7 @@ class ShareViewController: UIViewController {
     private var progressBarBackground: UIView!
     private var progressBarFill: UIView!
     private var statusLabel: UILabel!
+    private var viewSavedPlacesButton: UIButton!
     private var checkmarkView: UIView!
     private var checkmarkImageView: UIImageView!
 
@@ -88,15 +89,15 @@ class ShareViewController: UIViewController {
         logoImageView.addGestureRecognizer(logoTapGesture)
         containerView.addSubview(logoImageView)
 
-        // Close button in top right - light gray circle with black X
+        // Close button in top right - light gray circle with black X (35x35, 50% of original)
         closeButton = UIButton(type: .custom)
-        closeButton.backgroundColor = UIColor.systemGray5
-        closeButton.layer.cornerRadius = 35 // Half of 70 for circular shape
+        closeButton.backgroundColor = UIColor(red: 243/255, green: 244/255, blue: 246/255, alpha: 1.0) // #F3F4F6
+        closeButton.layer.cornerRadius = 17.5 // Half of 35 for circular shape
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         closeButton.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
 
-        // Add X icon
-        let xImage = UIImage(systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 24, weight: .medium))
+        // Add X icon (50% smaller: 12pt instead of 24pt)
+        let xImage = UIImage(systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .medium))
         closeButton.setImage(xImage, for: .normal)
         closeButton.tintColor = .black
         containerView.addSubview(closeButton)
@@ -130,19 +131,39 @@ class ShareViewController: UIViewController {
         statusLabel.textAlignment = .center
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
         containerView.addSubview(statusLabel)
+        
+        // View Saved Places Button (orange with white text, hidden initially)
+        viewSavedPlacesButton = UIButton(type: .system)
+        viewSavedPlacesButton.setTitle("See places on Atelic", for: .normal)
+        viewSavedPlacesButton.backgroundColor = atelicOrange
+        viewSavedPlacesButton.setTitleColor(.white, for: .normal)
+        viewSavedPlacesButton.layer.cornerRadius = 14
+        viewSavedPlacesButton.contentEdgeInsets = UIEdgeInsets(top: 18, left: 32, bottom: 18, right: 32)
+        // Try to use Outfit Bold font for button, fallback to bold system font
+        if let outfitFont = UIFont(name: "Outfit-Bold", size: 19) {
+            viewSavedPlacesButton.titleLabel?.font = outfitFont
+        } else if let outfitFont = UIFont(name: "Outfit-Medium", size: 19) {
+            viewSavedPlacesButton.titleLabel?.font = outfitFont
+        } else {
+            viewSavedPlacesButton.titleLabel?.font = UIFont.systemFont(ofSize: 19, weight: .bold)
+        }
+        viewSavedPlacesButton.translatesAutoresizingMaskIntoConstraints = false
+        viewSavedPlacesButton.alpha = 0
+        viewSavedPlacesButton.addTarget(self, action: #selector(viewSavedPlacesButtonTapped), for: .touchUpInside)
+        containerView.addSubview(viewSavedPlacesButton)
 
-        // Checkmark container (hidden initially)
+        // Checkmark container (hidden initially) - larger size
         checkmarkView = UIView()
         checkmarkView.backgroundColor = successGreen
-        checkmarkView.layer.cornerRadius = 40
+        checkmarkView.layer.cornerRadius = 50
         checkmarkView.translatesAutoresizingMaskIntoConstraints = false
         checkmarkView.alpha = 0
         checkmarkView.transform = CGAffineTransform(scaleX: 0.5, y: 0.5)
         containerView.addSubview(checkmarkView)
 
-        // Checkmark icon
+        // Checkmark icon - larger size
         checkmarkImageView = UIImageView()
-        checkmarkImageView.image = UIImage(systemName: "checkmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 36, weight: .bold))
+        checkmarkImageView.image = UIImage(systemName: "checkmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 46, weight: .bold))
         checkmarkImageView.tintColor = .white
         checkmarkImageView.contentMode = .scaleAspectFit
         checkmarkImageView.translatesAutoresizingMaskIntoConstraints = false
@@ -168,17 +189,17 @@ class ShareViewController: UIViewController {
             dragIndicator.widthAnchor.constraint(equalToConstant: 40),
             dragIndicator.heightAnchor.constraint(equalToConstant: 5),
 
-            // Logo - top left (170x170, shifted up closer to top)
-            logoImageView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
+            // Logo - top left (170x170, shifted up by 40px from original 12pt = -28pt)
+            logoImageView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: -28),
             logoImageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 12),
             logoImageView.widthAnchor.constraint(equalToConstant: 170),
             logoImageView.heightAnchor.constraint(equalToConstant: 170),
 
-            // Close button - top right (70x70 light gray circle with black X)
+            // Close button - top right (35x35, 50% of original size)
             closeButton.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 20),
             closeButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
-            closeButton.widthAnchor.constraint(equalToConstant: 70),
-            closeButton.heightAnchor.constraint(equalToConstant: 70),
+            closeButton.widthAnchor.constraint(equalToConstant: 35),
+            closeButton.heightAnchor.constraint(equalToConstant: 35),
 
             // Progress bar - centered
             progressBarBackground.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
@@ -192,16 +213,21 @@ class ShareViewController: UIViewController {
             progressBarFill.bottomAnchor.constraint(equalTo: progressBarBackground.bottomAnchor),
             progressBarWidthConstraint,
 
-            // Checkmark view - centered where progress bar is
+            // Checkmark view - centered where progress bar is, larger size
             checkmarkView.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
             checkmarkView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor, constant: -40),
-            checkmarkView.widthAnchor.constraint(equalToConstant: 80),
-            checkmarkView.heightAnchor.constraint(equalToConstant: 80),
+            checkmarkView.widthAnchor.constraint(equalToConstant: 100),
+            checkmarkView.heightAnchor.constraint(equalToConstant: 100),
 
             // Status label - more spacing below checkmark (40pt instead of 20pt)
             statusLabel.topAnchor.constraint(equalTo: checkmarkView.bottomAnchor, constant: 40),
             statusLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
             statusLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
+            
+            // View Saved Places Button - positioned below checkmark, larger and moved down
+            viewSavedPlacesButton.topAnchor.constraint(equalTo: checkmarkView.bottomAnchor, constant: 55),
+            viewSavedPlacesButton.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            viewSavedPlacesButton.heightAnchor.constraint(equalToConstant: 56),
 
             // Checkmark icon
             checkmarkImageView.centerXAnchor.constraint(equalTo: checkmarkView.centerXAnchor),
@@ -246,9 +272,10 @@ class ShareViewController: UIViewController {
 
     // Show success checkmark (called after 1.5s progress bar completes, regardless of Lambda result)
     private func showSuccessCheckmark() {
-        // Hide progress bar
+        // Hide progress bar and status label
         UIView.animate(withDuration: 0.2) {
             self.progressBarBackground.alpha = 0
+            self.statusLabel.alpha = 0
         }
 
         // Show checkmark with spring animation
@@ -257,9 +284,10 @@ class ShareViewController: UIViewController {
             self.checkmarkView.transform = .identity
         }
 
-        // Update status label (keep black text with Outfit font)
-        self.statusLabel.text = "Places saved to Atelic"
-        self.statusLabel.textColor = .black
+        // Show button after checkmark animation
+        UIView.animate(withDuration: 0.3, delay: 0.6) {
+            self.viewSavedPlacesButton.alpha = 1
+        }
     }
 
     private func completeProgress() {
@@ -312,7 +340,14 @@ class ShareViewController: UIViewController {
     }
 
     @objc private func logoTapped() {
-        openMainApp()
+        openMainApp(route: "saved_places")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.dismissExtension()
+        }
+    }
+    
+    @objc private func viewSavedPlacesButtonTapped() {
+        openMainApp(route: "saved_places")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.dismissExtension()
         }
@@ -496,10 +531,13 @@ class ShareViewController: UIViewController {
     }
 
     // MARK: - Open Main App
-    private func openMainApp() {
+    private func openMainApp(route: String? = nil) {
         // Opens the main Atelic app - will show Login if not authenticated
         // or main app if already logged in
-        let url = URL(string: "atelic://")!
+        // If route is provided, navigates to that specific screen
+        let urlString = route != nil ? "atelicstable://\(route!)" : "atelicstable://"
+        guard let url = URL(string: urlString) else { return }
+        
         var responder: UIResponder? = self
         while responder != nil {
             if let application = responder as? UIApplication {

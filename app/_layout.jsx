@@ -1,7 +1,7 @@
 import { useFonts } from 'expo-font';
 import { Stack, useRouter } from "expo-router";
 import { CreateTripProvider } from '../context/CreateTripContext';
-import { View, Text, Platform } from 'react-native';
+import { View, Text, Platform, Linking } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef } from 'react';
 import { Auth } from 'aws-amplify';
@@ -94,6 +94,49 @@ export default function RootLayout() {
     };
 
     initAppsFlyer();
+  }, []);
+
+  // Set up deep linking listeners
+  useEffect(() => {
+    // Handle deep link when app is already open
+    const handleDeepLink = (event) => {
+      const url = event.url;
+      console.log('🔗 Deep link received:', url);
+      
+      if (url) {
+        // Parse the URL - format: atelicstable://route
+        const route = url.replace(/.*?:\/\//g, '');
+        console.log('🔗 Parsed route:', route);
+        
+        if (route === 'saved_places') {
+          router.push('/(tabs)/saved_places');
+        }
+        // Add more routes here as needed
+      }
+    };
+
+    // Listen for URLs when app is open
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // Handle initial URL if app was opened via deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        console.log('🔗 Initial URL:', url);
+        const route = url.replace(/.*?:\/\//g, '');
+        console.log('🔗 Parsed initial route:', route);
+        
+        if (route === 'saved_places') {
+          // Use setTimeout to ensure navigation happens after app is ready
+          setTimeout(() => {
+            router.push('/(tabs)/saved_places');
+          }, 500);
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   // Set up notification listeners
