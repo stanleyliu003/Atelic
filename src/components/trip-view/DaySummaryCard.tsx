@@ -2,14 +2,16 @@ import React, { useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/Colors';
-import { Activity } from '../../types/activity.types';
+import { Activity, EnhancedRouteLeg } from '../../types/activity.types';
 import { getMarkerColor } from '../../constants/mapColors';
+import { formatDistance } from '../../utils/routeUtils';
 
 interface DaySummaryCardProps {
   dayNumber: number;
   activities: Activity[];
   date: Date | null;
   onPress: () => void;
+  routeLegs?: EnhancedRouteLeg[];
 }
 
 export default function DaySummaryCard({
@@ -17,6 +19,7 @@ export default function DaySummaryCard({
   activities,
   date,
   onPress,
+  routeLegs,
 }: DaySummaryCardProps) {
   const formatDate = (date: Date | null): string => {
     if (!date) return '';
@@ -54,6 +57,24 @@ export default function DaySummaryCard({
     return `${hour12}:${minute} ${ampm}`;
   };
 
+  // Calculate distance between two coordinates in miles (fallback if no API data)
+  const calculateDistanceHaversine = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 3958.8; // Earth's radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const formatDistanceMiles = (miles: number): string => {
+    if (miles < 0.1) return `${Math.round(miles * 5280)} ft`;
+    if (miles < 1) return `${miles.toFixed(1)} mi`;
+    return `${miles.toFixed(1)} mi`;
+  };
+
   const dayColor = getMarkerColor(`day${dayNumber}` as any);
 
   const scaleValue = useRef(new Animated.Value(1)).current;
@@ -62,8 +83,9 @@ export default function DaySummaryCard({
   const handlePressIn = () => {
     setIsPressed(true);
     Animated.spring(scaleValue, {
-      toValue: 0.98,
-      friction: 8,
+      toValue: 0.985,
+      friction: 10,
+      tension: 100,
       useNativeDriver: true,
     }).start();
   };
@@ -72,7 +94,8 @@ export default function DaySummaryCard({
     setIsPressed(false);
     Animated.spring(scaleValue, {
       toValue: 1,
-      friction: 8,
+      friction: 10,
+      tension: 100,
       useNativeDriver: true,
     }).start();
   };
@@ -91,7 +114,7 @@ export default function DaySummaryCard({
             <View style={[styles.dayDot, { backgroundColor: dayColor }]} />
             <Text style={styles.dayTitle}>Day {dayNumber}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
         </View>
 
         {date && <Text style={styles.date}>{formatDate(date)}</Text>}
@@ -102,6 +125,34 @@ export default function DaySummaryCard({
             {activities.map((activity, index) => {
               const isHotel = activity.isLodging === true || activity.primaryType === 'lodging';
               const isLast = index === activities.length - 1;
+
+              // Get distance to next activity
+              let distance: string | null = null;
+              if (!isLast) {
+                // Try to get distance from API route data first
+                if (routeLegs && routeLegs[index]) {
+                  const leg = routeLegs[index];
+                  const modeData = leg.modeData[leg.selectedMode];
+                  if (modeData?.distance) {
+                    // formatDistance from routeUtils expects meters
+                    distance = formatDistance(modeData.distance);
+                  }
+                }
+
+                // Fallback to Haversine calculation if no API data
+                if (!distance && activity.lat && activity.lng) {
+                  const nextActivity = activities[index + 1];
+                  if (nextActivity?.lat && nextActivity?.lng) {
+                    const miles = calculateDistanceHaversine(
+                      activity.lat,
+                      activity.lng,
+                      nextActivity.lat,
+                      nextActivity.lng
+                    );
+                    distance = formatDistanceMiles(miles);
+                  }
+                }
+              }
 
               return (
                 <View key={activity.instanceId || index} style={styles.timelineItem}>
@@ -114,7 +165,11 @@ export default function DaySummaryCard({
 
                   {/* Marker Column */}
                   <View style={styles.markerColumn}>
-                    <View style={[styles.marker, isHotel && styles.markerHotel, { borderColor: dayColor }]}>
+                    <View style={[
+                      styles.marker,
+                      isHotel && styles.markerHotel,
+                      { borderColor: dayColor }
+                    ]}>
                       {isHotel ? (
                         <Ionicons name="home" size={11} color={dayColor} />
                       ) : (
@@ -126,13 +181,22 @@ export default function DaySummaryCard({
 
                   {/* Activity Column */}
                   <View style={styles.activityColumn}>
-                    <Text style={styles.activityName} numberOfLines={2}>
+                    <Text style={styles.activityName} numberOfLines={1}>
                       {activity.name}
                     </Text>
-                    {activity.endTime && (
-                      <Text style={styles.durationText}>
-                        Until {formatTime(activity.endTime)}
-                      </Text>
+                    {(activity.endTime || (!isLast && distance)) && (
+                      <View style={styles.metaRow}>
+                        {activity.endTime && (
+                          <Text style={styles.durationText}>
+                            Until {formatTime(activity.endTime)}
+                          </Text>
+                        )}
+                        {!isLast && distance && (
+                          <Text style={styles.distanceInline}>
+                            {activity.endTime ? ' · ' : ''}{distance}
+                          </Text>
+                        )}
+                      </View>
                     )}
                   </View>
                 </View>
@@ -150,7 +214,7 @@ export default function DaySummaryCard({
 const styles = StyleSheet.create({
   card: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
   },
   cardPressed: {
@@ -168,21 +232,21 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   dayDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
   },
   dayTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: 'outfit-bold',
     color: '#111827',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   date: {
     fontSize: 12,
     fontFamily: 'outfit',
     color: '#9CA3AF',
-    marginBottom: 12,
+    marginBottom: 10,
     marginLeft: 1,
   },
   timeline: {
@@ -190,30 +254,30 @@ const styles = StyleSheet.create({
   },
   timelineItem: {
     flexDirection: 'row',
-    minHeight: 38,
+    minHeight: 36,
   },
   timeColumn: {
     width: 56,
-    paddingTop: 2,
+    paddingTop: 1,
   },
   timeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: 'outfit-semibold',
     color: '#9CA3AF',
     letterSpacing: -0.1,
   },
   markerColumn: {
-    width: 28,
+    width: 26,
     alignItems: 'center',
     position: 'relative',
-    marginRight: 6,
+    marginRight: 10,
   },
   marker: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#FFFFFF',
-    borderWidth: 2,
+    borderWidth: 2.5,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
@@ -228,31 +292,40 @@ const styles = StyleSheet.create({
   },
   connector: {
     position: 'absolute',
-    top: 24,
-    bottom: -38,
+    top: 26,
+    bottom: -36,
     width: 2,
-    left: 11,
+    left: 12,
     zIndex: 1,
-    opacity: 0.25,
+    opacity: 0.2,
   },
   activityColumn: {
     flex: 1,
-    paddingTop: 2,
-    paddingBottom: 12,
-    paddingLeft: 4,
+    paddingTop: 1,
+    paddingBottom: 10,
   },
   activityName: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: 'outfit-semibold',
     color: '#111827',
     lineHeight: 18,
-    letterSpacing: -0.1,
+    letterSpacing: -0.2,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
   },
   durationText: {
     fontSize: 11,
     fontFamily: 'outfit',
     color: '#9CA3AF',
-    marginTop: 2,
+  },
+  distanceInline: {
+    fontSize: 11,
+    fontFamily: 'outfit',
+    color: '#9CA3AF',
+    letterSpacing: 0,
   },
   emptyText: {
     fontSize: 13,

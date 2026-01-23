@@ -101,28 +101,28 @@ export default function EditableTripTitle({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 6,
+    marginBottom: 4,
   },
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: 'outfit-bold',
     color: '#111827',
     flex: 1,
-    letterSpacing: -0.5,
-    lineHeight: 28,
+    letterSpacing: -0.4,
+    lineHeight: 26,
   },
   input: {
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: 'outfit-bold',
     color: '#111827',
     padding: 0,
     margin: 0,
-    letterSpacing: -0.5,
-    lineHeight: 28,
+    letterSpacing: -0.4,
+    lineHeight: 26,
     borderBottomWidth: 2,
     borderBottomColor: '#F36406',
   },

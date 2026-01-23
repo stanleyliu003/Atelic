@@ -3469,6 +3469,23 @@ export default function TripViewMain() {
             .filter((item): item is { dayNumber: number; coordinates: { latitude: number; longitude: number }[]; color: string } => item !== null);
     }, [primaryTab, dayPolylines, dayActivities]);
 
+    // Extract route legs for each day from the routeCache for Overview display
+    const dayRouteLegs = useMemo(() => {
+        const result: { [dayNumber: number]: EnhancedRouteLeg[] } = {};
+
+        Object.keys(dayActivities).forEach((dayNumberStr) => {
+            const dayNumber = Number(dayNumberStr);
+            const dayTab = `day${dayNumber}`;
+            const cached = routeCache.current[dayTab];
+
+            if (cached?.routeData?.legs) {
+                result[dayNumber] = cached.routeData.legs as EnhancedRouteLeg[];
+            }
+        });
+
+        return result;
+    }, [dayActivities, routeData]); // Re-compute when route data changes
+
     // Create a map of activity instanceId to day number for marker coloring in overview mode
     const activityDayMap = useMemo(() => {
         if (primaryTab !== 'overview') return undefined;
@@ -3585,6 +3602,7 @@ export default function TripViewMain() {
                         onDatePress={() => setDatePickerVisible(true)}
                         currentUserRole={currentUserRole || 'owner'}
                         collaborators={collaborators}
+                        dayRouteLegs={dayRouteLegs}
                     />
                 ) : (
                     // ITINERARY MODE: Show tabs (Overview, Wishlist, Days)
@@ -3604,6 +3622,7 @@ export default function TripViewMain() {
                                 onDatePress={() => setDatePickerVisible(true)}
                                 currentUserRole={currentUserRole || 'owner'}
                                 collaborators={collaborators}
+                                dayRouteLegs={dayRouteLegs}
                             />
                         ) : activeTab === 'wishlist' && (() => {
                             const wishlistActivities = getActivitiesForTab('wishlist');

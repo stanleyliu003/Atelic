@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/Colors';
-import { Activity } from '../../types/activity.types';
+import { Activity, EnhancedRouteLeg } from '../../types/activity.types';
 import EditableTripTitle from './EditableTripTitle';
 import DaySummaryCard from './DaySummaryCard';
 
@@ -26,6 +26,7 @@ interface OverviewContentProps {
   onDatePress: () => void;
   currentUserRole: string;
   collaborators?: Collaborator[];
+  dayRouteLegs?: { [dayNumber: number]: EnhancedRouteLeg[] };
 }
 
 export default function OverviewContent({
@@ -41,6 +42,7 @@ export default function OverviewContent({
   onDatePress,
   currentUserRole,
   collaborators,
+  dayRouteLegs,
 }: OverviewContentProps) {
   const isViewer = currentUserRole === 'viewer';
 
@@ -138,6 +140,7 @@ export default function OverviewContent({
                   activities={dayActivities[dayNumber]?.activities || []}
                   date={calculateDayDate(startDate, dayNumber)}
                   onPress={() => onDayPress(dayNumber)}
+                  routeLegs={dayRouteLegs?.[dayNumber]}
                 />
                 {index < sortedDayNumbers.length - 1 && <View style={styles.dayDivider} />}
               </React.Fragment>
@@ -146,7 +149,7 @@ export default function OverviewContent({
         ) : (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconContainer}>
-              <Ionicons name="calendar-outline" size={40} color="#F36406" />
+              <Ionicons name="calendar-outline" size={36} color="#F36406" />
             </View>
             <Text style={styles.emptyTitle}>No days planned yet</Text>
             <Text style={styles.emptySubtext}>
@@ -164,7 +167,7 @@ export default function OverviewContent({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F9FAFB',
   },
   contentContainer: {
     paddingBottom: 24,
@@ -172,16 +175,14 @@ const styles = StyleSheet.create({
   headerSection: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 14,
+    paddingBottom: 12,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 10,
+    marginTop: 8,
   },
   dateContainer: {
     flexDirection: 'row',
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
   },
   daysSection: {
     marginTop: 16,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   sectionHeader: {
     fontSize: 11,
@@ -224,54 +225,44 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     paddingHorizontal: 20,
-    paddingBottom: 10,
+    paddingBottom: 8,
   },
   daysContainer: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: '#E5E7EB',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
   },
   dayDivider: {
     height: 1,
-    backgroundColor: '#F0F0F0',
-    marginLeft: 16,
+    backgroundColor: '#F3F4F6',
+    marginLeft: 18,
   },
   emptyState: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
-    padding: 48,
-    borderRadius: 18,
+    padding: 40,
+    borderRadius: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#F0F0F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: '#E5E7EB',
   },
   emptyIconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#FEF3F2',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontFamily: 'outfit-bold',
     color: '#111827',
-    marginBottom: 8,
+    marginBottom: 6,
     letterSpacing: -0.3,
   },
   emptySubtext: {
@@ -279,9 +270,9 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit',
     color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 21,
+    lineHeight: 20,
   },
   bottomPadding: {
-    height: 30,
+    height: 24,
   },
 });
