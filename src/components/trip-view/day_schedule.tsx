@@ -102,7 +102,7 @@ export function DaySchedule({
         </View>
       </View>
 
-      {/* Activities List - handles its own scrolling */}
+      {/* Activities List - handles its own scrolling, SearchBar is inside at top */}
       <ActivityList
         activities={activities}
         selectedActivities={selectedActivities}

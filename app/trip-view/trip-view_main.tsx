@@ -3342,12 +3342,14 @@ export default function TripViewMain() {
                                 >
                                     {trip_saved_places_activities.length === 0 ? (
                                         <View>
+                                            {/* City Title */}
                                             {(displayCityName || selectedCity) && (
                                                 <Text style={styles.cityTitle}>{displayCityName || selectedCity}</Text>
                                             )}
-                                            {/* SearchBar hide for viewers */}
+
+                                            {/* SearchBar - right below city title, scrolls with content */}
                                             {currentUserRole !== 'viewer' && (
-                                                <View style={{ marginTop: 0, marginBottom: 0 }}>
+                                                <View style={styles.wishlistSearchBarContainer}>
                                                     <SearchBar
                                                         value={searchQuery}
                                                         onChangeText={handleSearchQueryChange}
@@ -3397,9 +3399,23 @@ export default function TripViewMain() {
                                         </View>
                                     ) : (
                                         <>
-                                            {Object.entries(activitiesByCity).map(([city, cityActivities]: [string, Activity[]]) => (
+                                            {Object.entries(activitiesByCity).map(([city, cityActivities]: [string, Activity[]], cityIndex: number) => (
                                                 <View key={`wishlist-${city}`} style={styles.citySection}>
+                                                    {/* City Title */}
                                                     <Text style={styles.cityTitle}>{displayCityName || city}</Text>
+
+                                                    {/* SearchBar - right below city title (only for first city), scrolls with content */}
+                                                    {cityIndex === 0 && currentUserRole !== 'viewer' && (
+                                                        <View style={styles.wishlistSearchBarContainer}>
+                                                            <SearchBar
+                                                                value={searchQuery}
+                                                                onChangeText={handleSearchQueryChange}
+                                                                onPress={handleSearchPress}
+                                                                placeholder="Add places"
+                                                            />
+                                                        </View>
+                                                    )}
+
                                                     <WishlistActivities
                                                         activities={cityActivities}
                                                         selectedActivities={selectedActivities}
@@ -3420,23 +3436,6 @@ export default function TripViewMain() {
                                                 <View style={styles.autocompleteLoadingContainer}>
                                                     <ActivityIndicator size="small" color={Colors.PRIMARY} />
                                                     <Text style={styles.autocompleteLoadingText}>Activity Loading</Text>
-                                                </View>
-                                            )}
-
-                                            {/* SearchBar after all activities - hide for viewers */}
-                                            {currentUserRole !== 'viewer' && (
-                                                <View
-                                                    style={{
-                                                        marginTop: isAutocompleteAddingPlace ? 0 : -30,
-                                                        marginBottom: 30,
-                                                    }}
-                                                >
-                                                    <SearchBar
-                                                        value={searchQuery}
-                                                        onChangeText={handleSearchQueryChange}
-                                                        onPress={handleSearchPress}
-                                                        placeholder="Add places"
-                                                    />
                                                 </View>
                                             )}
 
@@ -3742,6 +3741,9 @@ const styles = StyleSheet.create({
     },
     wishlistContainer: {
         flex: 1,
+    },
+    wishlistSearchBarContainer: {
+        marginBottom: -15,
     },
     wishlistContent: {
         paddingBottom: 20,

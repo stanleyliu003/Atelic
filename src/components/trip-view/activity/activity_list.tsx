@@ -500,7 +500,7 @@ export function ActivityList({
 
   // Handle empty state
   if (!activities || activities.length === 0) {
-    // If onAddPlace is provided, show SearchBar instead of action button
+    // Show SearchBar even when no activities
     if (onAddPlace) {
       return (
         <View style={styles.emptyWithSearchContainer}>
@@ -656,25 +656,25 @@ export function ActivityList({
             })();
           }}
         >
-          {renderActivities()}
-          
-          {/* Inline loading indicator when adding a place from AutocompleteModal */}
-          {isAddingPlaceFromAutocomplete && (
-            <View style={styles.autocompleteLoadingContainer}>
-              <ActivityIndicator size="small" color={Colors.PRIMARY} />
-              <Text style={styles.autocompleteLoadingText}>Activity Loading</Text>
-            </View>
-          )}
-
-          {/* SearchBar - visible at bottom of list */}
-          {onAddPlace && activities.length > 0 && (
-            <View style={{ marginTop: 0, paddingHorizontal: 16 }}>
+          {/* SearchBar at top of scrollable content */}
+          {onAddPlace && (
+            <View style={styles.searchBarContainer}>
               <SearchBar
                 value={searchQuery}
                 onChangeText={onSearchQueryChange || (() => {})}
                 onPress={onAddPlace}
                 placeholder="Add places"
               />
+            </View>
+          )}
+
+          {renderActivities()}
+
+          {/* Inline loading indicator when adding a place from AutocompleteModal */}
+          {isAddingPlaceFromAutocomplete && (
+            <View style={styles.autocompleteLoadingContainer}>
+              <ActivityIndicator size="small" color={Colors.PRIMARY} />
+              <Text style={styles.autocompleteLoadingText}>Activity Loading</Text>
             </View>
           )}
         </Animated.ScrollView>
@@ -704,25 +704,25 @@ export function ActivityList({
 
   return (
     <Container {...containerProps}>
+      {/* SearchBar at top of scrollable content */}
+      {onAddPlace && (
+        <View style={styles.searchBarContainer}>
+          <SearchBar
+            value={searchQuery}
+            onChangeText={onSearchQueryChange || (() => {})}
+            onPress={onAddPlace}
+            placeholder="Add places"
+          />
+        </View>
+      )}
+
       {renderActivities()}
-      
+
       {/* Inline loading indicator when adding a place from AutocompleteModal */}
       {isAddingPlaceFromAutocomplete && (
         <View style={styles.autocompleteLoadingContainer}>
           <ActivityIndicator size="small" color={Colors.PRIMARY} />
           <Text style={styles.autocompleteLoadingText}>Activity Loading</Text>
-        </View>
-      )}
-
-      {/* SearchBar - visible at bottom of list */}
-      {onAddPlace && activities.length > 0 && (
-        <View style={{ marginTop: 0, paddingHorizontal: 16 }}>
-          <SearchBar
-            value={searchQuery}
-            onChangeText={onSearchQueryChange || (() => {})}
-            onPress={onAddPlace}
-            placeholder="Add more activities"
-          />
         </View>
       )}
     </Container>
@@ -1236,6 +1236,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     marginTop: -5,
+  },
+  searchBarContainer: {
+    paddingHorizontal: 0,
+    marginBottom: -12,
+    marginTop:-8,
   },
   activityCard: {
     marginBottom: 12,
