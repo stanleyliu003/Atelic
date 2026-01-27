@@ -1,14 +1,17 @@
 import { Colors } from '../../constants/Colors';
 import { Auth, API } from 'aws-amplify';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useState, useEffect } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView, Modal, ImageBackground } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, ScrollView, Modal, ImageBackground, Image, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DeviceInfo from 'react-native-device-info';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
 import appsFlyer from 'react-native-appsflyer';
 import { clearAuthData } from '../../src/services/appGroupsService';
+import { Video, ResizeMode } from 'expo-av';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const updateUserProfileMutation = /* GraphQL */ `
   mutation UpdateUserProfile($username: String!, $action: String!, $tripData: AWSJSON) {
@@ -80,6 +83,11 @@ export default function UsernameSetup() {
   const [selectedUseCases, setSelectedUseCases] = useState([]);
   const [devicePushToken, setDevicePushToken] = useState(null);
   const [notificationPermissionGranted, setNotificationPermissionGranted] = useState(false);
+
+  // Video refs for demo pages
+  const videoRef1 = useRef(null);
+  const videoRef2 = useRef(null);
+  const videoRef3 = useRef(null);
 
   const activityOptions = [
     { label: 'History', emoji: '🏛️', value: 'history' },
@@ -628,11 +636,23 @@ export default function UsernameSetup() {
       // Page 7: Use cases page - no validation required
       setCurrentPage(8);
     } else if (currentPage === 8) {
-      // Page 8: Notifications page - request permission then go to welcome
-      await requestNotificationPermission();
+      // Page 8: Instagram capture image - go to first demo video
       setCurrentPage(9);
     } else if (currentPage === 9) {
-      // Page 9: Welcome page - submit
+      // Page 9: Demo video 1 - go to demo video 2
+      setCurrentPage(10);
+    } else if (currentPage === 10) {
+      // Page 10: Demo video 2 - go to demo video 3
+      setCurrentPage(11);
+    } else if (currentPage === 11) {
+      // Page 11: Demo video 3 - go to notifications
+      setCurrentPage(12);
+    } else if (currentPage === 12) {
+      // Page 12: Notifications page - request permission then go to welcome
+      await requestNotificationPermission();
+      setCurrentPage(13);
+    } else if (currentPage === 13) {
+      // Page 13: Welcome page - submit
       handleContinue();
     }
   };
@@ -682,8 +702,16 @@ export default function UsernameSetup() {
     } else if (currentPage === 7) {
       return false; // Use cases page - optional
     } else if (currentPage === 8) {
-      return false; // Notifications page - no validation
+      return false; // Instagram capture page - no validation
     } else if (currentPage === 9) {
+      return false; // Demo video 1 - no validation
+    } else if (currentPage === 10) {
+      return false; // Demo video 2 - no validation
+    } else if (currentPage === 11) {
+      return false; // Demo video 3 - no validation
+    } else if (currentPage === 12) {
+      return false; // Notifications page - no validation
+    } else if (currentPage === 13) {
       return isLoading; // Welcome page - can submit while loading
     }
     return false;
@@ -697,7 +725,7 @@ export default function UsernameSetup() {
       <ScrollView
         contentContainerStyle={{
           paddingTop: 60,
-          paddingBottom: (currentPage === 6 || currentPage === 7) ? 120 : 40
+          paddingBottom: currentPage === 7 ? 180 : ([6, 8].includes(currentPage) ? 120 : 40)
         }}
         keyboardShouldPersistTaps="handled"
         style={{ backgroundColor: Colors.WHITE }}
@@ -705,13 +733,15 @@ export default function UsernameSetup() {
       >
         <View style={styles.container}>
           <View style={styles.content}>
-            {/* Back Button */}
-            <TouchableOpacity
-              style={{ padding: 5, marginBottom: 10, alignSelf: 'flex-start' }}
-              onPress={handleBack}
-            >
-              <Ionicons name="arrow-back" size={40} color="black" />
-            </TouchableOpacity>
+            {/* Back Button - hide on video pages 9, 10, 11 */}
+            {![9, 10, 11].includes(currentPage) && (
+              <TouchableOpacity
+                style={{ padding: 5, marginBottom: 10, alignSelf: 'flex-start' }}
+                onPress={handleBack}
+              >
+                <Ionicons name="arrow-back" size={40} color="black" />
+              </TouchableOpacity>
+            )}
 
             {/* Page 1: First Name and Last Name */}
             {currentPage === 1 && (
@@ -994,8 +1024,24 @@ export default function UsernameSetup() {
               </>
             )}
 
-            {/* Page 8: Notification Permission */}
+            {/* Page 8: Instagram Capture */}
             {currentPage === 8 && (
+              <>
+                <Text style={styles.imageTitle}>Save spots from Instagram!</Text>
+                <View style={styles.instagramImageContainer}>
+                  <Image
+                    source={require('../../assets/Instagram_Capture.png')}
+                    style={styles.instagramImage}
+                    resizeMode="cover"
+                  />
+                </View>
+              </>
+            )}
+
+            {/* Pages 9, 10, 11 are rendered outside ScrollView as fullscreen */}
+
+            {/* Page 12: Notification Permission */}
+            {currentPage === 12 && (
               <>
                 <View style={{ alignItems: 'center', marginBottom: 10 }}>
                   <Ionicons name="notifications-outline" size={60} color="black" />
@@ -1040,8 +1086,8 @@ export default function UsernameSetup() {
               </>
             )}
 
-            {/* Page 9: Welcome */}
-            {currentPage === 9 && (
+            {/* Page 13: Welcome */}
+            {currentPage === 13 && (
               <>
                 <Text style={styles.imageTitle}>Welcome {getFirstName()}</Text>
                 <Text style={styles.imageSubtitle}>You're all set. Start your first itinerary, invite your travel buddies, and create your dream trip!</Text>
@@ -1054,7 +1100,7 @@ export default function UsernameSetup() {
             )}
 
             {/* Only show error and button for pages that DON'T have fixed bottom button */}
-            {currentPage !== 6 && currentPage !== 7 && (
+            {![6, 7, 8, 9, 10, 11].includes(currentPage) && (
               <>
                 {error ? (
                   <Text style={styles.errorText}>{error}</Text>
@@ -1075,7 +1121,7 @@ export default function UsernameSetup() {
                     <ActivityIndicator color={Colors.WHITE} />
                   ) : (
                     <Text style={styles.buttonText}>
-                      {currentPage === 9 ? 'Start planning' : currentPage === 8 ? 'Choose permissions' : 'Continue'}
+                      {currentPage === 13 ? 'Start planning' : currentPage === 12 ? 'Choose permissions' : 'Continue'}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -1086,8 +1132,8 @@ export default function UsernameSetup() {
         </View>
       </ScrollView>
 
-      {/* Fixed button at bottom for pages 6 and 7 */}
-      {(currentPage === 6 || currentPage === 7) && (
+      {/* Fixed button at bottom for pages 6, 7, 8 */}
+      {[6, 7, 8].includes(currentPage) && (
         <View style={styles.fixedButtonContainer}>
           {/* Terms and Privacy Policy - Only show on page 7 */}
           {currentPage === 7 && (
@@ -1135,9 +1181,89 @@ export default function UsernameSetup() {
             {isLoading ? (
               <ActivityIndicator color={Colors.WHITE} />
             ) : (
-              <Text style={styles.buttonText}>Continue</Text>
+              <Text style={styles.buttonText}>
+                {currentPage === 8 ? 'Try it now' : 'Continue'}
+              </Text>
             )}
           </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Page 9: Fullscreen Demo Video 1 - red box bottom right */}
+      {currentPage === 9 && (
+        <View style={styles.fullscreenVideoContainer}>
+          <Video
+            ref={videoRef1}
+            source={require('../../assets/Demo_S1.mp4')}
+            style={styles.fullscreenVideo}
+            resizeMode={ResizeMode.CONTAIN}
+            shouldPlay={true}
+            isLooping={true}
+            isMuted={true}
+            useNativeControls={false}
+          />
+          <TouchableOpacity
+            style={styles.videoBackButton}
+            onPress={() => setCurrentPage(8)}
+          >
+            <Ionicons name="arrow-back" size={40} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.redBox, styles.redBoxBottom1]}
+            onPress={() => setCurrentPage(10)}
+          />
+        </View>
+      )}
+
+      {/* Page 10: Fullscreen Demo Video 2 - red box bottom center */}
+      {currentPage === 10 && (
+        <View style={styles.fullscreenVideoContainer}>
+          <Video
+            ref={videoRef2}
+            source={require('../../assets/Demo_S2.mp4')}
+            style={styles.fullscreenVideo}
+            resizeMode={ResizeMode.CONTAIN}
+            shouldPlay={true}
+            isLooping={true}
+            isMuted={true}
+            useNativeControls={false}
+          />
+          <TouchableOpacity
+            style={styles.videoBackButton}
+            onPress={() => setCurrentPage(9)}
+          >
+            <Ionicons name="arrow-back" size={40} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.redBox, styles.redBoxBottom2]}
+            onPress={() => setCurrentPage(11)}
+          />
+        </View>
+      )}
+
+      {/* Page 11: Fullscreen Demo Video 3 - red box bottom center */}
+      {currentPage === 11 && (
+        <View style={styles.fullscreenVideoContainer}>
+          <Video
+            ref={videoRef3}
+            source={require('../../assets/Demo_S3.mp4')}
+            style={styles.fullscreenVideo}
+            resizeMode={ResizeMode.CONTAIN}
+            shouldPlay={true}
+            isLooping={true}
+            isMuted={true}
+            useNativeControls={false}
+          />
+          <TouchableOpacity
+            style={styles.videoBackButton}
+            onPress={() => setCurrentPage(10)}
+          >
+            <Ionicons name="arrow-back" size={40} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.redBox, styles.redBoxBottom3]}
+            onPress={() => setCurrentPage(12)}
+          />
         </View>
       )}
     </KeyboardAvoidingView>
@@ -1449,5 +1575,61 @@ const styles = StyleSheet.create({
     color: Colors.GRAY,
     textAlign: 'center',
     marginTop: 20,
+  },
+  instagramImageContainer: {
+    marginTop: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  instagramImage: {
+    width: (screenWidth - 50),
+    height: (screenWidth - 50) * 1.3,
+    borderRadius: 20,
+  },
+  demoVideo: {
+    width: screenWidth - 50,
+    height: (screenWidth - 50) * 1.8,
+    borderRadius: 20,
+    alignSelf: 'center',
+  },
+  fullscreenVideoContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  fullscreenVideo: {
+    width: screenWidth,
+    height: screenHeight,
+  },
+  videoBackButton: {
+    position: 'absolute',
+    top: 60,
+    left: 25,
+    padding: 5,
+    zIndex: 10,
+  },
+  redBox: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    backgroundColor: 'red',
+  },
+  redBoxBottom1: {
+    bottom: screenHeight * 0.20,
+    right: 0,
+  },
+  redBoxBottom2: {
+    bottom: screenHeight * 0.106,
+    left: (screenWidth - 80) / 2,
+  },
+  redBoxBottom3: {
+    bottom: screenHeight * 0.153,
+    left: (screenWidth - 175) / 2,
   },
 });
