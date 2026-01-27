@@ -263,6 +263,25 @@ async function placeExistsForUser(userID, placeId) {
 }
 
 /**
+ * Extract country from city string (format: "City, Country")
+ * @param {string} city - City string (e.g., "Rome, Italy")
+ * @returns {string} - Extracted country or empty string
+ */
+function extractCountry(city) {
+    if (!city || typeof city !== 'string') {
+        return '';
+    }
+    
+    const parts = city.split(',').map(part => part.trim());
+    // If there's a comma, the last part is typically the country
+    if (parts.length >= 2) {
+        return parts[parts.length - 1];
+    }
+    
+    return '';
+}
+
+/**
  * Save extracted places to DynamoDB (skips duplicates by place_id)
  * Note: place_id is globally unique across all locations, so no city filtering needed
  * @param {string} userID - Cognito user ID
@@ -279,6 +298,7 @@ async function savePlaces(userID, activities, scrapedData) {
 
     for (const activity of activities) {
         const city = activity.city || '';
+        const country = extractCountry(city);
 
         // Skip if this place_id already exists for this user (place_id is globally unique)
         if (activity.place_id && await placeExistsForUser(userID, activity.place_id)) {
@@ -304,6 +324,7 @@ async function savePlaces(userID, activities, scrapedData) {
             sourcePostId: scrapedData.shortCode,
             sourceUsername: scrapedData.ownerUsername,
             city: city,
+            country: country,
             savedAt: now
         };
 
@@ -314,7 +335,7 @@ async function savePlaces(userID, activities, scrapedData) {
             })
         );
 
-        console.log(`[index] Saved place: ${activity.name} (${savedPlace.savedPlaceId})`);
+        console.log(`[index] Saved place: ${activity.name} (${savedPlace.savedPlaceId}) - City: ${city}, Country: ${country}`);
         savedPlaces.push(savedPlace);
     }
 
@@ -471,7 +492,8 @@ exports.handler = async (event) => {
                 activity: sp.activity,
                 source: sp.source,
                 sourceUrl: sp.sourceUrl,
-                city: sp.city
+                city: sp.city,
+                country: sp.country
             })),
             skippedCount,
             message

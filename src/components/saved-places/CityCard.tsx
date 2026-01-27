@@ -7,6 +7,7 @@ import { Colors } from '../../../constants/Colors';
 
 interface CityData {
   city: string;
+  country?: string;
   count: number;
 }
 

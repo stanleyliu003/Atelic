@@ -107,9 +107,12 @@ function groupByCity(savedPlaces) {
 
     for (const place of savedPlaces) {
         const city = place.city || 'Unknown';
+        const country = place.country || '';
+        
         if (!cityMap[city]) {
             cityMap[city] = {
                 city: city,
+                country: country,
                 count: 0,
                 places: [],
                 lastUpdatedAt: null

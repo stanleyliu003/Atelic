@@ -301,11 +301,13 @@ export const getSavedPlacesDetailed = /* GraphQL */ `
         sourcePostId
         sourceUsername
         city
+        country
         savedAt
         __typename
       }
       cities {
         city
+        country
         count
         __typename
       }

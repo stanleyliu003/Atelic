@@ -65,6 +65,13 @@ export default function SavedPlaces() {
         citiesCount: data.cities?.length || 0,
       });
 
+      // Log country information for verification
+      if (data.cities && data.cities.length > 0) {
+        console.log('[SavedPlaces] Cities with country info:', 
+          data.cities.map(c => ({ city: c.city, country: c.country, count: c.count }))
+        );
+      }
+
       setCities(data.cities || []);
       setTotalCount(data.totalCount || 0);
       setAllSavedPlaces(data.savedPlaces || []);
