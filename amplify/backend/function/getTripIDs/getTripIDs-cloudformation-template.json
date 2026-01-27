@@ -27,6 +27,18 @@
     "storageTripStorageStreamArn": {
       "Type": "String",
       "Default": "storageTripStorageStreamArn"
+    },
+    "storageTripOperationsStorageName": {
+      "Type": "String",
+      "Default": "storageTripOperationsStorageName"
+    },
+    "storageTripOperationsStorageArn": {
+      "Type": "String",
+      "Default": "storageTripOperationsStorageArn"
+    },
+    "storageTripOperationsStorageStreamArn": {
+      "Type": "String",
+      "Default": "storageTripOperationsStorageStreamArn"
     }
   },
   "Conditions": {
@@ -90,6 +102,15 @@
             },
             "STORAGE_TRIPSTORAGE_STREAMARN": {
               "Ref": "storageTripStorageStreamArn"
+            },
+            "STORAGE_TRIPOPERATIONSSTORAGE_NAME": {
+              "Ref": "storageTripOperationsStorageName"
+            },
+            "STORAGE_TRIPOPERATIONSSTORAGE_ARN": {
+              "Ref": "storageTripOperationsStorageArn"
+            },
+            "STORAGE_TRIPOPERATIONSSTORAGE_STREAMARN": {
+              "Ref": "storageTripOperationsStorageStreamArn"
             }
           }
         },
@@ -222,6 +243,34 @@
                     [
                       {
                         "Ref": "storageTripStorageArn"
+                      },
+                      "index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:Get*",
+                "dynamodb:BatchGetItem",
+                "dynamodb:List*",
+                "dynamodb:Describe*",
+                "dynamodb:Scan",
+                "dynamodb:Query",
+                "dynamodb:PartiQLSelect"
+              ],
+              "Resource": [
+                {
+                  "Ref": "storageTripOperationsStorageArn"
+                },
+                {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      {
+                        "Ref": "storageTripOperationsStorageArn"
                       },
                       "index/*"
                     ]

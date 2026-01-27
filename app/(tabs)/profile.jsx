@@ -92,11 +92,12 @@ export default function Profile() {
   // Reload data every time the screen comes into focus
   useFocusEffect(
     useCallback(() => {
+      console.log('[Profile] useFocusEffect triggered - reloading trips');
       // Reset carousel indices and photo counts when coming back to this screen
       setCarouselIndices({});
       setTripPhotoCounts({});
       loadUserData();
-    }, [loadUserData])
+    }, [])  // Empty dependency array - always reload on focus
   );
 
   // Auto-load trip from notification
@@ -249,6 +250,12 @@ export default function Profile() {
       const userID = user.username;
 
       const tripDetails = await retrieveTripFromCloud(userID, tripId);
+
+      console.log('[Profile] 📥 Retrieved trip details:');
+      console.log('[Profile] Trip ID:', tripDetails?.tripId);
+      console.log('[Profile] Trip Title:', tripDetails?.tripTitle);
+      console.log('[Profile] Selected City:', tripDetails?.selectedCity);
+      console.log('[Profile] Trip Title type:', typeof tripDetails?.tripTitle);
 
       if (tripDetails) {
         // Load trip data into context with currentUserID

@@ -120,6 +120,7 @@ export const getUserTripsDetailed = /* GraphQL */ `
         endTime
         __typename
       }
+      tripTitle
       tripLength
       selectedCity
       tripPhotoReference

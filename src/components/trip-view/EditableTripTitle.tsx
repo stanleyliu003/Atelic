@@ -40,6 +40,12 @@ export default function EditableTripTitle({
     setIsEditing(false);
     const trimmed = localTitle.trim();
 
+    console.log('[EditableTripTitle] handleBlur called');
+    console.log('[EditableTripTitle] Current title prop:', title);
+    console.log('[EditableTripTitle] Local title:', localTitle);
+    console.log('[EditableTripTitle] Trimmed:', trimmed);
+    console.log('[EditableTripTitle] Default title:', defaultTitle);
+
     // If empty, reset to default
     if (trimmed === '') {
       setLocalTitle(title || defaultTitle);
@@ -50,11 +56,13 @@ export default function EditableTripTitle({
     // 1. Title is null (no custom title set) and user typed something different from default
     // 2. Title exists and user typed something different from current title
     if (title === null && trimmed !== defaultTitle) {
-      console.log('[EditableTripTitle] Saving new custom title:', trimmed);
+      console.log('[EditableTripTitle] ✅ Saving new custom title:', trimmed);
       onSave(trimmed);
     } else if (title !== null && trimmed !== title) {
-      console.log('[EditableTripTitle] Updating existing title from', title, 'to', trimmed);
+      console.log('[EditableTripTitle] ✅ Updating existing title from', title, 'to', trimmed);
       onSave(trimmed);
+    } else {
+      console.log('[EditableTripTitle] ❌ Not saving - title unchanged or matches default');
     }
   };
 
@@ -108,26 +116,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: 20,
+    fontSize: 24,
     fontFamily: 'outfit-bold',
-    color: '#111827',
+    color: '#000000',
     flex: 1,
     letterSpacing: -0.4,
-    lineHeight: 26,
+    lineHeight: 30,
   },
   input: {
-    fontSize: 20,
+    fontSize: 24,
     fontFamily: 'outfit-bold',
-    color: '#111827',
+    color: '#000000',
     padding: 0,
     margin: 0,
     letterSpacing: -0.4,
-    lineHeight: 26,
+    lineHeight: 30,
     borderBottomWidth: 2,
-    borderBottomColor: '#F36406',
+    borderBottomColor: '#007AFF',
   },
   icon: {
-    marginLeft: 8,
-    opacity: 0.4,
+    marginLeft: 10,
+    opacity: 0.3,
   },
 });

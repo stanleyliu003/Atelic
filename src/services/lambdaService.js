@@ -70,7 +70,10 @@ export const listUserTripsFromCloud = async (userID) => {
             query: getTripIDsQuery,
             variables: {
                 userID: userID
-            }
+            },
+            authMode: 'API_KEY',
+            // Force network fetch to bypass AppSync cache and get fresh tripTitle data
+            fetchPolicy: 'network-only'
         });
 
         console.log('[Lambda Service] Retrieved trip summaries');

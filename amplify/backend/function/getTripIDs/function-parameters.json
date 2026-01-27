@@ -3,6 +3,9 @@
     "storage": {
       "TripStorage": [
         "read"
+      ],
+      "TripOperationsStorage": [
+        "read"
       ]
     }
   },

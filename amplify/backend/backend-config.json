@@ -361,6 +361,15 @@
           ],
           "category": "storage",
           "resourceName": "TripStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripOperationsStorage"
         }
       ],
       "providerPlugin": "awscloudformation",

@@ -319,7 +319,12 @@ export const CreateTripProvider = ({ children }) => {
             }
 
             // Restore trip title and selected city
+            console.log('[CreateTripContext] Restoring tripTitle:', trip.tripTitle);
+            console.log('[CreateTripContext] tripTitle type:', typeof trip.tripTitle);
+            console.log('[CreateTripContext] tripTitle is null?:', trip.tripTitle === null);
+            console.log('[CreateTripContext] tripTitle is undefined?:', trip.tripTitle === undefined);
             setTripTitle(trip.tripTitle || null);
+            console.log('[CreateTripContext] ✅ Set tripTitle to:', trip.tripTitle || null);
             if (trip.selectedCity) {
                 setSelectedCity(trip.selectedCity);
             }

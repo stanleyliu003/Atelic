@@ -14,6 +14,14 @@ const normalizePhotoReferences = (photoRef) => {
 exports.handler = async (event) => {
   console.log('Received event:', JSON.stringify(event));
 
+  // Debug: Log all environment variables
+  console.log('[DEBUG] Environment variables:', {
+    STORAGE_TRIPSTORAGE_NAME: process.env.STORAGE_TRIPSTORAGE_NAME,
+    STORAGE_TRIPOPERATIONSSTORAGE_NAME: process.env.STORAGE_TRIPOPERATIONSSTORAGE_NAME,
+    ENV: process.env.ENV,
+    REGION: process.env.REGION
+  });
+
   // Get userID from GraphQL arguments
   const { userID } = event.arguments;
 
@@ -37,6 +45,11 @@ exports.handler = async (event) => {
 
     console.log('Querying owned trips:', JSON.stringify(ownedTripsParams));
     const ownedTripsResult = await docClient.send(new QueryCommand(ownedTripsParams));
+    console.log('[getTripIDs] 🔍 Raw DynamoDB items:', JSON.stringify(ownedTripsResult.Items.map(item => ({
+      tripID: item.tripID,
+      tripTitle: item.tripTitle,
+      version: item.version
+    })), null, 2));
 
     // 2. Scan for trips where user is a collaborator
     // Note: DynamoDB FilterExpression can't easily search nested arrays, so we'll scan all trips
@@ -161,36 +174,52 @@ exports.handler = async (event) => {
 
     for (const trip of allTripSummaries) {
       try {
-        // Query for the most recent tripTitle modify operation
+        // Query for the most recent tripTitle modify operation using the byTripID GSI
         const operationsParams = {
-          TableName: process.env.STORAGE_TRIPOPERATIONSTORAGE_NAME,
+          TableName: process.env.STORAGE_TRIPOPERATIONSSTORAGE_NAME,
+          IndexName: 'byTripID', // Use the GSI for querying by tripID
           KeyConditionExpression: 'tripID = :tripID',
           ExpressionAttributeValues: {
-            ':tripID': trip.tripId,
-            ':modifyType': 'modify',
-            ':tripTarget': 'trip'
+            ':tripID': trip.tripId
           },
-          FilterExpression: '#type = :modifyType AND #target = :tripTarget',
-          ExpressionAttributeNames: {
-            '#type': 'type',
-            '#target': 'target'
-          },
-          ScanIndexForward: false, // Sort descending by timestamp
-          Limit: 50 // Get recent operations, filter for tripTitle
+          ScanIndexForward: false, // Sort descending by timestamp (most recent first)
+          Limit: 50 // Get recent operations, we'll filter for tripTitle in code
         };
 
         const operationsResult = await docClient.send(new QueryCommand(operationsParams));
 
+        console.log(`[Operation Reconstruction] Found ${operationsResult.Items?.length || 0} operations for trip ${trip.tripId}`);
+
         // Find the most recent tripTitle modification
         if (operationsResult.Items && operationsResult.Items.length > 0) {
           for (const op of operationsResult.Items) {
-            // Check if this operation is for tripTitle
-            if (op.data && typeof op.data === 'object' && op.data.field === 'tripTitle') {
-              console.log(`[Operation Reconstruction] Found tripTitle for trip ${trip.tripId}:`, op.data.value);
-              trip.tripTitle = op.data.value;
-              break; // Use the most recent one
+            try {
+              // Parse the operationData JSON string to get the actual operation object
+              const operation = typeof op.operationData === 'string'
+                ? JSON.parse(op.operationData)
+                : op.operationData;
+
+              console.log(`[Operation Reconstruction] Operation for ${trip.tripId}:`, {
+                type: operation.type,
+                target: operation.target,
+                field: operation.data?.field
+              });
+
+              // Check if this is a trip-level modification for tripTitle
+              if (operation.type === 'modify' &&
+                  operation.target === 'trip' &&
+                  operation.data?.field === 'tripTitle') {
+                console.log(`[Operation Reconstruction] ✅ Found tripTitle for trip ${trip.tripId}:`, operation.data.value);
+                trip.tripTitle = operation.data.value;
+                break; // Use the most recent one
+              }
+            } catch (parseError) {
+              console.error(`[Operation Reconstruction] Failed to parse operation for trip ${trip.tripId}:`, parseError);
+              // Continue to next operation
             }
           }
+        } else {
+          console.log(`[Operation Reconstruction] No operations found for trip ${trip.tripId}`);
         }
       } catch (opError) {
         console.error(`[Operation Reconstruction] Error fetching operations for trip ${trip.tripId}:`, opError);

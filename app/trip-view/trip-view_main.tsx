@@ -12,7 +12,7 @@ import { TransferButtonContainer } from '../../src/components/trip-view/transfer
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import { ActivityDetailView } from '../../src/components/trip-view/description_card';
 import OverviewContent from '../../src/components/trip-view/OverviewContent';
-import DatePickerModal from '../../src/components/trip-view/DatePickerModal';
+import SimpleDatePicker from '../../src/components/trip-view/SimpleDatePicker';
 import { SearchBar } from '../../src/components/explore/SearchBar';
 import { AutocompleteModal } from '../../src/components/explore/AutocompleteModal';
 import { CategoryModal } from '../../src/components/explore/CategoryModal';
@@ -486,6 +486,11 @@ export default function TripViewMain() {
             clearSelection();
         }
 
+        // If clicking Overview tab in TabBar, switch back to primary Overview mode
+        if (tab === 'overview' && primaryTab === 'itinerary') {
+            setPrimaryTab('overview');
+        }
+
         setActiveTab(tab);
         // Don't auto-scroll for manual tab selection
         setShouldScrollToActive(false);
@@ -517,8 +522,26 @@ export default function TripViewMain() {
     };
 
     // Helper function to convert Activity to ActivityInput format for GraphQL
+    // Helper function to recursively remove __typename from objects
+    const removeTypename = (obj: any): any => {
+        if (obj === null || obj === undefined) return obj;
+        if (Array.isArray(obj)) {
+            return obj.map(item => removeTypename(item));
+        }
+        if (typeof obj === 'object') {
+            const cleaned: any = {};
+            for (const key in obj) {
+                if (key !== '__typename') {
+                    cleaned[key] = removeTypename(obj[key]);
+                }
+            }
+            return cleaned;
+        }
+        return obj;
+    };
+
     const formatActivityForInput = (activity: Activity): any => {
-        return {
+        const activityInput = {
             instanceId: activity.instanceId || null,
             place_id: activity.place_id || '',
             name: activity.name || '',
@@ -534,19 +557,8 @@ export default function TripViewMain() {
             is_recommended: activity.is_recommended || null,
             display_name: activity.display_name || null,
             website_uri: activity.website_uri || null,
-            regular_opening_hours: activity.regular_opening_hours ? {
-                open_now: activity.regular_opening_hours.open_now || null,
-                periods: activity.regular_opening_hours.periods || null,
-                weekday_text: activity.regular_opening_hours.weekday_text || null,
-            } : null,
-            reviews: activity.reviews ? activity.reviews.map((review: any) => ({
-                author_name: review.author_name || null,
-                rating: review.rating || null,
-                text: review.text || null,
-                time: review.time || null,
-                author_url: review.author_url || null,
-                profile_photo_url: review.profile_photo_url || null,
-            })) : null,
+            regular_opening_hours: activity.regular_opening_hours || null,
+            reviews: activity.reviews || null,
             editorial_summary: activity.editorial_summary || null,
             primary_type_display_name: activity.primary_type_display_name || null,
             international_phone_number: activity.international_phone_number || null,
@@ -556,16 +568,15 @@ export default function TripViewMain() {
             isLodging: activity.isLodging || null,
             lodgingCheckIn: activity.lodgingCheckIn || null,
             lodgingCheckOut: activity.lodgingCheckOut || null,
-            lodgingTime: activity.lodgingTime ? {
-                checkIn: activity.lodgingTime.checkIn || null,
-                checkOut: activity.lodgingTime.checkOut || null,
-            } : null,
+            lodgingTime: activity.lodgingTime || null,
         };
+        // Recursively remove all __typename fields
+        return removeTypename(activityInput);
     };
 
     // Helper function to convert Collaborator to CollaboratorInput format for GraphQL
     const formatCollaboratorForInput = (collaborator: any): any => {
-        return {
+        const collaboratorInput = {
             email: collaborator.email || '',
             fullName: collaborator.fullName || '',
             username: collaborator.username || '',
@@ -573,6 +584,8 @@ export default function TripViewMain() {
             role: collaborator.role || 'viewer',
             addedBy: collaborator.addedBy || '',
         };
+        // Recursively remove all __typename fields
+        return removeTypename(collaboratorInput);
     };
 
     // Helper function to convert CategoryItem to CategoryItemInput format for GraphQL
@@ -620,9 +633,20 @@ export default function TripViewMain() {
             });
 
             // Build input for createTrip mutation
+            // CRITICAL: Preserve existing tripTitle if not explicitly being updated
+            // If updatedTripTitle is explicitly passed (even as null), use it
+            // Otherwise, use current tripTitle state
+            // This prevents autosave from overwriting custom titles with null
+            const finalTripTitle = updatedTripTitle !== undefined ? updatedTripTitle : tripTitle;
+            console.log('[saveTripToBackend] updatedTripTitle param:', updatedTripTitle);
+            console.log('[saveTripToBackend] current tripTitle state:', tripTitle);
+            console.log('[saveTripToBackend] 📤 Final tripTitle to save:', finalTripTitle);
+            console.log('[saveTripToBackend] 🔢 Current version state:', version);
+            console.log('[saveTripToBackend] 🔢 Next version to save:', (version || 0) + 1);
+
             const tripInput = {
                 tripId: tripId,
-                tripTitle: updatedTripTitle !== undefined ? updatedTripTitle : tripTitle,
+                tripTitle: finalTripTitle,
                 userID: currentUserID,
                 days: daysArray,
                 wishlist: (activities || []).map(formatActivityForInput),
@@ -665,8 +689,21 @@ export default function TripViewMain() {
                 lastUpdatedBy: tripInput.lastUpdatedBy,
             }, null, 2));
 
+            // Log full activities to debug schema mismatch
+            if (tripInput.wishlist && tripInput.wishlist.length > 0) {
+                console.log('[trip-view_main] First wishlist activity:', JSON.stringify(tripInput.wishlist[0], null, 2));
+            }
+            if (tripInput.days && tripInput.days.length > 0 && tripInput.days[0].activities.length > 0) {
+                console.log('[trip-view_main] First day activity:', JSON.stringify(tripInput.days[0].activities[0], null, 2));
+            }
+            if (tripInput.collaborators && tripInput.collaborators.length > 0) {
+                console.log('[trip-view_main] First collaborator:', JSON.stringify(tripInput.collaborators[0], null, 2));
+            }
+
             // Call createTrip mutation via GraphQL
-            const result: any = await API.graphql(graphqlOperation(createTrip, { input: tripInput }));
+            // Remove all __typename fields to prevent GraphQL validation errors
+            const cleanedTripInput = removeTypename(tripInput);
+            const result: any = await API.graphql(graphqlOperation(createTrip, { input: cleanedTripInput }));
 
             console.log('[trip-view_main] createTrip mutation result:', {
                 tripId: result?.data?.createTrip?.tripId,
@@ -693,8 +730,20 @@ export default function TripViewMain() {
                 });
             }
 
-            // Update local version number
-            setVersion(tripInput.version);
+            // Update local state WITH THE VALUES RETURNED FROM BACKEND
+            // CRITICAL: Use values from backend response to ensure consistency
+            if (savedVersion) {
+                console.log('[trip-view_main] 🔄 Updating local version from', version, 'to', savedVersion);
+                setVersion(savedVersion);
+            } else {
+                console.warn('[trip-view_main] ⚠️ Backend did not return version, keeping local version');
+            }
+
+            // Update tripTitle state if we saved a new title
+            if (updatedTripTitle !== undefined && savedTitle === updatedTripTitle) {
+                console.log('[trip-view_main] 🔄 Confirming tripTitle state update to:', savedTitle);
+                setTripTitle(savedTitle);
+            }
 
             console.log('[trip-view_main] ✅ Trip saved to TripStorage successfully');
         } catch (error) {
@@ -732,7 +781,7 @@ export default function TripViewMain() {
         }
     };
 
-    // Handler for date changes (from DatePickerModal)
+    // Handler for date changes (from SimpleDatePicker)
     const handleDateChange = async (newStartDate: string | null, newEndDate: string | null, newTripLength: number) => {
         const oldTripLength = tripLength;
 
@@ -3426,7 +3475,10 @@ export default function TripViewMain() {
             </TouchableOpacity>
             <TouchableOpacity
                 style={[styles.primaryTab, primaryTab === 'itinerary' && styles.primaryTabActive]}
-                onPress={() => setPrimaryTab('itinerary')}
+                onPress={() => {
+                    setPrimaryTab('itinerary');
+                    setActiveTab('wishlist');
+                }}
                 activeOpacity={0.7}
             >
                 <Text style={[styles.primaryTabText, primaryTab === 'itinerary' && styles.primaryTabTextActive]}>
@@ -3556,24 +3608,28 @@ export default function TripViewMain() {
                     <View style={styles.dragIndicator} />
                 </View>
 
-                {/* Primary Tab Toggle (Overview/Itinerary) */}
-                {!showActivityDetail && renderPrimaryTabs()}
-
-                {/* Secondary TabBar (only show in Itinerary mode) */}
-                {!showActivityDetail && primaryTab === 'itinerary' && (
-                    <TabBar
-                        activeTab={activeTab}
-                        onTabChange={handleTabChange}
-                        dayCount={getDayCount()}
-                        onAddDay={handleAddDay}
-                        onDeleteDay={handleDeleteDay}
-                        shouldScrollToActive={shouldScrollToActive}
-                        tabLabels={tabLabels}
-                        currentUserRole={currentUserRole}
-                        startDate={startDate}
-                        showOverviewTab={true}
-                        showDayButtons={false}
-                    />
+                {/* Navigation - show either primary toggle or TabBar */}
+                {!showActivityDetail && (
+                    primaryTab === 'overview' ? (
+                        // Show Overview/Itinerary toggle
+                        renderPrimaryTabs()
+                    ) : (
+                        // Show TabBar with Overview, Wishlist, Day tabs in primary style
+                        <TabBar
+                            activeTab={activeTab}
+                            onTabChange={handleTabChange}
+                            dayCount={getDayCount()}
+                            onAddDay={handleAddDay}
+                            onDeleteDay={handleDeleteDay}
+                            shouldScrollToActive={shouldScrollToActive}
+                            tabLabels={tabLabels}
+                            currentUserRole={currentUserRole}
+                            startDate={startDate}
+                            showOverviewTab={true}
+                            showDayButtons={false}
+                            usePrimaryStyle={true}
+                        />
+                    )
                 )}
 
                 {/* Tab Content */}
@@ -3589,41 +3645,45 @@ export default function TripViewMain() {
                     />
                 ) : primaryTab === 'overview' ? (
                     // OVERVIEW MODE: Show overview content
-                    <OverviewContent
-                        tripTitle={tripTitle}
-                        onTitleChange={handleTitleChange}
-                        startDate={startDate}
-                        endDate={endDate}
-                        tripLength={tripLength}
-                        selectedCity={selectedCity || ''}
-                        dayActivities={dayActivities || {}}
-                        activities={activities || []}
-                        onDayPress={handleOverviewDayPress}
-                        onDatePress={() => setDatePickerVisible(true)}
-                        currentUserRole={currentUserRole || 'owner'}
-                        collaborators={collaborators}
-                        dayRouteLegs={dayRouteLegs}
-                    />
+                    <View style={styles.overviewWrapper}>
+                        <OverviewContent
+                            tripTitle={tripTitle}
+                            onTitleChange={handleTitleChange}
+                            startDate={startDate}
+                            endDate={endDate}
+                            tripLength={tripLength}
+                            selectedCity={selectedCity || ''}
+                            dayActivities={dayActivities || {}}
+                            activities={activities || []}
+                            onDayPress={handleOverviewDayPress}
+                            onDatePress={() => setDatePickerVisible(true)}
+                            currentUserRole={currentUserRole || 'owner'}
+                            collaborators={collaborators}
+                            dayRouteLegs={dayRouteLegs}
+                        />
+                    </View>
                 ) : (
                     // ITINERARY MODE: Show tabs (Overview, Wishlist, Days)
                     <>
                         {activeTab === 'overview' ? (
                             // Overview tab within Itinerary mode (same content as Overview mode)
-                            <OverviewContent
-                                tripTitle={tripTitle}
-                                onTitleChange={handleTitleChange}
-                                startDate={startDate}
-                                endDate={endDate}
-                                tripLength={tripLength}
-                                selectedCity={selectedCity || ''}
-                                dayActivities={dayActivities || {}}
-                                activities={activities || []}
-                                onDayPress={handleOverviewDayPress}
-                                onDatePress={() => setDatePickerVisible(true)}
-                                currentUserRole={currentUserRole || 'owner'}
-                                collaborators={collaborators}
-                                dayRouteLegs={dayRouteLegs}
-                            />
+                            <View style={styles.overviewWrapper}>
+                                <OverviewContent
+                                    tripTitle={tripTitle}
+                                    onTitleChange={handleTitleChange}
+                                    startDate={startDate}
+                                    endDate={endDate}
+                                    tripLength={tripLength}
+                                    selectedCity={selectedCity || ''}
+                                    dayActivities={dayActivities || {}}
+                                    activities={activities || []}
+                                    onDayPress={handleOverviewDayPress}
+                                    onDatePress={() => setDatePickerVisible(true)}
+                                    currentUserRole={currentUserRole || 'owner'}
+                                    collaborators={collaborators}
+                                    dayRouteLegs={dayRouteLegs}
+                                />
+                            </View>
                         ) : activeTab === 'wishlist' && (() => {
                             const wishlistActivities = getActivitiesForTab('wishlist');
                             const activitiesByCity = wishlistActivities.reduce((acc: { [key: string]: Activity[] }, activity) => {
@@ -3907,7 +3967,7 @@ export default function TripViewMain() {
             )}
 
             {/* Date Picker Modal */}
-            <DatePickerModal
+            <SimpleDatePicker
                 visible={datePickerVisible}
                 onClose={() => setDatePickerVisible(false)}
                 initialStartDate={startDate}
@@ -3996,33 +4056,37 @@ const styles = StyleSheet.create({
     },
     primaryTabContainer: {
         flexDirection: 'row',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
         backgroundColor: Colors.WHITE,
     },
     primaryTab: {
         flex: 1,
-        paddingVertical: 10,
+        paddingVertical: 11,
         paddingHorizontal: 16,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 8,
-        marginHorizontal: 4,
-        backgroundColor: '#F3F4F6',
+        borderRadius: 10,
+        marginHorizontal: 3,
+        backgroundColor: '#F5F5F5',
     },
     primaryTabActive: {
-        backgroundColor: Colors.PRIMARY,
+        backgroundColor: '#E3F2FD',
+        shadowColor: '#90CAF9',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
     },
     primaryTabText: {
-        fontSize: 16,
+        fontSize: 15,
         fontFamily: 'outfit-medium',
         color: '#6B7280',
+        letterSpacing: -0.2,
     },
     primaryTabTextActive: {
         fontFamily: 'outfit-semibold',
-        color: Colors.WHITE,
+        color: '#1976D2',
     },
     homeButton: {
         position: 'absolute',
@@ -4064,8 +4128,16 @@ const styles = StyleSheet.create({
         marginHorizontal: 8, // Reduced from 20 to 5
         backgroundColor: '#fff',
         borderRadius: 10,
-        padding: 20, // Reduced from 20 to 
+        padding: 20, // Reduced from 20 to
         marginBottom: 40, // Space for transfer button
+        overflow: 'visible', // Allow overflow for touch events
+    },
+    overviewWrapper: {
+        flex: 1,
+        marginHorizontal: -28, // Cancel parent's padding (20) + marginHorizontal (8)
+        marginTop: -20, // Cancel parent's top padding
+        marginBottom: -60, // Cancel parent's bottom padding (20) + marginBottom (40)
+        overflow: 'visible', // Ensure touch events work with negative margins
     },
     citySection: {
         marginBottom: 5,
