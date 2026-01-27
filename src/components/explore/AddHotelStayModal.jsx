@@ -284,118 +284,66 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Where are you staying?</Text>
+            <Text style={styles.headerTitle}></Text>
             <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close" size={28} color="#333" />
             </TouchableOpacity>
           </View>
 
-          {/* Search Section */}
-          <View style={styles.searchSection}>
+          {/* Stay Duration Section - Always show */}
+          <View style={styles.stayDurationSection}>
+            <Text style={styles.stayDurationTitle}>How long is your stay?</Text>
 
-            {/* Search Bar */}
-            <View style={styles.searchBarContainer}>
-              <View style={styles.searchBar}>
-                <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
-                <TextInput
-                  ref={searchInputRef}
-                  style={styles.searchInput}
-                  value={searchQuery}
-                  onChangeText={handleQueryChange}
-                  placeholder="Search for hotels or lodging"
-                  placeholderTextColor="#999"
-                  returnKeyType="search"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => handleQueryChange('')}
-                    style={styles.clearButton}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Ionicons name="close-circle" size={20} color="#999" />
-                  </TouchableOpacity>
-                )}
+            {/* Date Selection Button */}
+            <TouchableOpacity
+              style={styles.dateButton}
+              onPress={() => setIsCalendarOpen(true)}
+            >
+              <View style={styles.dateButtonContent}>
+                <MaterialCommunityIcons name="calendar-clock-outline" size={24} color="black" />
+                <Text style={[styles.dateButtonText, !stayLength && styles.placeholderText]}>
+                  {checkInDate && checkOutDate
+                    ? `${formatDate(checkInDate)}   -   ${formatDate(checkOutDate)}`
+                    : stayLength
+                    ? `${stayLength} night${stayLength > 1 ? 's' : ''}`
+                    : 'Select dates'}
+                </Text>
               </View>
-            </View>
-
+            </TouchableOpacity>
           </View>
 
-          {/* Stay Duration Section - Only show when a place is selected */}
-          {selectedPlace && !loadingPlaceDetails && (
-            <View style={styles.stayDurationSection}>
-              <Text style={styles.stayDurationTitle}>How long is your stay?</Text>
+          {/* Search Section - Only show after dates are selected */}
+          {stayLength && (
+            <View style={styles.searchSection}>
+              <Text style={styles.searchSectionTitle}>Where are you staying?</Text>
 
-              {/* Date Selection Button */}
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => setIsCalendarOpen(true)}
-              >
-                <View style={styles.dateButtonContent}>
-                  <MaterialCommunityIcons name="calendar-clock-outline" size={24} color="black" />
-                  <Text style={[styles.dateButtonText, !stayLength && styles.placeholderText]}>
-                    {checkInDate && checkOutDate
-                      ? `${formatDate(checkInDate)}   -   ${formatDate(checkOutDate)}`
-                      : stayLength
-                      ? `${stayLength} night${stayLength > 1 ? 's' : ''}`
-                      : 'Select dates'}
-                  </Text>
+              {/* Search Bar */}
+              <View style={styles.searchBarContainer}>
+                <View style={styles.searchBar}>
+                  <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+                  <TextInput
+                    ref={searchInputRef}
+                    style={styles.searchInput}
+                    value={searchQuery}
+                    onChangeText={handleQueryChange}
+                    placeholder="Search for hotels or lodging"
+                    placeholderTextColor="#999"
+                    returnKeyType="search"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  {searchQuery.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => handleQueryChange('')}
+                      style={styles.clearButton}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="close-circle" size={20} color="#999" />
+                    </TouchableOpacity>
+                  )}
                 </View>
-              </TouchableOpacity>
+              </View>
 
-              {/* Check-in and Check-out Time Buttons Row */}
-              {stayLength && (
-                <View style={styles.timeButtonsRow}>
-                  {/* Check-in Time Button */}
-                  <TouchableOpacity
-                    ref={checkInButtonRef}
-                    style={[styles.dateButton, styles.halfWidthButton]}
-                    onPress={() => {
-                      checkInButtonRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
-                        setCheckInButtonLayout({ x: pageX, y: pageY, width, height });
-                        setShowCheckInTimeModal(true);
-                      });
-                    }}
-                  >
-                    <View style={styles.timeButtonColumn}>
-                      <Text style={styles.timeButtonLabel}>
-                        Check-in {checkInDate ? `(${formatShortDate(checkInDate)})` : ''}
-                      </Text>
-                      <View style={styles.timeButtonContent}>
-                        <Ionicons name="time-outline" size={20} color="black" />
-                        <Text style={styles.timeButtonText}>
-                          {formatTime(checkInTime)}
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-
-                  {/* Check-out Time Button */}
-                  <TouchableOpacity
-                    ref={checkOutButtonRef}
-                    style={[styles.dateButton, styles.halfWidthButton]}
-                    onPress={() => {
-                      checkOutButtonRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
-                        setCheckOutButtonLayout({ x: pageX, y: pageY, width, height });
-                        setShowCheckOutTimeModal(true);
-                      });
-                    }}
-                  >
-                    <View style={styles.timeButtonColumn}>
-                      <Text style={styles.timeButtonLabel}>
-                        Check-out {checkOutDate ? `(${formatShortDate(checkOutDate)})` : ''}
-                      </Text>
-                      <View style={styles.timeButtonContent}>
-                        <Ionicons name="time-outline" size={20} color="black" />
-                        <Text style={styles.timeButtonText}>
-                          {formatTime(checkOutTime)}
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                </View>
-              )}
             </View>
           )}
 
@@ -416,6 +364,61 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
                   onDescriptionCardPress={handleCardPress}
                 />
               ) : null}
+            </View>
+          )}
+
+          {/* Check-in and Check-out Time Buttons Row - Show below activity card when dates selected */}
+          {selectedPlace && !loadingPlaceDetails && stayLength && (
+            <View style={styles.timeButtonsSection}>
+              <View style={styles.timeButtonsRow}>
+                {/* Check-in Time Button */}
+                <TouchableOpacity
+                  ref={checkInButtonRef}
+                  style={[styles.dateButton, styles.halfWidthButton]}
+                  onPress={() => {
+                    checkInButtonRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
+                      setCheckInButtonLayout({ x: pageX, y: pageY, width, height });
+                      setShowCheckInTimeModal(true);
+                    });
+                  }}
+                >
+                  <View style={styles.timeButtonColumn}>
+                    <Text style={styles.timeButtonLabel}>
+                      Check-in {checkInDate ? `(${formatShortDate(checkInDate)})` : ''}
+                    </Text>
+                    <View style={styles.timeButtonContent}>
+                      <Ionicons name="time-outline" size={20} color="black" />
+                      <Text style={styles.timeButtonText}>
+                        {formatTime(checkInTime)}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Check-out Time Button */}
+                <TouchableOpacity
+                  ref={checkOutButtonRef}
+                  style={[styles.dateButton, styles.halfWidthButton]}
+                  onPress={() => {
+                    checkOutButtonRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
+                      setCheckOutButtonLayout({ x: pageX, y: pageY, width, height });
+                      setShowCheckOutTimeModal(true);
+                    });
+                  }}
+                >
+                  <View style={styles.timeButtonColumn}>
+                    <Text style={styles.timeButtonLabel}>
+                      Check-out {checkOutDate ? `(${formatShortDate(checkOutDate)})` : ''}
+                    </Text>
+                    <View style={styles.timeButtonContent}>
+                      <Ionicons name="time-outline" size={20} color="black" />
+                      <Text style={styles.timeButtonText}>
+                        {formatTime(checkOutTime)}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -701,7 +704,13 @@ const styles = StyleSheet.create({
   },
   searchSection: {
     paddingHorizontal: 20,
-    marginBottom: 10,
+    marginBottom: 0,
+  },
+  searchSectionTitle: {
+    fontFamily: 'outfit-bold',
+    fontSize: 18,
+    color: '#333',
+    marginBottom: 12,
   },
   searchLabel: {
     fontFamily: 'outfit-medium',
@@ -765,8 +774,8 @@ const styles = StyleSheet.create({
   },
   stayDurationSection: {
     paddingHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 10,
+    marginTop: 0,
+    marginBottom: 30,
   },
   stayDurationTitle: {
     fontFamily: 'outfit-bold',
@@ -792,11 +801,15 @@ const styles = StyleSheet.create({
   timeButton: {
     marginTop: 12,
   },
+  timeButtonsSection: {
+    paddingHorizontal: 20,
+    marginTop: 15,
+    marginBottom: 10,
+  },
   timeButtonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 10,
-    marginTop: 12,
   },
   halfWidthButton: {
     flex: 1,
