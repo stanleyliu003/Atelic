@@ -135,7 +135,7 @@ const getFreshPhotoReference = async (placeId) => {
 const findEstablishmentAtAddress = async (address, lat, lng) => {
     // Try 1: Search for lodging first (priority for hotel searches)
     console.log(`[Reverse Lookup] Trying lodging search for: ${address}`);
-    const lodgingUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(address)}&location=${lat},${lng}&radius=20&types=lodging&key=${apiKey}`;
+    const lodgingUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(address)}&location=${lat},${lng}&radius=20&types=lodging&language=en&key=${apiKey}`;
 
     const lodgingResult = await new Promise((resolve) => {
         const req = https.get(lodgingUrl, (res) => {
@@ -174,7 +174,7 @@ const findEstablishmentAtAddress = async (address, lat, lng) => {
 
     // Try 2: If no lodging found, search for any establishment
     console.log(`[Reverse Lookup] No lodging found, trying establishment search for: ${address}`);
-    const establishmentUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(address)}&location=${lat},${lng}&radius=20&types=establishment&key=${apiKey}`;
+    const establishmentUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(address)}&location=${lat},${lng}&radius=20&types=establishment&language=en&key=${apiKey}`;
 
     return new Promise((resolve) => {
         const req = https.get(establishmentUrl, (res) => {
@@ -217,7 +217,7 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
         return cachedData;
     }
     
-    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total,formatted_address,types,photos,name,geometry,opening_hours,secondary_opening_hours,website,reviews,editorial_summary,international_phone_number&key=${apiKey}`;
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total,formatted_address,types,photos,name,geometry,opening_hours,secondary_opening_hours,website,reviews,editorial_summary,international_phone_number&language=en&key=${apiKey}`;
     
     return new Promise((resolve, reject) => {
         const req = https.get(url, (res) => {
@@ -424,7 +424,7 @@ const getLocationInfo = async (locationName, bias) => {
     }
     
     // Cache miss, make API call
-    let url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(locationName)}&inputtype=textquery&fields=name,geometry,place_id&key=${apiKey}`;
+    let url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(locationName)}&inputtype=textquery&fields=name,geometry,place_id&language=en&key=${apiKey}`;
     
     // Add location bias if provided. This helps narrow down searches.
     // The bias should be a point: "point:latitude,longitude"
