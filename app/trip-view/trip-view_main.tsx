@@ -99,6 +99,9 @@ export default function TripViewMain() {
         categoryActivities,
         recentSearches,
         selectedCityLocation,
+        deletedSavedPlaceIds,
+        addToDeletedSavedPlaces,
+        isDeletedSavedPlace,
     } = useCreateTrip();
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
@@ -135,6 +138,7 @@ export default function TripViewMain() {
     const [allSavedPlaces, setAllSavedPlaces] = useState<any[]>([]);
     const [loadingSavedPlaces, setLoadingSavedPlaces] = useState(false);
     const [displayCityName, setDisplayCityName] = useState<string>(''); // Short city name for display
+    const processedSavedPlacesRef = useRef<Set<string>>(new Set()); // Track processed savedPlaceIds to prevent duplicates
 
     // State for activity detail view
     const [selectedActivityForDetail, setSelectedActivityForDetail] = useState<Activity | null>(null);
@@ -382,6 +386,7 @@ export default function TripViewMain() {
         tripPhotoReference,
         createdAt,
         recentSearches,
+        deletedSavedPlaceIds,
     });
 
     // Keep latestTripDataRef in sync with the latest values
@@ -396,8 +401,9 @@ export default function TripViewMain() {
             tripPhotoReference,
             createdAt,
             recentSearches,
+            deletedSavedPlaceIds,
         };
-    }, [activities, dayActivities, dayPolylines, dayTravelModes, tripLength, selectedCity, tripPhotoReference, createdAt, recentSearches]);
+    }, [activities, dayActivities, dayPolylines, dayTravelModes, tripLength, selectedCity, tripPhotoReference, createdAt, recentSearches, deletedSavedPlaceIds]);
 
     // Initialize days based on tripLength (only for new trips, not existing ones)
     const [hasInitialized, setHasInitialized] = useState(false);
@@ -1344,6 +1350,12 @@ export default function TripViewMain() {
     const handleDeleteActivity = useCallback((activity: Activity, targetDayNumber?: number) => {
         console.log('[trip-view_main] Deleting activity:', activity.name);
 
+        // Track saved place deletions to prevent re-addition from SavedPlacesStorage
+        if (activity.savedPlaceId) {
+            console.log('[trip-view_main] Marking savedPlaceId as deleted:', activity.savedPlaceId);
+            addToDeletedSavedPlaces(activity.savedPlaceId);
+        }
+
         if (targetDayNumber !== undefined && targetDayNumber !== null) {
             // Delete from a specific day
             const currentDayActivities = getDayActivities(targetDayNumber) || [];
@@ -1386,7 +1398,7 @@ export default function TripViewMain() {
             const op = createOperation('remove', 'wishlist', activity.instanceId);
             queueSave(op);
         }
-    }, [getDayActivities, reorderDayActivities, updateActivities, createOperation, queueSave]);
+    }, [getDayActivities, reorderDayActivities, updateActivities, createOperation, queueSave, addToDeletedSavedPlaces]);
 
     // Remove local state and handlers for transfer modal and related logic
     // Use the custom hook for all transfer modal and activity transfer logic
@@ -1801,10 +1813,23 @@ export default function TripViewMain() {
     const handleDeleteActivities = () => {
         if (selectedActivities.length === 0) return;
 
-        // ✨ NEW: Track deletion of each activity before removing
+        // Track saved place deletions to prevent re-addition from SavedPlacesStorage
+        const trip_saved_places_activities = getActivitiesForTab('wishlist');
+        const allDayActivities: Activity[] = [];
+        for (let i = 1; i <= getDayCount(); i++) {
+            allDayActivities.push(...(getDayActivities(i) || []));
+        }
+        const allActivitiesInTrip = [...trip_saved_places_activities, ...allDayActivities];
+
         selectedActivities.forEach(instanceId => {
+            // Find the actual activity object to check for savedPlaceId
+            const activity = allActivitiesInTrip.find(a => a.instanceId === instanceId);
+            if (activity?.savedPlaceId) {
+                console.log('[trip-view_main] Bulk delete - marking savedPlaceId as deleted:', activity.savedPlaceId);
+                addToDeletedSavedPlaces(activity.savedPlaceId);
+            }
+
             // Determine if activity is in trip saved places or a day
-            const trip_saved_places_activities = getActivitiesForTab('wishlist');
             const inWishlist = trip_saved_places_activities.some(a => a.instanceId === instanceId);
 
             if (inWishlist) {
@@ -2604,6 +2629,7 @@ export default function TripViewMain() {
                 tripPhotoReference: latestTripPhotoReference,
                 createdAt: latestCreatedAt,
                 recentSearches: latestRecentSearches,
+                deletedSavedPlaceIds: latestDeletedSavedPlaceIds,
             } = latestTripDataRef.current;
 
             // Gather days and their activities (sanitize activities for GraphQL input)
@@ -2671,6 +2697,7 @@ export default function TripViewMain() {
                 endDate: endDate || null,
                 cityCategories: cleanCityCategories || null, // Save city categories for restoration
                 recentSearches: cleanRecentSearches,
+                deletedSavedPlaceIds: Array.from(latestDeletedSavedPlaceIds), // Convert Set to Array for GraphQL
             };
 
             // Get current user information
@@ -3098,8 +3125,17 @@ export default function TripViewMain() {
         getCurrentUser();
     }, []);
 
+    // Clear processed saved places when trip changes
+    useEffect(() => {
+        processedSavedPlacesRef.current.clear();
+        console.log('[trip-view_main] Cleared processed saved places ref for new trip');
+    }, [tripId]);
+
     // Fetch saved places when component mounts or user changes
     useEffect(() => {
+        // Clear processed ref when user changes or component mounts
+        processedSavedPlacesRef.current.clear();
+        
         const fetchSavedPlaces = async () => {
             if (!currentUserID) return;
 
@@ -3192,15 +3228,43 @@ export default function TripViewMain() {
 
         const newActivities = normalizedActivities.filter(activity => {
             const key = `${activity.savedPlaceId}_${activity.place_id}`;
-            return !existingSavedPlaceIds.has(key);
+            
+            // Check if not already in trip
+            if (existingSavedPlaceIds.has(key)) {
+                return false;
+            }
+            
+            // Check if already processed in this session (prevents duplicate adds during rapid re-renders)
+            if (activity.savedPlaceId && processedSavedPlacesRef.current.has(activity.savedPlaceId)) {
+                return false;
+            }
+            
+            // Check if user has explicitly deleted this saved place from the trip
+            if (activity.savedPlaceId && isDeletedSavedPlace(activity.savedPlaceId)) {
+                console.log('[trip-view_main] Filtering out deleted saved place:', activity.name, 'savedPlaceId:', activity.savedPlaceId);
+                return false;
+            }
+            
+            return true;
         });
 
         // Add new Instagram saved places to the trip's activities
         if (newActivities.length > 0) {
-            console.log('[trip-view_main] Adding', newActivities.length, 'new Instagram saved places to trip');
+            console.log('[trip-view_main] ✨ Adding', newActivities.length, 'new Instagram saved places to trip:', 
+                newActivities.map(a => a.name).join(', '));
+            
+            // Mark these as processed to prevent duplicate adds during rapid re-renders
+            newActivities.forEach(activity => {
+                if (activity.savedPlaceId) {
+                    processedSavedPlacesRef.current.add(activity.savedPlaceId);
+                }
+            });
+            
             updateActivities([...activities, ...newActivities]);
+        } else {
+            console.log('[trip-view_main] No new saved places to add (all already in trip or deleted)');
         }
-    }, [selectedCity, allSavedPlaces, activities, updateActivities]);
+    }, [selectedCity, allSavedPlaces, activities, updateActivities, isDeletedSavedPlace]);
 
     // Handle collaboration modal
     const handleShareTrip = async () => {

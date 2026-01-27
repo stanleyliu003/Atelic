@@ -79,6 +79,7 @@ export const onTripUpdated = /* GraphQL */ `
         timestamp
         __typename
       }
+      deletedSavedPlaceIds
       __typename
     }
   }

@@ -33,15 +33,13 @@ export const TransferButtonContainer: React.FC<TransferButtonContainerProps> = (
 
   return (
     <View style={styles.buttonContainer}>
-      {/* Trash Button - hidden in wishlist/saved places tab */}
-      {activeTab !== 'wishlist' && (
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={onDeletePress}
-        >
-          <Feather name="trash" size={24} color="red" />
-        </TouchableOpacity>
-      )}
+      {/* Trash Button - now visible on all tabs including wishlist/saved places */}
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={onDeletePress}
+      >
+        <Feather name="trash" size={24} color="red" />
+      </TouchableOpacity>
 
       {/* Transfer Button */}
       <TouchableOpacity

@@ -75,6 +75,10 @@ export const CreateTripProvider = ({ children }) => {
     // Format: { [dayNumber]: { checkIn: Activity | null, checkOut: Activity | null } }
     const [dayLodgings, setDayLodgings] = useState({});
 
+    // Track deleted saved places to prevent re-addition from SavedPlacesStorage
+    // Stores savedPlaceIds that user has explicitly deleted from this trip
+    const [deletedSavedPlaceIds, setDeletedSavedPlaceIds] = useState(new Set());
+
     // Permission helpers
     const canEdit = () => ['owner','editor'].includes(currentUserRole);
     const canInviteEditors = () => currentUserRole === 'owner';
@@ -193,6 +197,35 @@ export const CreateTripProvider = ({ children }) => {
 
             return updated;
         });
+    };
+
+    // Helper functions for managing deleted saved places
+    const addToDeletedSavedPlaces = (savedPlaceId) => {
+        if (!savedPlaceId) {
+            console.warn('[CreateTripContext] Cannot add to deleted saved places: savedPlaceId is null/undefined');
+            return;
+        }
+        console.log('[CreateTripContext] Marking savedPlaceId as deleted:', savedPlaceId);
+        setDeletedSavedPlaceIds(prev => new Set([...prev, savedPlaceId]));
+    };
+
+    const removeFromDeletedSavedPlaces = (savedPlaceId) => {
+        if (!savedPlaceId) return;
+        console.log('[CreateTripContext] Removing savedPlaceId from deleted list:', savedPlaceId);
+        setDeletedSavedPlaceIds(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(savedPlaceId);
+            return newSet;
+        });
+    };
+
+    const clearDeletedSavedPlaces = () => {
+        console.log('[CreateTripContext] Clearing all deleted saved places');
+        setDeletedSavedPlaceIds(new Set());
+    };
+
+    const isDeletedSavedPlace = (savedPlaceId) => {
+        return savedPlaceId && deletedSavedPlaceIds.has(savedPlaceId);
     };
 
     // Helper function to collect up to 5 unique photo references from activities
@@ -341,6 +374,22 @@ export const CreateTripProvider = ({ children }) => {
             // Restore recent searches
             setRecentSearches(trip.recentSearches || []);
 
+            // Restore deleted saved places list
+            // NOTE: If field doesn't exist in cloud (pre-deployment), preserve in-memory state
+            if (trip.deletedSavedPlaceIds !== undefined) {
+                if (Array.isArray(trip.deletedSavedPlaceIds) && trip.deletedSavedPlaceIds.length > 0) {
+                    console.log('[CreateTripContext] Restoring', trip.deletedSavedPlaceIds.length, 'deleted saved place IDs from cloud');
+                    setDeletedSavedPlaceIds(new Set(trip.deletedSavedPlaceIds));
+                } else {
+                    console.log('[CreateTripContext] No deleted saved places in cloud data');
+                    setDeletedSavedPlaceIds(new Set());
+                }
+            } else {
+                // Field doesn't exist in cloud (pre-deployment) - preserve existing in-memory state
+                console.log('[CreateTripContext] deletedSavedPlaceIds field not in cloud data (pre-deployment) - preserving in-memory state');
+                // Don't call setDeletedSavedPlaceIds - keep current state
+            }
+
             console.log('[CreateTripContext] Restored trip - createdAt:', trip.createdAt, 'version:', trip.version || 1);
         });
     };
@@ -422,6 +471,7 @@ export const CreateTripProvider = ({ children }) => {
         setFlight(null);
         setSavedActivities(null);
         setRecentSearches([]);
+        setDeletedSavedPlaceIds(new Set());
         // Note: Don't reset selectedCity and tripLength during create trip flow
         // setSelectedCity('');
         // setTripLength(null);
@@ -470,6 +520,7 @@ export const CreateTripProvider = ({ children }) => {
         setFlight(null);
         setSavedActivities(null);
         setRecentSearches([]);
+        setDeletedSavedPlaceIds(new Set());
     };
 
     // Load trip from cloud storage
@@ -885,6 +936,12 @@ export const CreateTripProvider = ({ children }) => {
         removeDayLodging,
         getDayLodging,
         isActivityLodging,
+        // Deleted saved places tracking
+        deletedSavedPlaceIds,
+        addToDeletedSavedPlaces,
+        removeFromDeletedSavedPlaces,
+        clearDeletedSavedPlaces,
+        isDeletedSavedPlace,
     };
 
     return (

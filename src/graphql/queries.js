@@ -397,6 +397,7 @@ export const getUserTrips = /* GraphQL */ `
         timestamp
         __typename
       }
+      deletedSavedPlaceIds
       __typename
     }
   }

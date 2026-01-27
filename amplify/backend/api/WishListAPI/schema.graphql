@@ -445,6 +445,7 @@ type AppVersionConfig {
     flight: String
     savedActivities: String
     recentSearches: [RecentSearch]
+    deletedSavedPlaceIds: [String]  # SavedPlaceIds that user has explicitly deleted from this trip
   }
 
    type TripSummary {
@@ -574,6 +575,7 @@ type AppVersionConfig {
     flight: String
     savedActivities: String
     recentSearches: [RecentSearchInput]
+    deletedSavedPlaceIds: [String]  # SavedPlaceIds that user has explicitly deleted from this trip
   }
 
 

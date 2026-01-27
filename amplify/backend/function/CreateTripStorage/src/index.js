@@ -77,7 +77,9 @@ exports.handler = async (event) => {
     flight: input.flight || null,
     savedActivities: input.savedActivities || null,
     // Recent searches
-    recentSearches: Array.isArray(input.recentSearches) ? input.recentSearches : []
+    recentSearches: Array.isArray(input.recentSearches) ? input.recentSearches : [],
+    // Deleted saved places tracking
+    deletedSavedPlaceIds: Array.isArray(input.deletedSavedPlaceIds) ? input.deletedSavedPlaceIds : []
   };
 
   console.log('item to put:', item);
@@ -181,7 +183,8 @@ exports.handler = async (event) => {
       hotel: item.hotel,
       flight: item.flight,
       savedActivities: item.savedActivities,
-      recentSearches: item.recentSearches || []
+      recentSearches: item.recentSearches || [],
+      deletedSavedPlaceIds: item.deletedSavedPlaceIds || []
     };
   } catch (error) {
     console.error('DynamoDB put error:', error);

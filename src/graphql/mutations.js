@@ -132,6 +132,7 @@ export const createTrip = /* GraphQL */ `
         timestamp
         __typename
       }
+      deletedSavedPlaceIds
       __typename
     }
   }
@@ -255,6 +256,7 @@ export const addCollaborator = /* GraphQL */ `
         timestamp
         __typename
       }
+      deletedSavedPlaceIds
       __typename
     }
   }
@@ -337,6 +339,7 @@ export const removeCollaborator = /* GraphQL */ `
         timestamp
         __typename
       }
+      deletedSavedPlaceIds
       __typename
     }
   }
@@ -423,6 +426,7 @@ export const updateCollaboratorRole = /* GraphQL */ `
         timestamp
         __typename
       }
+      deletedSavedPlaceIds
       __typename
     }
   }
