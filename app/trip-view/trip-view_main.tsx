@@ -3607,57 +3607,60 @@ export default function TripViewMain() {
                 />
             )}
 
-            <TouchableOpacity
-                style={styles.homeButton}
-                onPress={async () => {
-                    const dayCountVal = getDayCount();
+            {/* Home button - hidden at MAX_HEIGHT */}
+            {currentHeightState !== 2 && (
+                <TouchableOpacity
+                    style={styles.homeButton}
+                    onPress={async () => {
+                        const dayCountVal = getDayCount();
 
-                    // Only save if user has edit permissions (owner or editor)
-                    if (currentUserRole !== 'viewer') {
-                        try {
-                            await saveTrip();
-                            // Update timestamp only after successful save
-                            lastSaveTimeRef.current = Date.now();
-                        } catch (error) {
-                            console.error('[trip-view_main] Manual save failed:', error);
-                            // Could show an alert to the user here if desired
-                        }
-                    } else {
-                        console.log('[trip-view_main] Viewer navigating home - skipping save');
-                    }
-
-                    // Check if this is an existing trip (loaded from cloud) or a new trip
-                    const isExistingTrip = tripId;
-
-                    if (isExistingTrip) {
-                        // This trip was loaded from cloud storage, go back to profile
-                        let lastActivityPhotoRef = '';
-                        const day1Activities = getDayActivities(1);
-                        if (day1Activities && day1Activities.length > 0) {
-                            lastActivityPhotoRef = day1Activities[0]?.photo_reference || '';
-                        } else if (activities && Array.isArray(activities) && activities.length > 0) {
-                            lastActivityPhotoRef = activities[0]?.photo_reference || '';
-                        }
-                        router.push({
-                            pathname: '/profile',
-                            params: {
-                                photoReference: lastActivityPhotoRef,
-                                dayCount: dayCountVal.toString(),
+                        // Only save if user has edit permissions (owner or editor)
+                        if (currentUserRole !== 'viewer') {
+                            try {
+                                await saveTrip();
+                                // Update timestamp only after successful save
+                                lastSaveTimeRef.current = Date.now();
+                            } catch (error) {
+                                console.error('[trip-view_main] Manual save failed:', error);
+                                // Could show an alert to the user here if desired
                             }
-                        });
-                    } else {
-                        // This is a new trip, show publish success page
-                        router.push({
-                            pathname: '/trip-view/publish_success',
-                            params: {
-                                dayCount: dayCountVal.toString(),
+                        } else {
+                            console.log('[trip-view_main] Viewer navigating home - skipping save');
+                        }
+
+                        // Check if this is an existing trip (loaded from cloud) or a new trip
+                        const isExistingTrip = tripId;
+
+                        if (isExistingTrip) {
+                            // This trip was loaded from cloud storage, go back to profile
+                            let lastActivityPhotoRef = '';
+                            const day1Activities = getDayActivities(1);
+                            if (day1Activities && day1Activities.length > 0) {
+                                lastActivityPhotoRef = day1Activities[0]?.photo_reference || '';
+                            } else if (activities && Array.isArray(activities) && activities.length > 0) {
+                                lastActivityPhotoRef = activities[0]?.photo_reference || '';
                             }
-                        });
-                    }
-                }}
-            >
-                <Entypo name="home" size={30} color={Colors.PRIMARY} />
-            </TouchableOpacity>
+                            router.push({
+                                pathname: '/profile',
+                                params: {
+                                    photoReference: lastActivityPhotoRef,
+                                    dayCount: dayCountVal.toString(),
+                                }
+                            });
+                        } else {
+                            // This is a new trip, show publish success page
+                            router.push({
+                                pathname: '/trip-view/publish_success',
+                                params: {
+                                    dayCount: dayCountVal.toString(),
+                                }
+                            });
+                        }
+                    }}
+                >
+                    <Entypo name="home" size={30} color={Colors.PRIMARY} />
+                </TouchableOpacity>
+            )}
         </>
     );
 }

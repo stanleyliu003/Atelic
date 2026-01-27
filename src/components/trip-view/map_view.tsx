@@ -295,14 +295,16 @@ export function TripMapView({
         )}
       </MapView>
       
-      {/* Invite collaborators button overlay */}
-      <TouchableOpacity
-        style={styles.shareButton}
-        onPress={handleInviteCollaborators}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="share-outline" size={30} color={Colors.PRIMARY} />
-      </TouchableOpacity>
+      {/* Invite collaborators button overlay - hidden at MAX_HEIGHT */}
+      {currentHeightState !== 2 && (
+        <TouchableOpacity
+          style={styles.shareButton}
+          onPress={handleInviteCollaborators}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="share-outline" size={30} color={Colors.PRIMARY} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
