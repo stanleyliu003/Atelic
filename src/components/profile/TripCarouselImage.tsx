@@ -166,31 +166,53 @@ export function TripCarouselImage({
         return photoUrl;
       }
 
-      // Search for city landscape/skyline photos - fetch 5 different photos
-      const searchQuery = `${query} city skyline landmark`;
-      const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchQuery)}&per_page=5&orientation=landscape&client_id=${UNSPLASH_ACCESS_KEY}`;
-
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        console.error('[TripCarouselImage] Unsplash API error:', response.status, response.statusText);
+      if (!UNSPLASH_ACCESS_KEY) {
+        console.error('[TripCarouselImage] UNSPLASH_ACCESS_KEY is not configured!');
         return null;
       }
 
-      const data = await response.json();
+      // Try multiple search strategies to maximize chances of finding photos
+      // Remove country suffix (e.g., "Madrid, Spain" -> "Madrid")
+      const cityNameOnly = query.split(',')[0].trim();
+      
+      const searchStrategies = [
+        cityNameOnly, // Simple city name
+        `${cityNameOnly} travel`, // Travel photos
+        `${cityNameOnly} city`, // City photos
+        `${query} landmark`, // Original query with landmark
+      ];
 
-      if (data.results && data.results.length > 0) {
-        // Store all photo URLs in cache
-        const photoUrls = data.results.map((photo: any) => photo.urls.regular);
-        unsplashCache[query] = photoUrls;
+      // Try each search strategy until we find results
+      for (const searchQuery of searchStrategies) {
+        const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchQuery)}&per_page=5&orientation=landscape&client_id=${UNSPLASH_ACCESS_KEY}`;
+        
+        try {
+          const response = await fetch(url);
 
-        // Notify parent of the total photo count (only on first image)
-        if (index === 0 && onPhotoCountUpdate) {
-          onPhotoCountUpdate(photoUrls.length);
+          if (!response.ok) {
+            console.error('[TripCarouselImage] Unsplash API error:', response.status, response.statusText);
+            continue; // Try next strategy
+          }
+
+          const data = await response.json();
+
+          if (data.results && data.results.length > 0) {
+            // Store all photo URLs in cache
+            const photoUrls = data.results.map((photo: any) => photo.urls.regular);
+            unsplashCache[query] = photoUrls;
+
+            // Notify parent of the total photo count (only on first image)
+            if (index === 0 && onPhotoCountUpdate) {
+              onPhotoCountUpdate(photoUrls.length);
+            }
+
+            // Return the photo at the given index (with wrapping)
+            return photoUrls[index % photoUrls.length];
+          }
+        } catch (error) {
+          console.error(`[TripCarouselImage] Error with search "${searchQuery}":`, error);
+          continue; // Try next strategy
         }
-
-        // Return the photo at the given index (with wrapping)
-        return photoUrls[index % photoUrls.length];
       }
 
       return null;
