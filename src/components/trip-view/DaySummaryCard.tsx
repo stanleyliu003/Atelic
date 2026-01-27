@@ -77,15 +77,20 @@ export default function DaySummaryCard({
 
   const dayColor = getMarkerColor(`day${dayNumber}` as any);
 
+  // Refined monotone palette for clean, stylish aesthetic
+  const monotoneGray = '#6E7787';
+  const monotoneBorder = '#DCE0E5';
+  const monotoneConnector = '#E8EAED';
+
   const scaleValue = useRef(new Animated.Value(1)).current;
   const [isPressed, setIsPressed] = React.useState(false);
 
   const handlePressIn = () => {
     setIsPressed(true);
     Animated.spring(scaleValue, {
-      toValue: 0.985,
-      friction: 10,
-      tension: 100,
+      toValue: 0.995,
+      friction: 8,
+      tension: 120,
       useNativeDriver: true,
     }).start();
   };
@@ -94,8 +99,8 @@ export default function DaySummaryCard({
     setIsPressed(false);
     Animated.spring(scaleValue, {
       toValue: 1,
-      friction: 10,
-      tension: 100,
+      friction: 8,
+      tension: 120,
       useNativeDriver: true,
     }).start();
   };
@@ -114,7 +119,7 @@ export default function DaySummaryCard({
             <View style={[styles.dayDot, { backgroundColor: dayColor }]} />
             <Text style={styles.dayTitle}>Day {dayNumber}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+          <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
         </View>
 
         {date && <Text style={styles.date}>{formatDate(date)}</Text>}
@@ -125,6 +130,12 @@ export default function DaySummaryCard({
             {activities.map((activity, index) => {
               const isHotel = activity.isLodging === true || activity.primaryType === 'lodging';
               const isLast = index === activities.length - 1;
+
+              // Calculate activity number (excluding hotels)
+              const activityNumber = activities
+                .slice(0, index + 1)
+                .filter(a => !(a.isLodging === true || a.primaryType === 'lodging'))
+                .length;
 
               // Get distance to next activity
               let distance: string | null = null;
@@ -168,15 +179,15 @@ export default function DaySummaryCard({
                     <View style={[
                       styles.marker,
                       isHotel && styles.markerHotel,
-                      { borderColor: dayColor }
+                      { borderColor: monotoneBorder }
                     ]}>
                       {isHotel ? (
-                        <Ionicons name="home" size={11} color={dayColor} />
+                        <Ionicons name="home" size={10} color={monotoneGray} />
                       ) : (
-                        <Text style={[styles.markerNumber, { color: dayColor }]}>{index + 1}</Text>
+                        <Text style={[styles.markerNumber, { color: monotoneGray }]}>{activityNumber}</Text>
                       )}
                     </View>
-                    {!isLast && <View style={[styles.connector, { backgroundColor: dayColor }]} />}
+                    {!isLast && <View style={[styles.connector, { backgroundColor: monotoneConnector }]} />}
                   </View>
 
                   {/* Activity Column */}
@@ -184,18 +195,11 @@ export default function DaySummaryCard({
                     <Text style={styles.activityName} numberOfLines={1}>
                       {activity.name}
                     </Text>
-                    {(activity.endTime || (!isLast && distance)) && (
+                    {!isLast && distance && (
                       <View style={styles.metaRow}>
-                        {activity.endTime && (
-                          <Text style={styles.durationText}>
-                            Until {formatTime(activity.endTime)}
-                          </Text>
-                        )}
-                        {!isLast && distance && (
-                          <Text style={styles.distanceInline}>
-                            {activity.endTime ? ' · ' : ''}{distance}
-                          </Text>
-                        )}
+                        <Text style={styles.distanceInline}>
+                          {distance}
+                        </Text>
                       </View>
                     )}
                   </View>
@@ -213,18 +217,19 @@ export default function DaySummaryCard({
 
 const styles = StyleSheet.create({
   card: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 8,
     backgroundColor: '#FFFFFF',
   },
   cardPressed: {
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F9FAFB',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 0,
   },
   dayBadge: {
     flexDirection: 'row',
@@ -232,100 +237,103 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   dayDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   dayTitle: {
     fontSize: 15,
     fontFamily: 'outfit-bold',
     color: '#111827',
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
   },
   date: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontFamily: 'outfit',
     color: '#9CA3AF',
-    marginBottom: 10,
+    marginBottom: 3,
     marginLeft: 1,
+    letterSpacing: -0.1,
   },
   timeline: {
     gap: 0,
+    marginTop: 0,
   },
   timelineItem: {
     flexDirection: 'row',
-    minHeight: 36,
+    minHeight: 26,
   },
   timeColumn: {
-    width: 56,
-    paddingTop: 1,
+    width: 54,
+    paddingTop: 0.5,
   },
   timeText: {
-    fontSize: 11,
-    fontFamily: 'outfit-semibold',
-    color: '#9CA3AF',
-    letterSpacing: -0.1,
+    fontSize: 10.5,
+    fontFamily: 'outfit-medium',
+    color: '#A8B0BA',
+    letterSpacing: -0.2,
   },
   markerColumn: {
-    width: 26,
+    width: 22,
     alignItems: 'center',
     position: 'relative',
     marginRight: 10,
   },
   marker: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2.5,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#FAFBFC',
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
   },
   markerHotel: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F7F8FA',
   },
   markerNumber: {
-    fontSize: 11,
+    fontSize: 9.5,
     fontFamily: 'outfit-bold',
-    fontWeight: 'bold',
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   connector: {
     position: 'absolute',
-    top: 26,
-    bottom: -36,
-    width: 2,
-    left: 12,
+    top: 22,
+    bottom: -26,
+    width: 1.5,
+    left: 10.25,
     zIndex: 1,
-    opacity: 0.2,
+    opacity: 0.3,
   },
   activityColumn: {
     flex: 1,
-    paddingTop: 1,
-    paddingBottom: 10,
+    paddingTop: 0,
+    paddingBottom: 1,
   },
   activityName: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontFamily: 'outfit-semibold',
-    color: '#111827',
-    lineHeight: 18,
-    letterSpacing: -0.2,
+    color: '#1F2937',
+    lineHeight: 16,
+    letterSpacing: -0.3,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: 1,
   },
   durationText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontFamily: 'outfit',
-    color: '#9CA3AF',
+    color: '#A8B0BA',
   },
   distanceInline: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontFamily: 'outfit',
-    color: '#9CA3AF',
-    letterSpacing: 0,
+    color: '#B0B7C3',
+    letterSpacing: -0.1,
   },
   emptyText: {
     fontSize: 13,

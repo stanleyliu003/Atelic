@@ -356,6 +356,12 @@ export function TripMapView({
         const isHotel = activity.isLodging === true || activity.primaryType === 'lodging';
         const finalColor = isHotel ? '#6B7280' : color; // Gray for hotels
 
+        // Calculate activity number (excluding hotels) - starts from 1
+        const activityNumber = activities
+          .slice(0, idx + 1)
+          .filter(a => !(a.isLodging === true || a.primaryType === 'lodging'))
+          .length;
+
         return {
           key: activity.instanceId || activity.place_id || `${activity.lat},${activity.lng},${idx}`,
           coordinate: {
@@ -363,7 +369,7 @@ export function TripMapView({
             longitude: activity.lng!,
           },
           title: activity.name,
-          number: idx + 1, // 1-based numbering
+          number: activityNumber, // 1-based numbering excluding hotels
           iconName: getActivityIcon(activity), // Keep for potential future use
           color: finalColor,
           isSelected: activity.instanceId ? selectedActivities.includes(activity.instanceId) : false,

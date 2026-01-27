@@ -108,6 +108,7 @@ export default function OverviewContent({
             onPress={!isViewer ? onDatePress : undefined}
             disabled={isViewer}
             style={styles.dateContainer}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="calendar-outline" size={14} color="#9CA3AF" />
             <Text style={styles.dateText}>{formatDateRange()}</Text>
@@ -129,12 +130,17 @@ export default function OverviewContent({
 
       {/* Days Section */}
       <View style={styles.daysSection}>
-        <Text style={styles.sectionHeader}>YOUR ITINERARY</Text>
+        <View style={styles.sectionHeaderContainer}>
+          <Text style={styles.sectionHeader}>MY ITINERARY</Text>
+        </View>
 
         {sortedDayNumbers.length > 0 ? (
           <View style={styles.daysContainer}>
             {sortedDayNumbers.map((dayNumber, index) => (
-              <React.Fragment key={dayNumber}>
+              <View key={dayNumber} style={[
+                styles.dayCardWrapper,
+                index === 0 && styles.firstDayCard
+              ]}>
                 <DaySummaryCard
                   dayNumber={dayNumber}
                   activities={dayActivities[dayNumber]?.activities || []}
@@ -142,14 +148,13 @@ export default function OverviewContent({
                   onPress={() => onDayPress(dayNumber)}
                   routeLegs={dayRouteLegs?.[dayNumber]}
                 />
-                {index < sortedDayNumbers.length - 1 && <View style={styles.dayDivider} />}
-              </React.Fragment>
+              </View>
             ))}
           </View>
         ) : (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconContainer}>
-              <Ionicons name="calendar-outline" size={36} color="#F36406" />
+              <Ionicons name="calendar-outline" size={32} color="#F36406" />
             </View>
             <Text style={styles.emptyTitle}>No days planned yet</Text>
             <Text style={styles.emptySubtext}>
@@ -158,8 +163,6 @@ export default function OverviewContent({
           </View>
         )}
       </View>
-
-      <View style={styles.bottomPadding} />
     </ScrollView>
   );
 }
@@ -167,22 +170,22 @@ export default function OverviewContent({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
   },
   contentContainer: {
-    paddingBottom: 24,
+    paddingBottom: 0,
   },
   headerSection: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
     backgroundColor: '#FFFFFF',
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginTop: 6,
   },
   dateContainer: {
     flexDirection: 'row',
@@ -215,8 +218,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
   },
   daysSection: {
-    marginTop: 16,
-    marginBottom: 16,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  sectionHeaderContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingBottom: 0,
   },
   sectionHeader: {
     fontSize: 11,
@@ -225,34 +232,37 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     paddingHorizontal: 20,
-    paddingBottom: 8,
+    paddingTop: 4,
+    paddingBottom: 4,
   },
   daysContainer: {
     backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    paddingBottom: 0,
+  },
+  dayCardWrapper: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F5F6F7',
     overflow: 'hidden',
   },
-  dayDivider: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
-    marginLeft: 18,
+  firstDayCard: {
+    borderTopWidth: 0,
   },
   emptyState: {
     backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    padding: 40,
-    borderRadius: 16,
+    marginHorizontal: 20,
+    marginTop: 12,
+    paddingHorizontal: 32,
+    paddingVertical: 48,
     alignItems: 'center',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#F5F6F7',
   },
   emptyIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#FEF3F2',
     alignItems: 'center',
     justifyContent: 'center',
@@ -271,8 +281,5 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
-  },
-  bottomPadding: {
-    height: 24,
   },
 });
