@@ -88,6 +88,8 @@ export default function UsernameSetup() {
   const videoRef1 = useRef(null);
   const videoRef2 = useRef(null);
   const videoRef3 = useRef(null);
+  const videoRef3_5 = useRef(null);
+  const videoRef4 = useRef(null);
 
   const activityOptions = [
     { label: 'History', emoji: '🏛️', value: 'history' },
@@ -645,14 +647,20 @@ export default function UsernameSetup() {
       // Page 10: Demo video 2 - go to demo video 3
       setCurrentPage(11);
     } else if (currentPage === 11) {
-      // Page 11: Demo video 3 - go to notifications
+      // Page 11: Demo video 3 - go to demo video 3.5
       setCurrentPage(12);
     } else if (currentPage === 12) {
-      // Page 12: Notifications page - request permission then go to welcome
-      await requestNotificationPermission();
+      // Page 12: Demo video 3.5 - go to demo video 4
       setCurrentPage(13);
     } else if (currentPage === 13) {
-      // Page 13: Welcome page - submit
+      // Page 13: Demo video 4 - go to notifications
+      setCurrentPage(14);
+    } else if (currentPage === 14) {
+      // Page 14: Notifications page - request permission then go to welcome
+      await requestNotificationPermission();
+      setCurrentPage(15);
+    } else if (currentPage === 15) {
+      // Page 15: Welcome page - submit
       handleContinue();
     }
   };
@@ -710,8 +718,12 @@ export default function UsernameSetup() {
     } else if (currentPage === 11) {
       return false; // Demo video 3 - no validation
     } else if (currentPage === 12) {
-      return false; // Notifications page - no validation
+      return false; // Demo video 3.5 - no validation
     } else if (currentPage === 13) {
+      return false; // Demo video 4 - no validation
+    } else if (currentPage === 14) {
+      return false; // Notifications page - no validation
+    } else if (currentPage === 15) {
       return isLoading; // Welcome page - can submit while loading
     }
     return false;
@@ -733,8 +745,8 @@ export default function UsernameSetup() {
       >
         <View style={styles.container}>
           <View style={styles.content}>
-            {/* Back Button - hide on video pages 9, 10, 11 */}
-            {![9, 10, 11].includes(currentPage) && (
+            {/* Back Button - hide on video pages 9, 10, 11, 12, 13 */}
+            {![9, 10, 11, 12, 13].includes(currentPage) && (
               <TouchableOpacity
                 style={{ padding: 5, marginBottom: 10, alignSelf: 'flex-start' }}
                 onPress={handleBack}
@@ -1038,10 +1050,10 @@ export default function UsernameSetup() {
               </>
             )}
 
-            {/* Pages 9, 10, 11 are rendered outside ScrollView as fullscreen */}
+            {/* Pages 9, 10, 11, 12, 13 are rendered outside ScrollView as fullscreen */}
 
-            {/* Page 12: Notification Permission */}
-            {currentPage === 12 && (
+            {/* Page 14: Notification Permission */}
+            {currentPage === 14 && (
               <>
                 <View style={{ alignItems: 'center', marginBottom: 10 }}>
                   <Ionicons name="notifications-outline" size={60} color="black" />
@@ -1086,8 +1098,8 @@ export default function UsernameSetup() {
               </>
             )}
 
-            {/* Page 13: Welcome */}
-            {currentPage === 13 && (
+            {/* Page 15: Welcome */}
+            {currentPage === 15 && (
               <>
                 <Text style={styles.imageTitle}>Welcome {getFirstName()}</Text>
                 <Text style={styles.imageSubtitle}>You're all set. Start your first itinerary, invite your travel buddies, and create your dream trip!</Text>
@@ -1100,7 +1112,7 @@ export default function UsernameSetup() {
             )}
 
             {/* Only show error and button for pages that DON'T have fixed bottom button */}
-            {![6, 7, 8, 9, 10, 11].includes(currentPage) && (
+            {![6, 7, 8, 9, 10, 11, 12, 13].includes(currentPage) && (
               <>
                 {error ? (
                   <Text style={styles.errorText}>{error}</Text>
@@ -1121,7 +1133,7 @@ export default function UsernameSetup() {
                     <ActivityIndicator color={Colors.WHITE} />
                   ) : (
                     <Text style={styles.buttonText}>
-                      {currentPage === 13 ? 'Start planning' : currentPage === 12 ? 'Choose permissions' : 'Continue'}
+                      {currentPage === 15 ? 'Start planning' : currentPage === 14 ? 'Choose permissions' : 'Continue'}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -1209,13 +1221,13 @@ export default function UsernameSetup() {
             <Ionicons name="arrow-back" size={40} color="white" />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.redBox, styles.redBoxBottom1]}
+            style={[styles.demoButton, styles.demoButtonPosition1]}
             onPress={() => setCurrentPage(10)}
           />
         </View>
       )}
 
-      {/* Page 10: Fullscreen Demo Video 2 - red box bottom center */}
+      {/* Page 10: Fullscreen Demo Video 2 */}
       {currentPage === 10 && (
         <View style={styles.fullscreenVideoContainer}>
           <Video
@@ -1235,13 +1247,13 @@ export default function UsernameSetup() {
             <Ionicons name="arrow-back" size={40} color="white" />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.redBox, styles.redBoxBottom2]}
+            style={[styles.demoButton, styles.demoButtonPosition2]}
             onPress={() => setCurrentPage(11)}
           />
         </View>
       )}
 
-      {/* Page 11: Fullscreen Demo Video 3 - red box bottom center */}
+      {/* Page 11: Fullscreen Demo Video 3 */}
       {currentPage === 11 && (
         <View style={styles.fullscreenVideoContainer}>
           <Video
@@ -1261,9 +1273,62 @@ export default function UsernameSetup() {
             <Ionicons name="arrow-back" size={40} color="white" />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.redBox, styles.redBoxBottom3]}
+            style={[styles.demoButton, styles.demoButtonPosition3]}
             onPress={() => setCurrentPage(12)}
           />
+        </View>
+      )}
+
+      {/* Page 12: Fullscreen Demo Video 3.5 */}
+      {currentPage === 12 && (
+        <View style={styles.fullscreenVideoContainer}>
+          <Video
+            ref={videoRef3_5}
+            source={require('../../assets/Demo_S3.5.mov')}
+            style={styles.fullscreenVideo}
+            resizeMode={ResizeMode.CONTAIN}
+            shouldPlay={true}
+            isLooping={true}
+            isMuted={true}
+            useNativeControls={false}
+          />
+          <TouchableOpacity
+            style={styles.videoBackButton}
+            onPress={() => setCurrentPage(11)}
+          >
+            <Ionicons name="arrow-back" size={40} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.demoButton, styles.demoButtonPosition3_5]}
+            onPress={() => setCurrentPage(13)}
+          />
+        </View>
+      )}
+
+      {/* Page 13: Fullscreen Demo Video 4 - auto advance when finished */}
+      {currentPage === 13 && (
+        <View style={styles.fullscreenVideoContainer}>
+          <Video
+            ref={videoRef4}
+            source={require('../../assets/Demo_S4.mov')}
+            style={styles.fullscreenVideo}
+            resizeMode={ResizeMode.CONTAIN}
+            shouldPlay={true}
+            isLooping={false}
+            isMuted={true}
+            useNativeControls={false}
+            onPlaybackStatusUpdate={(status) => {
+              if (status.didJustFinish) {
+                setCurrentPage(14);
+              }
+            }}
+          />
+          <TouchableOpacity
+            style={styles.videoBackButton}
+            onPress={() => setCurrentPage(12)}
+          >
+            <Ionicons name="arrow-back" size={40} color="white" />
+          </TouchableOpacity>
         </View>
       )}
     </KeyboardAvoidingView>
@@ -1614,22 +1679,32 @@ const styles = StyleSheet.create({
     padding: 5,
     zIndex: 10,
   },
-  redBox: {
+  demoButton: {
     position: 'absolute',
     width: 80,
     height: 80,
-    backgroundColor: 'red',
+    backgroundColor: 'transparent',
   },
-  redBoxBottom1: {
+  demoButton: {
+    position: 'absolute',
+    width: 240,
+    height: 80,
+    backgroundColor: 'transparent',
+  },
+  demoButtonPosition1: {
     bottom: screenHeight * 0.20,
     right: 0,
   },
-  redBoxBottom2: {
+  demoButtonPosition2: {
     bottom: screenHeight * 0.106,
     left: (screenWidth - 80) / 2,
   },
-  redBoxBottom3: {
+  demoButtonPosition3: {
     bottom: screenHeight * 0.153,
     left: (screenWidth - 175) / 2,
+  },
+  demoButtonPosition3_5: {
+    bottom: screenHeight * 0.15,
+    left: (screenWidth - 240) / 2,
   },
 });
