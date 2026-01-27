@@ -1215,13 +1215,7 @@ export default function UsernameSetup() {
             useNativeControls={false}
           />
           <TouchableOpacity
-            style={styles.videoBackButton}
-            onPress={() => setCurrentPage(8)}
-          >
-            <Ionicons name="arrow-back" size={40} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.demoButton, styles.demoButtonPosition1]}
+            style={[styles.demoButton1, styles.demoButtonPosition1]}
             onPress={() => setCurrentPage(10)}
           />
         </View>
@@ -1241,13 +1235,7 @@ export default function UsernameSetup() {
             useNativeControls={false}
           />
           <TouchableOpacity
-            style={styles.videoBackButton}
-            onPress={() => setCurrentPage(9)}
-          >
-            <Ionicons name="arrow-back" size={40} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.demoButton, styles.demoButtonPosition2]}
+            style={[styles.demoButton1, styles.demoButtonPosition2]}
             onPress={() => setCurrentPage(11)}
           />
         </View>
@@ -1267,13 +1255,7 @@ export default function UsernameSetup() {
             useNativeControls={false}
           />
           <TouchableOpacity
-            style={styles.videoBackButton}
-            onPress={() => setCurrentPage(10)}
-          >
-            <Ionicons name="arrow-back" size={40} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.demoButton, styles.demoButtonPosition3]}
+            style={[styles.demoButton1, styles.demoButtonPosition3]}
             onPress={() => setCurrentPage(12)}
           />
         </View>
@@ -1293,13 +1275,7 @@ export default function UsernameSetup() {
             useNativeControls={false}
           />
           <TouchableOpacity
-            style={styles.videoBackButton}
-            onPress={() => setCurrentPage(11)}
-          >
-            <Ionicons name="arrow-back" size={40} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.demoButton, styles.demoButtonPosition3_5]}
+            style={[styles.demoButton2, styles.demoButtonPosition3_5]}
             onPress={() => setCurrentPage(13)}
           />
         </View>
@@ -1323,12 +1299,6 @@ export default function UsernameSetup() {
               }
             }}
           />
-          <TouchableOpacity
-            style={styles.videoBackButton}
-            onPress={() => setCurrentPage(12)}
-          >
-            <Ionicons name="arrow-back" size={40} color="white" />
-          </TouchableOpacity>
         </View>
       )}
     </KeyboardAvoidingView>
@@ -1679,13 +1649,13 @@ const styles = StyleSheet.create({
     padding: 5,
     zIndex: 10,
   },
-  demoButton: {
+  demoButton1: {
     position: 'absolute',
     width: 80,
     height: 80,
     backgroundColor: 'transparent',
   },
-  demoButton: {
+  demoButton2: {
     position: 'absolute',
     width: 240,
     height: 80,

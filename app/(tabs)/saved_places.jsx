@@ -1,7 +1,8 @@
 import { Colors } from '../../constants/Colors';
 import { API } from 'aws-amplify';
 import { Auth } from 'aws-amplify';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   ActivityIndicator,
   Dimensions,
@@ -20,9 +21,11 @@ import { CityCard } from '../../src/components/saved-places/CityCard';
 import { SavedPlacesSearchBar } from '../../src/components/saved-places/SavedPlacesSearchBar';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function SavedPlaces() {
+  const router = useRouter();
+  const searchParams = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [cities, setCities] = useState([]);
@@ -34,6 +37,10 @@ export default function SavedPlaces() {
   const [carouselIndices, setCarouselIndices] = useState({}); // Track current index per city
   const [cityPhotoCounts, setCityPhotoCounts] = useState({}); // Track photo count per city
   const [searchQuery, setSearchQuery] = useState('');
+  // Start at page 8 for onboarding flow, or skip to 14 if returning from IG_Demo
+  const [emptyStatePage, setEmptyStatePage] = useState(
+    searchParams.skipOnboarding === 'true' ? 14 : 8
+  );
 
   // Filter cities based on search query
   const filteredCities = useMemo(() => {
@@ -190,14 +197,27 @@ export default function SavedPlaces() {
           />
         )}
 
-        {cities.length === 0 ? (
+        {cities.length === 0 && emptyStatePage === 8 ? (
+          /* Page 8: Instagram Capture */
+          <View style={styles.emptyOnboardingContainer}>
+            <Text style={styles.onboardingTitle}>Save spots from Instagram!</Text>
+            <View style={styles.instagramImageContainer}>
+              <Image
+                source={require('../../assets/Instagram_Capture.png')}
+                style={styles.onboardingInstagramImage}
+                resizeMode="cover"
+              />
+            </View>
+          </View>
+        ) : cities.length === 0 && emptyStatePage > 13 ? (
+          /* Normal empty state after onboarding */
           <View style={styles.emptyContainer}>
             <Ionicons name="bookmark-outline" size={64} color={Colors.GRAY} />
             <Text style={styles.emptyTitle}>No Saved Places Yet</Text>
             <Text style={styles.emptySubtitle}>
               Share Instagram travel posts to Atelic to save places here
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.instagramButton}
               onPress={handleInstagramPress}
               activeOpacity={0.7}
@@ -243,6 +263,18 @@ export default function SavedPlaces() {
           </View>
         )}
       </ScrollView>
+
+      {/* Fixed button at bottom for page 8 */}
+      {cities.length === 0 && emptyStatePage === 8 && (
+        <View style={styles.fixedButtonContainer}>
+          <TouchableOpacity
+            onPress={() => router.push('/IG_Demo')}
+            style={styles.onboardingButton}
+          >
+            <Text style={styles.onboardingButtonText}>Try it now</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* City Saved Places Modal */}
       {selectedCity && (
@@ -392,5 +424,55 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit-medium',
     fontSize: 16,
     color: '#1F2937',
+  },
+  // Onboarding styles for empty state
+  emptyOnboardingContainer: {
+    flex: 1,
+    paddingTop: 20,
+  },
+  onboardingTitle: {
+    fontFamily: 'outfit-bold',
+    fontSize: 32,
+    color: '#1F2937',
+    textAlign: 'center',
+  },
+  instagramImageContainer: {
+    marginTop: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  onboardingInstagramImage: {
+    width: screenWidth - 40,
+    height: (screenWidth - 40) * 1.3,
+    borderRadius: 20,
+  },
+  fixedButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: Colors.WHITE,
+    padding: 25,
+    paddingBottom: 40,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  onboardingButton: {
+    padding: 20,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F36406',
+  },
+  onboardingButtonText: {
+    color: Colors.WHITE,
+    textAlign: 'center',
+    fontFamily: 'outfit-medium',
+    fontSize: 17,
   },
 });
