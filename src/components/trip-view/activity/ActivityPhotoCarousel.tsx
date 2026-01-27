@@ -42,6 +42,10 @@ const UNSPLASH_API_BASE = 'https://api.unsplash.com';
 // Stores arrays of up to 5 photo_reference strings per place
 const googlePhotosCache: { [place_id: string]: string[] } = {};
 
+// Cache to store Unsplash photo URLs by activity name
+// Prevents redundant API calls for the same activity
+const unsplashCache: { [activityName: string]: string[] } = {};
+
 // Place types that should prioritize Unsplash (landmarks & attractions)
 const UNSPLASH_PRIORITY_TYPES = [
   'tourist_attraction',
@@ -197,6 +201,13 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
 
   const fetchUnsplashImages = async (query: string): Promise<string[]> => {
     try {
+      // Check in-memory cache first
+      if (unsplashCache[query] && unsplashCache[query].length > 0) {
+        console.log(`[ActivityPhotoCarousel] ✅ CACHE HIT - Using cached Unsplash photos for: ${query}`);
+        return unsplashCache[query];
+      }
+
+      console.log(`[ActivityPhotoCarousel] ❌ CACHE MISS - Fetching Unsplash photos for: ${query}`);
       const url = `${UNSPLASH_API_BASE}/search/photos?query=${encodeURIComponent(query)}&per_page=5&client_id=${UNSPLASH_ACCESS_KEY}`;
 
       const response = await fetch(url);
@@ -209,7 +220,15 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
       const data: UnsplashResponse = await response.json();
 
       // Return array of image URLs (regular size ~1080px)
-      return data.results ? data.results.map(photo => photo.urls.regular) : [];
+      const photoUrls = data.results ? data.results.map(photo => photo.urls.regular) : [];
+      
+      // Store in cache for future use
+      if (photoUrls.length > 0) {
+        unsplashCache[query] = photoUrls;
+        console.log(`[ActivityPhotoCarousel] 💾 Cached ${photoUrls.length} Unsplash photos for: ${query}`);
+      }
+      
+      return photoUrls;
     } catch (error) {
       console.error('[ActivityPhotoCarousel] Error fetching Unsplash images:', error);
       return [];
