@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit',
     color: '#9CA3AF',
     marginBottom: 3,
-    marginLeft: 1,
+    marginLeft: 15,
     letterSpacing: -0.1,
   },
   timeline: {
@@ -266,6 +266,7 @@ const styles = StyleSheet.create({
   timeColumn: {
     width: 54,
     paddingTop: 0.5,
+    marginLeft: 15,
   },
   timeText: {
     fontSize: 10.5,
