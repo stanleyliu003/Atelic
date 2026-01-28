@@ -946,31 +946,7 @@
         }
       ]
     },
-    "AMPLIFY_function_getPlacePhoto_cloudfrontDomain": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "getPlacePhoto"
-        }
-      ]
-    },
     "AMPLIFY_function_getPlacePhoto_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "getPlacePhoto"
-        }
-      ]
-    },
-    "AMPLIFY_function_getPlacePhoto_googlePlacesApiKey": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "getPlacePhoto"
-        }
-      ]
-    },
-    "AMPLIFY_function_getPlacePhoto_photoS3BucketName": {
       "usedBy": [
         {
           "category": "function",
