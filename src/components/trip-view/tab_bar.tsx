@@ -1,7 +1,7 @@
 import { Colors } from '../../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useRef } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Animated, PanResponder } from 'react-native';
 import { formatDayTab } from '../../utils/dateFormatting';
 
 type TabType = 'overview' | 'wishlist' | `day${number}`;
@@ -12,12 +12,14 @@ interface TabBarProps {
   dayCount: number;
   onAddDay: () => void;
   onDeleteDay: () => void;
+  onReorderDays?: (fromDay: number, toDay: number) => void;
   shouldScrollToActive?: boolean;
   tabLabels?: TabType[];
   currentUserRole?: 'owner' | 'editor' | 'viewer';
   startDate?: string | null;
   showOverviewTab?: boolean;
   showDayButtons?: boolean;
+  usePrimaryStyle?: boolean; // Use primary toggle styling
 }
 
 export function TabBar({
@@ -26,21 +28,30 @@ export function TabBar({
   dayCount,
   onAddDay,
   onDeleteDay,
+  onReorderDays,
   shouldScrollToActive = false,
   tabLabels,
   currentUserRole,
   startDate,
   showOverviewTab = false,
-  showDayButtons = true
+  showDayButtons = true,
+  usePrimaryStyle = false
 }: TabBarProps) {
   const scrollViewRef = useRef<ScrollView>(null);
+  const [isDeleteMode, setIsDeleteMode] = React.useState(false);
+  const [reorderMode, setReorderMode] = React.useState(false);
+  const [selectedDayForReorder, setSelectedDayForReorder] = React.useState<string | null>(null);
 
   // Generate tab order: use tabLabels if provided, otherwise default
-  const tabs: TabType[] = tabLabels ?? ([
-    ...(showOverviewTab ? ['overview' as TabType] : []),
+  let tabs: TabType[] = tabLabels ?? ([
     'wishlist',
     ...Array.from({ length: dayCount }, (_, i) => `day${i + 1}` as TabType)
   ]);
+
+  // Prepend overview tab if requested
+  if (showOverviewTab && !tabs.includes('overview')) {
+    tabs = ['overview' as TabType, ...tabs];
+  }
 
   // Scroll to active tab only when shouldScrollToActive is true (new day added)
   React.useEffect(() => {
@@ -58,59 +69,187 @@ export function TabBar({
   }, [activeTab, shouldScrollToActive, tabs]);
 
   return (
-    <View style={styles.tabBarContainer}>
-      <ScrollView 
+    <View style={usePrimaryStyle ? styles.primaryContainer : styles.tabBarContainer}>
+      <ScrollView
         ref={scrollViewRef}
-        horizontal 
+        horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={usePrimaryStyle ? styles.primaryScrollContent : styles.scrollContent}
         style={styles.scrollView}
       >
         {/* Render tabs in the provided order */}
-        {tabs.map((tab, idx) => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tab, activeTab === tab && styles.activeTab]}
-            onPress={() => onTabChange(tab)}
-          >
-            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-              {tab === 'overview'
-                ? 'Overview'
-                : tab === 'wishlist'
-                ? 'WishList'
-                : startDate
-                  ? formatDayTab(startDate, parseInt(tab.replace('day', '')))
-                  : `Day ${tab.replace('day', '')}`
+        {tabs.map((tab, idx) => {
+          const isDayTab = tab.startsWith('day');
+          const showDeleteIcon = isDeleteMode && isDayTab && dayCount > 1;
+          const isSelectedForReorder = selectedDayForReorder === tab;
+          const showReorderIcon = reorderMode && isDayTab;
+
+          const handlePress = () => {
+            if (reorderMode && isDayTab) {
+              // In reorder mode, clicking a day either selects it or swaps with selected
+              if (!selectedDayForReorder) {
+                // Select this day for reordering
+                setSelectedDayForReorder(tab);
+              } else if (selectedDayForReorder === tab) {
+                // Deselect if clicking the same day
+                setSelectedDayForReorder(null);
+              } else {
+                // Swap the two days
+                const fromDay = parseInt(selectedDayForReorder.replace('day', ''));
+                const toDay = parseInt(tab.replace('day', ''));
+                if (onReorderDays) {
+                  onReorderDays(fromDay, toDay);
+                }
+                setSelectedDayForReorder(null);
+                setReorderMode(false);
               }
-            </Text>
+            } else if (isDeleteMode && isDayTab) {
+              onTabChange(tab);
+              onDeleteDay();
+              setIsDeleteMode(false);
+            } else {
+              onTabChange(tab);
+            }
+          };
+
+          const handleLongPress = () => {
+            if (isDayTab && currentUserRole !== 'viewer' && onReorderDays && !isDeleteMode && !reorderMode) {
+              setReorderMode(true);
+              setSelectedDayForReorder(tab);
+            }
+          };
+
+          return (
+            <TouchableOpacity
+              key={tab}
+              style={[
+                usePrimaryStyle ? styles.primaryTab : styles.tab,
+                activeTab === tab && !reorderMode && (usePrimaryStyle ? styles.primaryTabActive : styles.activeTab),
+                isSelectedForReorder && styles.selectedForReorder,
+                showReorderIcon && !isSelectedForReorder && styles.reorderableTab
+              ]}
+              onPress={handlePress}
+              onLongPress={handleLongPress}
+              delayLongPress={500}
+            >
+              {showDeleteIcon && (
+                <View style={styles.deleteIcon}>
+                  <Ionicons name="remove-circle" size={16} color="#dc3545" />
+                </View>
+              )}
+              {showReorderIcon && (
+                <View style={styles.dragIcon}>
+                  <Ionicons
+                    name={isSelectedForReorder ? "swap-horizontal" : "reorder-three"}
+                    size={16}
+                    color={isSelectedForReorder ? Colors.PRIMARY : "#6B7280"}
+                  />
+                </View>
+              )}
+              <Text style={[
+                usePrimaryStyle ? styles.primaryTabText : styles.tabText,
+                activeTab === tab && !reorderMode && (usePrimaryStyle ? styles.primaryTabTextActive : styles.activeTabText),
+                isSelectedForReorder && styles.selectedText
+              ]}>
+                {tab === 'overview'
+                  ? 'Overview'
+                  : tab === 'wishlist'
+                  ? 'WishList'
+                  : startDate
+                    ? formatDayTab(startDate, parseInt(tab.replace('day', '')))
+                    : `Day ${tab.replace('day', '')}`
+                }
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+
+        {/* Delete Mode Toggle Button - styled like a day tab, inside ScrollView */}
+        {showDayButtons && currentUserRole !== 'viewer' && dayCount > 0 && (
+          <TouchableOpacity
+            style={[
+              usePrimaryStyle ? styles.primaryActionButton : styles.tab,
+              isDeleteMode && (usePrimaryStyle ? styles.primaryTabActive : styles.activeTab)
+            ]}
+            onPress={() => setIsDeleteMode(!isDeleteMode)}
+          >
+            <Ionicons
+              name={isDeleteMode ? "close" : "remove-circle-outline"}
+              size={16}
+              color={isDeleteMode ? "#dc3545" : "#6B7280"}
+            />
           </TouchableOpacity>
-        ))}
+        )}
+
+        {/* Add Day Button - styled like a day tab, inside ScrollView */}
+        {showDayButtons && currentUserRole !== 'viewer' && (
+          <TouchableOpacity
+            style={[
+              usePrimaryStyle ? styles.primaryActionButton : styles.tab,
+            ]}
+            onPress={onAddDay}
+          >
+            <Ionicons name="add" size={16} color={Colors.PRIMARY} />
+          </TouchableOpacity>
+        )}
       </ScrollView>
-
-      {/* Delete Day Button - Only show when showDayButtons is true, activeTab is a day, and user is not a viewer */}
-      {showDayButtons && activeTab.startsWith('day') && currentUserRole !== 'viewer' && (
-        <TouchableOpacity
-          style={styles.deleteDayButton}
-          onPress={onDeleteDay}
-        >
-          <Ionicons name="remove" size={20} color="#dc3545" />
-        </TouchableOpacity>
-      )}
-
-      {/* Add Day Button - Only show when showDayButtons is true and user is not a viewer */}
-      {showDayButtons && currentUserRole !== 'viewer' && (
-        <TouchableOpacity
-          style={styles.addDayButton}
-          onPress={onAddDay}
-        >
-          <Ionicons name="add" size={20} color={Colors.PRIMARY} />
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Primary style (for Overview/Itinerary toggle replacement)
+  primaryContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: Colors.WHITE,
+  },
+  primaryScrollContent: {
+    paddingHorizontal: 0,
+    alignItems: 'center',
+    gap: 6,
+    flexDirection: 'row',
+  },
+  primaryTab: {
+    paddingVertical: 11,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: '#F5F5F5',
+    marginHorizontal: 3,
+    minWidth: 90,
+  },
+  primaryTabActive: {
+    backgroundColor: '#E3F2FD',
+    shadowColor: '#90CAF9',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  primaryTabText: {
+    fontSize: 15,
+    fontFamily: 'outfit-medium',
+    color: '#6B7280',
+    letterSpacing: -0.2,
+  },
+  primaryTabTextActive: {
+    fontFamily: 'outfit-semibold',
+    color: '#1976D2',
+  },
+  primaryActionButton: {
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: '#F5F5F5',
+    marginHorizontal: 3,
+    minWidth: 40,
+  },
+  // Original TabBar style (for secondary tabs)
   tabBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -166,5 +305,46 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffebee',
     borderLeftWidth: 1,
     borderLeftColor: 'black',
+  },
+  deleteIcon: {
+    position: 'absolute',
+    left: 4,
+    top: '50%',
+    marginTop: -8,
+    zIndex: 1,
+  },
+  dragIcon: {
+    position: 'absolute',
+    right: 4,
+    top: '50%',
+    marginTop: -8,
+    zIndex: 1,
+  },
+  draggingTab: {
+    opacity: 0.5,
+    transform: [{ scale: 1.05 }],
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  hoverTab: {
+    borderWidth: 2,
+    borderColor: Colors.PRIMARY,
+    borderStyle: 'dashed',
+  },
+  selectedForReorder: {
+    backgroundColor: '#E3F2FD',
+    borderWidth: 2,
+    borderColor: Colors.PRIMARY,
+    transform: [{ scale: 1.05 }],
+  },
+  reorderableTab: {
+    opacity: 0.8,
+  },
+  selectedText: {
+    color: Colors.PRIMARY,
+    fontWeight: '700',
   },
 }); 

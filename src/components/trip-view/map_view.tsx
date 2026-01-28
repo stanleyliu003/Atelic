@@ -363,7 +363,7 @@ export function TripMapView({
           .length;
 
         return {
-          key: activity.instanceId || activity.place_id || `${activity.lat},${activity.lng},${idx}`,
+          key: `${activeTab}-${idx}-${activity.instanceId || activity.place_id || `${activity.lat},${activity.lng}`}`,
           coordinate: {
             latitude: activity.lat!,
             longitude: activity.lng!,

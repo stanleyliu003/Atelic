@@ -851,6 +851,13 @@ export default function TripViewMain() {
         return [...wishlistActivities, ...allDayActivities];
     };
 
+    // Get only day activities (excluding wishlist)
+    const getAllDayActivities = () => {
+        const allDayActivities = Object.values(dayActivities || {})
+            .flatMap(dayObj => Array.isArray((dayObj as any).activities) ? (dayObj as any).activities : []);
+        return allDayActivities;
+    };
+
     // Get activities for the current tab
     const getActivitiesForTab = (tab: TabType) => {
         if (tab === 'wishlist') {
@@ -1995,17 +2002,70 @@ export default function TripViewMain() {
         // Update tripLength to reflect the new day count
         setTripLength(getDayCount());
 
-        // ✨ NEW: Track operation: add day
-        // Pass newDayNumber as 4th argument so operation has dayNumber field set
-        const op = createOperation('add', 'day', {
-            action: 'addDay'
-        }, newDayNumber);
-        queueSave(op);
-
-        // Switch to the newly created day
+        // Switch to the newly created day immediately
         setActiveTab(`day${newDayNumber}`);
         // Trigger auto-scroll to the new day
         setShouldScrollToActive(true);
+
+        // ✨ NEW: Track operation: add day (non-blocking, happens after UI update)
+        // Pass newDayNumber as 4th argument so operation has dayNumber field set
+        setTimeout(() => {
+            const op = createOperation('add', 'day', {
+                action: 'addDay'
+            }, newDayNumber);
+            queueSave(op);
+        }, 0);
+    };
+
+    const handleReorderDays = (fromDay: number, toDay: number) => {
+        if (fromDay === toDay) return;
+
+        // Get the activities from both days
+        const fromDayActivities = getDayActivities(fromDay) || [];
+        const toDayActivities = getDayActivities(toDay) || [];
+
+        // Swap the activities
+        setDayActivities((prev: any) => {
+            const newDayActivities = { ...prev };
+
+            // Swap the activities between the two days
+            if (newDayActivities[fromDay]) {
+                newDayActivities[fromDay] = {
+                    ...newDayActivities[fromDay],
+                    activities: toDayActivities
+                };
+            }
+            if (newDayActivities[toDay]) {
+                newDayActivities[toDay] = {
+                    ...newDayActivities[toDay],
+                    activities: fromDayActivities
+                };
+            }
+
+            return newDayActivities;
+        });
+
+        // Also swap polylines if they exist
+        setDayPolylinesDeleteDay((prev: any) => {
+            const newPolylines = { ...prev };
+            const fromPolyline = prev[fromDay];
+            const toPolyline = prev[toDay];
+
+            if (fromPolyline) newPolylines[toDay] = fromPolyline;
+            if (toPolyline) newPolylines[fromDay] = toPolyline;
+
+            return newPolylines;
+        });
+
+        // Queue save operation (non-blocking)
+        setTimeout(() => {
+            const op = createOperation('modify', 'day', {
+                action: 'reorderDays',
+                fromDay,
+                toDay
+            });
+            queueSave(op);
+        }, 0);
     };
 
     const handleDeleteDay = () => {
@@ -2020,21 +2080,42 @@ export default function TripViewMain() {
 
         // Function to perform the deletion
         const performDeletion = () => {
-            // ✨ NEW: Track operation: delete day BEFORE performing deletion
-            // Pass dayToDelete as 4th argument so operation has dayNumber field set
-            const op = createOperation('remove', 'day', {
-                action: 'deleteDay',
-                hadActivities: hasActivities
-            }, dayToDelete);
-            queueSave(op);
-
             // Delete the day and get its activities to move back to wishlist
             const deletedDayActivities = deleteDayAndRenumber(dayToDelete);
 
             // Add deleted day activities back to wishlist at the top (with deduplication)
+            // Exclude hotels/lodging from being added back to wishlist
             if (deletedDayActivities.length > 0) {
+                // Filter out hotels/lodging - check all possible lodging indicators
+                const nonLodgingActivities = deletedDayActivities.filter(
+                    activity => {
+                        // Check isLodging flag
+                        if (activity.isLodging === true) return false;
+
+                        // Check primaryType
+                        if (activity.primaryType === 'lodging') return false;
+
+                        // Check types array for lodging-related types
+                        if (activity.types && Array.isArray(activity.types)) {
+                            const hasLodgingType = activity.types.some(type =>
+                                type && (
+                                    type.toLowerCase().includes('lodging') ||
+                                    type.toLowerCase().includes('hotel') ||
+                                    type.toLowerCase().includes('hostel') ||
+                                    type.toLowerCase().includes('accommodation') ||
+                                    type.toLowerCase().includes('campground') ||
+                                    type.toLowerCase().includes('rv_park')
+                                )
+                            );
+                            if (hasLodgingType) return false;
+                        }
+
+                        return true;
+                    }
+                );
+
                 // Prepend to top of wishlist
-                const combinedActivities = [...deletedDayActivities, ...(activities || [])];
+                const combinedActivities = [...nonLodgingActivities, ...(activities || [])];
 
                 // Remove duplicates based on instanceId
                 const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
@@ -2044,18 +2125,6 @@ export default function TripViewMain() {
                 });
 
                 updateActivities(deduplicatedActivities);
-
-                // ✨ NEW: Track moving activities back to wishlist (using atomic shape with full activity)
-                // Include insertIndex to preserve order during reconstruction
-                deletedDayActivities.forEach((activity: Activity, index: number) => {
-                    const op = createOperation('move', 'wishlist', {
-                        activity: activity,
-                        fromLocation: dayToDelete,
-                        toLocation: 'wishlist',
-                        insertIndex: index // Position in the deleted day's activity list (0-based)
-                    });
-                    queueSave(op);
-                });
             }
 
             // Clear route cache for days that got renumbered
@@ -2096,29 +2165,49 @@ export default function TripViewMain() {
                 // If deleting any other day, go to the previous day
                 setActiveTab(`day${dayToDelete - 1}`);
             }
+
+            // ✨ Queue save operations after UI updates (non-blocking)
+            setTimeout(() => {
+                // Track operation: delete day
+                const op = createOperation('remove', 'day', {
+                    action: 'deleteDay',
+                    hadActivities: hasActivities
+                }, dayToDelete);
+                queueSave(op);
+
+                // Track moving activities back to wishlist
+                if (deletedDayActivities.length > 0) {
+                    deletedDayActivities.forEach((activity: Activity, index: number) => {
+                        const op = createOperation('move', 'wishlist', {
+                            activity: activity,
+                            fromLocation: dayToDelete,
+                            toLocation: 'wishlist',
+                            insertIndex: index
+                        });
+                        queueSave(op);
+                    });
+                }
+            }, 0);
         };
 
-        // Only show confirmation dialog if the day has activities
-        if (hasActivities) {
-             Alert.alert(
-                 'Delete Day',
-                 `Are you sure you want to delete Day ${dayToDelete}?`,
-                 [
-                     {
-                         text: 'Cancel',
-                         style: 'cancel'
-                     },
-                     {
-                         text: 'Delete',
-                         style: 'destructive',
-                         onPress: performDeletion
-                     }
-                 ]
-             );
-        } else {
-            // No activities, delete immediately without confirmation
-            performDeletion();
-        }
+        // Always show confirmation dialog before deleting a day
+        Alert.alert(
+            'Delete Day',
+            hasActivities
+                ? `Are you sure you want to delete Day ${dayToDelete}? All activities will be moved back to the wishlist.`
+                : `Are you sure you want to delete Day ${dayToDelete}?`,
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel'
+                },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: performDeletion
+                }
+            ]
+        );
     };
 
     const handleDeleteActivities = () => {
@@ -3560,7 +3649,7 @@ export default function TripViewMain() {
     return (
         <>
             <TripMapView
-                activities={primaryTab === 'overview' ? getAllActivitiesFromTrip() : getActivitiesForTab(activeTab)}
+                activities={primaryTab === 'overview' ? getAllDayActivities() : getActivitiesForTab(activeTab)}
                 activeTab={activeTab}
                 routeCoordinates={
                   activeTab.startsWith('day') && getActivitiesForTab(activeTab).length > 0
@@ -3621,12 +3710,13 @@ export default function TripViewMain() {
                             dayCount={getDayCount()}
                             onAddDay={handleAddDay}
                             onDeleteDay={handleDeleteDay}
+                            onReorderDays={handleReorderDays}
                             shouldScrollToActive={shouldScrollToActive}
                             tabLabels={tabLabels}
                             currentUserRole={currentUserRole}
                             startDate={startDate}
                             showOverviewTab={true}
-                            showDayButtons={false}
+                            showDayButtons={true}
                             usePrimaryStyle={true}
                         />
                     )
@@ -3913,7 +4003,7 @@ export default function TripViewMain() {
                 onSaveActivities={handleSaveSearchResults}
                 showAddingPlaceLoading={false}
                 onAddingPlaceChange={setIsAutocompleteAddingPlace}
-                wishlistActivities={activities || []}
+                wishlistActivities={getActivitiesForTab('wishlist')}
                 activeTab={activeTab}
             />
 

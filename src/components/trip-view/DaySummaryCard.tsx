@@ -166,7 +166,7 @@ export default function DaySummaryCard({
               }
 
               return (
-                <View key={activity.instanceId || index} style={styles.timelineItem}>
+                <View key={`day${dayNumber}-${index}-${activity.instanceId || activity.place_id || 'no-id'}`} style={styles.timelineItem}>
                   {/* Time Column */}
                   <View style={styles.timeColumn}>
                     {activity.startTime && (
@@ -217,9 +217,9 @@ export default function DaySummaryCard({
 
 const styles = StyleSheet.create({
   card: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 10,
     backgroundColor: '#FFFFFF',
   },
   cardPressed: {
