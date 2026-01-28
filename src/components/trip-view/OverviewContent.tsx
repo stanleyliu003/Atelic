@@ -170,7 +170,7 @@ export default function OverviewContent({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
   },
   contentContainer: {
     paddingBottom: 0,
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   sectionHeaderContainer: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
     paddingBottom: 0,
   },
   sectionHeader: {
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   daysContainer: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 16,
@@ -248,11 +248,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E8EAED',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
   },
   firstDayCard: {
     // No special styling needed
@@ -267,11 +262,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E8EAED',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
   },
   emptyIconContainer: {
     width: 60,

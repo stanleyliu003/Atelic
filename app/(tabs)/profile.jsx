@@ -687,7 +687,7 @@ export default function Profile() {
                         <Carousel
                           loop={false}
                           width={350}
-                          height={170}
+                          height={180}
                           data={trip.tripPhotoReference && trip.tripPhotoReference.length > 0
                             ? trip.tripPhotoReference
                             : [{}, {}, {}, {}, {}]} // Default 5 empty objects for Unsplash
@@ -862,7 +862,7 @@ export default function Profile() {
                         <Carousel
                           loop={false}
                           width={350}
-                          height={170}
+                          height={180}
                           data={trip.tripPhotoReference && trip.tripPhotoReference.length > 0
                             ? trip.tripPhotoReference
                             : [{}, {}, {}, {}, {}]} // Default 5 empty objects for Unsplash
@@ -1455,17 +1455,12 @@ const styles = StyleSheet.create({
   },
   tripCard: {
     backgroundColor: Colors.WHITE,
-    borderRadius: 12,
-    marginBottom: 25,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    borderRadius: 16,
+    marginBottom: 30,
     position: 'relative',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   tripCardMainArea: {
     flex: 1,
@@ -1478,21 +1473,22 @@ const styles = StyleSheet.create({
   },
   tripCardImage: {
     width: '100%',
-    height: 170,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    height: 180,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   tripCardImagePlaceholder: {
     width: '100%',
-    height: 170,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    height: 180,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
   },
   tripCardInfo: {
-    padding: 15,
+    padding: 16,
+    paddingTop: 14,
     alignItems: 'flex-start',
   },
   tripCardTitleRow: {
@@ -1500,24 +1496,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   tripCardTitle: {
-    fontFamily: 'outfit-medium',
+    fontFamily: 'outfit-bold',
     fontSize: 20,
-    color: Colors.PRIMARY,
+    color: '#1a1a1a',
     flex: 1,
   },
   tripCardSubtitle: {
     fontFamily: 'outfit',
     fontSize: 14,
-    color: Colors.GRAY,
-    marginBottom: 4,
+    color: '#6B7280',
+    marginBottom: 2,
   },
   tripCardLength: {
     fontFamily: 'outfit',
     fontSize: 14,
-    color: Colors.GRAY,
+    color: '#9CA3AF',
   },
   sharedTripsSpacer: {
     marginTop: 20,
@@ -1606,8 +1602,8 @@ const styles = StyleSheet.create({
   carouselContainer: {
     position: 'relative',
     overflow: 'hidden',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   paginationDots: {
     flexDirection: 'row',
@@ -1620,17 +1616,17 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   dot: {
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    marginHorizontal: 4,
+    marginHorizontal: 3,
   },
   activeDot: {
     backgroundColor: Colors.WHITE,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
   },
   settingsModal: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
