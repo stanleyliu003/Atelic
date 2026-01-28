@@ -407,8 +407,9 @@ export default function TripViewMain() {
             recentSearches,
             startDate,
             endDate,
+            tripTitle,
         };
-    }, [activities, dayActivities, dayPolylines, dayTravelModes, tripLength, selectedCity, tripPhotoReference, createdAt, recentSearches, startDate, endDate]);
+    }, [activities, dayActivities, dayPolylines, dayTravelModes, tripLength, selectedCity, tripPhotoReference, createdAt, recentSearches, startDate, endDate, tripTitle]);
 
     // Initialize days based on tripLength (only for new trips, not existing ones)
     const [hasInitialized, setHasInitialized] = useState(false);
@@ -526,7 +527,7 @@ export default function TripViewMain() {
     };
 
     // Helper function to convert Activity to ActivityInput format for GraphQL
-    // Helper function to recursively remove __typename from objects
+    // Helper function to recursively remove __typename and extra fields not in ActivityInput schema
     const removeTypename = (obj: any): any => {
         if (obj === null || obj === undefined) return obj;
         if (Array.isArray(obj)) {
@@ -534,8 +535,10 @@ export default function TripViewMain() {
         }
         if (typeof obj === 'object') {
             const cleaned: any = {};
+            // Fields to exclude: __typename and fields not in GraphQL ActivityInput schema
+            const excludedFields = ['__typename', 'lastModified', 'modifiedBy', 'lastReordered', 'category'];
             for (const key in obj) {
-                if (key !== '__typename') {
+                if (!excludedFields.includes(key)) {
                     cleaned[key] = removeTypename(obj[key]);
                 }
             }
@@ -3086,6 +3089,8 @@ export default function TripViewMain() {
                 recentSearches: latestRecentSearches,
                 startDate: latestStartDate,
                 endDate: latestEndDate,
+                tripTitle: latestTripTitle,
+                tripLength: latestTripLength,
             } = latestTripDataRef.current;
 
             // Gather days and their activities (sanitize activities for GraphQL input)
@@ -3141,9 +3146,10 @@ export default function TripViewMain() {
 
             const tripData = {
                 tripId: currentTripId,
+                tripTitle: latestTripTitle || null, // Preserve custom trip title
                 days,
                 wishlist,
-                tripLength: days.length, // Use tripLength state variable, fallback to days.length
+                tripLength: latestTripLength || days.length, // Use tripLength from state/ref, fallback to days.length
                 selectedCity: latestSelectedCity,
                 tripPhotoReference: Array.isArray(latestTripPhotoReference)
                     ? latestTripPhotoReference

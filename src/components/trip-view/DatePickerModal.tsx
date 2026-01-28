@@ -70,6 +70,8 @@ export default function DatePickerModal({
   ).current;
 
   useEffect(() => {
+    console.log('[DatePickerModal] Visible changed:', visible);
+    console.log('[DatePickerModal] isFlexibleDays:', isFlexibleDays);
     if (visible) {
       Animated.spring(slideAnim, {
         toValue: 0,
@@ -111,6 +113,7 @@ export default function DatePickerModal({
   };
 
   const handleDateChange = (date: Date, type: string) => {
+    console.log('[DatePickerModal] Date changed:', date, 'type:', type);
     if (type === 'END_DATE') {
       if (!date) {
         setSelectedEndDate(null);
@@ -158,10 +161,9 @@ export default function DatePickerModal({
             styles.modalContainer,
             { transform: [{ translateY: slideAnim }] },
           ]}
-          {...panResponder.panHandlers}
         >
           {/* Handle */}
-          <View style={styles.handleContainer}>
+          <View style={styles.handleContainer} {...panResponder.panHandlers}>
             <View style={styles.handle} />
           </View>
 
@@ -194,6 +196,7 @@ export default function DatePickerModal({
             {!isFlexibleDays ? (
               // Calendar View
               <View style={styles.calendarContainer}>
+                {console.log('[DatePickerModal] Rendering CalendarPicker')}
                 <CalendarPicker
                   startFromMonday={false}
                   allowRangeSelection={true}
@@ -209,7 +212,7 @@ export default function DatePickerModal({
                   enableSwipe={true}
                   weekdays={['S', 'M', 'T', 'W', 'T', 'F', 'S']}
                   allowBackwardRangeSelect={true}
-                  width={350}
+                  width={Dimensions.get('window').width - 60}
                   textStyle={{
                     fontFamily: 'outfit',
                     fontSize: 16,
@@ -374,6 +377,8 @@ const styles = StyleSheet.create({
   calendarContainer: {
     alignItems: 'center',
     paddingVertical: 20,
+    width: '100%',
+    minHeight: 400,
   },
   flexibleDaysContainer: {
     paddingVertical: 20,

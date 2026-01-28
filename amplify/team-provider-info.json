@@ -480,7 +480,7 @@
         },
         "CreateTripStorage": {
           "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
-          "s3Key": "amplify-builds/CreateTripStorage-464c7758307741395858-build.zip"
+          "s3Key": "amplify-builds/CreateTripStorage-6139574f326a66726e68-build.zip"
         },
         "GetRoute": {
           "geminiApiKey": "AIzaSyAxgNAfOqf9v17QV4WUaZouBjWddh5FDds",
@@ -514,7 +514,7 @@
         },
         "getTripIDs": {
           "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
-          "s3Key": "amplify-builds/getTripIDs-4939365a6139454d432b-build.zip"
+          "s3Key": "amplify-builds/getTripIDs-754d4672704c524f6f2b-build.zip"
         },
         "getUserProfile": {
           "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
@@ -522,7 +522,7 @@
         },
         "getUserTrips": {
           "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
-          "s3Key": "amplify-builds/getUserTrips-6b73306b65784931367a-build.zip"
+          "s3Key": "amplify-builds/getUserTrips-6a444c7a2b4b61375a65-build.zip"
         },
         "getVersionConfig": {
           "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
