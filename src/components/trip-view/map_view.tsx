@@ -262,9 +262,6 @@ const MarkerComponent = ({
   distance?: string;
 }) => (
   <View style={styles.markerWrapper}>
-    {distance && (
-      <DistanceLabel distance={distance} color={color} />
-    )}
     <View style={styles.markerShadow}>
       <View style={[
         styles.markerContainer,
