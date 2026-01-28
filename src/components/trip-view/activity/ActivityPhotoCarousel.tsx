@@ -7,6 +7,8 @@ import { Colors } from '../../../../constants/Colors';
 import { TripCarouselImage } from '../../profile/TripCarouselImage';
 import { useLazyCarousel } from '../../../hooks/useLazyCarousel';
 import { GOOGLE_PLACES_API_KEY, UNSPLASH_ACCESS_KEY } from '../../../constants/api';
+import { UnsplashImageWithAttribution } from '../../../types/unsplash.types';
+import UnsplashInfoButton from '../../common/UnsplashInfoButton';
 
 // expo-image blurhash placeholder for smooth loading
 const PLACEHOLDER_BLURHASH = '|rF?hV%2WCj[ayj[a|j[az_NaeWBj@ayfRayfQfQM{M|azj[azf6telebu~qayj[j[fQayWBofofayayayj[fQj[ayayj[ayfjj[ay';
@@ -28,6 +30,16 @@ interface UnsplashPhoto {
     thumb: string;
   };
   id: string;
+  user?: {
+    name: string;
+    links?: {
+      html: string;
+    };
+  };
+  links?: {
+    html: string;
+    download_location: string;
+  };
 }
 
 interface UnsplashResponse {
@@ -42,9 +54,9 @@ const UNSPLASH_API_BASE = 'https://api.unsplash.com';
 // Stores arrays of up to 5 photo_reference strings per place
 const googlePhotosCache: { [place_id: string]: string[] } = {};
 
-// Cache to store Unsplash photo URLs by activity name
+// Cache to store Unsplash photos with attribution by activity name
 // Prevents redundant API calls for the same activity
-const unsplashCache: { [activityName: string]: string[] } = {};
+const unsplashCache: { [activityName: string]: UnsplashImageWithAttribution[] } = {};
 
 // Place types that should prioritize Unsplash (landmarks & attractions)
 const UNSPLASH_PRIORITY_TYPES = [
@@ -136,7 +148,7 @@ const shouldUseUnsplashFirst = (primaryType?: string, types?: string[]): boolean
 
 export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoCarouselProps) {
   const [photos, setPhotos] = useState<PhotoData[]>([]);
-  const [unsplashUrls, setUnsplashUrls] = useState<string[]>([]);
+  const [unsplashData, setUnsplashData] = useState<UnsplashImageWithAttribution[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const width = Dimensions.get('window').width - 32;
@@ -161,7 +173,7 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
 
         // If we got 5 images from Unsplash, use them
         if (unsplashImages.length >= 5) {
-          setUnsplashUrls(unsplashImages.slice(0, 5));
+          setUnsplashData(unsplashImages.slice(0, 5));
           setPhotos([]); // Clear Google Places photos
           setLoading(false);
           return;
@@ -185,7 +197,7 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
           console.log(`[ActivityPhotoCarousel] No Google Places photos found for ${activity.name}, trying Unsplash as fallback`);
           const unsplashImages = await fetchUnsplashImages(activity.name);
           if (unsplashImages.length > 0) {
-            setUnsplashUrls(unsplashImages.slice(0, 5));
+            setUnsplashData(unsplashImages.slice(0, 5));
             setPhotos([]); // Clear Google Places photos
           }
         }
@@ -199,7 +211,7 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
     }
   };
 
-  const fetchUnsplashImages = async (query: string): Promise<string[]> => {
+  const fetchUnsplashImages = async (query: string): Promise<UnsplashImageWithAttribution[]> => {
     try {
       // Check in-memory cache first
       if (unsplashCache[query] && unsplashCache[query].length > 0) {
@@ -219,16 +231,24 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
 
       const data: UnsplashResponse = await response.json();
 
-      // Return array of image URLs (regular size ~1080px)
-      const photoUrls = data.results ? data.results.map(photo => photo.urls.regular) : [];
-      
+      // Extract photo data with attribution
+      const photosWithAttribution: UnsplashImageWithAttribution[] = data.results ? data.results.map(photo => ({
+        imageUrl: photo.urls.regular,
+        attribution: {
+          photographerName: photo.user?.name || 'Unknown',
+          photographerProfileUrl: photo.user?.links?.html || 'https://unsplash.com',
+          photoPageUrl: photo.links?.html || 'https://unsplash.com',
+          downloadLocationUrl: photo.links?.download_location || '',
+        }
+      })) : [];
+
       // Store in cache for future use
-      if (photoUrls.length > 0) {
-        unsplashCache[query] = photoUrls;
-        console.log(`[ActivityPhotoCarousel] 💾 Cached ${photoUrls.length} Unsplash photos for: ${query}`);
+      if (photosWithAttribution.length > 0) {
+        unsplashCache[query] = photosWithAttribution;
+        console.log(`[ActivityPhotoCarousel] 💾 Cached ${photosWithAttribution.length} Unsplash photos for: ${query}`);
       }
-      
-      return photoUrls;
+
+      return photosWithAttribution;
     } catch (error) {
       console.error('[ActivityPhotoCarousel] Error fetching Unsplash images:', error);
       return [];
@@ -248,7 +268,7 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
 
         console.log(`[ActivityPhotoCarousel] Using cached Google Places photos (${photoData.length}) for: ${activity.name}`);
         setPhotos(photoData);
-        setUnsplashUrls([]); // Clear Unsplash URLs
+        setUnsplashData([]); // Clear Unsplash data
         return;
       }
 
@@ -275,7 +295,7 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
 
           console.log(`[ActivityPhotoCarousel] Found ${photoData.length} Google Places photos for: ${activity.name}`);
           setPhotos(photoData);
-          setUnsplashUrls([]); // Clear Unsplash URLs
+          setUnsplashData([]); // Clear Unsplash data
           return;
         } else {
           console.log(`[ActivityPhotoCarousel] No photos found in Google Places API response for: ${activity.name}`);
@@ -293,7 +313,7 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
       }];
 
       setPhotos(photoData);
-      setUnsplashUrls([]); // Clear Unsplash URLs
+      setUnsplashData([]); // Clear Unsplash data
     } else {
       setPhotos([]);
     }
@@ -323,19 +343,20 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
   }
 
   // Render Unsplash carousel
-  if (unsplashUrls.length > 0) {
+  if (unsplashData.length > 0) {
     // Single Unsplash photo
-    if (unsplashUrls.length === 1) {
+    if (unsplashData.length === 1) {
       return (
         <View style={styles.container}>
           <Image
-            source={{ uri: unsplashUrls[0] }}
+            source={{ uri: unsplashData[0].imageUrl }}
             style={[styles.carouselImage, { width, height }]}
             placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
             contentFit="cover"
             transition={200}
             cachePolicy="disk"
           />
+          <UnsplashInfoButton attribution={unsplashData[0].attribution} />
         </View>
       );
     }
@@ -347,26 +368,29 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
           loop={false}
           width={width}
           height={height}
-          data={unsplashUrls}
+          data={unsplashData}
           scrollAnimationDuration={300}
           defaultIndex={0}
           onSnapToItem={setCurrentIndex}
           renderItem={({ item }) => (
-            <Image
-              source={{ uri: item }}
-              style={[styles.carouselImage, { width, height }]}
-              placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
-              contentFit="cover"
-              transition={200}
-              cachePolicy="disk"
-            />
+            <View>
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={[styles.carouselImage, { width, height }]}
+                placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
+                contentFit="cover"
+                transition={200}
+                cachePolicy="disk"
+              />
+              <UnsplashInfoButton attribution={item.attribution} />
+            </View>
           )}
         />
 
         {/* Pagination Dots */}
-        {unsplashUrls.length > 1 && (
+        {unsplashData.length > 1 && (
           <View style={styles.paginationContainer}>
-            {unsplashUrls.map((_, index) => (
+            {unsplashData.map((_, index) => (
               <View
                 key={index}
                 style={[

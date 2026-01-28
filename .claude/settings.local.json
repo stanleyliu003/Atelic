@@ -60,7 +60,11 @@
       "Bash(python3:*)",
       "Bash(aws cloudformation list-stacks:*)",
       "Bash(git check-ignore:*)",
-      "Bash(npx expo install:*)"
+      "Bash(npx expo install:*)",
+      "Bash(git diff:*)",
+      "Bash(git checkout:*)",
+      "Bash(aws cloudformation describe-stacks:*)",
+      "Bash(aws cloudformation list-stack-resources:*)"
     ],
     "deny": [],
     "ask": [],

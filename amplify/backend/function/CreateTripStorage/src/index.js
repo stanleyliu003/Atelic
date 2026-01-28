@@ -21,8 +21,14 @@ exports.handler = async (event) => {
     throw new Error('userID is required in input');
   }
 
-  console.log('input:', input);
-  console.log('userId:', userId);
+  console.log('==== CreateTripStorage START ====');
+  console.log('[CreateTripStorage] Full input object:', JSON.stringify(input, null, 2));
+  console.log('[CreateTripStorage] userId:', userId);
+  console.log('[CreateTripStorage] 📝 Received tripTitle:', input.tripTitle);
+  console.log('[CreateTripStorage] 📝 tripTitle type:', typeof input.tripTitle);
+  console.log('[CreateTripStorage] 📝 tripTitle is null?:', input.tripTitle === null);
+  console.log('[CreateTripStorage] 📝 tripTitle is undefined?:', input.tripTitle === undefined);
+  console.log('[CreateTripStorage] 📝 tripTitle length:', input.tripTitle?.length);
 
   // Normalize tripPhotoReference to ensure it's an array with max 5 elements
   let normalizedPhotoRefs = [];
@@ -54,6 +60,7 @@ exports.handler = async (event) => {
   const item = {
     userID: userId,
     tripID: input.tripId,
+    tripTitle: input.tripTitle || null,
     days: input.days,
     tripLength: input.tripLength,
     selectedCity: input.selectedCity,
@@ -76,13 +83,16 @@ exports.handler = async (event) => {
     hotel: input.hotel || null,
     flight: input.flight || null,
     savedActivities: input.savedActivities || null,
-    // Recent searches
-    recentSearches: Array.isArray(input.recentSearches) ? input.recentSearches : [],
     // Deleted saved places tracking
-    deletedSavedPlaceIds: Array.isArray(input.deletedSavedPlaceIds) ? input.deletedSavedPlaceIds : []
+    deletedSavedPlaceIds: Array.isArray(input.deletedSavedPlaceIds) ? input.deletedSavedPlaceIds : [],
+    // Recent searches
+    recentSearches: Array.isArray(input.recentSearches) ? input.recentSearches : []
   };
 
-  console.log('item to put:', item);
+  console.log('[CreateTripStorage] 💾 Item to save - tripTitle:', item.tripTitle);
+  console.log('[CreateTripStorage] 💾 Item to save - userID:', item.userID);
+  console.log('[CreateTripStorage] 💾 Item to save - tripID:', item.tripID);
+  console.log('[CreateTripStorage] 💾 Full item:', JSON.stringify(item, null, 2));
 
   // Store in DynamoDB with optimistic locking (if version provided)
   const params = {
@@ -96,11 +106,21 @@ exports.handler = async (event) => {
     params.ExpressionAttributeValues = {
       ':expectedVersion': input.version - 1
     };
+    console.log('[CreateTripStorage] 🔒 Version check - expecting DynamoDB version:', input.version - 1, 'sending version:', input.version);
+  } else {
+    console.log('[CreateTripStorage] ⚠️ No version check - first save or version <= 1');
   }
 
+  console.log('[CreateTripStorage] 🔍 About to save to DynamoDB');
+  console.log('[CreateTripStorage] 🔍 Params:', JSON.stringify(params, null, 2));
+
   try {
-    await docClient.send(new PutCommand(params));
+    const putResult = await docClient.send(new PutCommand(params));
     console.log('Trip saved successfully to DynamoDB');
+    console.log('[CreateTripStorage] ✅ Saved tripTitle to DynamoDB:', item.tripTitle);
+    console.log('[CreateTripStorage] ✅ Saved tripID:', item.tripID);
+    console.log('[CreateTripStorage] ✅ Saved version:', item.version);
+    console.log('[CreateTripStorage] ✅ PutCommand result:', putResult);
 
     // Fire-and-forget updates to UserProfiles
     try {
@@ -161,8 +181,10 @@ exports.handler = async (event) => {
     }
 
     // Return a Trip object as required by the GraphQL schema
+    console.log('[CreateTripStorage] 📤 Returning tripTitle:', item.tripTitle);
     return {
       tripId: input.tripId,
+      tripTitle: item.tripTitle,
       days: input.days || [],
       wishlist: input.wishlist || [],
       tripLength: input.tripLength,
@@ -185,6 +207,7 @@ exports.handler = async (event) => {
       savedActivities: item.savedActivities,
       recentSearches: item.recentSearches || [],
       deletedSavedPlaceIds: item.deletedSavedPlaceIds || []
+
     };
   } catch (error) {
     console.error('DynamoDB put error:', error);

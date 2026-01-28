@@ -3,7 +3,7 @@ import Feather from '@expo/vector-icons/Feather';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-type TabType = 'wishlist' | `day${number}`;
+type TabType = 'overview' | 'wishlist' | `day${number}`;
 
 interface TransferButtonContainerProps {
   activeTab: TabType;

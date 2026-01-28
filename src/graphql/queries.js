@@ -308,6 +308,7 @@ export const getTripIDs = /* GraphQL */ `
   query GetTripIDs($userID: String!) {
     getTripIDs(userID: $userID) {
       tripId
+      tripTitle
       selectedCity
       tripPhotoReference
       createdAt
@@ -323,6 +324,7 @@ export const getUserTrips = /* GraphQL */ `
   query GetUserTrips($userID: String!, $tripID: String!) {
     getUserTrips(userID: $userID, tripID: $tripID) {
       tripId
+      tripTitle
       days {
         dayNumber
         encodedPolyline

@@ -5,6 +5,7 @@ export const onTripUpdated = /* GraphQL */ `
   subscription OnTripUpdated($tripId: String!) {
     onTripUpdated(tripId: $tripId) {
       tripId
+      tripTitle
       days {
         dayNumber
         encodedPolyline

@@ -4,6 +4,7 @@ import {
   OperationAdd,
   OperationRemove,
   OperationModify,
+  OperationModifyTrip,
   OperationReorder,
   OperationMove,
   OperationUpdateTransportMode,
@@ -26,6 +27,7 @@ export type ReconstructedTripState = {
   wishlist: Activity[];
   dayActivities: { [dayNumber: number]: DayWithPolyline };
   transportModes?: TransportModeOverrides; // Optional for backward compatibility
+  tripTitle?: string | null; // Trip title from modify operations
 };
 
 /**
@@ -277,9 +279,29 @@ function applyRemoveOperation(
  */
 function applyModifyOperation(
   state: ReconstructedTripState,
-  operation: OperationModify
+  operation: OperationModify | OperationModifyTrip
 ): ReconstructedTripState {
-  const { instanceId, updates, lastModified } = operation.data;
+  // Handle trip-level modifications (like tripTitle) first
+  if (operation.target === 'trip') {
+    const { field, value } = operation.data as { field: string; value: any };
+    console.log('[applyModifyOperation] Trip-level modification:', field, '=', value);
+
+    if (field === 'tripTitle') {
+      return {
+        ...state,
+        tripTitle: value,
+      };
+    }
+    // Handle other trip-level fields here in the future
+    return state;
+  }
+
+  // For activity modifications, extract the activity-specific data
+  const { instanceId, updates, lastModified } = operation.data as {
+    instanceId: string;
+    updates: Partial<Activity>;
+    lastModified: number;
+  };
 
   // Helper function to update an activity in a list
   const updateActivityInList = (activities: Activity[]): Activity[] => {

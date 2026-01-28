@@ -8,6 +8,8 @@ import { getPhotoUrl as getCachedPhotoUrl } from '../../services/photoService';
 
 // expo-image blurhash placeholder for smooth loading
 const PLACEHOLDER_BLURHASH = '|rF?hV%2WCj[ayj[a|j[az_NaeWBj@ayfRayfQfQM{M|azj[azf6telebu~qayj[j[fQayWBofofayayayj[fQj[ayayj[ayfjj[ay';
+import { UnsplashImageWithAttribution } from '../../types/unsplash.types';
+import UnsplashInfoButton from '../common/UnsplashInfoButton';
 
 interface TripCarouselImageProps {
   photo_reference?: string | null;
@@ -34,8 +36,8 @@ interface TripCarouselImageProps {
   shouldLoad?: boolean;
 }
 
-// Cache to store fetched Unsplash photos by city name
-const unsplashCache: { [cityName: string]: string[] } = {};
+// Cache to store fetched Unsplash photos with attribution by city name
+const unsplashCache: { [cityName: string]: UnsplashImageWithAttribution[] } = {};
 
 // Cache to store Google Places photo URLs by photo_reference or place_id
 // This prevents re-fetching the same photo when navigating back to the list
@@ -76,6 +78,7 @@ export function TripCarouselImage({
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
+  const [unsplashAttribution, setUnsplashAttribution] = useState<UnsplashImageWithAttribution | null>(null);
 
   // Determine if this is an Unsplash-based image (free) or Google Places (costs money)
   // Unsplash is used when cityName is provided without a specific photo_reference
@@ -131,9 +134,10 @@ export function TripCarouselImage({
 
       // Try Unsplash first if we have a city name
       if (cityName) {
-        const unsplashUrl = await fetchUnsplashImages(cityName, photoIndex);
-        if (unsplashUrl) {
-          setImageUrl(unsplashUrl);
+        const unsplashData = await fetchUnsplashImages(cityName, photoIndex);
+        if (unsplashData) {
+          setImageUrl(unsplashData.imageUrl);
+          setUnsplashAttribution(unsplashData);
           setImageError(false);
           setIsLoading(false);
           return;
@@ -150,20 +154,22 @@ export function TripCarouselImage({
     }
   };
 
-  const fetchUnsplashImages = async (query: string, index: number): Promise<string | null> => {
+  const fetchUnsplashImages = async (query: string, index: number): Promise<UnsplashImageWithAttribution | null> => {
     try {
       // Check cache first
       if (unsplashCache[query] && unsplashCache[query].length > 0) {
         // Return the photo at the given index (with wrapping)
         const photos = unsplashCache[query];
         const photoUrl = photos[index % photos.length];
+        const photoData = photos[index % photos.length];
+        console.log(`[TripCarouselImage] Using cached Unsplash image ${index} for: ${query}`);
 
         // Notify parent of the total photo count (only on first image)
         if (index === 0 && onPhotoCountUpdate) {
           onPhotoCountUpdate(photos.length);
         }
 
-        return photoUrl;
+        return photoData;
       }
 
       if (!UNSPLASH_ACCESS_KEY) {
@@ -185,7 +191,7 @@ export function TripCarouselImage({
       // Try each search strategy until we find results
       for (const searchQuery of searchStrategies) {
         const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchQuery)}&per_page=5&orientation=landscape&client_id=${UNSPLASH_ACCESS_KEY}`;
-        
+
         try {
           const response = await fetch(url);
 
@@ -197,17 +203,28 @@ export function TripCarouselImage({
           const data = await response.json();
 
           if (data.results && data.results.length > 0) {
-            // Store all photo URLs in cache
-            const photoUrls = data.results.map((photo: any) => photo.urls.regular);
-            unsplashCache[query] = photoUrls;
+            // Extract photo data with attribution
+            const photoData: UnsplashImageWithAttribution[] = data.results.map((photo: any) => ({
+              imageUrl: photo.urls.regular,
+              attribution: {
+                photographerName: photo.user?.name || 'Unknown',
+                photographerProfileUrl: photo.user?.links?.html || 'https://unsplash.com',
+                photoPageUrl: photo.links?.html || 'https://unsplash.com',
+                downloadLocationUrl: photo.links?.download_location || '',
+              }
+            }));
+
+            unsplashCache[query] = photoData;
+
+            console.log(`[TripCarouselImage] Successfully fetched ${photoData.length} Unsplash images for: ${query}`);
 
             // Notify parent of the total photo count (only on first image)
             if (index === 0 && onPhotoCountUpdate) {
-              onPhotoCountUpdate(photoUrls.length);
+              onPhotoCountUpdate(photoData.length);
             }
 
             // Return the photo at the given index (with wrapping)
-            return photoUrls[index % photoUrls.length];
+            return photoData[index % photoData.length];
           }
         } catch (error) {
           console.error(`[TripCarouselImage] Error with search "${searchQuery}":`, error);
@@ -343,21 +360,30 @@ export function TripCarouselImage({
   }
 
   return (
-    <Image
-      style={style}
-      source={{ uri: imageUrl }}
-      placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
-      contentFit="cover"
-      transition={200}
-      cachePolicy="disk"
-      onError={() => {
-        console.log('[TripCarouselImage] Image failed to load');
-        setImageError(true);
-        if (onPhotoRefUpdate) {
-          onPhotoRefUpdate(null);
-        }
-      }}
-    />
+    <View style={style}>
+      <Image
+        style={StyleSheet.absoluteFillObject}
+        source={{ uri: imageUrl }}
+        placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
+        contentFit="cover"
+        transition={200}
+        cachePolicy="disk"
+        resizeMode="cover"
+        onError={() => {
+          console.log('[TripCarouselImage] Image failed to load');
+          setImageError(true);
+          if (onPhotoRefUpdate) {
+            onPhotoRefUpdate(null);
+          }
+        }}
+        onLoad={() => {
+          // Successfully loaded
+        }}
+      />
+      {unsplashAttribution && (
+        <UnsplashInfoButton attribution={unsplashAttribution.attribution} />
+      )}
+    </View>
   );
 }
 

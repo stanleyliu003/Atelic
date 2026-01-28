@@ -574,6 +574,20 @@ export function ActivityList({
         (wishlistActivity) => wishlistActivity.instanceId === activity.instanceId
       );
 
+      // Calculate activity number for day tabs (starts at 1 after first hotel, continues sequentially)
+      // Find the first hotel in the list
+      const firstHotelIndex = currentActivities.findIndex(
+        a => a.isLodging === true || a.primaryType === 'lodging'
+      );
+      // Count non-hotel activities from after the first hotel up to current activity
+      const startIndex = firstHotelIndex >= 0 ? firstHotelIndex + 1 : 0;
+      const activityNumber = currentActivities
+        .slice(startIndex, index + 1)
+        .filter(a => !(a.isLodging === true || a.primaryType === 'lodging'))
+        .length;
+      // Pass 0-based index (activityNumber - 1) since ActivityCard adds 1 for display
+      const displayIndex = activityNumber > 0 ? activityNumber - 1 : index;
+
       // Common props for both draggable and regular cards
       const commonProps = {
         key: `activity-${index}-${activity.instanceId || activity.place_id || 'no-id'}`,
@@ -589,7 +603,7 @@ export function ActivityList({
         isLastActivity,
         nextActivity,
         travelMode: legTravelMode,
-        index,
+        index: displayIndex,
         hideRouteInfo,
         duplicateActivityIndicator: isInWishlist,
         useInlineSelectionLayout,

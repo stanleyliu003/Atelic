@@ -13,7 +13,7 @@ export type Operation = {
   userId: string; // User who performed the operation
   sequenceNumber: number; // For deterministic ordering within same millisecond
   type: 'add' | 'remove' | 'modify' | 'reorder' | 'move' | 'update_transport_mode';
-  target: 'wishlist' | 'day';
+  target: 'wishlist' | 'day' | 'trip';
   dayNumber?: number; // Required if target is 'day'
   data: any; // Operation-specific data
   applied: boolean; // Has this been saved to cloud?
@@ -44,6 +44,18 @@ export type OperationModify = Operation & {
     instanceId: string;
     updates: Partial<Activity>; // Only changed fields
     lastModified: number;
+  };
+};
+
+/**
+ * Modify trip operation - updates trip-level fields (tripTitle, etc.)
+ */
+export type OperationModifyTrip = Operation & {
+  type: 'modify';
+  target: 'trip';
+  data: {
+    field: string; // Field name being updated (e.g., 'tripTitle')
+    value: any; // New value for the field
   };
 };
 
@@ -116,6 +128,7 @@ export type AnyOperation =
   | OperationAdd
   | OperationRemove
   | OperationModify
+  | OperationModifyTrip
   | OperationReorder
   | OperationMove
   | OperationUpdateTransportMode;

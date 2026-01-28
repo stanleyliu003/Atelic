@@ -58,6 +58,7 @@ export const createTrip = /* GraphQL */ `
   mutation CreateTrip($input: CreateTripInput!) {
     createTrip(input: $input) {
       tripId
+      tripTitle
       days {
         dayNumber
         encodedPolyline
@@ -182,6 +183,7 @@ export const addCollaborator = /* GraphQL */ `
       addedBy: $addedBy
     ) {
       tripId
+      tripTitle
       days {
         dayNumber
         encodedPolyline
@@ -265,6 +267,7 @@ export const removeCollaborator = /* GraphQL */ `
   mutation RemoveCollaborator($tripId: String!, $username: String!) {
     removeCollaborator(tripId: $tripId, username: $username) {
       tripId
+      tripTitle
       days {
         dayNumber
         encodedPolyline
@@ -352,6 +355,7 @@ export const updateCollaboratorRole = /* GraphQL */ `
   ) {
     updateCollaboratorRole(tripId: $tripId, username: $username, role: $role) {
       tripId
+      tripTitle
       days {
         dayNumber
         encodedPolyline

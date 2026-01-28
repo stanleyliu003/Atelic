@@ -954,6 +954,14 @@
         }
       ]
     },
+    "AMPLIFY_function_getPlacePhoto_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getPlacePhoto"
+        }
+      ]
+    },
     "AMPLIFY_function_getPlacePhoto_googlePlacesApiKey": {
       "usedBy": [
         {
@@ -963,6 +971,14 @@
       ]
     },
     "AMPLIFY_function_getPlacePhoto_photoS3BucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getPlacePhoto"
+        }
+      ]
+    },
+    "AMPLIFY_function_getPlacePhoto_s3Key": {
       "usedBy": [
         {
           "category": "function",

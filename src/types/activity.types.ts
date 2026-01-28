@@ -73,10 +73,13 @@ export type Activity = {
   lastModified?: number; // Timestamp when this activity was last modified
   modifiedBy?: string; // UserID who last modified
   lastReordered?: number; // Timestamp when this activity was last reordered
+
+  // Category association (from city category exploration)
+  category?: string; // Category this activity belongs to (e.g., "Academic Hubs", "Historic Footsteps")
 };
 
-// Tab type for navigation between wishlist and different days
-export type TabType = 'wishlist' | `day${number}`;
+// Tab type for navigation between overview, wishlist and different days
+export type TabType = 'overview' | 'wishlist' | `day${number}`;
 
 // Types for activity selection and management
 export type ActivitySelectionState = {
