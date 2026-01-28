@@ -389,6 +389,8 @@ export default function TripViewMain() {
         tripPhotoReference,
         createdAt,
         recentSearches,
+        startDate,
+        endDate,
     });
 
     // Keep latestTripDataRef in sync with the latest values
@@ -403,8 +405,10 @@ export default function TripViewMain() {
             tripPhotoReference,
             createdAt,
             recentSearches,
+            startDate,
+            endDate,
         };
-    }, [activities, dayActivities, dayPolylines, dayTravelModes, tripLength, selectedCity, tripPhotoReference, createdAt, recentSearches]);
+    }, [activities, dayActivities, dayPolylines, dayTravelModes, tripLength, selectedCity, tripPhotoReference, createdAt, recentSearches, startDate, endDate]);
 
     // Initialize days based on tripLength (only for new trips, not existing ones)
     const [hasInitialized, setHasInitialized] = useState(false);
@@ -790,6 +794,11 @@ export default function TripViewMain() {
         setEndDate(newEndDate);
         setTripLength(newTripLength);
 
+        // Immediately update refs to ensure saveTrip uses the latest values
+        latestTripDataRef.current.startDate = newStartDate;
+        latestTripDataRef.current.endDate = newEndDate;
+        latestTripDataRef.current.tripLength = newTripLength;
+
         // Handle day count changes
         if (newTripLength > oldTripLength) {
             // Add new empty days
@@ -798,45 +807,74 @@ export default function TripViewMain() {
                 await addNewDay();
             }
         } else if (newTripLength < oldTripLength) {
-            // Prompt user about removing days
-            Alert.alert(
-                'Remove Days',
-                `This will remove Day ${newTripLength + 1} through Day ${oldTripLength}. Activities will be moved to your wishlist.`,
-                [
-                    {
-                        text: 'Cancel',
-                        style: 'cancel',
-                        onPress: () => {
-                            // Revert dates
-                            setStartDate(startDate);
-                            setEndDate(endDate);
-                            setTripLength(oldTripLength);
-                        }
-                    },
-                    {
-                        text: 'Remove Days',
-                        style: 'destructive',
-                        onPress: async () => {
-                            // Remove days from highest to lowest to avoid index shifting issues
-                            for (let i = oldTripLength; i > newTripLength; i--) {
-                                await handleDeleteDay(i);
+            // Automatically remove days when reducing trip length via calendar
+            // Remove days from highest to lowest to avoid index shifting issues
+            for (let i = oldTripLength; i > newTripLength; i--) {
+                // Get activities from the day being deleted
+                const dayActivitiesToDelete = getDayActivities(i);
+
+                // Delete the day
+                const deletedDayActivities = deleteDayAndRenumber(i);
+
+                // Add non-lodging activities back to wishlist
+                if (deletedDayActivities.length > 0) {
+                    const nonLodgingActivities = deletedDayActivities.filter(
+                        activity => {
+                            if (activity.isLodging === true) return false;
+                            if (activity.primaryType === 'lodging') return false;
+                            if (activity.types && Array.isArray(activity.types)) {
+                                const hasLodgingType = activity.types.some(type =>
+                                    type && (
+                                        type.toLowerCase().includes('lodging') ||
+                                        type.toLowerCase().includes('hotel') ||
+                                        type.toLowerCase().includes('hostel') ||
+                                        type.toLowerCase().includes('accommodation') ||
+                                        type.toLowerCase().includes('campground') ||
+                                        type.toLowerCase().includes('rv_park')
+                                    )
+                                );
+                                if (hasLodgingType) return false;
                             }
+                            return true;
                         }
+                    );
+
+                    const combinedActivities = [...nonLodgingActivities, ...(activities || [])];
+                    const deduplicatedActivities = combinedActivities.filter((activity, index, arr) => {
+                        if (!activity.instanceId) return true;
+                        return arr.findIndex(a => a.instanceId === activity.instanceId) === index;
+                    });
+                    updateActivities(deduplicatedActivities);
+                }
+            }
+
+            // Clear route cache for deleted days
+            Object.keys(routeCache.current).forEach(cacheKey => {
+                if (cacheKey.startsWith('day')) {
+                    const cachedDayNum = parseInt(cacheKey.replace('day', ''));
+                    if (cachedDayNum > newTripLength) {
+                        delete routeCache.current[cacheKey];
                     }
-                ]
-            );
+                }
+            });
+
+            // Update polylines
+            setDayPolylinesDeleteDay(prev => {
+                const newPolylines: { [key: number]: string } = {};
+                Object.entries(prev).forEach(([dayStr, polyline]) => {
+                    const dayNum = Number(dayStr);
+                    if (dayNum <= newTripLength) {
+                        newPolylines[dayNum] = polyline as string;
+                    }
+                });
+                return newPolylines;
+            });
         }
 
-        // Save dates to backend via operation tracking if trip exists
+        // Save full trip to persist dates to backend
         if (tripId) {
             try {
-                const dateOp = createOperation('modify', 'trip', {
-                    field: 'dates',
-                    startDate: newStartDate,
-                    endDate: newEndDate,
-                    tripLength: newTripLength
-                });
-                await queueSave(dateOp);
+                await saveTrip();
             } catch (error) {
                 console.error('[trip-view_main] Failed to save trip dates:', error);
             }
@@ -1999,21 +2037,41 @@ export default function TripViewMain() {
 
     const handleAddDay = () => {
         const newDayNumber = addNewDay();
-        // Update tripLength to reflect the new day count
-        setTripLength(getDayCount());
+        // The new day number IS the new day count (e.g., if we had 3 days, newDayNumber is 4)
+        const newDayCount = newDayNumber;
+        setTripLength(newDayCount);
+
+        // Immediately update the ref for tripLength
+        latestTripDataRef.current.tripLength = newDayCount;
+
+        // Update endDate to reflect the new trip length
+        let newEndDate = endDate;
+        if (startDate) {
+            const start = new Date(startDate);
+            const end = new Date(start);
+            end.setDate(start.getDate() + (newDayCount - 1));
+            newEndDate = end.toISOString();
+            setEndDate(newEndDate);
+
+            // Immediately update the ref to ensure saveTrip uses the latest value
+            latestTripDataRef.current.endDate = newEndDate;
+        }
 
         // Switch to the newly created day immediately
         setActiveTab(`day${newDayNumber}`);
         // Trigger auto-scroll to the new day
         setShouldScrollToActive(true);
 
-        // ✨ NEW: Track operation: add day (non-blocking, happens after UI update)
-        // Pass newDayNumber as 4th argument so operation has dayNumber field set
-        setTimeout(() => {
-            const op = createOperation('add', 'day', {
+        // ✨ NEW: Track operations and save trip (non-blocking, happens after UI update)
+        setTimeout(async () => {
+            // Track add day operation
+            const addDayOp = createOperation('add', 'day', {
                 action: 'addDay'
             }, newDayNumber);
-            queueSave(op);
+            queueSave(addDayOp);
+
+            // Save the full trip to persist the new end date
+            await saveTrip();
         }, 0);
     };
 
@@ -2080,6 +2138,9 @@ export default function TripViewMain() {
 
         // Function to perform the deletion
         const performDeletion = () => {
+            // Calculate day count BEFORE deletion (state hasn't updated yet)
+            const dayCountBeforeDeletion = Object.keys(dayActivities).length;
+
             // Delete the day and get its activities to move back to wishlist
             const deletedDayActivities = deleteDayAndRenumber(dayToDelete);
 
@@ -2155,9 +2216,26 @@ export default function TripViewMain() {
             });
 
             // Switch to appropriate tab after deletion
-            const remainingDayCount = getDayCount() - 1; // Count after deletion
+            const remainingDayCount = dayCountBeforeDeletion - 1; // Count after deletion
             // Update tripLength to reflect the new day count
             setTripLength(remainingDayCount);
+
+            // Immediately update the ref for tripLength
+            latestTripDataRef.current.tripLength = remainingDayCount;
+
+            // Update endDate to reflect the new trip length
+            let newEndDate = endDate;
+            if (startDate && remainingDayCount > 0) {
+                const start = new Date(startDate);
+                const end = new Date(start);
+                end.setDate(start.getDate() + (remainingDayCount - 1));
+                newEndDate = end.toISOString();
+                setEndDate(newEndDate);
+
+                // Immediately update the ref to ensure saveTrip uses the latest value
+                latestTripDataRef.current.endDate = newEndDate;
+            }
+
             if (remainingDayCount === 0 || dayToDelete === 1) {
                 // If no days left or deleting day 1, go to wishlist
                 setActiveTab('wishlist');
@@ -2166,8 +2244,8 @@ export default function TripViewMain() {
                 setActiveTab(`day${dayToDelete - 1}`);
             }
 
-            // ✨ Queue save operations after UI updates (non-blocking)
-            setTimeout(() => {
+            // ✨ Queue save operations and save trip (non-blocking)
+            setTimeout(async () => {
                 // Track operation: delete day
                 const op = createOperation('remove', 'day', {
                     action: 'deleteDay',
@@ -2187,6 +2265,9 @@ export default function TripViewMain() {
                         queueSave(op);
                     });
                 }
+
+                // Save the full trip to persist the new end date
+                await saveTrip();
             }, 0);
         };
 
@@ -3003,6 +3084,8 @@ export default function TripViewMain() {
                 tripPhotoReference: latestTripPhotoReference,
                 createdAt: latestCreatedAt,
                 recentSearches: latestRecentSearches,
+                startDate: latestStartDate,
+                endDate: latestEndDate,
             } = latestTripDataRef.current;
 
             // Gather days and their activities (sanitize activities for GraphQL input)
@@ -3066,8 +3149,8 @@ export default function TripViewMain() {
                     ? latestTripPhotoReference
                     : (latestTripPhotoReference ? [String(latestTripPhotoReference)] : []),
                 createdAt: tripCreatedAt,
-                startDate: startDate || null,
-                endDate: endDate || null,
+                startDate: latestStartDate || null,
+                endDate: latestEndDate || null,
                 cityCategories: cleanCityCategories || null, // Save city categories for restoration
                 recentSearches: cleanRecentSearches,
             };
