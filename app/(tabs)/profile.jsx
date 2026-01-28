@@ -1,7 +1,8 @@
 import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking, PanResponder } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking, PanResponder, Image } from 'react-native';
 import { Auth, API } from 'aws-amplify';
 import { useEffect, useState, useRef } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -12,7 +13,9 @@ import { deleteTrip } from '../../src/graphql/customMutations';
 import { removeCollaborator } from '../../src/graphql/mutations';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import { TripCard } from '../../src/components/profile/TripCard';
+import { TripCarouselImage } from '../../src/components/profile/TripCarouselImage';
 import { clearAuthData } from '../../src/services/appGroupsService';
+import Carousel from 'react-native-reanimated-carousel';
 
 export default function Profile() {
   const { restoreTripFromObject, setSelectedCity } = useCreateTrip();
@@ -836,7 +839,7 @@ export default function Profile() {
                     </View>
                   </View>
                 </TouchableOpacity>
-              </View>
+              </TripCard>
             ))}
 
             {/* Shared With Me Section Header */}
@@ -1013,7 +1016,7 @@ export default function Profile() {
                   </View>
                 </TouchableOpacity>
 
-              </View>
+              </TripCard>
             ))}
               </>
             ) : (
