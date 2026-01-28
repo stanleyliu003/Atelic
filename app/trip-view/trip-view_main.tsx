@@ -4057,7 +4057,29 @@ export default function TripViewMain() {
                     />
                 ) : (
                     <>
-                        {activeTab === 'wishlist' && (() => {
+                        {/* Overview Content - shown when primaryTab is 'overview' */}
+                        {primaryTab === 'overview' && (
+                            <View style={styles.overviewWrapper}>
+                                <OverviewContent
+                                    tripTitle={tripTitle}
+                                    onTitleChange={handleTitleChange}
+                                    startDate={startDate}
+                                    endDate={endDate}
+                                    tripLength={tripLength}
+                                    selectedCity={selectedCity || ''}
+                                    dayActivities={dayActivities}
+                                    activities={activities}
+                                    onDayPress={handleOverviewDayPress}
+                                    onDatePress={() => setDatePickerVisible(true)}
+                                    currentUserRole={currentUserRole}
+                                    collaborators={collaborators}
+                                    dayRouteLegs={dayRouteLegs}
+                                />
+                            </View>
+                        )}
+
+                        {/* Wishlist/Saved Places Content - shown when in itinerary mode */}
+                        {primaryTab === 'itinerary' && activeTab === 'wishlist' && (() => {
                             const wishlistActivities = getActivitiesForTab('wishlist');
                             const activitiesByCity = wishlistActivities.reduce((acc: { [key: string]: Activity[] }, activity) => {
                                 const city = activity.city || 'Unknown City';
@@ -4213,8 +4235,9 @@ export default function TripViewMain() {
                                 </ScrollView>
                             );
                         })()}
-                        
-                        {activeTab.startsWith('day') && (() => {
+
+                        {/* Day Schedule Content - shown when in itinerary mode */}
+                        {primaryTab === 'itinerary' && activeTab.startsWith('day') && (() => {
                             const currentDayNumber = parseInt(activeTab.replace('day', ''));
                             return (
                                 <DaySchedule

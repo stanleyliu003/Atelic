@@ -12,7 +12,6 @@ import { listUserTripsFromCloud, retrieveTripFromCloud, deleteUserAccountFromClo
 import { deleteTrip } from '../../src/graphql/customMutations';
 import { removeCollaborator } from '../../src/graphql/mutations';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
-import { TripCard } from '../../src/components/profile/TripCard';
 import { TripCarouselImage } from '../../src/components/profile/TripCarouselImage';
 import { clearAuthData } from '../../src/services/appGroupsService';
 import Carousel from 'react-native-reanimated-carousel';
@@ -674,7 +673,7 @@ export default function Profile() {
 
             {/* Owned Trips */}
             {ownedTrips.map((trip) => (
-              <TripCard
+              <View
                 key={`owned-${trip.tripId}`}
                 style={[
                   styles.tripCard,
@@ -839,7 +838,7 @@ export default function Profile() {
                     </View>
                   </View>
                 </TouchableOpacity>
-              </TripCard>
+              </View>
             ))}
 
             {/* Shared With Me Section Header */}
@@ -849,7 +848,7 @@ export default function Profile() {
 
             {/* Shared Trips */}
             {sharedTrips.map((trip) => (
-              <TripCard
+              <View
                 key={`shared-${trip.tripId}`}
                 style={[
                   styles.tripCard,
@@ -1016,7 +1015,7 @@ export default function Profile() {
                   </View>
                 </TouchableOpacity>
 
-              </TripCard>
+              </View>
             ))}
               </>
             ) : (

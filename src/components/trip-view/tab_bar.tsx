@@ -154,7 +154,7 @@ export function TabBar({
                 {tab === 'overview'
                   ? 'Overview'
                   : tab === 'wishlist'
-                  ? 'WishList'
+                  ? 'Saved Places'
                   : startDate
                     ? formatDayTab(startDate, parseInt(tab.replace('day', '')))
                     : `Day ${tab.replace('day', '')}`

@@ -59,7 +59,7 @@ export const TransferActivitiesModal: React.FC<TransferActivitiesModalProps> = (
                   selectedDay === item && styles.dayPickerTextSelected
                 ]}>
                   {item === 'wishlist'
-                    ? 'Wishlist'
+                    ? 'Saved Places'
                     : startDate
                       ? formatDayTab(startDate, item as number)
                       : `Day ${item}`
