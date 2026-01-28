@@ -394,6 +394,7 @@ export default function TripViewMain() {
         recentSearches,
         startDate,
         endDate,
+        tripTitle,
     });
 
     // Keep latestTripDataRef in sync with the latest values
@@ -2277,24 +2278,27 @@ export default function TripViewMain() {
             }, 0);
         };
 
-        // Always show confirmation dialog before deleting a day
-        Alert.alert(
-            'Delete Day',
-            hasActivities
-                ? `Are you sure you want to delete Day ${dayToDelete}? All activities will be moved back to the wishlist.`
-                : `Are you sure you want to delete Day ${dayToDelete}?`,
-            [
-                {
-                    text: 'Cancel',
-                    style: 'cancel'
-                },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: performDeletion
-                }
-            ]
-        );
+        // Only show confirmation dialog if the day has activities
+        if (hasActivities) {
+            Alert.alert(
+                'Delete Day',
+                `Are you sure you want to delete Day ${dayToDelete}? All activities will be moved back to the wishlist.`,
+                [
+                    {
+                        text: 'Cancel',
+                        style: 'cancel'
+                    },
+                    {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: performDeletion
+                    }
+                ]
+            );
+        } else {
+            // No activities, delete immediately without confirmation
+            performDeletion();
+        }
     };
 
     const handleDeleteActivities = () => {
@@ -3772,7 +3776,12 @@ export default function TripViewMain() {
                 selectedCityLocation={selectedCityLocation || undefined}
                 dayPolylines={primaryTab === 'overview' ? overviewDayPolylines : undefined}
                 activityDayMap={activityDayMap}
-                routeData={activeTab.startsWith('day') ? routeData : undefined}
+                routeData={activeTab.startsWith('day') ? {
+                    legs: routeData.legs.map(leg => ({
+                        distance: leg.modeData[leg.selectedMode]?.distance,
+                        duration: leg.modeData[leg.selectedMode]?.duration,
+                    }))
+                } : undefined}
                 onShareTrip={async () => {
                     if (!tripId) {
                         // Save trip first if it doesn't exist

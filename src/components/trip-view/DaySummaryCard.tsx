@@ -12,6 +12,7 @@ interface DaySummaryCardProps {
   date: Date | null;
   onPress: () => void;
   routeLegs?: EnhancedRouteLeg[];
+  activityNumberOffset?: number; // Offset for sequential numbering across days in Overview
 }
 
 export default function DaySummaryCard({
@@ -20,6 +21,7 @@ export default function DaySummaryCard({
   date,
   onPress,
   routeLegs,
+  activityNumberOffset = 0, // Default 0 for backward compatibility
 }: DaySummaryCardProps) {
   const formatDate = (date: Date | null): string => {
     if (!date) return '';
@@ -131,11 +133,13 @@ export default function DaySummaryCard({
               const isHotel = activity.isLodging === true || activity.primaryType === 'lodging';
               const isLast = index === activities.length - 1;
 
-              // Calculate activity number (excluding hotels)
-              const activityNumber = activities
+              // Calculate activity number for Overview - sequential across all days
+              // Count non-hotel activities from start up to current activity, then add offset
+              const activityNumberWithinDay = activities
                 .slice(0, index + 1)
                 .filter(a => !(a.isLodging === true || a.primaryType === 'lodging'))
                 .length;
+              const activityNumber = activityNumberOffset + activityNumberWithinDay;
 
               // Get distance to next activity
               let distance: string | null = null;

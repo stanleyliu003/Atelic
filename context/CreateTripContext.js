@@ -425,6 +425,7 @@ export const CreateTripProvider = ({ children }) => {
         setCurrentUserRole(null);
         setStartDate(null);
         setEndDate(null);
+        setTripTitle(null);
         // Reset new fields for future features
         setNotes(null);
         setDuration(null);
@@ -470,6 +471,7 @@ export const CreateTripProvider = ({ children }) => {
         setCurrentUserRole(null);
         setStartDate(null);
         setEndDate(null);
+        setTripTitle(null);
         setVersion(1);
         setUpdatedAt(null);
         setLastUpdatedBy(null);

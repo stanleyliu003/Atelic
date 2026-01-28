@@ -58,6 +58,18 @@ export default function OverviewContent({
     .map(Number)
     .sort((a, b) => a - b);
 
+  // Calculate cumulative non-hotel activity counts for sequential numbering across days
+  const activityNumberOffsets: { [dayNumber: number]: number } = {};
+  let cumulativeCount = 0;
+  sortedDayNumbers.forEach(dayNum => {
+    activityNumberOffsets[dayNum] = cumulativeCount;
+    const dayActs = dayActivities[dayNum]?.activities || [];
+    const nonHotelCount = dayActs.filter(
+      a => !(a.isLodging === true || a.primaryType === 'lodging')
+    ).length;
+    cumulativeCount += nonHotelCount;
+  });
+
   // Calculate day date helper
 
   const formatDateRange = (): string => {
@@ -147,6 +159,7 @@ export default function OverviewContent({
                   date={calculateDayDate(startDate, dayNumber)}
                   onPress={() => onDayPress(dayNumber)}
                   routeLegs={dayRouteLegs?.[dayNumber]}
+                  activityNumberOffset={activityNumberOffsets[dayNumber]}
                 />
               </View>
             ))}
