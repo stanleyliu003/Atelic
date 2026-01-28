@@ -514,7 +514,7 @@
         },
         "getTripIDs": {
           "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
-          "s3Key": "amplify-builds/getTripIDs-754d4672704c524f6f2b-build.zip"
+          "s3Key": "amplify-builds/getTripIDs-5a4c6b37657230767a67-build.zip"
         },
         "getUserProfile": {
           "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
@@ -522,7 +522,7 @@
         },
         "getUserTrips": {
           "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",
-          "s3Key": "amplify-builds/getUserTrips-6a444c7a2b4b61375a65-build.zip"
+          "s3Key": "amplify-builds/getUserTrips-354a43345862724c394e-build.zip"
         },
         "getVersionConfig": {
           "deploymentBucketName": "amplify-amplifybackend-devstan-0b448-deployment",

@@ -43,6 +43,9 @@ const onTripUpdated = /* GraphQL */ `
             version
             updatedAt
             lastUpdatedBy
+            startDate
+            endDate
+            tripLength
             collaborators {
                 email
                 fullName
@@ -3437,6 +3440,20 @@ export default function TripViewMain() {
                 setLastUpdatedBy(updatedTrip.lastUpdatedBy);
                 if (updatedTrip.collaborators) {
                     setCollaborators(updatedTrip.collaborators);
+                }
+
+                // Sync date changes from remote
+                if (updatedTrip.startDate !== undefined) {
+                    setStartDate(updatedTrip.startDate);
+                    latestTripDataRef.current.startDate = updatedTrip.startDate;
+                }
+                if (updatedTrip.endDate !== undefined) {
+                    setEndDate(updatedTrip.endDate);
+                    latestTripDataRef.current.endDate = updatedTrip.endDate;
+                }
+                if (updatedTrip.tripLength !== undefined && updatedTrip.tripLength !== null) {
+                    setTripLength(updatedTrip.tripLength);
+                    latestTripDataRef.current.tripLength = updatedTrip.tripLength;
                 }
 
                 // STAGE 3: Use incremental operation sync instead of full reload

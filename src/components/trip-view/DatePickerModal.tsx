@@ -196,7 +196,6 @@ export default function DatePickerModal({
             {!isFlexibleDays ? (
               // Calendar View
               <View style={styles.calendarContainer}>
-                {console.log('[DatePickerModal] Rendering CalendarPicker')}
                 <CalendarPicker
                   startFromMonday={false}
                   allowRangeSelection={true}

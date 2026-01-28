@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   Modal,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   Switch,
   ScrollView,
+  PanResponder,
+  Dimensions,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import CalendarPicker from 'react-native-calendar-picker';
@@ -40,8 +41,25 @@ export default function SimpleDatePicker({
   const [flexibleDays, setFlexibleDays] = useState(initialTripLength || 1);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  // Pan responder for swipe-down gesture to close modal
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to vertical swipes
+        return Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If swiped down more than 50 pixels, close the modal
+        if (gestureState.dy > 50) {
+          onClose();
+        }
+      },
+    })
+  ).current;
+
   // Reset state when modal opens with new initial values
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible) {
       setIsFlexibleDays(!initialStartDate);
       setSelectedStartDate(initialStartDate ? new Date(initialStartDate) : null);
@@ -105,9 +123,16 @@ export default function SimpleDatePicker({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
+        {/* Backdrop - tap to close */}
+        <TouchableOpacity
+          style={styles.backdrop}
+          activeOpacity={1}
+          onPress={onClose}
+        />
+
         <View style={styles.modalContainer}>
-          {/* Handle */}
-          <View style={styles.modalHandleContainer}>
+          {/* Handle - swipeable to close */}
+          <View {...panResponder.panHandlers} style={styles.modalHandleContainer}>
             <View style={styles.modalHandle} />
           </View>
 
@@ -279,6 +304,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
   modalContainer: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 25,
@@ -299,7 +327,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'column',
-    marginBottom: 20,
+    marginBottom: 0,
     marginTop: 8,
   },
   toggleContainer: {
