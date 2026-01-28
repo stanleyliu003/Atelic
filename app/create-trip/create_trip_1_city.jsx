@@ -565,6 +565,12 @@ export default function create_trip_1_city({ showBackButton = true }) {
                             onRequestClose={() => setIsCalendarOpen(false)}
                         >
                             <View style={styles.modalOverlay}>
+                                {/* Backdrop - tap to close */}
+                                <TouchableOpacity
+                                    style={styles.modalBackdrop}
+                                    activeOpacity={1}
+                                    onPress={() => setIsCalendarOpen(false)}
+                                />
                                 <View style={styles.modalContent}>
                                     {/* Top Handle - Swipeable */}
                                     <View {...panResponder.panHandlers} style={styles.modalHandleContainer}>
@@ -1064,6 +1070,9 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'flex-end',
+    },
+    modalBackdrop: {
+        ...StyleSheet.absoluteFillObject,
     },
     modalContent: {
         backgroundColor: '#FFFFFF',

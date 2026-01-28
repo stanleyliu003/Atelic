@@ -115,11 +115,17 @@ export const CategoryModal = ({ visible, category, activities, loading = false, 
   // Handle save button press
   const handleSave = () => {
     // Get newly selected activities (not in wishlist) - use NEW instanceIds from displayActivities
-    const newlySelectedActivities = displayActivities.filter((activity) =>
-      activity.instanceId &&
-      selectedActivityIds.includes(activity.instanceId) &&
-      !wishlistActivityIdsInResults.includes(activity.instanceId)
-    );
+    // Attach the category name to each activity for icon mapping
+    const newlySelectedActivities = displayActivities
+      .filter((activity) =>
+        activity.instanceId &&
+        selectedActivityIds.includes(activity.instanceId) &&
+        !wishlistActivityIdsInResults.includes(activity.instanceId)
+      )
+      .map((activity) => ({
+        ...activity,
+        category: category, // Attach category name to activity
+      }));
 
     // Map deselected display activities back to the REAL wishlist instanceIds.
     // Important: wishlistActivities passed from TripViewMain already EXCLUDES any

@@ -154,9 +154,10 @@ export function ActivityCard({
     }
   };
 
-  // Format the activity name with optional number prefix
+  // Format the activity name with optional number prefix (hotels don't get numbers)
+  const isHotel = activity.isLodging === true || activity.primaryType === 'lodging';
   const getDisplayName = () => {
-    if (index !== undefined && index >= 0) {
+    if (index !== undefined && index >= 0 && !isHotel) {
       return `${index + 1}. ${activity.name}`;
     }
     return activity.name;

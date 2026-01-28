@@ -232,6 +232,15 @@ function applyRemoveOperation(state, operation) {
 }
 
 function applyModifyOperation(state, operation) {
+  // Handle trip-level modifications (e.g., tripTitle, startDate, endDate)
+  if (operation.target === 'trip' && operation.data && operation.data.field) {
+    const { field, value } = operation.data;
+    console.log(`[applyModifyOperation] Applying trip-level modification: ${field} = ${value}`);
+    state[field] = value;
+    return state;
+  }
+
+  // Handle activity modifications
   const { instanceId, updates, lastModified } = operation.data;
 
   const updateActivity = (activity) => {
@@ -524,9 +533,52 @@ exports.handler = async (event) => {
         console.log('[getUserTrips] ✅ No new operations - returning snapshot as-is');
       }
 
+      // Reconstruct tripTitle from ALL operations (not just new ones)
+      let reconstructedTripTitle = finalTrip.tripTitle || null;
+
+      try {
+        // Query ALL operations for this trip to find the most recent tripTitle
+        const allOpsParams = {
+          TableName: process.env.STORAGE_TRIPOPERATIONSSTORAGE_NAME,
+          IndexName: 'byTripID',
+          KeyConditionExpression: 'tripID = :tripID',
+          ExpressionAttributeValues: {
+            ':tripID': tripID
+          },
+          ScanIndexForward: false, // Sort descending by timestamp (most recent first)
+          Limit: 100 // Should be enough to find the title
+        };
+
+        const allOpsResult = await docClient.send(new QueryCommand(allOpsParams));
+        console.log('[getUserTrips] Loaded', allOpsResult.Items?.length || 0, 'total operations for tripTitle reconstruction');
+
+        if (allOpsResult.Items && allOpsResult.Items.length > 0) {
+          // Find the most recent tripTitle modification
+          for (const item of allOpsResult.Items) {
+            try {
+              const op = typeof item.operationData === 'string'
+                ? JSON.parse(item.operationData)
+                : item.operationData;
+
+              if (op.type === 'modify' && op.target === 'trip' && op.data?.field === 'tripTitle') {
+                reconstructedTripTitle = op.data.value;
+                console.log('[getUserTrips] ✅ Reconstructed tripTitle from operation:', reconstructedTripTitle);
+                break;
+              }
+            } catch (parseError) {
+              console.error('[getUserTrips] Failed to parse operation:', parseError);
+            }
+          }
+        }
+      } catch (titleError) {
+        console.error('[getUserTrips] Error reconstructing tripTitle:', titleError);
+        // Continue with null or snapshot title
+      }
+
       // Return the complete trip data including tripPhotoReference, collaborators, version, and cityCategories
       return {
         tripId: finalTrip.tripID,
+        tripTitle: reconstructedTripTitle,
         days: finalTrip.days || [],
         wishlist: finalTrip.wishlist || [],
         tripLength: finalTrip.tripLength,
@@ -622,8 +674,23 @@ exports.handler = async (event) => {
               console.log('[getUserTrips] ✅ No new operations - returning snapshot as-is (collaborator)');
             }
 
+            // Reconstruct tripTitle from operations if available
+            let reconstructedTripTitleCollab = finalTrip.tripTitle || null;
+            if (newOperations.length > 0) {
+              // Find the most recent tripTitle modification
+              for (let i = newOperations.length - 1; i >= 0; i--) {
+                const op = newOperations[i];
+                if (op.type === 'modify' && op.target === 'trip' && op.data?.field === 'tripTitle') {
+                  reconstructedTripTitleCollab = op.data.value;
+                  console.log('[getUserTrips] Reconstructed tripTitle from operation (collaborator):', reconstructedTripTitleCollab);
+                  break;
+                }
+              }
+            }
+
             return {
               tripId: finalTrip.tripID,
+              tripTitle: reconstructedTripTitleCollab,
               days: finalTrip.days || [],
               wishlist: finalTrip.wishlist || [],
               tripLength: finalTrip.tripLength,
