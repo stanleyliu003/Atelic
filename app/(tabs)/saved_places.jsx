@@ -1,7 +1,7 @@
 import { Colors } from '../../constants/Colors';
 import { API } from 'aws-amplify';
 import { Auth } from 'aws-amplify';
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   ActivityIndicator,
@@ -41,6 +41,8 @@ export default function SavedPlaces() {
   const [emptyStatePage, setEmptyStatePage] = useState(
     searchParams.skipOnboarding === 'true' ? 14 : 8
   );
+  // Track Instagram share processing status (timer-based)
+  const [isShareProcessing, setIsShareProcessing] = useState(false);
 
   // Filter cities based on search query
   const filteredCities = useMemo(() => {
@@ -94,6 +96,43 @@ export default function SavedPlaces() {
   useEffect(() => {
     fetchSavedPlaces();
   }, [fetchSavedPlaces]);
+
+  // Handle Instagram share timer when navigating from Share Extension
+  // The Share Extension passes shareStartTime in the deep link query params
+  useEffect(() => {
+    const shareStartTime = searchParams.shareStartTime;
+
+    if (!shareStartTime) {
+      return;
+    }
+
+    const startTime = parseInt(shareStartTime, 10);
+    const now = Date.now();
+
+    // Ignore if timestamp is too old (> 60 seconds)
+    if (now - startTime > 60000) {
+      console.log('[SavedPlaces] Share timestamp too old, ignoring');
+      return;
+    }
+
+    setIsShareProcessing(true);
+
+    // Calculate remaining wait time (14 seconds from start)
+    const elapsedMs = now - startTime;
+    const remainingMs = Math.max(14000 - elapsedMs, 1000); // At least 1 second
+
+    console.log('[SavedPlaces] Instagram share detected, waiting', remainingMs, 'ms before refresh');
+
+    // Set timer to refresh after remaining time
+    const timer = setTimeout(() => {
+      console.log('[SavedPlaces] Share timer complete, refreshing saved places');
+      setIsShareProcessing(false);
+      fetchSavedPlaces();
+    }, remainingMs);
+
+    // Cleanup: clears timer if effect re-runs or component unmounts
+    return () => clearTimeout(timer);
+  }, [searchParams.shareStartTime, fetchSavedPlaces]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -195,6 +234,14 @@ export default function SavedPlaces() {
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
+        )}
+
+        {/* Instagram Share Processing Indicator */}
+        {isShareProcessing && (
+          <View style={styles.processingBanner}>
+            <ActivityIndicator size="small" color={Colors.PRIMARY} />
+            <Text style={styles.processingText}>Saving places from Instagram...</Text>
+          </View>
         )}
 
         {cities.length === 0 && emptyStatePage === 8 ? (
@@ -381,6 +428,24 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginTop: 10,
+  },
+  processingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF7ED',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FDBA74',
+  },
+  processingText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 14,
+    color: '#9A3412',
+    marginLeft: 10,
   },
   noResultsContainer: {
     flex: 1,

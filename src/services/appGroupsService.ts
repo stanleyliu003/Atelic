@@ -170,7 +170,7 @@ export const clearAuthData = (): boolean => {
  */
 export const updateIdToken = async (idToken: string): Promise<boolean> => {
   console.log('[AppGroups] updateIdToken() called');
-  
+
   if (!AppGroupsStorage) {
     console.warn('[AppGroups] ❌ Cannot update ID token - native module not available');
     return false;
@@ -183,5 +183,73 @@ export const updateIdToken = async (idToken: string): Promise<boolean> => {
   } catch (error) {
     console.error('[AppGroups] ❌ Failed to update ID token:', error);
     return false;
+  }
+};
+
+// ============================================
+// Share Extension Processing Status
+// ============================================
+
+export interface ShareProcessingStatus {
+  status: 'processing' | 'completed' | 'error' | null;
+  startTime: number | null;
+  placeCount: number | null;
+}
+
+/**
+ * Get the current share processing status from App Groups.
+ * Used by saved_places to show loading indicator while Instagram share is being processed.
+ */
+export const getShareProcessingStatus = async (): Promise<ShareProcessingStatus> => {
+  console.log('[AppGroups] getShareProcessingStatus() called');
+  console.log('[AppGroups] AppGroupsStorage available:', !!AppGroupsStorage);
+
+  if (!AppGroupsStorage) {
+    console.log('[AppGroups] ❌ Native module not available, returning null status');
+    return { status: null, startTime: null, placeCount: null };
+  }
+
+  try {
+    console.log('[AppGroups] Reading keys from App Groups...');
+    const [status, startTimeStr, placeCountStr] = await Promise.all([
+      AppGroupsStorage.getValue('shareProcessingStatus'),
+      AppGroupsStorage.getValue('shareProcessingStartTime'),
+      AppGroupsStorage.getValue('shareProcessingPlaceCount'),
+    ]);
+
+    console.log('[AppGroups] Raw values from App Groups:');
+    console.log('[AppGroups]   - shareProcessingStatus:', status);
+    console.log('[AppGroups]   - shareProcessingStartTime:', startTimeStr);
+    console.log('[AppGroups]   - shareProcessingPlaceCount:', placeCountStr);
+
+    const result = {
+      status: status as 'processing' | 'completed' | 'error' | null,
+      startTime: startTimeStr ? parseInt(startTimeStr, 10) : null,
+      placeCount: placeCountStr ? parseInt(placeCountStr, 10) : null,
+    };
+
+    console.log('[AppGroups] Parsed result:', JSON.stringify(result));
+    return result;
+  } catch (error) {
+    console.error('[AppGroups] ❌ Failed to get share processing status:', error);
+    return { status: null, startTime: null, placeCount: null };
+  }
+};
+
+/**
+ * Clear the share processing status after it has been handled.
+ */
+export const clearShareProcessingStatus = (): void => {
+  if (!AppGroupsStorage) {
+    return;
+  }
+
+  try {
+    AppGroupsStorage.removeValue('shareProcessingStatus');
+    AppGroupsStorage.removeValue('shareProcessingStartTime');
+    AppGroupsStorage.removeValue('shareProcessingPlaceCount');
+    console.log('[AppGroups] ✅ Cleared share processing status');
+  } catch (error) {
+    console.error('[AppGroups] Failed to clear share processing status:', error);
   }
 };

@@ -347,7 +347,9 @@ class ShareViewController: UIViewController {
     }
     
     @objc private func viewSavedPlacesButtonTapped() {
-        openMainApp(route: "saved_places")
+        // Pass timestamp so saved_places knows to show loading and auto-refresh after 14s
+        let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+        openMainApp(route: "saved_places?shareStartTime=\(timestamp)")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.dismissExtension()
         }
@@ -430,7 +432,8 @@ class ShareViewController: UIViewController {
             return
         }
 
-        // Call Lambda function
+        // Call Lambda function (fire-and-forget)
+        // Main app will auto-refresh after 14s when user taps "See places on Atelic"
         callLambda(instagramURL: instagramURL, userID: userID)
     }
 
@@ -465,33 +468,15 @@ class ShareViewController: UIViewController {
 
         request.httpBody = jsonData
 
-        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-
-                if let error = error {
-                    self.showError("Network error: \(error.localizedDescription)")
-                    return
-                }
-
-                guard let data = data,
-                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let success = json["success"] as? Bool else {
-                    self.showError("Invalid response")
-                    return
-                }
-
-                if success {
-                    let placesCount = (json["savedPlaces"] as? [[String: Any]])?.count ?? 0
-                    self.showSuccess(placesCount: placesCount)
-                } else {
-                    let message = json["message"] as? String ?? "Failed to process post"
-                    self.showError(message)
-                }
+        // Fire-and-forget Lambda call - main app will refresh after 14s timer
+        print("[ShareExtension] Starting Lambda request")
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("[ShareExtension] Lambda error: \(error.localizedDescription)")
+                return
             }
-        }
-
-        task.resume()
+            print("[ShareExtension] Lambda request completed")
+        }.resume()
     }
 
     // MARK: - UI States
@@ -559,3 +544,4 @@ extension ShareViewController: UIGestureRecognizerDelegate {
         return touch.view == view
     }
 }
+
