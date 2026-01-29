@@ -252,6 +252,24 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
     }
   };
 
+  const handleSharePress = async () => {
+    // Create Google Maps link using place_id for most accurate location
+    const mapsUrl = liveActivity.place_id
+      ? `https://www.google.com/maps/place/?q=place_id:${liveActivity.place_id}`
+      : `https://www.google.com/maps/search/?api=1&query=${liveActivity.lat},${liveActivity.lng}`;
+
+    try {
+      const supported = await Linking.canOpenURL(mapsUrl);
+      if (supported) {
+        await Linking.openURL(mapsUrl);
+      } else {
+        console.log("Don't know how to open URI: " + mapsUrl);
+      }
+    } catch (error) {
+      console.error('An error occurred while sharing', error);
+    }
+  };
+
   const parseTimeToMinutes = (timeStr: string): number => {
     // Parse time strings like "9:00 AM", "11:30 PM", "12:00 AM"
     const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
@@ -548,7 +566,7 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
             <MaterialIcons name="directions" size={20} color="#333" />
             <Text style={styles.actionButtonText}>Directions</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+          <TouchableOpacity style={styles.actionButton} onPress={handleSharePress}>
             <MaterialCommunityIcons name="share-outline" size={20} color="#333" />
             <Text style={styles.actionButtonText}>Share</Text>
           </TouchableOpacity>
