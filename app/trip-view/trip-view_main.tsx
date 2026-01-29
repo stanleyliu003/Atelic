@@ -2332,7 +2332,7 @@ export default function TripViewMain() {
         if (hasActivities) {
             Alert.alert(
                 'Delete Day',
-                `Are you sure you want to delete Day ${dayToDelete}? All activities will be moved back to the wishlist.`,
+                `Are you sure you want to delete this day? All activities will be moved back to your saved places.`,
                 [
                     {
                         text: 'Cancel',
