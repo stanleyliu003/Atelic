@@ -32,7 +32,7 @@ exports.handler = async (event) => {
       ExpressionAttributeValues: {
         ':userID': userID
       },
-      ProjectionExpression: 'tripID, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators'
+      ProjectionExpression: 'tripID, tripTitle, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators'
     };
 
     console.log('Querying owned trips:', JSON.stringify(ownedTripsParams));
@@ -48,7 +48,7 @@ exports.handler = async (event) => {
       ExpressionAttributeValues: {
         ':userID': userID
       },
-      ProjectionExpression: 'tripID, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators, userID'
+      ProjectionExpression: 'tripID, tripTitle, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators, userID'
     };
 
     console.log('Scanning for collaborated trips with pagination...');
@@ -118,6 +118,7 @@ exports.handler = async (event) => {
     // Process owned trips
     const ownedTripSummaries = ownedTripsResult.Items.map(item => ({
       tripId: item.tripID,
+      tripTitle: item.tripTitle || null,
       selectedCity: item.selectedCity,
       tripPhotoReference: normalizePhotoReferences(item.tripPhotoReference),
       createdAt: item.createdAt,
@@ -138,6 +139,7 @@ exports.handler = async (event) => {
       })
       .map(item => ({
         tripId: item.tripID,
+        tripTitle: item.tripTitle || null,
         selectedCity: item.selectedCity,
         tripPhotoReference: normalizePhotoReferences(item.tripPhotoReference),
         createdAt: item.createdAt,
