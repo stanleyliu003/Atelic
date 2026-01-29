@@ -39,8 +39,9 @@ export function TabBar({
 }: TabBarProps) {
   const scrollViewRef = useRef<ScrollView>(null);
   const [isDeleteMode, setIsDeleteMode] = React.useState(false);
-  const [reorderMode, setReorderMode] = React.useState(false);
-  const [selectedDayForReorder, setSelectedDayForReorder] = React.useState<string | null>(null);
+  // Reorder mode disabled
+  const reorderMode = false;
+  const selectedDayForReorder = null;
 
   // Generate tab order: use tabLabels if provided, otherwise default
   let tabs: TabType[] = tabLabels ?? ([
@@ -85,37 +86,32 @@ export function TabBar({
           const showReorderIcon = reorderMode && isDayTab;
 
           const handlePress = () => {
-            if (reorderMode && isDayTab) {
-              // In reorder mode, clicking a day either selects it or swaps with selected
-              if (!selectedDayForReorder) {
-                // Select this day for reordering
-                setSelectedDayForReorder(tab);
-              } else if (selectedDayForReorder === tab) {
-                // Deselect if clicking the same day
-                setSelectedDayForReorder(null);
-              } else {
-                // Swap the two days
-                const fromDay = parseInt(selectedDayForReorder.replace('day', ''));
-                const toDay = parseInt(tab.replace('day', ''));
-                if (onReorderDays) {
-                  onReorderDays(fromDay, toDay);
-                }
-                setSelectedDayForReorder(null);
-                setReorderMode(false);
-              }
-            } else if (isDeleteMode && isDayTab) {
+            // Reorder mode disabled for now
+            // if (reorderMode && isDayTab) {
+            //   // In reorder mode, clicking a day either selects it or swaps with selected
+            //   if (!selectedDayForReorder) {
+            //     // Select this day for reordering
+            //     setSelectedDayForReorder(tab);
+            //   } else if (selectedDayForReorder === tab) {
+            //     // Deselect if clicking the same day
+            //     setSelectedDayForReorder(null);
+            //   } else {
+            //     // Swap the two days
+            //     const fromDay = parseInt(selectedDayForReorder.replace('day', ''));
+            //     const toDay = parseInt(tab.replace('day', ''));
+            //     if (onReorderDays) {
+            //       onReorderDays(fromDay, toDay);
+            //     }
+            //     setSelectedDayForReorder(null);
+            //     setReorderMode(false);
+            //   }
+            // } else
+            if (isDeleteMode && isDayTab) {
               onTabChange(tab);
               onDeleteDay();
               setIsDeleteMode(false);
             } else {
               onTabChange(tab);
-            }
-          };
-
-          const handleLongPress = () => {
-            if (isDayTab && currentUserRole !== 'viewer' && onReorderDays && !isDeleteMode && !reorderMode) {
-              setReorderMode(true);
-              setSelectedDayForReorder(tab);
             }
           };
 
@@ -129,8 +125,6 @@ export function TabBar({
                 showReorderIcon && !isSelectedForReorder && styles.reorderableTab
               ]}
               onPress={handlePress}
-              onLongPress={handleLongPress}
-              delayLongPress={500}
             >
               {showDeleteIcon && (
                 <View style={styles.deleteIcon}>

@@ -828,11 +828,9 @@ export default function TripViewMain() {
 
         // Handle day count changes
         if (newTripLength > oldTripLength) {
-            // Add new empty days
+            // Add new empty days using addMultipleDays to avoid state batching issues
             const daysToAdd = newTripLength - oldTripLength;
-            for (let i = 0; i < daysToAdd; i++) {
-                await addNewDay();
-            }
+            addMultipleDays(daysToAdd);
         } else if (newTripLength < oldTripLength) {
             // Automatically remove days when reducing trip length via calendar
             // Remove days from highest to lowest to avoid index shifting issues
