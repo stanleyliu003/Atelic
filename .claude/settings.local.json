@@ -64,7 +64,8 @@
       "Bash(git diff:*)",
       "Bash(git checkout:*)",
       "Bash(aws cloudformation describe-stacks:*)",
-      "Bash(aws cloudformation list-stack-resources:*)"
+      "Bash(aws cloudformation list-stack-resources:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": [],

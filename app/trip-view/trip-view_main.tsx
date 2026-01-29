@@ -1,7 +1,7 @@
 import { Colors } from '../../constants/Colors';
 import { useNavigation, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert, AppState, Animated, PanResponder, Dimensions, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert, AppState, Animated, PanResponder, Dimensions, ActivityIndicator, Pressable } from 'react-native';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { encodePolyline } from '../../src/utils/polyline';
 import { getMarkerColor } from '../../src/constants/mapColors';
@@ -541,6 +541,13 @@ export default function TripViewMain() {
         setPrimaryTab('itinerary');
         setActiveTab(`day${dayNumber}` as TabType);
         setShouldScrollToActive(true);
+    };
+
+    // Handler for background tap to deselect activities
+    const handleBackgroundTap = () => {
+        if (isSelectionMode && selectedActivities.length > 0) {
+            clearSelection();
+        }
     };
 
     // Helper function to convert Activity to ActivityInput format for GraphQL
@@ -4044,6 +4051,7 @@ export default function TripViewMain() {
                 )}
 
                 {/* Tab Content */}
+                <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
                 <View style={styles.tabContent}>
                 {showActivityDetail && selectedActivityForDetail ? (
                     <ActivityDetailView
@@ -4059,6 +4067,7 @@ export default function TripViewMain() {
                     <>
                         {/* Overview Content - shown when primaryTab is 'overview' */}
                         {primaryTab === 'overview' && (
+                            <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
                             <View style={styles.overviewWrapper}>
                                 <OverviewContent
                                     tripTitle={tripTitle}
@@ -4076,6 +4085,7 @@ export default function TripViewMain() {
                                     dayRouteLegs={dayRouteLegs}
                                 />
                             </View>
+                            </Pressable>
                         )}
 
                         {/* Wishlist/Saved Places Content - shown when in itinerary mode */}
@@ -4094,6 +4104,7 @@ export default function TripViewMain() {
                                     contentContainerStyle={styles.wishlistContent}
                                     showsVerticalScrollIndicator={false}
                                 >
+                                    <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
                                     {wishlistActivities.length === 0 ? (
                                         <View>
                                             {/* City Title */}
@@ -4232,6 +4243,7 @@ export default function TripViewMain() {
                                             )}
                                         </>
                                     )}
+                                    </Pressable>
                                 </ScrollView>
                             );
                         })()}
@@ -4240,6 +4252,7 @@ export default function TripViewMain() {
                         {primaryTab === 'itinerary' && activeTab.startsWith('day') && (() => {
                             const currentDayNumber = parseInt(activeTab.replace('day', ''));
                             return (
+                                <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
                                 <DaySchedule
                                     dayNumber={currentDayNumber}
                                     activities={getActivitiesForTab(activeTab)}
@@ -4267,11 +4280,13 @@ export default function TripViewMain() {
                                     currentUserRole={currentUserRole}
                                     onOpenSettings={currentUserRole !== 'viewer' ? handleOpenSettings : undefined}
                                 />
+                                </Pressable>
                             );
                         })()}
                     </>
                 )}
                 </View>
+                </Pressable>
 
                 {/* Transfer Button Container */}
                 <TransferButtonContainer
