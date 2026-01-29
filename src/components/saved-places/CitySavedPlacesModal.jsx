@@ -127,15 +127,19 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places }) {
           presentationStyle="pageSheet"
           onRequestClose={handleDescriptionCardClose}
         >
-          {selectedActivity && (
-            <ActivityDetailView
-              activity={selectedActivity}
-              onClose={handleDescriptionCardClose}
-              variant="wishlist"
-              showDragIndicator={false}
-              currentUserRole="owner"
-            />
-          )}
+          <SafeAreaView style={styles.descriptionCardModalContainer}>
+            <View style={styles.descriptionCardWrapper}>
+              {selectedActivity && (
+                <ActivityDetailView
+                  activity={selectedActivity}
+                  onClose={handleDescriptionCardClose}
+                  variant="wishlist"
+                  showDragIndicator={false}
+                  currentUserRole="owner"
+                />
+              )}
+            </View>
+          </SafeAreaView>
         </Modal>
       </SafeAreaView>
     </Modal>
@@ -207,5 +211,13 @@ const styles = StyleSheet.create({
     color: Colors.WHITE,
     fontFamily: 'outfit-bold',
     fontSize: 17,
+  },
+  descriptionCardModalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  descriptionCardWrapper: {
+    flex: 1,
+    marginHorizontal: 10,
   },
 });

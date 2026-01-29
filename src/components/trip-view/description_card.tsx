@@ -885,6 +885,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
     gap: 4,
+    marginLeft: -3,
   },
   hoursStatusBadgeOpen: {
     backgroundColor: '#ECFDF5',
