@@ -39,6 +39,7 @@ class ShareViewController: UIViewController {
     // State
     private var progressTimer: Timer?
     private var currentProgress: CGFloat = 0
+    private var limitExceeded: Bool = false
 
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -264,8 +265,10 @@ class ShareViewController: UIViewController {
             if step >= steps {
                 timer.invalidate()
                 self.progressTimer = nil
-                // Show success checkmark immediately after progress bar completes
-                self.showSuccessCheckmark()
+                // Only show success if limit was not exceeded
+                if !self.limitExceeded {
+                    self.showSuccessCheckmark()
+                }
             }
         }
     }
@@ -470,11 +473,24 @@ class ShareViewController: UIViewController {
 
         // Fire-and-forget Lambda call - main app will refresh after 14s timer
         print("[ShareExtension] Starting Lambda request")
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             if let error = error {
                 print("[ShareExtension] Lambda error: \(error.localizedDescription)")
                 return
             }
+
+            // Check for limit exceeded response
+            if let data = data,
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let errorCode = json["error"] as? String,
+               errorCode == "LIMIT_EXCEEDED" {
+                print("[ShareExtension] Limit exceeded for user")
+                DispatchQueue.main.async {
+                    self?.showLimitExceeded()
+                }
+                return
+            }
+
             print("[ShareExtension] Lambda request completed")
         }.resume()
     }
@@ -513,6 +529,31 @@ class ShareViewController: UIViewController {
         }
 
         // User can tap logo to open main app for login, or dismiss the extension
+    }
+
+    private func showLimitExceeded() {
+        limitExceeded = true
+        progressTimer?.invalidate()
+        progressTimer = nil
+
+        // Hide progress bar
+        UIView.animate(withDuration: 0.2) {
+            self.progressBarBackground.alpha = 0
+        }
+
+        statusLabel.numberOfLines = 0
+        statusLabel.lineBreakMode = .byWordWrapping
+        statusLabel.text = "Exceeded sharing limit\nfor this week."
+        statusLabel.textColor = .systemOrange
+
+        // Show warning icon
+        checkmarkView.backgroundColor = .systemOrange
+        checkmarkImageView.image = UIImage(systemName: "exclamationmark.triangle.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 46, weight: .bold))
+
+        UIView.animate(withDuration: 0.5, delay: 0.1, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.5) {
+            self.checkmarkView.alpha = 1
+            self.checkmarkView.transform = .identity
+        }
     }
 
     // MARK: - Open Main App

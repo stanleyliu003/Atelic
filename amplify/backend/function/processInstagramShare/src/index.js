@@ -110,6 +110,38 @@ async function resolvePlaces(extractedPlaces) {
 }
 
 /**
+ * Count total saved places for a user (efficient COUNT-only query with pagination)
+ * @param {string} userID - Cognito user ID
+ * @returns {Promise<number>} - Total count of saved places
+ */
+async function getUserSavedPlacesCount(userID) {
+    let totalCount = 0;
+    let lastEvaluatedKey = null;
+
+    do {
+        const params = {
+            TableName: SAVED_PLACES_TABLE,
+            KeyConditionExpression: 'userID = :uid',
+            ExpressionAttributeValues: {
+                ':uid': userID
+            },
+            Select: 'COUNT'
+        };
+
+        if (lastEvaluatedKey) {
+            params.ExclusiveStartKey = lastEvaluatedKey;
+        }
+
+        const result = await docClient.send(new QueryCommand(params));
+        totalCount += result.Count || 0;
+        lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    console.log(`[index] User ${userID} has ${totalCount} saved places`);
+    return totalCount;
+}
+
+/**
  * Check if user already saved places from this Instagram post (with pagination)
  * @param {string} userID - Cognito user ID
  * @param {string} sourcePostId - Instagram shortcode
@@ -390,6 +422,21 @@ exports.handler = async (event) => {
     console.log(`[index] Processing Instagram share: url=${instagramUrl}, userID=${userID}`);
 
     try {
+        // Step 0: Check saved places limit
+        console.log('[index] Step 0: Checking saved places limit...');
+        const savedPlacesCount = await getUserSavedPlacesCount(userID);
+        if (savedPlacesCount > 10) {
+            console.log(`[index] User ${userID} has ${savedPlacesCount} saved places, exceeds limit of 10`);
+            return {
+                statusCode: 429,
+                body: JSON.stringify({
+                    success: false,
+                    error: 'LIMIT_EXCEEDED',
+                    message: 'Exceeded sharing limit for this week.'
+                })
+            };
+        }
+
         // Step 1: Scrape Instagram post
         console.log('[index] Step 1: Scraping Instagram post...');
         const scrapedData = await scrapeInstagram(instagramUrl);
