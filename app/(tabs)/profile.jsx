@@ -16,6 +16,9 @@ import { TripCarouselImage } from '../../src/components/profile/TripCarouselImag
 import { clearAuthData } from '../../src/services/appGroupsService';
 import Carousel from 'react-native-reanimated-carousel';
 
+const { width: screenWidth } = Dimensions.get('window');
+const CAROUSEL_WIDTH = screenWidth - 52; // 25px padding each side + 1px border each side
+
 export default function Profile() {
   const { restoreTripFromObject, setSelectedCity } = useCreateTrip();
   const params = useLocalSearchParams();
@@ -694,7 +697,7 @@ export default function Profile() {
                       <View style={styles.carouselContainer}>
                         <Carousel
                           loop={false}
-                          width={350}
+                          width={CAROUSEL_WIDTH}
                           height={180}
                           data={trip.tripPhotoReference && trip.tripPhotoReference.length > 0
                             ? trip.tripPhotoReference
@@ -869,7 +872,7 @@ export default function Profile() {
                       <View style={styles.carouselContainer}>
                         <Carousel
                           loop={false}
-                          width={350}
+                          width={CAROUSEL_WIDTH}
                           height={180}
                           data={trip.tripPhotoReference && trip.tripPhotoReference.length > 0
                             ? trip.tripPhotoReference
