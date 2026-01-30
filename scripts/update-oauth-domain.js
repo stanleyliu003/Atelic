@@ -13,13 +13,24 @@ const AWS_EXPORTS_PATH = path.join(__dirname, '../src/aws-exports.js');
 const PRODUCTION_OAUTH_DOMAIN = 'auth.atelictravel.com';
 
 function isProductionEnvironment() {
-  const env =
+  let env =
     process.env.AMPLIFY_ENV ||
     process.env.ATELIC_ENV ||
     process.env.ENVIRONMENT ||
     process.env.STAGE ||
     process.env.NODE_ENV ||
     '';
+
+  // Fall back to Amplify's local config if no env var is set
+  if (!env) {
+    try {
+      const localEnvPath = path.join(__dirname, '../amplify/.config/local-env-info.json');
+      const localEnv = JSON.parse(fs.readFileSync(localEnvPath, 'utf8'));
+      env = localEnv.envName || '';
+    } catch (_) {
+      // Config file not found or unreadable — ignore
+    }
+  }
 
   return ['prod', 'production'].includes(String(env).toLowerCase());
 }
