@@ -9,9 +9,20 @@ import { useLazyCarousel } from '../../../hooks/useLazyCarousel';
 import { GOOGLE_PLACES_API_KEY, UNSPLASH_ACCESS_KEY } from '../../../constants/api';
 import { UnsplashImageWithAttribution } from '../../../types/unsplash.types';
 import UnsplashInfoButton from '../../common/UnsplashInfoButton';
+import { getPhotoUrl } from '../../../services/photoService';
+import {
+  shouldUseUnsplashFirst,
+  getCachedGoogleRefs,
+  getCachedUnsplashPhotos,
+  setCachedFirstPhoto,
+  setCachedGoogleRefs,
+  setCachedUnsplashPhotos,
+} from '../../../utils/activityPhotoCache';
 
 // expo-image blurhash placeholder for smooth loading
 const PLACEHOLDER_BLURHASH = '|rF?hV%2WCj[ayj[a|j[az_NaeWBj@ayfRayfQfQM{M|azj[azf6telebu~qayj[j[fQayWBofofayayayj[fQj[ayayj[ayfjj[ay';
+
+const UNSPLASH_API_BASE = 'https://api.unsplash.com';
 
 interface ActivityPhotoCarouselProps {
   activity: Activity;
@@ -24,127 +35,16 @@ interface PhotoData {
 }
 
 interface UnsplashPhoto {
-  urls: {
-    regular: string;
-    small: string;
-    thumb: string;
-  };
+  urls: { regular: string; small: string; thumb: string };
   id: string;
-  user?: {
-    name: string;
-    links?: {
-      html: string;
-    };
-  };
-  links?: {
-    html: string;
-    download_location: string;
-  };
+  user?: { name: string; links?: { html: string } };
+  links?: { html: string; download_location: string };
 }
 
 interface UnsplashResponse {
   results: UnsplashPhoto[];
   total: number;
 }
-
-// Unsplash API configuration
-const UNSPLASH_API_BASE = 'https://api.unsplash.com';
-
-// Cache to store Google Places photo references by place_id
-// Stores arrays of up to 5 photo_reference strings per place
-const googlePhotosCache: { [place_id: string]: string[] } = {};
-
-// Cache to store Unsplash photos with attribution by activity name
-// Prevents redundant API calls for the same activity
-const unsplashCache: { [activityName: string]: UnsplashImageWithAttribution[] } = {};
-
-// Place types that should prioritize Unsplash (landmarks & attractions)
-const UNSPLASH_PRIORITY_TYPES = [
-  'tourist_attraction',
-  'monument',
-  'landmark',
-  'museum',
-  'art_gallery',
-  'park',
-  'national_park',
-  'natural_feature',
-  'stadium',
-  'zoo',
-  'aquarium',
-  'historical_landmark',
-  'point_of_interest',
-  'place_of_worship',
-  'church',
-  'mosque',
-  'temple',
-  'synagogue',
-];
-
-// Place types that should prioritize Google Places (local businesses)
-const GOOGLE_PLACES_PRIORITY_TYPES = [
-  'restaurant',
-  'bar',
-  'night_club',
-  'cafe',
-  'bakery',
-  'meal_takeaway',
-  'meal_delivery',
-  'food',
-  'store',
-  'shopping_mall',
-  'clothing_store',
-  'shoe_store',
-  'jewelry_store',
-  'book_store',
-  'lodging',
-  'hotel',
-  'spa',
-  'hair_care',
-  'beauty_salon',
-];
-
-// Helper function to determine if we should use Unsplash first
-const shouldUseUnsplashFirst = (primaryType?: string, types?: string[]): boolean => {
-  // Collect all types to check
-  const typesToCheck: string[] = [];
-
-  if (primaryType) {
-    typesToCheck.push(primaryType);
-  }
-
-  if (types && types.length > 0) {
-    typesToCheck.push(...types);
-  }
-
-  // If no types available, default to Unsplash
-  if (typesToCheck.length === 0) {
-    return true;
-  }
-
-  // Normalize all types
-  const normalizedTypes = typesToCheck.map(t => t.toLowerCase().replace(/\s+/g, '_'));
-
-  // Check if ANY type matches local business patterns (Google Places first)
-  const isLocalBusiness = normalizedTypes.some(normalizedType =>
-    GOOGLE_PLACES_PRIORITY_TYPES.some(businessType => normalizedType.includes(businessType))
-  );
-
-  if (isLocalBusiness) {
-    return false; // Use Google Places first
-  }
-
-  // Check if ANY type matches landmark patterns (Unsplash first)
-  const isLandmark = normalizedTypes.some(normalizedType =>
-    UNSPLASH_PRIORITY_TYPES.some(landmarkType => normalizedType.includes(landmarkType))
-  );
-
-  if (isLandmark) {
-    return true; // Use Unsplash first
-  }
-
-  // Default to Unsplash for other types
-  return true;
-};
 
 export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoCarouselProps) {
   const [photos, setPhotos] = useState<PhotoData[]>([]);
@@ -164,45 +64,63 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
     try {
       setLoading(true);
 
+      // 1) Use shared cache so first photo = card thumbnail; avoid duplicate API calls
+      const cachedUnsplash = activity.name ? getCachedUnsplashPhotos(activity.name) : null;
+      const cachedGoogleRefs = activity.place_id ? getCachedGoogleRefs(activity.place_id) : null;
+
+      if (cachedUnsplash && cachedUnsplash.length > 0) {
+        setUnsplashData(cachedUnsplash.slice(0, 5));
+        setPhotos([]);
+        setLoading(false);
+        return;
+      }
+
+      if (cachedGoogleRefs && cachedGoogleRefs.length > 0) {
+        const photoData: PhotoData[] = cachedGoogleRefs.map(ref => ({
+          photo_reference: ref,
+          place_id: activity.place_id || '',
+        }));
+        setPhotos(photoData);
+        setUnsplashData([]);
+        setLoading(false);
+        return;
+      }
+
       const useUnsplashFirst = shouldUseUnsplashFirst(activity.primaryType, activity.types);
 
       if (useUnsplashFirst) {
-        // For landmarks & attractions: Try Unsplash first
-        console.log(`[ActivityPhotoCarousel] Using Unsplash first for ${activity.primaryType} / types: ${activity.types?.join(', ')}: ${activity.name}`);
         const unsplashImages = await fetchUnsplashImages(activity.name);
-
-        // If we got 5 images from Unsplash, use them
         if (unsplashImages.length >= 5) {
+          setCachedUnsplashPhotos(activity.name, unsplashImages.slice(0, 5));
+          setCachedFirstPhoto(activity.place_id, activity.name, {
+            source: 'unsplash',
+            url: unsplashImages[0].imageUrl,
+            attribution: unsplashImages[0].attribution,
+          });
           setUnsplashData(unsplashImages.slice(0, 5));
-          setPhotos([]); // Clear Google Places photos
+          setPhotos([]);
           setLoading(false);
           return;
         }
-
-        // Fallback to Google Places if Unsplash didn't return enough images
-        console.log(`[ActivityPhotoCarousel] Unsplash returned ${unsplashImages.length} images, falling back to Google Places`);
         await fetchGooglePlacesPhotos();
       } else {
-        // For local businesses: Use Google Places first
-        console.log(`[ActivityPhotoCarousel] Using Google Places first for ${activity.primaryType} / types: ${activity.types?.join(', ')}: ${activity.name}`);
-
-        // Check if we have Google Places photo
         const hasGooglePhoto = !!activity.photo_reference;
-
         if (hasGooglePhoto) {
-          console.log(`[ActivityPhotoCarousel] Found Google Places photo for ${activity.name}`);
           await fetchGooglePlacesPhotos();
         } else {
-          // No Google Places photos available, fallback to Unsplash
-          console.log(`[ActivityPhotoCarousel] No Google Places photos found for ${activity.name}, trying Unsplash as fallback`);
           const unsplashImages = await fetchUnsplashImages(activity.name);
           if (unsplashImages.length > 0) {
+            setCachedUnsplashPhotos(activity.name, unsplashImages.slice(0, 5));
+            setCachedFirstPhoto(activity.place_id, activity.name, {
+              source: 'unsplash',
+              url: unsplashImages[0].imageUrl,
+              attribution: unsplashImages[0].attribution,
+            });
             setUnsplashData(unsplashImages.slice(0, 5));
-            setPhotos([]); // Clear Google Places photos
+            setPhotos([]);
           }
         }
       }
-
     } catch (error) {
       console.error('[ActivityPhotoCarousel] Error fetching photos, falling back:', error);
       await fetchGooglePlacesPhotos();
@@ -213,25 +131,16 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
 
   const fetchUnsplashImages = async (query: string): Promise<UnsplashImageWithAttribution[]> => {
     try {
-      // Check in-memory cache first
-      if (unsplashCache[query] && unsplashCache[query].length > 0) {
-        console.log(`[ActivityPhotoCarousel] ✅ CACHE HIT - Using cached Unsplash photos for: ${query}`);
-        return unsplashCache[query];
+      const cached = getCachedUnsplashPhotos(query);
+      if (cached && cached.length > 0) {
+        return cached;
       }
 
-      console.log(`[ActivityPhotoCarousel] ❌ CACHE MISS - Fetching Unsplash photos for: ${query}`);
       const url = `${UNSPLASH_API_BASE}/search/photos?query=${encodeURIComponent(query)}&per_page=5&client_id=${UNSPLASH_ACCESS_KEY}`;
-
       const response = await fetch(url);
-
-      if (!response.ok) {
-        console.error('[ActivityPhotoCarousel] Unsplash API error:', response.status, response.statusText);
-        return [];
-      }
+      if (!response.ok) return [];
 
       const data: UnsplashResponse = await response.json();
-
-      // Extract photo data with attribution
       const photosWithAttribution: UnsplashImageWithAttribution[] = data.results ? data.results.map(photo => ({
         imageUrl: photo.urls.regular,
         attribution: {
@@ -242,12 +151,9 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
         }
       })) : [];
 
-      // Store in cache for future use
       if (photosWithAttribution.length > 0) {
-        unsplashCache[query] = photosWithAttribution;
-        console.log(`[ActivityPhotoCarousel] 💾 Cached ${photosWithAttribution.length} Unsplash photos for: ${query}`);
+        setCachedUnsplashPhotos(query, photosWithAttribution);
       }
-
       return photosWithAttribution;
     } catch (error) {
       console.error('[ActivityPhotoCarousel] Error fetching Unsplash images:', error);
@@ -256,64 +162,57 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
   };
 
   const fetchGooglePlacesPhotos = async () => {
-    // If we have a place_id, fetch multiple photos from Google Places API
     if (activity.place_id) {
-      // Check cache first
-      if (googlePhotosCache[activity.place_id] && googlePhotosCache[activity.place_id].length > 0) {
-        const cachedPhotoRefs = googlePhotosCache[activity.place_id];
-        const photoData: PhotoData[] = cachedPhotoRefs.map((ref: string) => ({
+      const cachedRefs = getCachedGoogleRefs(activity.place_id);
+      if (cachedRefs && cachedRefs.length > 0) {
+        const photoData: PhotoData[] = cachedRefs.map(ref => ({
           photo_reference: ref,
           place_id: activity.place_id || ''
         }));
-
-        console.log(`[ActivityPhotoCarousel] Using cached Google Places photos (${photoData.length}) for: ${activity.name}`);
         setPhotos(photoData);
-        setUnsplashData([]); // Clear Unsplash data
+        setUnsplashData([]);
         return;
       }
 
       try {
-        console.log(`[ActivityPhotoCarousel] Fetching multiple photos from Google Places for: ${activity.name}`);
-
-        // Fetch place details with photos field
         const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${activity.place_id}&fields=photos&key=${GOOGLE_PLACES_API_KEY}`;
-
         const response = await fetch(url);
         const data = await response.json();
 
-        if (data.status === 'OK' && data.result?.photos && data.result.photos.length > 0) {
-          // Get up to 5 photos (same as Unsplash)
-          const photoRefs = data.result.photos.slice(0, 5).map((photo: any) => photo.photo_reference);
-
-          // Store in cache
-          googlePhotosCache[activity.place_id] = photoRefs;
+        if (data.status === 'OK' && data.result?.photos?.length > 0) {
+          const photoRefs = data.result.photos.slice(0, 5).map((p: any) => p.photo_reference);
+          setCachedGoogleRefs(activity.place_id, photoRefs);
+          try {
+            const firstUrl = await getPhotoUrl(activity.place_id!, photoRefs[0], 400);
+            setCachedFirstPhoto(activity.place_id, activity.name, {
+              source: 'google',
+              url: firstUrl,
+              photoReference: photoRefs[0],
+              place_id: activity.place_id,
+            });
+          } catch (_) {
+            // Card will resolve when it mounts
+          }
 
           const photoData: PhotoData[] = photoRefs.map((ref: string) => ({
             photo_reference: ref,
             place_id: activity.place_id || ''
           }));
-
-          console.log(`[ActivityPhotoCarousel] Found ${photoData.length} Google Places photos for: ${activity.name}`);
           setPhotos(photoData);
-          setUnsplashData([]); // Clear Unsplash data
+          setUnsplashData([]);
           return;
-        } else {
-          console.log(`[ActivityPhotoCarousel] No photos found in Google Places API response for: ${activity.name}`);
         }
       } catch (error) {
-        console.error(`[ActivityPhotoCarousel] Error fetching Google Places photos:`, error);
+        console.error('[ActivityPhotoCarousel] Error fetching Google Places photos:', error);
       }
     }
 
-    // Fallback: Use single photo_reference if available
     if (activity.photo_reference) {
-      const photoData: PhotoData[] = [{
+      setPhotos([{
         photo_reference: activity.photo_reference,
         place_id: activity.place_id || ''
-      }];
-
-      setPhotos(photoData);
-      setUnsplashData([]); // Clear Unsplash data
+      }]);
+      setUnsplashData([]);
     } else {
       setPhotos([]);
     }
