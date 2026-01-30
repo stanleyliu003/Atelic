@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Text, View, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { GOOGLE_PLACES_API_KEY, UNSPLASH_ACCESS_KEY } from '../../../constants/api';
-import { getPhotoUrl as getCachedPhotoUrl } from '../../../services/photoService';
+import { getPhotoUrl as getCachedPhotoUrl, invalidateCacheForPlace } from '../../../services/photoService';
 
 // expo-image blurhash placeholder for smooth loading
 const PLACEHOLDER_BLURHASH = '|rF?hV%2WCj[ayj[a|j[az_NaeWBj@ayfRayfQfQM{M|azj[azf6telebu~qayj[j[fQayWBofofayayayj[fQj[ayayj[ayfjj[ay';
@@ -124,35 +124,17 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [imageError, setImageError] = useState(false);
+    const retryCountRef = useRef(0);
 
     useEffect(() => {
         fetchPhoto();
     }, [activityName, photo_reference, place_id]);
 
-    // Check if image is in expo-image disk cache and log for verification
-    // This hook must be at the top level, not inside conditional returns
-    useEffect(() => {
-        const checkCacheStatus = async () => {
-            if (imageUrl && imageUrl.includes('googleapis.com')) {
-                try {
-                    const cachePath = await Image.getCachePathAsync(imageUrl);
-                    // if (cachePath) {
-                    //     console.log(`[ActivityImage] ✅ CACHE HIT - Google image loaded from disk cache: ${cachePath}`);
-                    // } else {
-                    //     console.log(`[ActivityImage] ❌ CACHE MISS - Google image will be fetched from network: ${imageUrl.substring(0, 80)}...`);
-                    // }
-                } catch (error) {
-                    console.log(`[ActivityImage] Cache check error:`, error);
-                }
-            }
-        };
-        checkCacheStatus();
-    }, [imageUrl]);
-
     const fetchPhoto = async () => {
         try {
             setIsLoading(true);
             setImageError(false);
+            retryCountRef.current = 0;
 
             // Generate cache key - prefer place_id, fallback to activityName
             const cacheKey = place_id || activityName || '';
@@ -160,7 +142,6 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
             // Check cache first
             if (cacheKey && thumbnailCache[cacheKey]) {
                 const cached = thumbnailCache[cacheKey];
-                // console.log(`[ActivityImage] Using cached ${cached.source} thumbnail for: ${cacheKey}`);
                 setImageUrl(cached.url);
 
                 // Trigger onPhotoRefUpdate callback if we have a cached photo reference
@@ -324,6 +305,77 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
         }
     };
 
+    const handleImageError = async () => {
+        // Only retry once to prevent infinite loops
+        if (retryCountRef.current >= 1) {
+            setImageError(true);
+            return;
+        }
+
+        // Only retry for Google-sourced images (not Unsplash)
+        const cacheKey = place_id || activityName || '';
+        const cachedEntry = cacheKey ? thumbnailCache[cacheKey] : null;
+
+        if (cachedEntry && cachedEntry.source === 'unsplash') {
+            setImageError(true);
+            return;
+        }
+
+        // Need a place_id to fetch a fresh photo_reference
+        if (!place_id) {
+            setImageError(true);
+            return;
+        }
+
+        retryCountRef.current += 1;
+        setIsLoading(true);
+        setImageError(false);
+
+        try {
+            // Clear stale URL from both caches
+            if (cacheKey) {
+                delete thumbnailCache[cacheKey];
+            }
+            invalidateCacheForPlace(place_id);
+
+            // Fetch a fresh photo_reference from Google Places Details API (ID Only SKU - free)
+            const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=photos&key=${GOOGLE_PLACES_API_KEY}`;
+            const response = await fetch(detailsUrl);
+            const data = await response.json();
+
+            if (data.status === 'OK' && data.result?.photos?.[0]) {
+                const freshPhotoRef = data.result.photos[0].photo_reference;
+
+                // Re-call Lambda with fresh photo_reference and forceRefresh to bypass stale DynamoDB cache
+                const freshPhotoUrl = await getCachedPhotoUrl(place_id, freshPhotoRef, 400, true);
+
+                // Append cache-busting query param so expo-image doesn't serve
+                // the broken image from its disk cache (same CloudFront URL = same cache key)
+                const cacheBustedUrl = `${freshPhotoUrl}${freshPhotoUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+
+                setImageUrl(cacheBustedUrl);
+                if (cacheKey) {
+                    thumbnailCache[cacheKey] = {
+                        url: cacheBustedUrl,
+                        source: 'google',
+                        photoReference: freshPhotoRef,
+                    };
+                }
+
+                if (onPhotoRefUpdate) {
+                    onPhotoRefUpdate(freshPhotoRef);
+                }
+            } else {
+                setImageError(true);
+            }
+        } catch (error) {
+            console.error('[ActivityImage] Retry failed:', error);
+            setImageError(true);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     // Show loading state
     if (isLoading) {
         return (
@@ -353,8 +405,7 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
             transition={200}
             cachePolicy="disk"
             onError={() => {
-                // If image fails to load, show error
-                setImageError(true);
+                handleImageError();
             }}
         />
     );

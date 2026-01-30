@@ -25,5 +25,7 @@
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.share-services</string>
 	</dict>
+	<key>LambdaEndpoint</key>
+	<string>https://4waslmaifuc4dt7cwpoekuowwq0wcmql.lambda-url.us-east-1.on.aws/</string>
 </dict>
 </plist>

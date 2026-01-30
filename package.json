@@ -7,7 +7,8 @@
     "ios": "expo run:ios",
     "android": "expo run:android",
     "update-oauth": "node scripts/update-oauth-domain.js",
-    "postinstall": "node scripts/generate-aws-exports.js && node scripts/update-oauth-domain.js"
+    "update-share-extension": "node scripts/update-share-extension-config.js",
+    "postinstall": "node scripts/generate-aws-exports.js && node scripts/update-oauth-domain.js && node scripts/update-share-extension-config.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",

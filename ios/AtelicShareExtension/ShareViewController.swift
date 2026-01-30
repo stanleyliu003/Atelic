@@ -15,7 +15,10 @@ class ShareViewController: UIViewController {
 
     // MARK: - Properties
     private let appGroupID = "group.com.atelic.shared"
-    private let lambdaEndpoint = "https://adetk4ycvtm7wkwbzppbleegra0auhxi.lambda-url.us-east-1.on.aws/"
+    private var lambdaEndpoint: String {
+        Bundle.main.object(forInfoDictionaryKey: "LambdaEndpoint") as? String
+            ?? "https://adetk4ycvtm7wkwbzppbleegra0auhxi.lambda-url.us-east-1.on.aws/"
+    }
     private let atelicOrange = UIColor(red: 0.95, green: 0.39, blue: 0.02, alpha: 1.0)
     private let successGreen = UIColor(red: 0.20, green: 0.78, blue: 0.35, alpha: 1.0)
 

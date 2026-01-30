@@ -399,7 +399,7 @@ type AppVersionConfig {
    getUserProfile(username: String, userID: String): UserProfileStorage @function(name: "getUserProfile-${env}") @auth(rules: [{ allow: public }])
    getVersionConfig(platform: String!, environment: String!): AppVersionConfig @function(name: "getVersionConfig-${env}") @auth(rules: [{ allow: public }])
    getSavedPlaces(userID: String!, city: String): SavedPlacesResult @function(name: "getSavedPlaces-${env}") @auth(rules: [{ allow: public }])
-   getPlacePhoto(placeId: String!, photoReference: String!, maxWidth: Int): PhotoResult @function(name: "getPlacePhoto-${env}") @auth(rules: [{ allow: public }])
+   getPlacePhoto(placeId: String!, photoReference: String!, maxWidth: Int, forceRefresh: Boolean): PhotoResult @function(name: "getPlacePhoto-${env}") @auth(rules: [{ allow: public }])
  }
 
    input WaypointInput {

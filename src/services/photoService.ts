@@ -17,25 +17,27 @@ const sessionCache = new Map<string, string>();
  * @param placeId - Google place_id
  * @param photoReference - Google photo_reference
  * @param maxWidth - Max width of photo (default 400)
+ * @param forceRefresh - Skip DynamoDB cache and re-fetch from Google (for expired photos)
  * @returns Photo URL (CloudFront cached or Google fallback)
  */
 export async function getPhotoUrl(
     placeId: string,
     photoReference: string,
-    maxWidth: number = 400
+    maxWidth: number = 400,
+    forceRefresh: boolean = false
 ): Promise<string> {
     // Check session cache first (avoid Lambda call for same photo in same session)
-    // Include photoReference in cache key to support multiple photos per place
+    // Skip session cache when forceRefresh is true (photo was expired)
     const cacheKey = `${placeId}_${photoReference}_${maxWidth}`;
-    if (sessionCache.has(cacheKey)) {
+    if (!forceRefresh && sessionCache.has(cacheKey)) {
         return sessionCache.get(cacheKey)!;
     }
 
     try {
         // Call Lambda to get cached URL or fetch new one
         const result = await API.graphql(graphqlOperation(`
-            query GetPlacePhoto($placeId: String!, $photoReference: String!, $maxWidth: Int) {
-                getPlacePhoto(placeId: $placeId, photoReference: $photoReference, maxWidth: $maxWidth) {
+            query GetPlacePhoto($placeId: String!, $photoReference: String!, $maxWidth: Int, $forceRefresh: Boolean) {
+                getPlacePhoto(placeId: $placeId, photoReference: $photoReference, maxWidth: $maxWidth, forceRefresh: $forceRefresh) {
                     photoUrl
                     cached
                     fallback
@@ -44,10 +46,12 @@ export async function getPhotoUrl(
         `, {
             placeId,
             photoReference,
-            maxWidth
+            maxWidth,
+            forceRefresh
         })) as { data: { getPlacePhoto: PhotoResult } };
 
-        const photoUrl = result.data.getPlacePhoto.photoUrl;
+        const photoResult = result.data.getPlacePhoto;
+        const photoUrl = photoResult.photoUrl;
 
         if (photoUrl) {
             // Store in session cache
@@ -92,6 +96,25 @@ export async function preloadPhotos(
  */
 export function clearPhotoCache(): void {
     sessionCache.clear();
+}
+
+/**
+ * Invalidate cached photo entries for a specific place.
+ * Removes all session cache entries whose key starts with the given placeId.
+ * Call this when a cached photo URL is discovered to be expired/broken.
+ *
+ * @param placeId - Google place_id to invalidate
+ */
+export function invalidateCacheForPlace(placeId: string): void {
+    const keysToDelete: string[] = [];
+    for (const key of sessionCache.keys()) {
+        if (key.startsWith(`${placeId}_`)) {
+            keysToDelete.push(key);
+        }
+    }
+    for (const key of keysToDelete) {
+        sessionCache.delete(key);
+    }
 }
 
 /**

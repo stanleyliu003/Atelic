@@ -67,7 +67,10 @@
       "Bash(aws cloudformation list-stack-resources:*)",
       "Bash(npx eslint:*)",
       "Bash(ffmpeg:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(aws lambda get-function-url-config:*)",
+      "Bash(aws lambda create-function-url-config:*)",
+      "Bash(aws lambda add-permission:*)"
     ],
     "deny": [],
     "ask": [],

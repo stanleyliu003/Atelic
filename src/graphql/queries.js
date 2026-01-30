@@ -557,11 +557,13 @@ export const getPlacePhoto = /* GraphQL */ `
     $placeId: String!
     $photoReference: String!
     $maxWidth: Int
+    $forceRefresh: Boolean
   ) {
     getPlacePhoto(
       placeId: $placeId
       photoReference: $photoReference
       maxWidth: $maxWidth
+      forceRefresh: $forceRefresh
     ) {
       photoUrl
       cached

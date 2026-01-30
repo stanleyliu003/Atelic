@@ -24,7 +24,7 @@ const PHOTO_BUCKET = process.env.PHOTO_S3BUCKET_NAME;
 const CLOUDFRONT_DOMAIN = process.env.CLOUDFRONT_DOMAIN;
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 const CACHE_TABLE = process.env.STORAGE_PLACESAPIACTIVITYSTORAGE_NAME;
-const PHOTO_CACHE_TTL_DAYS = 30;
+const PHOTO_CACHE_TTL_DAYS = 90;
 
 /**
  * Check if photo is cached in DynamoDB
@@ -125,7 +125,7 @@ async function uploadToS3(placeId, photoReference, maxWidth, buffer, contentType
         Key: s3Key,
         Body: buffer,
         ContentType: contentType,
-        CacheControl: 'max-age=2592000' // 30 days
+        CacheControl: 'max-age=7776000' // 90 days
     }));
 
     console.log(`[getPlacePhoto] Uploaded to S3: ${s3Key}`);
@@ -171,18 +171,20 @@ exports.handler = async (event) => {
     console.log('[getPlacePhoto] Event:', JSON.stringify(event));
 
     // Parse input - handle both GraphQL and direct invocation
-    let placeId, photoReference, maxWidth;
+    let placeId, photoReference, maxWidth, forceRefresh;
 
     if (event.arguments) {
         // GraphQL invocation
         placeId = event.arguments.placeId;
         photoReference = event.arguments.photoReference;
         maxWidth = event.arguments.maxWidth || 400;
+        forceRefresh = event.arguments.forceRefresh || false;
     } else {
         // Direct invocation
         placeId = event.placeId;
         photoReference = event.photoReference;
         maxWidth = event.maxWidth || 400;
+        forceRefresh = event.forceRefresh || false;
     }
 
     if (!placeId || !photoReference) {
@@ -196,14 +198,18 @@ exports.handler = async (event) => {
     }
 
     try {
-        // Step 1: Check cache
-        const cachedUrl = await getCachedPhotoUrl(placeId, photoReference, maxWidth);
-        if (cachedUrl) {
-            return {
-                statusCode: 200,
-                photoUrl: cachedUrl,
-                cached: true
-            };
+        // Step 1: Check cache (skip if forceRefresh)
+        if (!forceRefresh) {
+            const cachedUrl = await getCachedPhotoUrl(placeId, photoReference, maxWidth);
+            if (cachedUrl) {
+                return {
+                    statusCode: 200,
+                    photoUrl: cachedUrl,
+                    cached: true
+                };
+            }
+        } else {
+            console.log(`[getPlacePhoto] Force refresh requested - skipping cache for ${placeId}`);
         }
 
         // Step 2: Fetch from Google
