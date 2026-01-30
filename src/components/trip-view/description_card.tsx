@@ -253,10 +253,16 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
   };
 
   const handleSharePress = async () => {
-    // Create Google Maps link using place_id for most accurate location
-    const mapsUrl = liveActivity.place_id
-      ? `https://www.google.com/maps/place/?q=place_id:${liveActivity.place_id}`
-      : `https://www.google.com/maps/search/?api=1&query=${liveActivity.lat},${liveActivity.lng}`;
+    // Google Maps Search URL (api=1 required). Use query_place_id when available for correct place details.
+    const base = 'https://www.google.com/maps/search/?api=1';
+    const mapsUrl =
+      liveActivity.place_id && liveActivity.lat != null && liveActivity.lng != null
+        ? `${base}&query=${encodeURIComponent(liveActivity.lat + ',' + liveActivity.lng)}&query_place_id=${encodeURIComponent(liveActivity.place_id)}`
+        : liveActivity.lat != null && liveActivity.lng != null
+          ? `${base}&query=${liveActivity.lat},${liveActivity.lng}`
+          : '';
+
+    if (!mapsUrl) return;
 
     try {
       const supported = await Linking.canOpenURL(mapsUrl);
@@ -562,7 +568,18 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
 
         {/* Action Buttons Row */}
         <View style={styles.actionButtonsRow}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${liveActivity.lat},${liveActivity.lng}`)}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              if (liveActivity.lat == null || liveActivity.lng == null) return;
+              const dirBase = 'https://www.google.com/maps/dir/?api=1';
+              const destCoords = `${liveActivity.lat},${liveActivity.lng}`;
+              const dest = liveActivity.place_id
+                ? `&destination=${encodeURIComponent(liveActivity.name || destCoords)}&destination_place_id=${encodeURIComponent(liveActivity.place_id)}`
+                : `&destination=${destCoords}`;
+              Linking.openURL(dirBase + dest);
+            }}
+          >
             <MaterialIcons name="directions" size={20} color="#333" />
             <Text style={styles.actionButtonText}>Directions</Text>
           </TouchableOpacity>
