@@ -722,6 +722,14 @@
     }
   },
   "parameters": {
+    "AMPLIFY_function_CityCategories_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "CityCategories"
+        }
+      ]
+    },
     "AMPLIFY_function_CityCategories_geminiApiKey": {
       "usedBy": [
         {
@@ -735,6 +743,38 @@
         {
           "category": "function",
           "resourceName": "CityCategories"
+        }
+      ]
+    },
+    "AMPLIFY_function_CityCategories_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "CityCategories"
+        }
+      ]
+    },
+    "AMPLIFY_function_CreateTripStorage_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "CreateTripStorage"
+        }
+      ]
+    },
+    "AMPLIFY_function_CreateTripStorage_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "CreateTripStorage"
+        }
+      ]
+    },
+    "AMPLIFY_function_GetRoute_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "GetRoute"
         }
       ]
     },
@@ -754,6 +794,70 @@
         }
       ]
     },
+    "AMPLIFY_function_GetRoute_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "GetRoute"
+        }
+      ]
+    },
+    "AMPLIFY_function_deleteAccount_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "deleteAccount"
+        }
+      ]
+    },
+    "AMPLIFY_function_deleteAccount_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "deleteAccount"
+        }
+      ]
+    },
+    "AMPLIFY_function_deleteTrip_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "deleteTrip"
+        }
+      ]
+    },
+    "AMPLIFY_function_deleteTrip_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "deleteTrip"
+        }
+      ]
+    },
+    "AMPLIFY_function_exportUserDataAnalytics_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "exportUserDataAnalytics"
+        }
+      ]
+    },
+    "AMPLIFY_function_exportUserDataAnalytics_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "exportUserDataAnalytics"
+        }
+      ]
+    },
+    "AMPLIFY_function_generateCategoryActivities_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "generateCategoryActivities"
+        }
+      ]
+    },
     "AMPLIFY_function_generateCategoryActivities_geminiApiKey": {
       "usedBy": [
         {
@@ -763,6 +867,14 @@
       ]
     },
     "AMPLIFY_function_generateCategoryActivities_googlePlacesApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "generateCategoryActivities"
+        }
+      ]
+    },
+    "AMPLIFY_function_generateCategoryActivities_s3Key": {
       "usedBy": [
         {
           "category": "function",
@@ -786,6 +898,30 @@
         }
       ]
     },
+    "AMPLIFY_function_getFlightInfo_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFlightInfo_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
+    "AMPLIFY_function_getLocationCoordinates_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getLocationCoordinates"
+        }
+      ]
+    },
     "AMPLIFY_function_getLocationCoordinates_geminiApiKey": {
       "usedBy": [
         {
@@ -802,7 +938,23 @@
         }
       ]
     },
+    "AMPLIFY_function_getLocationCoordinates_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getLocationCoordinates"
+        }
+      ]
+    },
     "AMPLIFY_function_getPlacePhoto_cloudfrontDomain": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getPlacePhoto"
+        }
+      ]
+    },
+    "AMPLIFY_function_getPlacePhoto_deploymentBucketName": {
       "usedBy": [
         {
           "category": "function",
@@ -826,7 +978,135 @@
         }
       ]
     },
+    "AMPLIFY_function_getPlacePhoto_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getPlacePhoto"
+        }
+      ]
+    },
+    "AMPLIFY_function_getSavedPlaces_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getSavedPlaces"
+        }
+      ]
+    },
+    "AMPLIFY_function_getSavedPlaces_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getSavedPlaces"
+        }
+      ]
+    },
+    "AMPLIFY_function_getTripIDs_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getTripIDs"
+        }
+      ]
+    },
+    "AMPLIFY_function_getTripIDs_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getTripIDs"
+        }
+      ]
+    },
+    "AMPLIFY_function_getUserProfile_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getUserProfile"
+        }
+      ]
+    },
+    "AMPLIFY_function_getUserProfile_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getUserProfile"
+        }
+      ]
+    },
+    "AMPLIFY_function_getUserTrips_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getUserTrips"
+        }
+      ]
+    },
+    "AMPLIFY_function_getUserTrips_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getUserTrips"
+        }
+      ]
+    },
+    "AMPLIFY_function_getVersionConfig_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getVersionConfig"
+        }
+      ]
+    },
+    "AMPLIFY_function_getVersionConfig_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getVersionConfig"
+        }
+      ]
+    },
+    "AMPLIFY_function_manageCollaborators_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "manageCollaborators"
+        }
+      ]
+    },
+    "AMPLIFY_function_manageCollaborators_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "manageCollaborators"
+        }
+      ]
+    },
+    "AMPLIFY_function_processAppsFlyerAttributionV2_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processAppsFlyerAttributionV2"
+        }
+      ]
+    },
+    "AMPLIFY_function_processAppsFlyerAttributionV2_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processAppsFlyerAttributionV2"
+        }
+      ]
+    },
     "AMPLIFY_function_processInstagramShare_apifyApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processInstagramShare"
+        }
+      ]
+    },
+    "AMPLIFY_function_processInstagramShare_deploymentBucketName": {
       "usedBy": [
         {
           "category": "function",
@@ -839,6 +1119,38 @@
         {
           "category": "function",
           "resourceName": "processInstagramShare"
+        }
+      ]
+    },
+    "AMPLIFY_function_processInstagramShare_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processInstagramShare"
+        }
+      ]
+    },
+    "AMPLIFY_function_registerDeviceToken_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "registerDeviceToken"
+        }
+      ]
+    },
+    "AMPLIFY_function_registerDeviceToken_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "registerDeviceToken"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchAutocomplete_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchAutocomplete"
         }
       ]
     },
@@ -858,6 +1170,22 @@
         }
       ]
     },
+    "AMPLIFY_function_searchAutocomplete_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchAutocomplete"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchBarActivities_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchBarActivities"
+        }
+      ]
+    },
     "AMPLIFY_function_searchBarActivities_geminiApiKey": {
       "usedBy": [
         {
@@ -874,11 +1202,91 @@
         }
       ]
     },
+    "AMPLIFY_function_searchBarActivities_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchBarActivities"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchUsers_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchUsers"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchUsers_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchUsers"
+        }
+      ]
+    },
+    "AMPLIFY_function_sendPushNotification_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "sendPushNotification"
+        }
+      ]
+    },
+    "AMPLIFY_function_sendPushNotification_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "sendPushNotification"
+        }
+      ]
+    },
     "AMPLIFY_function_syncUserProfilesAmplitudeBI_amplitudeApiKey": {
       "usedBy": [
         {
           "category": "function",
           "resourceName": "syncUserProfilesAmplitudeBI"
+        }
+      ]
+    },
+    "AMPLIFY_function_syncUserProfilesAmplitudeBI_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "syncUserProfilesAmplitudeBI"
+        }
+      ]
+    },
+    "AMPLIFY_function_syncUserProfilesAmplitudeBI_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "syncUserProfilesAmplitudeBI"
+        }
+      ]
+    },
+    "AMPLIFY_function_updateUserProfile_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "updateUserProfile"
+        }
+      ]
+    },
+    "AMPLIFY_function_updateUserProfile_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "updateUserProfile"
+        }
+      ]
+    },
+    "AMPLIFY_function_wishlistAnalyzer_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "wishlistAnalyzer"
         }
       ]
     },
@@ -891,6 +1299,14 @@
       ]
     },
     "AMPLIFY_function_wishlistAnalyzer_googlePlacesApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "wishlistAnalyzer"
+        }
+      ]
+    },
+    "AMPLIFY_function_wishlistAnalyzer_s3Key": {
       "usedBy": [
         {
           "category": "function",
