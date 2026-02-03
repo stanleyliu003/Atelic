@@ -9,8 +9,24 @@
 const fs = require('fs');
 const path = require('path');
 
-// Determine environment from AMPLIFY_ENV
-const amplifyEnv = process.env.AMPLIFY_ENV || 'staging';
+// Determine environment from AMPLIFY_ENV, falling back to Amplify's local config
+let amplifyEnv = process.env.AMPLIFY_ENV || '';
+
+if (!amplifyEnv) {
+  try {
+    const localEnvPath = path.join(__dirname, '../amplify/.config/local-env-info.json');
+    const localEnv = JSON.parse(fs.readFileSync(localEnvPath, 'utf8'));
+    amplifyEnv = localEnv.envName || '';
+  } catch (_) {
+    // local-env-info.json not found
+  }
+}
+
+if (!amplifyEnv) {
+  console.error('❌ Could not determine Amplify environment. Set AMPLIFY_ENV or run amplify init.');
+  process.exit(1);
+}
+
 const isProduction = amplifyEnv.toLowerCase() === 'production';
 
 console.log(`🔧 Generating aws-exports.js for environment: ${amplifyEnv}`);
