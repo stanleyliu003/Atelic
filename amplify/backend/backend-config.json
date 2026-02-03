@@ -737,6 +737,166 @@
           "resourceName": "CityCategories"
         }
       ]
+    },
+    "AMPLIFY_function_GetRoute_geminiApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "GetRoute"
+        }
+      ]
+    },
+    "AMPLIFY_function_GetRoute_googlePlacesApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "GetRoute"
+        }
+      ]
+    },
+    "AMPLIFY_function_generateCategoryActivities_geminiApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "generateCategoryActivities"
+        }
+      ]
+    },
+    "AMPLIFY_function_generateCategoryActivities_googlePlacesApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "generateCategoryActivities"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFlightInfo_amadeusApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFlightInfo_amadeusApiSecretKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFlightInfo"
+        }
+      ]
+    },
+    "AMPLIFY_function_getLocationCoordinates_geminiApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getLocationCoordinates"
+        }
+      ]
+    },
+    "AMPLIFY_function_getLocationCoordinates_googlePlacesApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getLocationCoordinates"
+        }
+      ]
+    },
+    "AMPLIFY_function_getPlacePhoto_cloudfrontDomain": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getPlacePhoto"
+        }
+      ]
+    },
+    "AMPLIFY_function_getPlacePhoto_googlePlacesApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getPlacePhoto"
+        }
+      ]
+    },
+    "AMPLIFY_function_getPlacePhoto_photoS3BucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getPlacePhoto"
+        }
+      ]
+    },
+    "AMPLIFY_function_processInstagramShare_apifyApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processInstagramShare"
+        }
+      ]
+    },
+    "AMPLIFY_function_processInstagramShare_geminiApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "processInstagramShare"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchAutocomplete_geminiApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchAutocomplete"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchAutocomplete_googlePlacesApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchAutocomplete"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchBarActivities_geminiApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchBarActivities"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchBarActivities_googlePlacesApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchBarActivities"
+        }
+      ]
+    },
+    "AMPLIFY_function_syncUserProfilesAmplitudeBI_amplitudeApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "syncUserProfilesAmplitudeBI"
+        }
+      ]
+    },
+    "AMPLIFY_function_wishlistAnalyzer_geminiApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "wishlistAnalyzer"
+        }
+      ]
+    },
+    "AMPLIFY_function_wishlistAnalyzer_googlePlacesApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "wishlistAnalyzer"
+        }
+      ]
     }
   },
   "storage": {
