@@ -1,9 +1,9 @@
 import { useFonts } from 'expo-font';
 import { Stack, useRouter } from "expo-router";
 import { CreateTripProvider } from '../context/CreateTripContext';
-import { View, Text, Platform, Linking } from 'react-native';
+import { View, Text, Platform, Linking, InteractionManager } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Auth } from 'aws-amplify';
 import { retrieveTripFromCloud } from '../src/services/lambdaService';
 import appsFlyer from 'react-native-appsflyer';
@@ -29,25 +29,57 @@ export default function RootLayout() {
     'outfit-bold': require('../assets/fonts/Outfit-Bold.ttf'),
   });
 
-  // Initialize AppsFlyer SDK
+  // Track whether ATT has been requested to avoid duplicate prompts
+  const attRequestedRef = useRef(false);
+  const [appReady, setAppReady] = useState(false);
+
+  // Request ATT permission after the app is fully visible on screen.
+  // This is separated from AppsFlyer init to ensure the dialog appears
+  // reliably on iPad (iPhone compatibility mode) and newer iPadOS versions.
+  useEffect(() => {
+    if (Platform.OS !== 'ios' || attRequestedRef.current || !appReady) return;
+
+    const requestATT = async () => {
+      try {
+        // Check current status first — if already determined, skip the request
+        const { status: currentStatus } = await Tracking.getTrackingPermissionsAsync();
+        console.log('[ATT] Current permission status:', currentStatus);
+
+        if (currentStatus === 'undetermined') {
+          // Wait for all pending UI interactions/animations to finish,
+          // then add a delay to ensure the app window is fully visible.
+          // This is critical for iPad compatibility mode where the window
+          // may not be ready when useEffect first fires.
+          await new Promise(resolve => {
+            InteractionManager.runAfterInteractions(() => {
+              setTimeout(resolve, 1500);
+            });
+          });
+
+          const { status } = await Tracking.requestTrackingPermissionsAsync();
+          console.log('[ATT] Permission granted:', status);
+        }
+      } catch (error) {
+        console.error('[ATT] Failed to request permission:', error);
+      }
+      attRequestedRef.current = true;
+    };
+
+    requestATT();
+  }, [appReady]);
+
+  // Initialize AppsFlyer SDK (independent of ATT — SDK handles ATT wait internally)
   useEffect(() => {
     const initAppsFlyer = async () => {
       try {
-        // Request App Tracking Transparency (ATT) permission on iOS 14.5+
-        if (Platform.OS === 'ios') {
-          const { status } = await Tracking.requestTrackingPermissionsAsync();
-          console.log('[AppsFlyer] ATT Permission Status:', status);
-        }
-
-        // Initialize AppsFlyer SDK
         appsFlyer.initSdk(
           {
             devKey: process.env.EXPO_PUBLIC_APPSFLYER_DEV_KEY,
             appId: process.env.EXPO_PUBLIC_APPSFLYER_APPLE_APP_ID,
-            isDebug: __DEV__, // Enable debug logs in development
-            onInstallConversionDataListener: true, // Listen for attribution data
-            onDeepLinkListener: false, // Deep linking disabled for now
-            timeToWaitForATTUserAuthorization: 10, // Wait up to 10 seconds for ATT
+            isDebug: __DEV__,
+            onInstallConversionDataListener: true,
+            onDeepLinkListener: false,
+            timeToWaitForATTUserAuthorization: 10,
           },
           (result) => {
             console.log('[AppsFlyer] SDK initialized successfully:', result);
@@ -57,26 +89,11 @@ export default function RootLayout() {
           }
         );
 
-        // Listen for install attribution data
         appsFlyer.onInstallConversionData((data) => {
           console.log('[AppsFlyer] Attribution data received:', JSON.stringify(data, null, 2));
-          
-          // Attribution data structure:
-          // {
-          //   status: "success",
-          //   type: "onInstallConversionDataLoaded",
-          //   data: {
-          //     af_status: "Organic" or "Non-organic",
-          //     media_source: "facebook", "instagram", etc.
-          //     campaign: "summer_sale_2026",
-          //     is_first_launch: true/false,
-          //     ...
-          //   }
-          // }
         });
 
-        // Set CUID (Customer User ID) if user is already logged in
-        // This enables cross-device tracking for returning users
+        // Set CUID if user is already logged in
         try {
           const user = await Auth.currentAuthenticatedUser();
           if (user?.username) {
@@ -84,7 +101,6 @@ export default function RootLayout() {
             console.log('[AppsFlyer] Set CUID for logged-in user:', user.username);
           }
         } catch (authErr) {
-          // User not logged in yet - CUID will be set after signup/login
           console.log('[AppsFlyer] No authenticated user yet, CUID will be set after login');
         }
 
@@ -230,14 +246,16 @@ export default function RootLayout() {
 
   return (
     <CreateTripProvider>
-      <Stack screenOptions={{
-        headerShown: false
-      }}>
-        <Stack.Screen name="index" options={{
+      <View style={{ flex: 1 }} onLayout={() => setAppReady(true)}>
+        <Stack screenOptions={{
           headerShown: false
-        }}/> 
-        <Stack.Screen name="(tabs)"/>
-      </Stack> 
+        }}>
+          <Stack.Screen name="index" options={{
+            headerShown: false
+          }}/>
+          <Stack.Screen name="(tabs)"/>
+        </Stack>
+      </View>
     </CreateTripProvider>
   );
 }
