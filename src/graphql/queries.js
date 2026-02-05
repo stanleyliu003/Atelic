@@ -570,6 +570,74 @@ export const getPlacePhoto = /* GraphQL */ `
     }
   }
 `;
+export const getFollowers = /* GraphQL */ `
+  query GetFollowers($username: String!, $nextToken: String, $limit: Int) {
+    getFollowers(username: $username, nextToken: $nextToken, limit: $limit) {
+      followers {
+        username
+        fullName
+        profilePhotoUrl
+        bio
+        isPrivate
+        followersCount
+        followingCount
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getFollowing = /* GraphQL */ `
+  query GetFollowing($username: String!, $nextToken: String, $limit: Int) {
+    getFollowing(username: $username, nextToken: $nextToken, limit: $limit) {
+      following {
+        username
+        fullName
+        profilePhotoUrl
+        bio
+        isPrivate
+        followersCount
+        followingCount
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getUserStatistics = /* GraphQL */ `
+  query GetUserStatistics($username: String!) {
+    getUserStatistics(username: $username) {
+      countriesVisited
+      citiesVisited
+      totalTrips
+      tripsCompleted
+      tripsUpcoming
+      __typename
+    }
+  }
+`;
+export const searchUsersPublic = /* GraphQL */ `
+  query SearchUsersPublic($searchTerm: String!, $currentUsername: String!) {
+    searchUsersPublic(
+      searchTerm: $searchTerm
+      currentUsername: $currentUsername
+    ) {
+      userID
+      email
+      fullName
+      username
+      isPrivate
+      isFollowing
+      isFollower
+      hasPendingRequest
+      profilePhotoUrl
+      bio
+      __typename
+    }
+  }
+`;
 export const getWishlistAnalysis = /* GraphQL */ `
   query GetWishlistAnalysis($id: ID!) {
     getWishlistAnalysis(id: $id) {
@@ -719,6 +787,53 @@ export const listOperationsByTrip = /* GraphQL */ `
         ttl
         createdAt
         updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getFollowRequests = /* GraphQL */ `
+  query GetFollowRequests(
+    $targetUsername: String!
+    $nextToken: String
+    $limit: Int
+  ) {
+    getFollowRequests(
+      targetUsername: $targetUsername
+      nextToken: $nextToken
+      limit: $limit
+    ) {
+      requests {
+        requesterUsername
+        targetUsername
+        createdAt
+        status
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getFeed = /* GraphQL */ `
+  query GetFeed($username: String!, $nextToken: String, $limit: Int) {
+    getFeed(username: $username, nextToken: $nextToken, limit: $limit) {
+      trips {
+        tripId
+        tripTitle
+        selectedCity
+        tripPhotoReference
+        startDate
+        endDate
+        tripLength
+        createdAt
+        updatedAt
+        ownerUsername
+        ownerFullName
+        ownerProfilePhotoUrl
+        isOwnTrip
         __typename
       }
       nextToken

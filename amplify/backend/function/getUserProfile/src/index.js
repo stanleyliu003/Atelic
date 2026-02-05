@@ -146,11 +146,19 @@ async function createInitialProfile(username, userID) {
     followersCount: 0,
     followingCount: 0,
     friends: [],
+    isPrivateAccount: false,  // Default to public account
 
     // Profile information
     bio: null,
     profilePhotoUrl: null,
     socialLinks: {},
+
+    // Travel statistics (computed from trips)
+    countriesVisited: 0,
+    citiesVisited: 0,
+    countriesVisitedList: [],
+    citiesVisitedList: [],
+    statsLastUpdated: null,
 
     // Usage stats
     accountCreatedAt: now,

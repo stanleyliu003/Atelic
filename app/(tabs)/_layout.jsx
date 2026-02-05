@@ -12,10 +12,24 @@ export default function TabLayout() {
         tabBarActiveTintColor:Colors.PRIMARY
     }}>
 
+      <Tabs.Screen name = "feed"
+        options={{
+            tabBarLabel:"Feed",
+            tabBarIcon:({color, focused})=><Ionicons name={focused ? "home" : "home-outline"}
+            size={24} color={color} />
+        }}
+      />
+      <Tabs.Screen name = "explore"
+        options={{
+            tabBarLabel:"Explore",
+            tabBarIcon:({color, focused})=><Ionicons name={focused ? "search" : "search-outline"}
+            size={24} color={color} />
+        }}
+      />
       <Tabs.Screen name = "saved_places"
         options={{
-            tabBarLabel:"Saved Places",
-            tabBarIcon:({color, focused})=><Ionicons name={focused ? "bookmark" : "bookmark-outline"} 
+            tabBarLabel:"Saved",
+            tabBarIcon:({color, focused})=><Ionicons name={focused ? "bookmark" : "bookmark-outline"}
             size={24} color={color} />
         }}
       />
@@ -33,9 +47,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen name = "profile"
       options={{
-            tabBarLabel:"Profile",
-            tabBarIcon:({color, focused})=><FontAwesome5 name={focused ? "user-alt" : "user"}
-            size={24} color={color} />
+            href: null, // Hide this tab from the tab bar
       }}
       />
     </Tabs>

@@ -173,7 +173,7 @@ export function TripCarouselImage({
       }
 
       if (!UNSPLASH_ACCESS_KEY) {
-        console.error('[TripCarouselImage] UNSPLASH_ACCESS_KEY is not configured!');
+        console.warn('[TripCarouselImage] UNSPLASH_ACCESS_KEY is not configured, skipping Unsplash');
         return null;
       }
 
@@ -196,7 +196,12 @@ export function TripCarouselImage({
           const response = await fetch(url);
 
           if (!response.ok) {
-            console.error('[TripCarouselImage] Unsplash API error:', response.status, response.statusText);
+            // 403 usually means rate limit or invalid API key - fail silently
+            if (response.status === 403) {
+              console.warn('[TripCarouselImage] Unsplash API rate limit or invalid key, falling back to Google Places');
+              break; // Stop trying Unsplash, fall back to Google Places
+            }
+            console.warn('[TripCarouselImage] Unsplash API error:', response.status, response.statusText);
             continue; // Try next strategy
           }
 
@@ -227,14 +232,14 @@ export function TripCarouselImage({
             return photoData[index % photoData.length];
           }
         } catch (error) {
-          console.error(`[TripCarouselImage] Error with search "${searchQuery}":`, error);
+          console.warn(`[TripCarouselImage] Error with search "${searchQuery}":`, error);
           continue; // Try next strategy
         }
       }
 
       return null;
     } catch (error) {
-      console.error('[TripCarouselImage] Error fetching Unsplash images:', error);
+      console.warn('[TripCarouselImage] Error fetching Unsplash images:', error);
       return null;
     }
   };

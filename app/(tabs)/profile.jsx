@@ -2,7 +2,7 @@ import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking, PanResponder, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking, PanResponder, Image, Switch } from 'react-native';
 import { Auth, API } from 'aws-amplify';
 import { useEffect, useState, useRef } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -15,6 +15,10 @@ import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import { TripCarouselImage } from '../../src/components/profile/TripCarouselImage';
 import { clearAuthData } from '../../src/services/appGroupsService';
 import Carousel from 'react-native-reanimated-carousel';
+import { ProfileHeader } from '../../src/components/profile/ProfileHeader';
+import { ProfileStats } from '../../src/components/profile/ProfileStats';
+import * as customQueries from '../../src/graphql/customQueries';
+import * as customMutations from '../../src/graphql/customMutations';
 
 const { width: screenWidth } = Dimensions.get('window');
 const CAROUSEL_WIDTH = screenWidth - 52; // 25px padding each side + 1px border each side
@@ -46,6 +50,15 @@ export default function Profile() {
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
   const [deleteAccountChecked, setDeleteAccountChecked] = useState(false);
   const [leavingTripId, setLeavingTripId] = useState(null);
+
+  // Social features state
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);
+  const [bio, setBio] = useState(null);
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [countriesVisited, setCountriesVisited] = useState(0);
+  const [citiesVisited, setCitiesVisited] = useState(0);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
 
   // PanResponder for swipe down to close settings modal
   const settingsPanResponder = PanResponder.create({
@@ -89,19 +102,70 @@ export default function Profile() {
     }
   }, []);
 
+  const loadUserProfile = useCallback(async (userName) => {
+    if (!userName) return;
+
+    try {
+      const response = await API.graphql({
+        query: customQueries.getUserProfile,
+        variables: { username: userName },
+      });
+
+      const profile = response.data.getUserProfile;
+      if (profile) {
+        setProfilePhotoUrl(profile.profilePhotoUrl);
+        setBio(profile.bio);
+        setIsPrivate(profile.isPrivateAccount || false);
+        setFollowersCount(profile.followersCount || 0);
+        setFollowingCount(profile.followingCount || 0);
+        setCountriesVisited(profile.countriesVisited || 0);
+        setCitiesVisited(profile.citiesVisited || 0);
+      }
+    } catch (error) {
+      console.error('[Profile] Error loading profile:', error);
+    }
+  }, []);
+
+  const loadUserStatistics = useCallback(async (userName) => {
+    if (!userName) return;
+
+    try {
+      const response = await API.graphql({
+        query: customQueries.getUserStatistics,
+        variables: { username: userName },
+      });
+
+      const stats = response.data.getUserStatistics;
+      setCountriesVisited(stats.countriesVisited || 0);
+      setCitiesVisited(stats.citiesVisited || 0);
+    } catch (error) {
+      console.error('[Profile] Error loading statistics:', error);
+    }
+  }, []);
+
   useEffect(() => {
     loadUserData();
   }, [loadUserData]);
 
+  useEffect(() => {
+    if (username) {
+      loadUserProfile(username);
+    }
+  }, [username, loadUserProfile]);
+
   // Reload data every time the screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      console.log('[Profile] useFocusEffect triggered - reloading trips');
+      console.log('[Profile] useFocusEffect triggered - reloading trips and statistics');
       // Reset carousel indices and photo counts when coming back to this screen
       setCarouselIndices({});
       setTripPhotoCounts({});
       loadUserData();
-    }, [])  // Empty dependency array - always reload on focus
+      // Reload statistics to reflect latest trip data
+      if (username) {
+        loadUserStatistics(username);
+      }
+    }, [username, loadUserStatistics])
   );
 
   // Auto-load trip from notification
@@ -444,6 +508,41 @@ export default function Profile() {
     setRefreshing(false);
   }, [loadUserData]);
 
+  // Social feature handlers
+  const handleFollowersPress = () => {
+    router.push(`/profile/followers?username=${username}`);
+  };
+
+  const handleFollowingPress = () => {
+    router.push(`/profile/following?username=${username}`);
+  };
+
+  const handleEditProfile = () => {
+    router.push('/edit-profile');
+  };
+
+  const handlePrivacyToggle = async (newPrivacyValue) => {
+    try {
+      await API.graphql({
+        query: customMutations.updateUserPrivacy,
+        variables: {
+          username: username,
+          isPrivate: newPrivacyValue,
+        },
+      });
+      setIsPrivate(newPrivacyValue);
+      Alert.alert(
+        'Privacy Updated',
+        newPrivacyValue
+          ? 'Your account is now private. New followers will need your approval.'
+          : 'Your account is now public. Anyone can follow you and view your trips.'
+      );
+    } catch (error) {
+      console.error('[Profile] Error updating privacy:', error);
+      Alert.alert('Error', 'Failed to update privacy settings. Please try again.');
+    }
+  };
+
   const handleLogout = async () => {
     try {
       Alert.alert(
@@ -662,11 +761,30 @@ export default function Profile() {
               />
             }
           >
-            {/* Welcome Back Username - always show when we have the username */}
-            {username ? (
-              <Text style={styles.welcomeText}>Welcome back, {username}</Text>
-            ) : null}
-            
+            {/* Profile Header and Stats */}
+            {username && (
+              <>
+                <ProfileHeader
+                  username={username}
+                  fullName={fullName}
+                  profilePhotoUrl={profilePhotoUrl}
+                  bio={bio}
+                  isOwnProfile={true}
+                  isPrivate={isPrivate}
+                  onEditPress={handleEditProfile}
+                />
+                <ProfileStats
+                  countriesVisited={countriesVisited}
+                  citiesVisited={citiesVisited}
+                  totalTrips={ownedTrips.length + sharedTrips.length}
+                  followersCount={followersCount}
+                  followingCount={followingCount}
+                  onFollowersPress={handleFollowersPress}
+                  onFollowingPress={handleFollowingPress}
+                />
+              </>
+            )}
+
             {(ownedTrips.length > 0 || sharedTrips.length > 0) ? (
               <>
                 {/* My Trips Title - scrolls with content */}
@@ -1198,6 +1316,24 @@ export default function Profile() {
 
             {/* Settings Content */}
             <View style={styles.modalContent}>
+              {/* Account Privacy Toggle */}
+              <View style={styles.settingsMenuItem}>
+                <Ionicons name="eye-off-outline" size={24} color={Colors.PRIMARY} />
+                <View style={styles.settingsMenuItemTextContainer}>
+                  <Text style={styles.settingsMenuItemText}>Private Account</Text>
+                  <Text style={styles.settingsMenuItemSubtext}>
+                    Require approval for new followers
+                  </Text>
+                </View>
+                <Switch
+                  value={isPrivate}
+                  onValueChange={handlePrivacyToggle}
+                  trackColor={{ false: Colors.LIGHT_GRAY, true: Colors.ORANGE_LIGHT }}
+                  thumbColor={isPrivate ? Colors.ORANGE : Colors.WHITE}
+                  ios_backgroundColor={Colors.LIGHT_GRAY}
+                />
+              </View>
+
               {/* Privacy Policy */}
               <TouchableOpacity
                 style={styles.settingsMenuItem}
@@ -1686,6 +1822,16 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
     color: Colors.PRIMARY,
+  },
+  settingsMenuItemTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  settingsMenuItemSubtext: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: Colors.GRAY,
+    marginTop: 2,
   },
   logoutMenuItem: {
     marginTop: 3,

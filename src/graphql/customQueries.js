@@ -318,3 +318,107 @@ export const getSavedPlacesDetailed = /* GraphQL */ `
     }
   }
 `;
+
+// Social Features Queries
+
+export const getFollowers = /* GraphQL */ `
+  query GetFollowers($username: String!, $nextToken: String, $limit: Int) {
+    getFollowers(username: $username, nextToken: $nextToken, limit: $limit) {
+      followers {
+        username
+        fullName
+        profilePhotoUrl
+        bio
+        isPrivate
+        followersCount
+        followingCount
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+
+export const getFollowing = /* GraphQL */ `
+  query GetFollowing($username: String!, $nextToken: String, $limit: Int) {
+    getFollowing(username: $username, nextToken: $nextToken, limit: $limit) {
+      following {
+        username
+        fullName
+        profilePhotoUrl
+        bio
+        isPrivate
+        followersCount
+        followingCount
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+
+export const getFollowRequests = /* GraphQL */ `
+  query GetFollowRequests($targetUsername: String!, $nextToken: String, $limit: Int) {
+    getFollowRequests(targetUsername: $targetUsername, nextToken: $nextToken, limit: $limit) {
+      requests {
+        requesterUsername
+        targetUsername
+        createdAt
+        status
+        requesterProfile {
+          username
+          fullName
+          profilePhotoUrl
+          bio
+          isPrivate
+          followersCount
+          followingCount
+          __typename
+        }
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+
+export const getFeed = /* GraphQL */ `
+  query GetFeed($username: String!, $nextToken: String, $limit: Int) {
+    getFeed(username: $username, nextToken: $nextToken, limit: $limit) {
+      trips {
+        tripId
+        tripTitle
+        selectedCity
+        tripPhotoReference
+        startDate
+        endDate
+        tripLength
+        createdAt
+        updatedAt
+        ownerUsername
+        ownerFullName
+        ownerProfilePhotoUrl
+        isOwnTrip
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+
+export const getUserStatistics = /* GraphQL */ `
+  query GetUserStatistics($username: String!) {
+    getUserStatistics(username: $username) {
+      countriesVisited
+      citiesVisited
+      totalTrips
+      tripsCompleted
+      tripsUpcoming
+      __typename
+    }
+  }
+`;
