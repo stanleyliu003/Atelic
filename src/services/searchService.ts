@@ -114,6 +114,7 @@ export async function getPlaceDetails(
             editorial_summary
             primary_type_display_name
             international_phone_number
+            detailsLoaded
             instanceId
             regular_opening_hours {
               open_now
@@ -219,6 +220,7 @@ export async function searchActivities(
             editorial_summary
             primary_type_display_name
             international_phone_number
+            detailsLoaded
             regular_opening_hours {
               open_now
               weekday_text
@@ -255,6 +257,59 @@ export async function searchActivities(
     return response;
   } catch (error) {
     console.error('[searchActivities] GraphQL error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch lazy-loaded place details (Enterprise + Atmosphere fields)
+ * Called on-demand when user opens the description card for an activity
+ * that was loaded with only eager fields (detailsLoaded === false).
+ * @param place_id - The Google Places place_id
+ * @returns Partial Activity with lazy fields (rating, reviews, hours, etc.)
+ */
+export async function fetchPlaceDetailsLazy(
+  place_id: string
+): Promise<Partial<Activity>> {
+  try {
+    const result = await API.graphql(graphqlOperation(`
+      query FetchPlaceDetailsLazy($place_id: String!, $lazyLoad: Boolean!) {
+        fetchPlaceDetailsLazy(place_id: $place_id, lazyLoad: $lazyLoad) {
+          rating
+          user_ratings_total
+          editorial_summary
+          website_uri
+          international_phone_number
+          regular_opening_hours {
+            open_now
+            periods {
+              open { day time }
+              close { day time }
+            }
+            weekday_text
+          }
+          reviews {
+            author_name
+            rating
+            text
+            time
+            author_url
+            profile_photo_url
+          }
+        }
+      }
+    `, { place_id, lazyLoad: true })) as any;
+
+    const lazyData = result?.data?.fetchPlaceDetailsLazy;
+
+    if (!lazyData) {
+      console.warn('[fetchPlaceDetailsLazy] No data returned for place_id:', place_id);
+      return {};
+    }
+
+    return lazyData;
+  } catch (error) {
+    console.error('[fetchPlaceDetailsLazy] GraphQL error:', error);
     throw error;
   }
 }

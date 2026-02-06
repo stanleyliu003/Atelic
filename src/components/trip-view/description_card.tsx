@@ -7,7 +7,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Feather from '@expo/vector-icons/Feather';
 import AntDesign from '@expo/vector-icons/AntDesign';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Image } from 'react-native';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
@@ -15,6 +15,7 @@ import { Activity } from '../../types/activity.types';
 import { ActivityPhotoCarousel } from './activity/ActivityPhotoCarousel';
 import { AddNotesModal } from './activity/add_notes_modal';
 import { useCreateTrip } from '../../../context/CreateTripContext';
+import { fetchPlaceDetailsLazy } from '../../services/searchService';
 
 interface ActivityDetailViewProps {
   activity: Activity;
@@ -156,7 +157,7 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
   };
 
   // Get live activity data from context for real-time updates
-  const { activities, dayActivities } = useCreateTrip();
+  const { activities, dayActivities, updateActivityNotes } = useCreateTrip();
 
   // Find the current activity by instanceId to get live updates
   const getLiveActivity = (): Activity => {
@@ -178,6 +179,43 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
 
   // Use live activity data for display
   const liveActivity = getLiveActivity();
+
+  // Lazy load Enterprise+Atmosphere fields when description card opens
+  // Only triggers for activities created after the New Places API migration (detailsLoaded === false)
+  // Pre-migration activities have detailsLoaded as undefined/null and already have full data
+  const [lazyLoading, setLazyLoading] = useState(false);
+
+  useEffect(() => {
+    // Determine if lazy loading is needed
+    // Case 1: New activities with detailsLoaded === false (created after migration)
+    // Case 2: Legacy activities with detailsLoaded === undefined AND missing lazy fields
+    //   Note: eager load returns reviews: [] (empty array), so check .length not just truthiness
+    const hasReviews = Array.isArray(liveActivity.reviews) ? liveActivity.reviews.length > 0 : !!liveActivity.reviews;
+    const hasHours = !!liveActivity.regular_opening_hours;
+    const needsLazyLoad = liveActivity.place_id && !lazyLoading && (
+      liveActivity.detailsLoaded === false ||
+      (liveActivity.detailsLoaded === undefined && !hasReviews && !hasHours)
+    );
+
+    if (needsLazyLoad) {
+      setLazyLoading(true);
+      fetchPlaceDetailsLazy(liveActivity.place_id)
+        .then((lazyData) => {
+          if (lazyData && liveActivity.instanceId) {
+            updateActivityNotes(liveActivity.instanceId, {
+              ...lazyData,
+              detailsLoaded: true,
+            });
+          }
+        })
+        .catch((error) => {
+          console.error('[ActivityDetailView] Failed to lazy load details:', error);
+        })
+        .finally(() => {
+          setLazyLoading(false);
+        });
+    }
+  }, [liveActivity.detailsLoaded, liveActivity.place_id, liveActivity.reviews, liveActivity.regular_opening_hours]);
 
   // Determine which day/tab this activity belongs to
   const getActivityTab = (): 'wishlist' | string => {
@@ -459,7 +497,6 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
   };
 
   const hoursStatus = getHoursStatus();
-  console.log(`[description_card] Hours status for ${liveActivity.name}:`, hoursStatus);
 
   return (
     <GestureHandlerRootView style={[styles.container, variant === 'wishlist' && styles.containerWishlist]}>

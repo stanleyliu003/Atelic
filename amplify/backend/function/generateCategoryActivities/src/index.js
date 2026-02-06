@@ -262,6 +262,7 @@ exports.handler = async (event) => {
                 editorial_summary: coordData ? coordData.editorial_summary : null,
                 primary_type_display_name: coordData ? coordData.primary_type_display_name : null,
                 international_phone_number: coordData ? coordData.international_phone_number : null,
+                detailsLoaded: coordData ? (coordData.detailsLoaded || false) : false,
             };
 
             // Cache the new activity by place_id for future reuse (WITHOUT photo_reference per Google guidelines)

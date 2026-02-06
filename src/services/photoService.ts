@@ -1,5 +1,5 @@
 import { API, graphqlOperation } from 'aws-amplify';
-import { GOOGLE_PLACES_API_KEY } from '../constants/api';
+import { buildDirectPhotoUrl } from '../utils/googlePhotoUtils';
 
 interface PhotoResult {
     photoUrl: string;
@@ -64,8 +64,8 @@ export async function getPhotoUrl(
     } catch (error) {
         console.warn('[photoService] Failed to get cached photo, falling back to Google URL:', error);
 
-        // Fallback to direct Google URL
-        const fallbackUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photoreference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`;
+        // Fallback to direct Google URL (supports both legacy and new photo ref formats)
+        const fallbackUrl = buildDirectPhotoUrl(photoReference, maxWidth);
 
         // Cache the fallback URL too to avoid repeated failures
         sessionCache.set(cacheKey, fallbackUrl);

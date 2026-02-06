@@ -70,7 +70,8 @@
       "Bash(grep:*)",
       "Bash(aws lambda get-function-url-config:*)",
       "Bash(aws lambda create-function-url-config:*)",
-      "Bash(aws lambda add-permission:*)"
+      "Bash(aws lambda add-permission:*)",
+      "WebFetch(domain:developers.google.com)"
     ],
     "deny": [],
     "ask": [],

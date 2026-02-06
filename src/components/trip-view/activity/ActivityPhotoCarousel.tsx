@@ -6,7 +6,8 @@ import { Activity } from '../../../types/activity.types';
 import { Colors } from '../../../../constants/Colors';
 import { TripCarouselImage } from '../../profile/TripCarouselImage';
 import { useLazyCarousel } from '../../../hooks/useLazyCarousel';
-import { GOOGLE_PLACES_API_KEY, UNSPLASH_ACCESS_KEY } from '../../../constants/api';
+import { UNSPLASH_ACCESS_KEY } from '../../../constants/api';
+import { fetchPhotoRefs } from '../../../utils/googlePhotoUtils';
 import { UnsplashImageWithAttribution } from '../../../types/unsplash.types';
 import UnsplashInfoButton from '../../common/UnsplashInfoButton';
 import { getPhotoUrl } from '../../../services/photoService';
@@ -175,12 +176,10 @@ export function ActivityPhotoCarousel({ activity, height = 250 }: ActivityPhotoC
       }
 
       try {
-        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${activity.place_id}&fields=photos&key=${GOOGLE_PLACES_API_KEY}`;
-        const response = await fetch(url);
-        const data = await response.json();
+        // Fetch photo refs using New Places API (IDs Only = $0)
+        const photoRefs = await fetchPhotoRefs(activity.place_id);
 
-        if (data.status === 'OK' && data.result?.photos?.length > 0) {
-          const photoRefs = data.result.photos.slice(0, 5).map((p: any) => p.photo_reference);
+        if (photoRefs.length > 0) {
           setCachedGoogleRefs(activity.place_id, photoRefs);
           try {
             const firstUrl = await getPhotoUrl(activity.place_id!, photoRefs[0], 400);

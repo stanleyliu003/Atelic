@@ -50,6 +50,7 @@ export const optimizeRoute = /* GraphQL */ `
       }
       source
       sourceUrl
+      detailsLoaded
       __typename
     }
   }
@@ -93,6 +94,7 @@ export const createTrip = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       tripLength
@@ -218,6 +220,7 @@ export const addCollaborator = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       tripLength
@@ -302,6 +305,7 @@ export const removeCollaborator = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       tripLength
@@ -390,6 +394,7 @@ export const updateCollaboratorRole = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       tripLength
@@ -474,6 +479,7 @@ export const createWishlistAnalysis = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       createdAt
@@ -521,6 +527,7 @@ export const updateWishlistAnalysis = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       createdAt
@@ -568,6 +575,7 @@ export const deleteWishlistAnalysis = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       createdAt

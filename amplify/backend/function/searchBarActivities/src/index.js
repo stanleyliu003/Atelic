@@ -173,7 +173,8 @@ async function getPlaceDetailsByPlaceId(placeId, selectedCity, cityBias) {
             reviews: result.reviews || [],
             editorial_summary: result.editorial_summary || null,
             primary_type_display_name: result.primary_type_display_name || null,
-            international_phone_number: result.international_phone_number || null
+            international_phone_number: result.international_phone_number || null,
+            detailsLoaded: result.detailsLoaded || false
         };
 
         return activity;

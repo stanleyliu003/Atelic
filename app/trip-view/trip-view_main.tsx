@@ -4049,7 +4049,6 @@ export default function TripViewMain() {
                 )}
 
                 {/* Tab Content */}
-                <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
                 <View style={styles.tabContent}>
                 {showActivityDetail && selectedActivityForDetail ? (
                     <ActivityDetailView
@@ -4062,6 +4061,7 @@ export default function TripViewMain() {
                         onScrollStateChange={handleActivityDetailScrollStateChange}
                     />
                 ) : (
+                <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
                     <>
                         {/* Overview Content - shown when primaryTab is 'overview' */}
                         {primaryTab === 'overview' && (
@@ -4282,9 +4282,9 @@ export default function TripViewMain() {
                             );
                         })()}
                     </>
+                </Pressable>
                 )}
                 </View>
-                </Pressable>
 
                 {/* Transfer Button Container */}
                 <TransferButtonContainer
