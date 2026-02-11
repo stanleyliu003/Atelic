@@ -157,9 +157,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   followingButton: {
-    backgroundColor: Colors.WHITE,
-    borderWidth: 1,
-    borderColor: Colors.GRAY,
+    backgroundColor: Colors.ORANGE,
+    borderWidth: 0,
   },
   requestedButton: {
     backgroundColor: Colors.LIGHT_GRAY,
@@ -170,6 +169,6 @@ const styles = StyleSheet.create({
     color: Colors.WHITE,
   },
   followingButtonText: {
-    color: Colors.BLACK,
+    color: Colors.WHITE,
   },
 });

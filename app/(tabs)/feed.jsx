@@ -1437,7 +1437,11 @@ export default function FeedScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.modalContent}>
+            <ScrollView
+              style={styles.settingsScrollView}
+              contentContainerStyle={styles.settingsScrollContent}
+              showsVerticalScrollIndicator={false}
+            >
               <View style={styles.settingsMenuItem}>
                 <Ionicons name="eye-off-outline" size={24} color={Colors.PRIMARY} />
                 <View style={styles.settingsMenuItemTextContainer}>
@@ -1514,7 +1518,7 @@ export default function FeedScreen() {
                 <Text style={[styles.settingsMenuItemText, { color: '#FF4444' }]}>Delete Account</Text>
                 <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -2260,8 +2264,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    flex: 0.6,
+    flex: 0.65,
     paddingTop: 8,
+    paddingBottom: 40,
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
@@ -2315,7 +2320,15 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   settingsModalSpacer: {
-    flex: 0.55,
+    flex: 0.35,
+  },
+  settingsScrollView: {
+    flex: 1,
+  },
+  settingsScrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 20,
   },
   deleteAccountModalOverlay: {
     flex: 1,

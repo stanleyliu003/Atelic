@@ -12,6 +12,20 @@ export default function TabLayout() {
         tabBarActiveTintColor:Colors.PRIMARY
     }}>
 
+      <Tabs.Screen name = "saved_places"
+        options={{
+            tabBarLabel:"Saved",
+            tabBarIcon:({color, focused})=><Ionicons name={focused ? "bookmark" : "bookmark-outline"}
+            size={24} color={color} />
+        }}
+      />
+      <Tabs.Screen name = "create_new_trip"
+      options={{
+            tabBarLabel:" ",
+            tabBarIcon:({color, focused})=><Ionicons name="add-circle"
+            size={30} color={focused ? '#F36406' : '#FDAA48'} />
+      }}
+      />
       <Tabs.Screen name = "feed"
         options={{
             tabBarLabel:"Home",
@@ -24,24 +38,10 @@ export default function TabLayout() {
             href: null, // Hide this tab from the tab bar
         }}
       />
-      <Tabs.Screen name = "saved_places"
-        options={{
-            tabBarLabel:"Saved",
-            tabBarIcon:({color, focused})=><Ionicons name={focused ? "bookmark" : "bookmark-outline"}
-            size={24} color={color} />
-        }}
-      />
       <Tabs.Screen name = "mytrip"
         options={{
             href: null, // Hide this tab from the tab bar
         }}
-      />
-      <Tabs.Screen name = "create_new_trip"
-      options={{
-            tabBarLabel:" ",
-            tabBarIcon:({color, focused})=><Ionicons name="add-circle"
-            size={30} color={focused ? '#F36406' : '#FDAA48'} />
-      }}
       />
       <Tabs.Screen name = "profile"
       options={{
