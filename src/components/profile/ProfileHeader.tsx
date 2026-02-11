@@ -43,6 +43,9 @@ export function ProfileHeader({
   };
 
   const getFollowButtonStyle = () => {
+    if (hasPendingRequest) {
+      return styles.requestedButton;
+    }
     if (isFollowing) {
       return styles.followingButton;
     }
@@ -91,7 +94,11 @@ export function ProfileHeader({
           >
             <Text
               style={
-                isFollowing ? styles.followingButtonText : styles.followButtonText
+                hasPendingRequest
+                  ? styles.requestedButtonText
+                  : isFollowing
+                    ? styles.followingButtonText
+                    : styles.followButtonText
               }
             >
               {getFollowButtonText()}
@@ -191,6 +198,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.GRAY,
+  },
+  requestedButton: {
+    backgroundColor: Colors.LIGHT_GRAY,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  requestedButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.GRAY,
   },
   followingButtonText: {
     fontSize: 16,

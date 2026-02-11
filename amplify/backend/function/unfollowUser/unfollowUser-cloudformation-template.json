@@ -226,7 +226,11 @@
               "Effect": "Allow",
               "Action": [
                 "dynamodb:Delete*",
-                "dynamodb:PartiQLDelete"
+                "dynamodb:PartiQLDelete",
+                "dynamodb:Get*",
+                "dynamodb:BatchGetItem",
+                "dynamodb:Scan",
+                "dynamodb:Query"
               ],
               "Resource": [
                 {

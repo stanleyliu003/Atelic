@@ -226,6 +226,13 @@ type SendNotificationResult {
    lastTripDate: String
    nextTripDate: String
 
+   # Cached statistics (24-hour TTL)
+   countriesVisited: Int
+   citiesVisited: Int
+   countriesVisitedList: [String]
+   citiesVisitedList: [String]
+   statsLastUpdated: String
+
    # Social features
    followersCount: Int!
    followingCount: Int!
@@ -234,6 +241,7 @@ type SendNotificationResult {
    # Profile information
    bio: String
    profilePhotoUrl: String
+   isPrivateAccount: Boolean
    socialLinks: AWSJSON
 
   # Usage stats
@@ -404,7 +412,7 @@ type AppVersionConfig {
    # Social queries
    getFollowers(username: String!, nextToken: String, limit: Int): FollowersResult @function(name: "getFollowers-${env}") @auth(rules: [{ allow: public }])
    getFollowing(username: String!, nextToken: String, limit: Int): FollowingResult @function(name: "getFollowing-${env}") @auth(rules: [{ allow: public }])
-   getFollowRequests(targetUsername: String!, nextToken: String, limit: Int): FollowRequestsResult @function(name: "getFollowRequests-${env}") @auth(rules: [{ allow: private }])
+   getFollowRequests(targetUsername: String!, nextToken: String, limit: Int): FollowRequestsResult @function(name: "getFollowRequests-${env}") @auth(rules: [{ allow: public }])
    getFeed(username: String!, nextToken: String, limit: Int): FeedResult @function(name: "getFeed-${env}") @auth(rules: [{ allow: public }])
    getUserStatistics(username: String!): UserStatistics @function(name: "getUserStatistics-${env}") @auth(rules: [{ allow: public }])
    searchUsersPublic(searchTerm: String!, currentUsername: String!): [UserSearchResult] @function(name: "searchUsersPublic-${env}") @auth(rules: [{ allow: public }])
@@ -491,10 +499,10 @@ type AppVersionConfig {
    sendPushNotification(username: String, userID: String, title: String!, body: String!, data: AWSJSON): SendNotificationResult @function(name: "sendPushNotification-${env}") @auth(rules: [{ allow: private }])
 
    # Social mutations
-   followUser(followerUsername: String!, targetUsername: String!): FollowActionResult @function(name: "followUser-${env}") @auth(rules: [{ allow: private }])
-   unfollowUser(followerUsername: String!, targetUsername: String!): FollowActionResult @function(name: "unfollowUser-${env}") @auth(rules: [{ allow: private }])
-   approveFollowRequest(targetUsername: String!, requesterUsername: String!, action: String!): FollowActionResult @function(name: "approveFollowRequest-${env}") @auth(rules: [{ allow: private }])
-   updateUserPrivacy(username: String!, isPrivate: Boolean!): FollowActionResult @function(name: "updateUserPrivacy-${env}") @auth(rules: [{ allow: private }])
+   followUser(followerUsername: String!, targetUsername: String!): FollowActionResult @function(name: "followUser-${env}") @auth(rules: [{ allow: public }])
+   unfollowUser(followerUsername: String!, targetUsername: String!): FollowActionResult @function(name: "unfollowUser-${env}") @auth(rules: [{ allow: public }])
+   approveFollowRequest(targetUsername: String!, requesterUsername: String!, action: String!): FollowActionResult @function(name: "approveFollowRequest-${env}") @auth(rules: [{ allow: public }])
+   updateUserPrivacy(username: String!, isPrivate: Boolean!): FollowActionResult @function(name: "updateUserPrivacy-${env}") @auth(rules: [{ allow: public }])
  }
 
    # type Subscription {
@@ -701,6 +709,9 @@ type FollowActionResult {
   success: Boolean!
   status: String
   message: String
+  action: String
+  isPrivate: Boolean
+  autoApprovedRequests: Int
 }
 
 type UserStatistics {

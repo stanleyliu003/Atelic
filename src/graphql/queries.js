@@ -471,6 +471,7 @@ export const getUserProfile = /* GraphQL */ `
       friends
       bio
       profilePhotoUrl
+      isPrivateAccount
       socialLinks
       accountCreatedAt
       appVersion

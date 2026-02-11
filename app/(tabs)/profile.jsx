@@ -59,6 +59,7 @@ export default function Profile() {
   const [citiesVisited, setCitiesVisited] = useState(0);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   // PanResponder for swipe down to close settings modal
   const settingsPanResponder = PanResponder.create({
@@ -94,13 +95,18 @@ export default function Profile() {
 
       // Load user trips from cloud
       await loadUserTrips(userID);
+
+      // Load pending requests count
+      if (userName) {
+        await loadPendingRequestsCount(userName);
+      }
     } catch (error) {
       console.error('[Profile] Error loading user data:', error);
       setFullName('');
       setUsername('');
       setTripsError('Failed to load user data');
     }
-  }, []);
+  }, [loadPendingRequestsCount]);
 
   const loadUserProfile = useCallback(async (userName) => {
     if (!userName) return;
@@ -143,6 +149,25 @@ export default function Profile() {
     }
   }, []);
 
+  const loadPendingRequestsCount = useCallback(async (userName) => {
+    if (!userName) return;
+
+    try {
+      console.log('[Profile] Loading pending requests for:', userName);
+      const response = await API.graphql({
+        query: customQueries.getFollowRequests,
+        variables: { targetUsername: userName, limit: 100 },
+      });
+
+      console.log('[Profile] Follow requests response:', JSON.stringify(response.data.getFollowRequests, null, 2));
+      const requests = response.data.getFollowRequests?.requests || [];
+      console.log('[Profile] Pending requests count:', requests.length);
+      setPendingRequestsCount(requests.length);
+    } catch (error) {
+      console.error('[Profile] Error loading pending requests count:', error);
+    }
+  }, []);
+
   useEffect(() => {
     loadUserData();
   }, [loadUserData]);
@@ -156,16 +181,18 @@ export default function Profile() {
   // Reload data every time the screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      console.log('[Profile] useFocusEffect triggered - reloading trips and statistics');
+      console.log('[Profile] useFocusEffect triggered - reloading trips, profile and statistics');
       // Reset carousel indices and photo counts when coming back to this screen
       setCarouselIndices({});
       setTripPhotoCounts({});
       loadUserData();
-      // Reload statistics to reflect latest trip data
+      // Reload profile and statistics to reflect latest data
       if (username) {
+        loadUserProfile(username);
         loadUserStatistics(username);
+        loadPendingRequestsCount(username);
       }
-    }, [username, loadUserStatistics])
+    }, [username, loadUserProfile, loadUserStatistics, loadPendingRequestsCount])
   );
 
   // Auto-load trip from notification
@@ -716,6 +743,23 @@ export default function Profile() {
       <View style={styles.header}>
         <Text style={styles.headerText}>Profile</Text>
         <View style={styles.headerRight}>
+          {/* Follow Requests Button - Always visible */}
+          <TouchableOpacity
+            style={styles.followRequestsButton}
+            onPress={() => {
+              console.log('[Profile] Follow Requests button pressed, count:', pendingRequestsCount);
+              router.push('/profile/follow-requests');
+            }}
+          >
+            <Ionicons name="people-outline" size={28} color={Colors.GRAY} />
+            {pendingRequestsCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{pendingRequestsCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Settings Button */}
           <TouchableOpacity
             style={styles.settingsButton}
             onPress={() => setIsSettingsModalVisible(true)}
@@ -1533,6 +1577,30 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 2.84,
+  },
+  followRequestsButton: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 8,
+    backgroundColor: Colors.ORANGE,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: Colors.WHITE,
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   settingsText: {
     fontFamily: 'outfit',

@@ -10,7 +10,7 @@
 Amplify Params - DO NOT EDIT */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, DeleteCommand, UpdateCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, DeleteCommand, UpdateCommand, GetCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
@@ -37,30 +37,78 @@ exports.handler = async (event) => {
   }
 
   try {
+    // Get the actual username from the database (handles case sensitivity)
+    const followerProfile = await getProfileByUsername(followerUsername);
+    const targetProfile = await getProfileByUsername(targetUsername);
+
+    // Use the exact usernames from the database
+    const actualFollowerUsername = followerProfile?.username || followerUsername;
+    const actualTargetUsername = targetProfile?.username || targetUsername;
+
+    console.log('Username resolution:', {
+      input: { followerUsername, targetUsername },
+      resolved: { actualFollowerUsername, actualTargetUsername }
+    });
+
     // 1. Check if follow relationship exists
-    const existingFollow = await checkExistingFollow(followerUsername, targetUsername);
+    const existingFollow = await checkExistingFollow(actualFollowerUsername, actualTargetUsername);
 
     if (!existingFollow) {
+      // Try case-insensitive search as fallback
+      console.log('No exact match found, trying case-insensitive search...');
+      const followRecord = await findFollowRelationship(followerUsername, targetUsername);
+
+      if (!followRecord) {
+        return {
+          success: true,
+          status: 'not_following',
+          message: 'Not following this user'
+        };
+      }
+
+      // Use the keys from the found record
+      console.log('Found follow record with keys:', {
+        followerUsername: followRecord.followerUsername,
+        followingUsername: followRecord.followingUsername
+      });
+
+      // Delete using the actual keys from the record
+      await docClient.send(new DeleteCommand({
+        TableName: USER_FOLLOWS_TABLE,
+        Key: {
+          followerUsername: followRecord.followerUsername,
+          followingUsername: followRecord.followingUsername
+        }
+      }));
+
+      // Decrement counts using the actual usernames
+      await Promise.all([
+        updateFollowingCount(followRecord.followerUsername, -1),
+        updateFollowersCount(followRecord.followingUsername, -1)
+      ]);
+
+      console.log(`Successfully removed follow (case-insensitive): ${followRecord.followerUsername} -> ${followRecord.followingUsername}`);
+
       return {
         success: true,
-        status: 'not_following',
-        message: 'Not following this user'
+        status: 'unfollowed',
+        message: 'Successfully unfollowed user'
       };
     }
 
     // 2. Delete follow relationship
     await docClient.send(new DeleteCommand({
       TableName: USER_FOLLOWS_TABLE,
-      Key: { followerUsername, followingUsername: targetUsername }
+      Key: { followerUsername: actualFollowerUsername, followingUsername: actualTargetUsername }
     }));
 
     // 3. Decrement counts
     await Promise.all([
-      updateFollowingCount(followerUsername, -1),
-      updateFollowersCount(targetUsername, -1)
+      updateFollowingCount(actualFollowerUsername, -1),
+      updateFollowersCount(actualTargetUsername, -1)
     ]);
 
-    console.log(`Successfully removed follow: ${followerUsername} -> ${targetUsername}`);
+    console.log(`Successfully removed follow: ${actualFollowerUsername} -> ${actualTargetUsername}`);
 
     return {
       success: true,
@@ -72,6 +120,66 @@ exports.handler = async (event) => {
     throw error;
   }
 };
+
+/**
+ * Get user profile by username (case-insensitive lookup)
+ */
+async function getProfileByUsername(username) {
+  try {
+    // Try exact match first
+    const result = await docClient.send(new GetCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: { username }
+    }));
+
+    if (result.Item) {
+      return result.Item;
+    }
+
+    // If not found, try case-insensitive scan
+    const scanResult = await docClient.send(new ScanCommand({
+      TableName: USER_PROFILES_TABLE,
+      FilterExpression: 'contains(#u, :search)',
+      ExpressionAttributeNames: { '#u': 'username' },
+      ExpressionAttributeValues: { ':search': username.toLowerCase() },
+      Limit: 10
+    }));
+
+    // Find case-insensitive match
+    const match = scanResult.Items?.find(
+      item => item.username?.toLowerCase() === username.toLowerCase()
+    );
+
+    return match || null;
+  } catch (error) {
+    console.error('Error getting profile:', error);
+    return null;
+  }
+}
+
+/**
+ * Find follow relationship with case-insensitive search
+ */
+async function findFollowRelationship(followerUsername, targetUsername) {
+  try {
+    // Scan for follow relationships matching case-insensitively
+    const result = await docClient.send(new ScanCommand({
+      TableName: USER_FOLLOWS_TABLE,
+      Limit: 100
+    }));
+
+    // Find case-insensitive match
+    const match = result.Items?.find(item =>
+      item.followerUsername?.toLowerCase() === followerUsername.toLowerCase() &&
+      item.followingUsername?.toLowerCase() === targetUsername.toLowerCase()
+    );
+
+    return match || null;
+  } catch (error) {
+    console.error('Error finding follow relationship:', error);
+    return null;
+  }
+}
 
 /**
  * Check if a follow relationship exists

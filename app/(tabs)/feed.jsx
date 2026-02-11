@@ -285,12 +285,6 @@ export default function FeedScreen() {
     loadUserData();
   }, [loadUserData]);
 
-  useEffect(() => {
-    if (username) {
-      loadFeed(true);
-    }
-  }, [username]);
-
   useFocusEffect(
     useCallback(() => {
       setCarouselIndices({});
@@ -887,22 +881,6 @@ export default function FeedScreen() {
           </>
         )}
 
-        {/* Feed Section */}
-        {feedTrips.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>Feed</Text>
-            <FeedList
-              trips={feedTrips}
-              isLoading={isLoadingFeed}
-              isRefreshing={false}
-              hasMore={hasMore}
-              onLoadMore={handleLoadMoreFeed}
-              onRefresh={() => {}}
-              onTripPress={handleFeedTripPress}
-              onProfilePress={handleFeedProfilePress}
-            />
-          </>
-        )}
       </ScrollView>
 
       {/* Menu Modal */}

@@ -128,26 +128,41 @@ export function TripCarouselImage({
     // Note: hasAttemptedFetch guard removed - useEffect controls when to fetch
     // The guard was causing a race condition with async state updates
 
+    console.log('[TripCarouselImage] 🔍 fetchImage called with:', {
+      cityName,
+      photoIndex,
+      photo_reference,
+      isUnsplashImage,
+      hasUNSPLASH_KEY: !!UNSPLASH_ACCESS_KEY,
+      UNSPLASH_KEY_LENGTH: UNSPLASH_ACCESS_KEY?.length
+    });
+
     try {
       setIsLoading(true);
       setHasAttemptedFetch(true);
 
       // Try Unsplash first if we have a city name
       if (cityName) {
+        console.log('[TripCarouselImage] 🌄 Attempting Unsplash fetch for:', cityName);
         const unsplashData = await fetchUnsplashImages(cityName, photoIndex);
         if (unsplashData) {
+          console.log('[TripCarouselImage] ✅ Unsplash fetch successful:', unsplashData.imageUrl);
           setImageUrl(unsplashData.imageUrl);
           setUnsplashAttribution(unsplashData);
           setImageError(false);
           setIsLoading(false);
           return;
+        } else {
+          console.log('[TripCarouselImage] ⚠️ Unsplash fetch returned null, falling back to Google Places');
         }
+      } else {
+        console.log('[TripCarouselImage] ℹ️ No cityName provided, skipping Unsplash');
       }
 
       // Fallback to Google Places
       await fetchGooglePlacesPhoto();
     } catch (error) {
-      console.error('[TripCarouselImage] Error fetching image:', error);
+      console.error('[TripCarouselImage] ❌ Error fetching image:', error);
       await fetchGooglePlacesPhoto();
     } finally {
       setIsLoading(false);
@@ -156,13 +171,15 @@ export function TripCarouselImage({
 
   const fetchUnsplashImages = async (query: string, index: number): Promise<UnsplashImageWithAttribution | null> => {
     try {
+      console.log('[TripCarouselImage] 🔎 fetchUnsplashImages called:', { query, index });
+
       // Check cache first
       if (unsplashCache[query] && unsplashCache[query].length > 0) {
         // Return the photo at the given index (with wrapping)
         const photos = unsplashCache[query];
         const photoUrl = photos[index % photos.length];
         const photoData = photos[index % photos.length];
-        console.log(`[TripCarouselImage] Using cached Unsplash image ${index} for: ${query}`);
+        console.log(`[TripCarouselImage] ✅ Using cached Unsplash image ${index} for: ${query}`);
 
         // Notify parent of the total photo count (only on first image)
         if (index === 0 && onPhotoCountUpdate) {
@@ -172,8 +189,14 @@ export function TripCarouselImage({
         return photoData;
       }
 
+      console.log('[TripCarouselImage] 🔑 Checking UNSPLASH_ACCESS_KEY:', {
+        hasKey: !!UNSPLASH_ACCESS_KEY,
+        keyLength: UNSPLASH_ACCESS_KEY?.length,
+        keyPreview: UNSPLASH_ACCESS_KEY ? `${UNSPLASH_ACCESS_KEY.substring(0, 10)}...` : 'undefined'
+      });
+
       if (!UNSPLASH_ACCESS_KEY) {
-        console.warn('[TripCarouselImage] UNSPLASH_ACCESS_KEY is not configured, skipping Unsplash');
+        console.warn('[TripCarouselImage] ⚠️ UNSPLASH_ACCESS_KEY is not configured, skipping Unsplash');
         return null;
       }
 
@@ -188,53 +211,80 @@ export function TripCarouselImage({
         `${query} landmark`, // Original query with landmark
       ];
 
-      // Try each search strategy until we find results
+      // Collect photos from multiple search strategies to ensure we have at least 5
+      let allPhotos: UnsplashImageWithAttribution[] = [];
+      const seenUrls = new Set<string>();
+
       for (const searchQuery of searchStrategies) {
-        const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchQuery)}&per_page=5&orientation=landscape&client_id=${UNSPLASH_ACCESS_KEY}`;
+        // Stop if we already have 5+ unique photos
+        if (allPhotos.length >= 5) break;
+
+        const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchQuery)}&per_page=10&orientation=landscape&client_id=${UNSPLASH_ACCESS_KEY}`;
+
+        console.log(`[TripCarouselImage] 🌐 Fetching from Unsplash with query: "${searchQuery}"`);
 
         try {
           const response = await fetch(url);
 
+          console.log(`[TripCarouselImage] 📡 Unsplash API response:`, {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok
+          });
+
           if (!response.ok) {
             // 403 usually means rate limit or invalid API key - fail silently
             if (response.status === 403) {
-              console.warn('[TripCarouselImage] Unsplash API rate limit or invalid key, falling back to Google Places');
+              console.warn('[TripCarouselImage] ⚠️ Unsplash API rate limit or invalid key, falling back to Google Places');
               break; // Stop trying Unsplash, fall back to Google Places
             }
-            console.warn('[TripCarouselImage] Unsplash API error:', response.status, response.statusText);
+            console.warn('[TripCarouselImage] ⚠️ Unsplash API error:', response.status, response.statusText);
             continue; // Try next strategy
           }
 
           const data = await response.json();
+          console.log(`[TripCarouselImage] 📦 Unsplash API data:`, {
+            resultsCount: data.results?.length || 0,
+            total: data.total
+          });
 
           if (data.results && data.results.length > 0) {
-            // Extract photo data with attribution
-            const photoData: UnsplashImageWithAttribution[] = data.results.map((photo: any) => ({
-              imageUrl: photo.urls.regular,
-              attribution: {
-                photographerName: photo.user?.name || 'Unknown',
-                photographerProfileUrl: photo.user?.links?.html || 'https://unsplash.com',
-                photoPageUrl: photo.links?.html || 'https://unsplash.com',
-                downloadLocationUrl: photo.links?.download_location || '',
-              }
-            }));
+            // Extract photo data with attribution, avoiding duplicates
+            for (const photo of data.results) {
+              if (allPhotos.length >= 5) break;
+              if (seenUrls.has(photo.urls.regular)) continue;
 
-            unsplashCache[query] = photoData;
-
-            console.log(`[TripCarouselImage] Successfully fetched ${photoData.length} Unsplash images for: ${query}`);
-
-            // Notify parent of the total photo count (only on first image)
-            if (index === 0 && onPhotoCountUpdate) {
-              onPhotoCountUpdate(photoData.length);
+              seenUrls.add(photo.urls.regular);
+              allPhotos.push({
+                imageUrl: photo.urls.regular,
+                attribution: {
+                  photographerName: photo.user?.name || 'Unknown',
+                  photographerProfileUrl: photo.user?.links?.html || 'https://unsplash.com',
+                  photoPageUrl: photo.links?.html || 'https://unsplash.com',
+                  downloadLocationUrl: photo.links?.download_location || '',
+                }
+              });
             }
-
-            // Return the photo at the given index (with wrapping)
-            return photoData[index % photoData.length];
           }
         } catch (error) {
           console.warn(`[TripCarouselImage] Error with search "${searchQuery}":`, error);
           continue; // Try next strategy
         }
+      }
+
+      // If we found any photos, cache and return them
+      if (allPhotos.length > 0) {
+        unsplashCache[query] = allPhotos;
+
+        console.log(`[TripCarouselImage] Successfully fetched ${allPhotos.length} Unsplash images for: ${query}`);
+
+        // Notify parent of the total photo count (only on first image)
+        if (index === 0 && onPhotoCountUpdate) {
+          onPhotoCountUpdate(allPhotos.length);
+        }
+
+        // Return the photo at the given index (with wrapping)
+        return allPhotos[index % allPhotos.length];
       }
 
       return null;
@@ -359,10 +409,22 @@ export function TripCarouselImage({
     );
   }
 
-  // If image is invalid and cannot be loaded, return null
+  // If image is invalid and cannot be loaded, show a placeholder
   if (imageError || !imageUrl) {
-    return null;
+    console.log('[TripCarouselImage] ⚠️ Image error or no URL:', { imageError, hasImageUrl: !!imageUrl, cityName, photo_reference });
+    return (
+      <View style={[styles.placeholderContainer, style]}>
+        <FontAwesome name="image" size={40} color={Colors.GRAY} />
+      </View>
+    );
   }
+
+  console.log('[TripCarouselImage] ✅ Rendering image:', {
+    imageUrl: imageUrl.substring(0, 60) + '...',
+    hasUnsplashAttribution: !!unsplashAttribution,
+    isUnsplashImage,
+    cityName
+  });
 
   return (
     <View style={style}>
@@ -375,14 +437,14 @@ export function TripCarouselImage({
         cachePolicy="disk"
         resizeMode="cover"
         onError={() => {
-          console.log('[TripCarouselImage] Image failed to load');
+          console.log('[TripCarouselImage] ❌ Image failed to load:', imageUrl);
           setImageError(true);
           if (onPhotoRefUpdate) {
             onPhotoRefUpdate(null);
           }
         }}
         onLoad={() => {
-          // Successfully loaded
+          console.log('[TripCarouselImage] ✅ Image successfully loaded:', imageUrl.substring(0, 60) + '...');
         }}
       />
       {unsplashAttribution && (

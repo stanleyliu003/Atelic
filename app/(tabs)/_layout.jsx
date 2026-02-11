@@ -14,7 +14,7 @@ export default function TabLayout() {
 
       <Tabs.Screen name = "feed"
         options={{
-            tabBarLabel:"Feed",
+            tabBarLabel:"Home",
             tabBarIcon:({color, focused})=><Ionicons name={focused ? "home" : "home-outline"}
             size={24} color={color} />
         }}

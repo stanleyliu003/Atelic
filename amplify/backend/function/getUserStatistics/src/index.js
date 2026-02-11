@@ -18,7 +18,7 @@ const docClient = DynamoDBDocumentClient.from(client);
 const USER_PROFILES_TABLE = process.env.STORAGE_USERPROFILESSTORAGE_NAME;
 const TRIP_STORAGE_TABLE = process.env.STORAGE_TRIPSTORAGE_NAME;
 
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds (for faster refresh during development)
 
 /**
  * Get User Statistics Lambda Function
