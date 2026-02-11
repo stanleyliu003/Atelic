@@ -58,10 +58,20 @@ export default function FollowersScreen() {
 
       const { followers: newFollowers, nextToken: newNextToken } = response.data.getFollowers;
 
+      // Deduplicate by username
       if (isRefresh) {
-        setFollowers(newFollowers);
+        const uniqueFollowers = newFollowers.filter((user, index, self) =>
+          index === self.findIndex((u) => u.username === user.username)
+        );
+        setFollowers(uniqueFollowers);
       } else {
-        setFollowers((prev) => [...prev, ...newFollowers]);
+        setFollowers((prev) => {
+          const combined = [...prev, ...newFollowers];
+          // Remove duplicates by username
+          return combined.filter((user, index, self) =>
+            index === self.findIndex((u) => u.username === user.username)
+          );
+        });
       }
 
       setNextToken(newNextToken);

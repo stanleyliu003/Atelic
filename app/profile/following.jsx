@@ -58,10 +58,20 @@ export default function FollowingScreen() {
 
       const { following: newFollowing, nextToken: newNextToken } = response.data.getFollowing;
 
+      // Deduplicate by username
       if (isRefresh) {
-        setFollowing(newFollowing);
+        const uniqueFollowing = newFollowing.filter((user, index, self) =>
+          index === self.findIndex((u) => u.username === user.username)
+        );
+        setFollowing(uniqueFollowing);
       } else {
-        setFollowing((prev) => [...prev, ...newFollowing]);
+        setFollowing((prev) => {
+          const combined = [...prev, ...newFollowing];
+          // Remove duplicates by username
+          return combined.filter((user, index, self) =>
+            index === self.findIndex((u) => u.username === user.username)
+          );
+        });
       }
 
       setNextToken(newNextToken);

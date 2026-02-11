@@ -22,6 +22,8 @@ import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { API, Auth } from 'aws-amplify';
 import { TripCarouselImage } from '../../src/components/profile/TripCarouselImage';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
+import { FollowersList } from '../../src/components/social/FollowersList';
+import { FollowingList } from '../../src/components/social/FollowingList';
 import { Colors } from '../../constants/Colors';
 import * as customQueries from '../../src/graphql/customQueries';
 import * as customMutations from '../../src/graphql/customMutations';
@@ -94,7 +96,14 @@ export default function FeedScreen() {
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
   const [deleteAccountChecked, setDeleteAccountChecked] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
+  const [profileModalView, setProfileModalView] = useState('profile'); // 'profile', 'followers', 'following'
   const [profileActiveTab, setProfileActiveTab] = useState('upcoming');
+
+  // Followers/Following state for embedded views
+  const [followersList, setFollowersList] = useState([]);
+  const [followingList, setFollowingList] = useState([]);
+  const [isLoadingFollowers, setIsLoadingFollowers] = useState(false);
+  const [isLoadingFollowing, setIsLoadingFollowing] = useState(false);
   const [profileCarouselIndices, setProfileCarouselIndices] = useState({});
   const [profileTripPhotoCounts, setProfileTripPhotoCounts] = useState({});
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -488,7 +497,18 @@ export default function FeedScreen() {
       setOwnedTrips(owned);
       setSharedTrips(shared);
     } catch (error) {
-      // Silently handle error - don't show toast
+      // Try to extract partial data if available
+      console.warn('[Feed] Error loading trips, attempting recovery:', error?.message || error);
+
+      // If the error contains partial data, try to use it
+      if (error?.data?.getTripIDs) {
+        const allTrips = error.data.getTripIDs || [];
+        const owned = allTrips.filter(trip => trip.userRole === 'owner');
+        const shared = allTrips.filter(trip => trip.userRole === 'editor' || trip.userRole === 'viewer');
+        setUserTrips(allTrips);
+        setOwnedTrips(owned);
+        setSharedTrips(shared);
+      }
     } finally {
       setIsLoadingTrips(false);
     }
@@ -754,15 +774,143 @@ export default function FeedScreen() {
     setSharedTrips(prev => updatePhotos(prev));
   };
 
+  const loadFollowersList = useCallback(async () => {
+    if (!username) return;
+    setIsLoadingFollowers(true);
+    try {
+      const response = await API.graphql({
+        query: customQueries.getFollowers,
+        variables: { username, limit: 50 },
+      });
+      const { followers } = response.data.getFollowers;
+      // Deduplicate by username
+      const uniqueFollowers = followers.filter((user, index, self) =>
+        index === self.findIndex((u) => u.username === user.username)
+      );
+      setFollowersList(uniqueFollowers);
+    } catch (error) {
+      if (error?.data?.getFollowers?.followers) {
+        const followers = error.data.getFollowers.followers.filter((user, index, self) =>
+          index === self.findIndex((u) => u.username === user.username)
+        );
+        setFollowersList(followers);
+      } else {
+        console.warn('[Feed] Error loading followers:', error);
+      }
+    } finally {
+      setIsLoadingFollowers(false);
+    }
+  }, [username]);
+
+  const loadFollowingList = useCallback(async () => {
+    if (!username) return;
+    setIsLoadingFollowing(true);
+    try {
+      const response = await API.graphql({
+        query: customQueries.getFollowing,
+        variables: { username, limit: 50 },
+      });
+      const { following } = response.data.getFollowing;
+      // Deduplicate by username
+      const uniqueFollowing = following.filter((user, index, self) =>
+        index === self.findIndex((u) => u.username === user.username)
+      );
+      setFollowingList(uniqueFollowing);
+    } catch (error) {
+      if (error?.data?.getFollowing?.following) {
+        const following = error.data.getFollowing.following.filter((user, index, self) =>
+          index === self.findIndex((u) => u.username === user.username)
+        );
+        setFollowingList(following);
+      } else {
+        console.warn('[Feed] Error loading following:', error);
+      }
+    } finally {
+      setIsLoadingFollowing(false);
+    }
+  }, [username]);
+
   const handleFollowersPress = () => {
-    router.push(`/profile/followers?username=${username}`);
+    setProfileModalView('followers');
+    loadFollowersList();
+    // Also load following list to know who we're following
+    if (followingList.length === 0) {
+      loadFollowingList();
+    }
   };
 
   const handleFollowingPress = () => {
-    router.push(`/profile/following?username=${username}`);
+    setProfileModalView('following');
+    loadFollowingList();
+  };
+
+  const handleBackToProfile = () => {
+    setProfileModalView('profile');
+  };
+
+  const handleFollowerUserPress = (targetUsername) => {
+    setIsProfileModalVisible(false);
+    setProfileModalView('profile');
+    router.push(`/profile/${targetUsername}`);
+  };
+
+  const handleUnfollowFromList = async (targetUsername) => {
+    try {
+      await API.graphql({
+        query: customMutations.unfollowUser,
+        variables: {
+          followerUsername: username,
+          targetUsername: targetUsername,
+        },
+      });
+      // Remove from following list
+      setFollowingList(prev => prev.filter(u => u.username !== targetUsername));
+      // Update following count
+      setFollowingCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('[Feed] Error unfollowing:', error);
+      Alert.alert('Error', 'Failed to unfollow user');
+    }
+  };
+
+  const handleFollowFromFollowersList = async (targetUsername, isCurrentlyFollowing) => {
+    try {
+      if (isCurrentlyFollowing) {
+        // Unfollow
+        await API.graphql({
+          query: customMutations.unfollowUser,
+          variables: {
+            followerUsername: username,
+            targetUsername: targetUsername,
+          },
+        });
+        // Remove from following list
+        setFollowingList(prev => prev.filter(u => u.username !== targetUsername));
+        setFollowingCount(prev => Math.max(0, prev - 1));
+      } else {
+        // Follow
+        await API.graphql({
+          query: customMutations.followUser,
+          variables: {
+            followerUsername: username,
+            targetUsername: targetUsername,
+          },
+        });
+        // Find the user in followers list and add to following list
+        const userToFollow = followersList.find(u => u.username === targetUsername);
+        if (userToFollow) {
+          setFollowingList(prev => [...prev, userToFollow]);
+        }
+        setFollowingCount(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('[Feed] Error following/unfollowing:', error);
+      Alert.alert('Error', 'Failed to update follow status');
+    }
   };
 
   const handleEditProfile = () => {
+    setIsProfileModalVisible(false);
     router.push('/edit-profile');
   };
 
@@ -1461,30 +1609,54 @@ export default function FeedScreen() {
         visible={isProfileModalVisible}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setIsProfileModalVisible(false)}
+        onRequestClose={() => {
+          if (profileModalView !== 'profile') {
+            handleBackToProfile();
+          } else {
+            setIsProfileModalVisible(false);
+          }
+        }}
       >
         <View style={styles.profileModalContainer}>
           {/* Header */}
           <View style={styles.profileModalHeader}>
             <TouchableOpacity
               style={styles.closeButton}
-              onPress={() => setIsProfileModalVisible(false)}
-            >
-              <Ionicons name="close" size={32} color={Colors.GRAY} />
-            </TouchableOpacity>
-            <Text style={styles.profileModalTitle}>Profile</Text>
-            <TouchableOpacity
-              style={styles.settingsButton}
               onPress={() => {
-                setIsProfileModalVisible(false);
-                setIsSettingsModalVisible(true);
+                if (profileModalView !== 'profile') {
+                  setProfileModalView('profile');
+                } else {
+                  setIsProfileModalVisible(false);
+                }
               }}
             >
-              <Ionicons name="settings-outline" size={28} color={Colors.GRAY} />
+              <Ionicons
+                name={profileModalView !== 'profile' ? 'arrow-back' : 'close'}
+                size={profileModalView !== 'profile' ? 28 : 32}
+                color={Colors.GRAY}
+              />
             </TouchableOpacity>
+            <Text style={styles.profileModalTitle}>
+              {profileModalView === 'followers' ? 'Followers' :
+               profileModalView === 'following' ? 'Following' : 'Profile'}
+            </Text>
+            {profileModalView === 'profile' ? (
+              <TouchableOpacity
+                style={styles.settingsButton}
+                onPress={() => {
+                  setIsProfileModalVisible(false);
+                  setIsSettingsModalVisible(true);
+                }}
+              >
+                <Ionicons name="settings-outline" size={28} color={Colors.GRAY} />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.headerPlaceholder} />
+            )}
           </View>
 
           {/* Profile Content - Instagram Style */}
+          {profileModalView === 'profile' && (
           <ScrollView
             style={styles.profileModalScrollView}
             showsVerticalScrollIndicator={true}
@@ -1776,6 +1948,36 @@ export default function FeedScreen() {
               </View>
             )}
           </ScrollView>
+          )}
+
+          {/* Followers List View */}
+          {profileModalView === 'followers' && (
+            <FollowersList
+              followers={followersList}
+              isLoading={isLoadingFollowers}
+              isRefreshing={false}
+              hasMore={false}
+              onLoadMore={() => {}}
+              onRefresh={loadFollowersList}
+              onUserPress={handleFollowerUserPress}
+              onFollowPress={handleFollowFromFollowersList}
+              currentUserFollowing={new Set(followingList.map(u => u.username))}
+            />
+          )}
+
+          {/* Following List View */}
+          {profileModalView === 'following' && (
+            <FollowingList
+              following={followingList}
+              isLoading={isLoadingFollowing}
+              isRefreshing={false}
+              hasMore={false}
+              onLoadMore={() => {}}
+              onRefresh={loadFollowingList}
+              onUserPress={handleFollowerUserPress}
+              onUnfollowPress={handleUnfollowFromList}
+            />
+          )}
         </View>
       </Modal>
     </View>
@@ -1864,8 +2066,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2.84,
+  },
+  headerPlaceholder: {
+    width: 52,
+    height: 44,
   },
   scrollView: {
     flex: 1,
