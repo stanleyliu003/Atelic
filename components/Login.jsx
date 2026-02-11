@@ -288,7 +288,7 @@ export default function Login() {
 
       // User is authenticated and has username, redirect to main app
       isNavigatingRef.current = true;
-      router.replace('(tabs)/profile');
+      router.replace('(tabs)/feed');
 
     } catch (error) {
       // Check if this is a token refresh failure
@@ -301,7 +301,7 @@ export default function Login() {
           // Check navigation flag again
           if (!isNavigatingRef.current) {
             isNavigatingRef.current = true;
-            router.replace('(tabs)/profile');
+            router.replace('(tabs)/feed');
           }
           return;
         } catch (refreshError) {

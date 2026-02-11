@@ -21,9 +21,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen name = "explore"
         options={{
-            tabBarLabel:"Explore",
-            tabBarIcon:({color, focused})=><Ionicons name={focused ? "search" : "search-outline"}
-            size={24} color={color} />
+            href: null, // Hide this tab from the tab bar
         }}
       />
       <Tabs.Screen name = "saved_places"

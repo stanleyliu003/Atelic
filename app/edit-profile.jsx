@@ -12,6 +12,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActionSheetIOS,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Auth, API } from 'aws-amplify';
@@ -20,6 +21,7 @@ import { Colors } from '../constants/Colors';
 import * as customQueries from '../src/graphql/customQueries';
 import * as customMutations from '../src/graphql/customMutations';
 import { getUserProfile } from '../src/graphql/queries';
+import * as ImagePicker from 'expo-image-picker';
 
 const DEFAULT_AVATAR = require('../assets/images/default-avatar.png');
 
@@ -27,6 +29,7 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
@@ -107,9 +110,122 @@ export default function EditProfileScreen() {
     }
   };
 
+  const requestPermission = async (type) => {
+    if (type === 'camera') {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      return status === 'granted';
+    } else {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      return status === 'granted';
+    }
+  };
+
+  const uploadImageToHost = async (imageUri) => {
+    try {
+      // Upload to free image host (0x0.st)
+      const formData = new FormData();
+      const filename = imageUri.split('/').pop() || 'photo.jpg';
+
+      formData.append('file', {
+        uri: imageUri,
+        name: filename,
+        type: 'image/jpeg',
+      });
+
+      const response = await fetch('https://0x0.st', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed with status ${response.status}`);
+      }
+
+      const imageUrl = await response.text();
+      return imageUrl.trim();
+    } catch (error) {
+      console.error('Image upload error:', error);
+      throw error;
+    }
+  };
+
+  const pickImage = async (source) => {
+    try {
+      const hasPermission = await requestPermission(source);
+      if (!hasPermission) {
+        Alert.alert(
+          'Permission Required',
+          `Please allow access to your ${source === 'camera' ? 'camera' : 'photo library'} in Settings.`
+        );
+        return;
+      }
+
+      const options = {
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      };
+
+      let result;
+      if (source === 'camera') {
+        result = await ImagePicker.launchCameraAsync(options);
+      } else {
+        result = await ImagePicker.launchImageLibraryAsync(options);
+      }
+
+      if (!result.canceled && result.assets[0]) {
+        setIsUploadingPhoto(true);
+        try {
+          // Upload image to hosting service
+          const imageUrl = await uploadImageToHost(result.assets[0].uri);
+          setProfilePhotoUrl(imageUrl);
+        } catch (error) {
+          console.error('Image upload error:', error);
+          Alert.alert('Upload Failed', 'Failed to upload photo. Please try again.');
+        } finally {
+          setIsUploadingPhoto(false);
+        }
+      }
+    } catch (error) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
+  };
+
   const handleChangePhoto = () => {
-    // TODO: Implement photo picker
-    Alert.alert('Change Photo', 'Photo picker coming soon!');
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take Photo', 'Choose from Library', 'Remove Photo'],
+          cancelButtonIndex: 0,
+          destructiveButtonIndex: 3,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            pickImage('camera');
+          } else if (buttonIndex === 2) {
+            pickImage('library');
+          } else if (buttonIndex === 3) {
+            setProfilePhotoUrl(null);
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Change Photo',
+        'Choose an option',
+        [
+          { text: 'Take Photo', onPress: () => pickImage('camera') },
+          { text: 'Choose from Library', onPress: () => pickImage('library') },
+          { text: 'Remove Photo', onPress: () => setProfilePhotoUrl(null), style: 'destructive' },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    }
   };
 
   if (isLoading) {
@@ -149,13 +265,32 @@ export default function EditProfileScreen() {
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Profile Photo */}
           <View style={styles.photoSection}>
-            <Image
-              source={profilePhotoUrl ? { uri: profilePhotoUrl } : DEFAULT_AVATAR}
-              style={styles.profilePhoto}
-              defaultSource={DEFAULT_AVATAR}
-            />
-            <TouchableOpacity style={styles.changePhotoButton} onPress={handleChangePhoto}>
-              <Text style={styles.changePhotoText}>Change Photo</Text>
+            <TouchableOpacity onPress={handleChangePhoto} disabled={isUploadingPhoto}>
+              <View style={styles.photoWrapper}>
+                <Image
+                  source={profilePhotoUrl ? { uri: profilePhotoUrl } : DEFAULT_AVATAR}
+                  style={styles.profilePhoto}
+                  defaultSource={DEFAULT_AVATAR}
+                />
+                {isUploadingPhoto ? (
+                  <View style={styles.photoOverlay}>
+                    <ActivityIndicator size="large" color={Colors.WHITE} />
+                  </View>
+                ) : (
+                  <View style={styles.cameraIconContainer}>
+                    <Ionicons name="camera" size={18} color={Colors.WHITE} />
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.changePhotoButton}
+              onPress={handleChangePhoto}
+              disabled={isUploadingPhoto}
+            >
+              <Text style={styles.changePhotoText}>
+                {isUploadingPhoto ? 'Uploading...' : 'Change Photo'}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -259,12 +394,39 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.LIGHT_GRAY,
   },
+  photoWrapper: {
+    position: 'relative',
+    marginBottom: 16,
+  },
   profilePhoto: {
     width: 100,
     height: 100,
     borderRadius: 50,
     backgroundColor: Colors.LIGHT_GRAY,
-    marginBottom: 16,
+  },
+  photoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 50,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraIconContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.ORANGE,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.WHITE,
   },
   changePhotoButton: {
     paddingVertical: 8,

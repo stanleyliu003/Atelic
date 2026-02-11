@@ -45,6 +45,7 @@ export default function UserProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [currentUsername, setCurrentUsername] = useState('');
   const [isOpeningTrip, setIsOpeningTrip] = useState(false);
+  const [loadingTripId, setLoadingTripId] = useState(null);
 
   // Profile data
   const [userProfile, setUserProfile] = useState(null);
@@ -122,6 +123,26 @@ export default function UserProfileScreen() {
 
   const displayedTrips = activeTab === 'upcoming' ? upcomingTrips : pastTrips;
 
+  // Calculate countries and cities from loaded trips
+  const { calculatedCountries, calculatedCities } = useMemo(() => {
+    const countries = new Set();
+    const cities = new Set();
+
+    userTrips.forEach(trip => {
+      if (trip.selectedCity) {
+        cities.add(trip.selectedCity);
+        // Extract country from city format: "Paris, France" or "New York, NY, USA"
+        const cityParts = trip.selectedCity.split(',');
+        if (cityParts.length > 1) {
+          const country = cityParts[cityParts.length - 1].trim();
+          countries.add(country);
+        }
+      }
+    });
+
+    return { calculatedCountries: countries.size, calculatedCities: cities.size };
+  }, [userTrips]);
+
   const loadProfile = useCallback(async () => {
     try {
       // Get current user
@@ -130,12 +151,23 @@ export default function UserProfileScreen() {
       setCurrentUsername(currentUserName);
 
       // Load target user's profile
-      const profileResponse = await API.graphql({
-        query: getUserProfile,
-        variables: { username },
-      });
+      let profile = null;
+      try {
+        const profileResponse = await API.graphql({
+          query: getUserProfile,
+          variables: { username },
+        });
+        profile = profileResponse.data.getUserProfile;
+      } catch (profileError) {
+        // GraphQL may throw with partial errors but still have valid data
+        if (profileError?.data?.getUserProfile) {
+          profile = profileError.data.getUserProfile;
+          console.log('[UserProfile] Retrieved profile from partial error response');
+        } else {
+          console.warn('[UserProfile] Error loading profile:', profileError);
+        }
+      }
 
-      const profile = profileResponse.data.getUserProfile;
       if (!profile) {
         setUserProfile(null);
         setIsLoading(false);
@@ -152,11 +184,30 @@ export default function UserProfileScreen() {
       setUserProfile(profile);
 
       // Load statistics
-      const statsResponse = await API.graphql({
-        query: customQueries.getUserStatistics,
-        variables: { username },
-      });
-      const travelStats = statsResponse.data.getUserStatistics;
+      let travelStats = {
+        countriesVisited: 0,
+        citiesVisited: 0,
+        totalTrips: 0,
+        tripsCompleted: 0,
+        tripsUpcoming: 0,
+      };
+      try {
+        const statsResponse = await API.graphql({
+          query: customQueries.getUserStatistics,
+          variables: { username },
+        });
+        travelStats = statsResponse.data.getUserStatistics || travelStats;
+      } catch (statsError) {
+        // GraphQL may throw with partial errors but still have valid data
+        if (statsError?.data?.getUserStatistics) {
+          travelStats = statsError.data.getUserStatistics;
+          console.log('[UserProfile] Retrieved statistics from partial error response');
+        } else {
+          console.warn('[UserProfile] Error loading statistics:', statsError);
+        }
+      }
+
+      console.log('[UserProfile] Loaded statistics:', travelStats);
 
       // Combine travel stats with follower/following counts from profile
       setStats({
@@ -166,15 +217,24 @@ export default function UserProfileScreen() {
       });
 
       // Search for this user to get follow status
-      const searchResponse = await API.graphql({
-        query: searchUsersPublic,
-        variables: {
-          searchTerm: username,
-          currentUsername: currentUserName,
-        },
-      });
-
-      const searchResults = searchResponse.data.searchUsersPublic || [];
+      let searchResults = [];
+      try {
+        const searchResponse = await API.graphql({
+          query: searchUsersPublic,
+          variables: {
+            searchTerm: username,
+            currentUsername: currentUserName,
+          },
+        });
+        searchResults = (searchResponse.data.searchUsersPublic || []).filter(item => item != null);
+      } catch (searchError) {
+        // GraphQL may throw with partial errors but still have valid data
+        if (searchError?.data?.searchUsersPublic) {
+          searchResults = searchError.data.searchUsersPublic.filter(item => item != null);
+        } else {
+          console.warn('[UserProfile] Error in search:', searchError);
+        }
+      }
       const userInSearch = searchResults.find(u => u.username === username);
 
       console.log('[UserProfile] Search results for follow status:', {
@@ -235,7 +295,7 @@ export default function UserProfileScreen() {
       setUserTrips(allTrips);
       console.log(`[UserProfile] Loaded ${owned.length} owned trips and ${shared.length} shared trips`);
     } catch (error) {
-      console.error('[UserProfile] Error loading trips:', error);
+      // Silently handle error - backend issue with user's trips
     } finally {
       setIsLoadingTrips(false);
     }
@@ -378,6 +438,7 @@ export default function UserProfileScreen() {
     if (isOpeningTrip) return; // Prevent double-tap
 
     setIsOpeningTrip(true);
+    setLoadingTripId(trip.tripId);
     try {
       // Get the trip owner's userID from the profile
       const ownerUserID = userProfile?.userID;
@@ -424,6 +485,7 @@ export default function UserProfileScreen() {
       Alert.alert('Error', 'Failed to load trip. Please try again.');
     } finally {
       setIsOpeningTrip(false);
+      setLoadingTripId(null);
     }
   };
 
@@ -496,7 +558,7 @@ export default function UserProfileScreen() {
             {/* Stats Row */}
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{stats.totalTrips}</Text>
+                <Text style={styles.statNumber}>{userTrips.length > 0 ? userTrips.length : stats.totalTrips}</Text>
                 <Text style={styles.statLabel}>Trips</Text>
               </View>
               <TouchableOpacity style={styles.statItem} onPress={handleFollowersPress}>
@@ -531,12 +593,12 @@ export default function UserProfileScreen() {
           <View style={styles.travelStatsRow}>
             <View style={styles.travelStatItem}>
               <Ionicons name="earth-outline" size={16} color={Colors.ORANGE} />
-              <Text style={styles.travelStatText}>{stats.countriesVisited} Countries</Text>
+              <Text style={styles.travelStatText}>{userTrips.length > 0 ? calculatedCountries : stats.countriesVisited} Countries</Text>
             </View>
             <View style={styles.travelStatDot} />
             <View style={styles.travelStatItem}>
               <Ionicons name="location-outline" size={16} color={Colors.ORANGE} />
-              <Text style={styles.travelStatText}>{stats.citiesVisited} Cities</Text>
+              <Text style={styles.travelStatText}>{userTrips.length > 0 ? calculatedCities : stats.citiesVisited} Cities</Text>
             </View>
           </View>
 
@@ -742,6 +804,12 @@ export default function UserProfileScreen() {
                             ))}
                           </View>
                         )}
+                        {/* Loading overlay for this specific card */}
+                        {loadingTripId === trip.tripId && (
+                          <View style={styles.cardLoadingOverlay}>
+                            <ActivityIndicator size="large" color={Colors.WHITE} />
+                          </View>
+                        )}
                       </View>
 
                       {/* Trip Info Section - Card Footer */}
@@ -766,16 +834,6 @@ export default function UserProfileScreen() {
           </View>
         )}
       </ScrollView>
-
-      {/* Loading overlay when opening a trip */}
-      {isOpeningTrip && (
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color={Colors.ORANGE} />
-            <Text style={styles.loadingOverlayText}>Loading trip...</Text>
-          </View>
-        </View>
-      )}
     </SafeAreaView>
   );
 }
@@ -1048,6 +1106,18 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
   },
+  cardLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
   paginationDots: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -1091,34 +1161,5 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit',
     color: '#9CA3AF',
     marginLeft: 4,
-  },
-  // Loading overlay styles
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 100,
-  },
-  loadingBox: {
-    backgroundColor: Colors.WHITE,
-    padding: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  loadingOverlayText: {
-    marginTop: 12,
-    fontSize: 16,
-    fontFamily: 'outfit-medium',
-    color: '#1F2937',
   },
 });

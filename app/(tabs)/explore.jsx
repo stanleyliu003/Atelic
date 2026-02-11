@@ -42,6 +42,12 @@ export default function ExploreScreen() {
       return;
     }
 
+    // Wait for currentUsername to be loaded
+    if (!currentUsername) {
+      console.log('[Explore] Waiting for current username to load...');
+      return;
+    }
+
     setIsSearching(true);
     setHasSearched(true);
 
@@ -69,10 +75,18 @@ export default function ExploreScreen() {
         },
       });
 
-      setSearchResults(response.data.searchUsersPublic || []);
+      // Filter out any null items from results
+      const results = (response.data.searchUsersPublic || []).filter(item => item != null);
+      setSearchResults(results);
     } catch (error) {
-      console.error('Error searching users:', error);
-      setSearchResults([]);
+      // GraphQL may throw with partial errors but still have valid data
+      if (error?.data?.searchUsersPublic) {
+        const results = error.data.searchUsersPublic.filter(item => item != null);
+        setSearchResults(results);
+      } else {
+        console.error('Error searching users:', error);
+        setSearchResults([]);
+      }
     } finally {
       setIsSearching(false);
     }

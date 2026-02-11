@@ -74,3 +74,19 @@ export const updateUserPrivacy = /* GraphQL */ `
     }
   }
 `;
+
+export const updateUserProfilePhoto = /* GraphQL */ `
+  mutation UpdateUserProfile(
+    $username: String!
+    $action: String!
+    $tripData: AWSJSON
+  ) {
+    updateUserProfile(
+      username: $username
+      action: $action
+      tripData: $tripData
+    ) {
+      __typename
+    }
+  }
+`;

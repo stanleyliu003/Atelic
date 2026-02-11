@@ -64,6 +64,10 @@
     <string>Allow Atelic to use Face ID for secure authentication.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Atelic uses your location to show nearby activities and help you plan trips in your current area.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Atelic needs access to your photo library to let you choose a profile picture.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Atelic needs access to your camera to let you take a profile picture.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>

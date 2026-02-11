@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,11 +16,10 @@ import {
   Image,
   Dimensions,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { API, Auth } from 'aws-amplify';
-import { FeedList } from '../../src/components/feed/FeedList';
-import { ProfileHeader } from '../../src/components/profile/ProfileHeader';
-import { ProfileStats } from '../../src/components/profile/ProfileStats';
 import { TripCarouselImage } from '../../src/components/profile/TripCarouselImage';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import { Colors } from '../../constants/Colors';
@@ -39,6 +38,12 @@ import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 
 const { width: screenWidth } = Dimensions.get('window');
 const CAROUSEL_WIDTH = screenWidth - 52;
+
+// Card dimensions for 2-column grid in profile modal
+const PROFILE_CARD_HORIZONTAL_PADDING = 20;
+const PROFILE_CARD_GAP = 12;
+const PROFILE_CARD_WIDTH = (screenWidth - (PROFILE_CARD_HORIZONTAL_PADDING * 2) - PROFILE_CARD_GAP) / 2;
+const PROFILE_CARD_IMAGE_HEIGHT = PROFILE_CARD_WIDTH * 1.3;
 
 export default function FeedScreen() {
   const router = useRouter();
@@ -89,6 +94,226 @@ export default function FeedScreen() {
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
   const [deleteAccountChecked, setDeleteAccountChecked] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
+  const [profileActiveTab, setProfileActiveTab] = useState('upcoming');
+  const [profileCarouselIndices, setProfileCarouselIndices] = useState({});
+  const [profileTripPhotoCounts, setProfileTripPhotoCounts] = useState({});
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  // Image upload configuration
+  // Profile photos are stored as base64 data URLs for simplicity
+  // Max size after compression: ~100KB base64
+
+  // Separate trips into upcoming and past for profile modal
+  const { profileUpcomingTrips, profilePastTrips } = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const upcoming = [];
+    const past = [];
+
+    userTrips.forEach(trip => {
+      if (trip.endDate) {
+        const endDate = new Date(trip.endDate);
+        if (endDate < today) {
+          past.push(trip);
+        } else {
+          upcoming.push(trip);
+        }
+      } else if (trip.startDate) {
+        const startDate = new Date(trip.startDate);
+        if (startDate < today) {
+          past.push(trip);
+        } else {
+          upcoming.push(trip);
+        }
+      } else {
+        upcoming.push(trip);
+      }
+    });
+
+    // Sort upcoming by start date (earliest first)
+    upcoming.sort((a, b) => {
+      if (!a.startDate && !b.startDate) return 0;
+      if (!a.startDate) return 1;
+      if (!b.startDate) return -1;
+      return new Date(a.startDate) - new Date(b.startDate);
+    });
+
+    // Sort past by end date (most recent first)
+    past.sort((a, b) => {
+      const dateA = a.endDate || a.startDate;
+      const dateB = b.endDate || b.startDate;
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+      return new Date(dateB) - new Date(dateA);
+    });
+
+    return { profileUpcomingTrips: upcoming, profilePastTrips: past };
+  }, [userTrips]);
+
+  const profileDisplayedTrips = profileActiveTab === 'upcoming' ? profileUpcomingTrips : profilePastTrips;
+
+  // Calculate countries and cities from loaded trips
+  const { calculatedCountries, calculatedCities } = useMemo(() => {
+    const countries = new Set();
+    const cities = new Set();
+
+    userTrips.forEach(trip => {
+      if (trip.selectedCity) {
+        cities.add(trip.selectedCity);
+        // Extract country from city format: "Paris, France" or "New York, NY, USA"
+        const cityParts = trip.selectedCity.split(',');
+        if (cityParts.length > 1) {
+          const country = cityParts[cityParts.length - 1].trim();
+          countries.add(country);
+        }
+      }
+    });
+
+    return { calculatedCountries: countries.size, calculatedCities: cities.size };
+  }, [userTrips]);
+
+  // Profile photo upload functions
+  const requestPhotoPermission = async (type) => {
+    if (type === 'camera') {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      return status === 'granted';
+    } else {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      return status === 'granted';
+    }
+  };
+
+  const uploadImageToHost = async (imageUri) => {
+    try {
+      // Upload to free image host (0x0.st)
+      const formData = new FormData();
+      const filename = imageUri.split('/').pop() || 'photo.jpg';
+
+      formData.append('file', {
+        uri: imageUri,
+        name: filename,
+        type: 'image/jpeg',
+      });
+
+      const response = await fetch('https://0x0.st', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed with status ${response.status}`);
+      }
+
+      const imageUrl = await response.text();
+      return imageUrl.trim();
+    } catch (error) {
+      console.error('Image upload error:', error);
+      throw error;
+    }
+  };
+
+  const updateProfilePhotoInBackend = async (newPhotoUrl) => {
+    try {
+      await API.graphql({
+        query: customMutations.updateUserProfilePhoto,
+        variables: {
+          username: username,
+          action: 'UPDATE_PROFILE_INFO',
+          tripData: JSON.stringify({
+            profilePhotoUrl: newPhotoUrl,
+          }),
+        },
+        authMode: 'AMAZON_COGNITO_USER_POOLS',
+      });
+    } catch (error) {
+      // GraphQL may throw with partial errors but mutation still succeeds
+      // Check if data was returned (indicates success despite errors)
+      if (error?.data?.updateUserProfile) {
+        // Mutation succeeded, ignore the partial error
+        return;
+      }
+      console.error('Error updating profile photo:', error);
+      throw error;
+    }
+  };
+
+  const pickProfileImage = async (source) => {
+    try {
+      const hasPermission = await requestPhotoPermission(source);
+      if (!hasPermission) {
+        Alert.alert(
+          'Permission Required',
+          `Please allow access to your ${source === 'camera' ? 'camera' : 'photo library'} in Settings.`
+        );
+        return;
+      }
+
+      const options = {
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      };
+
+      let result;
+      if (source === 'camera') {
+        result = await ImagePicker.launchCameraAsync(options);
+      } else {
+        result = await ImagePicker.launchImageLibraryAsync(options);
+      }
+
+      if (!result.canceled && result.assets[0]) {
+        setIsUploadingPhoto(true);
+        try {
+          // Upload image to hosting service
+          const imageUrl = await uploadImageToHost(result.assets[0].uri);
+          await updateProfilePhotoInBackend(imageUrl);
+          setProfilePhotoUrl(imageUrl);
+        } catch (error) {
+          console.error('Profile photo update error:', error);
+        } finally {
+          setIsUploadingPhoto(false);
+        }
+      }
+    } catch (error) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
+  };
+
+  const removeProfilePhoto = async () => {
+    try {
+      setIsUploadingPhoto(true);
+      await updateProfilePhotoInBackend(null);
+      setProfilePhotoUrl(null);
+    } catch (error) {
+      console.error('Error removing profile photo:', error);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleChangeProfilePhoto = () => {
+    const hasPhoto = !!profilePhotoUrl;
+
+    const buttons = [
+      { text: 'Take Photo', onPress: () => pickProfileImage('camera') },
+      { text: 'Choose from Library', onPress: () => pickProfileImage('library') },
+    ];
+
+    if (hasPhoto) {
+      buttons.push({ text: 'Remove Photo', onPress: removeProfilePhoto, style: 'destructive' });
+    }
+
+    buttons.push({ text: 'Cancel', style: 'cancel' });
+
+    Alert.alert('Change Profile Photo', 'Choose an option', buttons);
+  };
 
   // Load user data
   const loadUserData = useCallback(async () => {
@@ -124,7 +349,14 @@ export default function FeedScreen() {
         setCitiesVisited(stats.citiesVisited || 0);
       }
     } catch (error) {
-      console.error('[Feed] Error loading statistics:', error);
+      // GraphQL may throw with partial errors but still have valid data
+      if (error?.data?.getUserStatistics) {
+        const stats = error.data.getUserStatistics;
+        setCountriesVisited(stats.countriesVisited || 0);
+        setCitiesVisited(stats.citiesVisited || 0);
+      } else {
+        console.warn('[Feed] Error loading statistics:', error);
+      }
     }
   }, []);
 
@@ -151,7 +383,21 @@ export default function FeedScreen() {
       // Load statistics separately to calculate from trips
       await loadUserStatistics(userName);
     } catch (error) {
-      console.error('[Feed] Error loading profile:', error);
+      // GraphQL may throw with partial errors but still have valid data
+      if (error?.data?.getUserProfile) {
+        const profile = error.data.getUserProfile;
+        setProfilePhotoUrl(profile.profilePhotoUrl);
+        setBio(profile.bio);
+        setIsPrivate(profile.isPrivateAccount || false);
+        setFollowersCount(profile.followersCount || 0);
+        setFollowingCount(profile.followingCount || 0);
+        setCountriesVisited(profile.countriesVisited || 0);
+        setCitiesVisited(profile.citiesVisited || 0);
+        // Still load statistics
+        await loadUserStatistics(userName);
+      } else {
+        console.warn('[Feed] Error loading profile:', error);
+      }
     }
   }, [loadUserStatistics]);
 
@@ -242,8 +488,7 @@ export default function FeedScreen() {
       setOwnedTrips(owned);
       setSharedTrips(shared);
     } catch (error) {
-      console.error('[Feed] Error loading trips:', error);
-      setTripsError('Failed to load trips');
+      // Silently handle error - don't show toast
     } finally {
       setIsLoadingTrips(false);
     }
@@ -830,10 +1075,16 @@ export default function FeedScreen() {
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={() => setIsSettingsModalVisible(true)}
+            style={styles.exploreButton}
+            onPress={() => router.push('/(tabs)/explore')}
           >
-            <Ionicons name="settings-outline" size={28} color={Colors.GRAY} />
+            <Ionicons name="search-outline" size={26} color={Colors.GRAY} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.friendRequestsButton}
+            onPress={() => router.push('/profile/follow-requests')}
+          >
+            <Ionicons name="people-outline" size={26} color={Colors.GRAY} />
           </TouchableOpacity>
         </View>
       </View>
@@ -1233,7 +1484,7 @@ export default function FeedScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Profile Content */}
+          {/* Profile Content - Instagram Style */}
           <ScrollView
             style={styles.profileModalScrollView}
             showsVerticalScrollIndicator={true}
@@ -1246,28 +1497,283 @@ export default function FeedScreen() {
               />
             }
           >
-            {/* Profile Header and Stats */}
             {username && (
-              <>
-                <ProfileHeader
-                  username={username}
-                  fullName={fullName}
-                  profilePhotoUrl={profilePhotoUrl}
-                  bio={bio}
-                  isOwnProfile={true}
-                  isPrivate={isPrivate}
-                  onEditPress={handleEditProfile}
-                />
-                <ProfileStats
-                  countriesVisited={countriesVisited}
-                  citiesVisited={citiesVisited}
-                  totalTrips={ownedTrips.length + sharedTrips.length}
-                  followersCount={followersCount}
-                  followingCount={followingCount}
-                  onFollowersPress={handleFollowersPress}
-                  onFollowingPress={handleFollowingPress}
-                />
-              </>
+              <View style={styles.profileSection}>
+                {/* Top Row: Photo + Stats */}
+                <View style={styles.profileTopRow}>
+                  {/* Profile Photo */}
+                  <TouchableOpacity
+                    style={styles.profilePhotoContainer}
+                    onPress={handleChangeProfilePhoto}
+                    disabled={isUploadingPhoto}
+                  >
+                    {profilePhotoUrl ? (
+                      <Image
+                        source={{ uri: profilePhotoUrl }}
+                        style={styles.profilePhoto}
+                      />
+                    ) : (
+                      <View style={[styles.profilePhoto, styles.profilePhotoPlaceholder]}>
+                        <FontAwesome name="user" size={32} color={Colors.GRAY} />
+                      </View>
+                    )}
+                    {isUploadingPhoto ? (
+                      <View style={styles.profilePhotoUploadingOverlay}>
+                        <ActivityIndicator size="small" color={Colors.WHITE} />
+                      </View>
+                    ) : (
+                      <View style={styles.profilePhotoCameraIcon}>
+                        <Ionicons name="camera" size={14} color={Colors.WHITE} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+
+                  {/* Stats Row */}
+                  <View style={styles.profileStatsRow}>
+                    <View style={styles.profileStatItem}>
+                      <Text style={styles.profileStatNumber}>{ownedTrips.length + sharedTrips.length}</Text>
+                      <Text style={styles.profileStatLabel}>Trips</Text>
+                    </View>
+                    <TouchableOpacity style={styles.profileStatItem} onPress={handleFollowersPress}>
+                      <Text style={styles.profileStatNumber}>{followersCount}</Text>
+                      <Text style={styles.profileStatLabel}>Followers</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.profileStatItem} onPress={handleFollowingPress}>
+                      <Text style={styles.profileStatNumber}>{followingCount}</Text>
+                      <Text style={styles.profileStatLabel}>Following</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Name and Username */}
+                <View style={styles.profileNameSection}>
+                  <Text style={styles.profileFullName}>{fullName}</Text>
+                  <View style={styles.profileUsernameRow}>
+                    <Text style={styles.profileUsernameText}>@{username}</Text>
+                    {isPrivate && (
+                      <View style={styles.profilePrivateBadge}>
+                        <Ionicons name="lock-closed" size={12} color="#6B7280" />
+                        <Text style={styles.profilePrivateText}>Private</Text>
+                      </View>
+                    )}
+                  </View>
+                  {bio && (
+                    <Text style={styles.profileBioText}>{bio}</Text>
+                  )}
+                </View>
+
+                {/* Travel Stats - Compact */}
+                <View style={styles.profileTravelStatsRow}>
+                  <View style={styles.profileTravelStatItem}>
+                    <Ionicons name="earth-outline" size={16} color={Colors.ORANGE} />
+                    <Text style={styles.profileTravelStatText}>{userTrips.length > 0 ? calculatedCountries : countriesVisited} Countries</Text>
+                  </View>
+                  <View style={styles.profileTravelStatDot} />
+                  <View style={styles.profileTravelStatItem}>
+                    <Ionicons name="location-outline" size={16} color={Colors.ORANGE} />
+                    <Text style={styles.profileTravelStatText}>{userTrips.length > 0 ? calculatedCities : citiesVisited} Cities</Text>
+                  </View>
+                </View>
+
+                {/* Edit Profile Button */}
+                <TouchableOpacity
+                  style={styles.editProfileButton}
+                  onPress={handleEditProfile}
+                >
+                  <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+                </TouchableOpacity>
+
+                {/* Trips Section */}
+                <View style={styles.profileTripsSection}>
+                  {/* Tab Selector */}
+                  <View style={styles.profileTabContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.profileTab,
+                        profileActiveTab === 'upcoming' && styles.profileActiveTab,
+                      ]}
+                      onPress={() => setProfileActiveTab('upcoming')}
+                    >
+                      <Text style={[
+                        styles.profileTabText,
+                        profileActiveTab === 'upcoming' && styles.profileActiveTabText,
+                      ]}>
+                        Upcoming Trips
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.profileTab,
+                        profileActiveTab === 'past' && styles.profileActiveTab,
+                      ]}
+                      onPress={() => setProfileActiveTab('past')}
+                    >
+                      <Text style={[
+                        styles.profileTabText,
+                        profileActiveTab === 'past' && styles.profileActiveTabText,
+                      ]}>
+                        Past Trips
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {isLoadingTrips ? (
+                    <View style={styles.profileLoadingTripsContainer}>
+                      <ActivityIndicator size="large" color={Colors.ORANGE} />
+                    </View>
+                  ) : profileDisplayedTrips.length === 0 ? (
+                    <View style={styles.profileEmptyTripsContainer}>
+                      <Ionicons
+                        name={profileActiveTab === 'upcoming' ? "airplane-outline" : "time-outline"}
+                        size={48}
+                        color={Colors.GRAY}
+                      />
+                      <Text style={styles.profileEmptyTripsText}>
+                        {profileActiveTab === 'upcoming' ? 'No upcoming trips' : 'No past trips'}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.profileTripsGrid}>
+                      {profileDisplayedTrips.map((trip) => {
+                        const photoReferences = Array.isArray(trip.tripPhotoReference)
+                          ? trip.tripPhotoReference
+                          : trip.tripPhotoReference
+                          ? [trip.tripPhotoReference]
+                          : [];
+
+                        const hasPhotos = photoReferences.length > 0;
+                        const photoCount = hasPhotos ? photoReferences.length : (profileTripPhotoCounts[trip.tripId] || 5);
+                        const currentIndex = profileCarouselIndices[trip.tripId] || 0;
+                        const displayTitle = trip.tripTitle || trip.selectedCity || 'Untitled Trip';
+
+                        // Format date display
+                        let dateDisplay = '';
+                        if (trip.startDate && trip.endDate) {
+                          const startDate = new Date(trip.startDate);
+                          const endDate = new Date(trip.endDate);
+                          const sameMonth = startDate.getMonth() === endDate.getMonth() &&
+                                            startDate.getFullYear() === endDate.getFullYear();
+
+                          if (sameMonth) {
+                            const startFormatted = startDate.toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                            });
+                            const endDay = endDate.getDate();
+                            dateDisplay = `${startFormatted} - ${endDay}`;
+                          } else {
+                            const startFormatted = startDate.toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                            });
+                            const endFormatted = endDate.toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                            });
+                            dateDisplay = `${startFormatted} - ${endFormatted}`;
+                          }
+                        } else if (trip.startDate) {
+                          dateDisplay = new Date(trip.startDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric'
+                          });
+                        }
+
+                        return (
+                          <TouchableOpacity
+                            key={trip.tripId}
+                            style={styles.profileTripCard}
+                            onPress={() => {
+                              setIsProfileModalVisible(false);
+                              setSelectedTripId(trip.tripId);
+                              handleLoadTrip(trip.tripId);
+                            }}
+                            activeOpacity={0.8}
+                          >
+                            {/* Trip Photo Carousel */}
+                            <View style={styles.profileCardCarouselContainer}>
+                              <Carousel
+                                loop={false}
+                                width={PROFILE_CARD_WIDTH}
+                                height={PROFILE_CARD_IMAGE_HEIGHT}
+                                data={hasPhotos ? photoReferences : [{}, {}, {}, {}, {}]}
+                                scrollAnimationDuration={300}
+                                onSnapToItem={(index) =>
+                                  setProfileCarouselIndices((prev) => ({
+                                    ...prev,
+                                    [trip.tripId]: index,
+                                  }))
+                                }
+                                renderItem={({ item, index }) => {
+                                  const photoRef = hasPhotos
+                                    ? (typeof item === 'string' ? item : item?.photo_reference)
+                                    : undefined;
+                                  const placeId = hasPhotos
+                                    ? (typeof item === 'object' ? item?.place_id : undefined)
+                                    : undefined;
+
+                                  return (
+                                    <TripCarouselImage
+                                      photo_reference={photoRef}
+                                      place_id={placeId}
+                                      cityName={trip.selectedCity}
+                                      photoIndex={index}
+                                      shouldLoad={true}
+                                      style={{
+                                        height: PROFILE_CARD_IMAGE_HEIGHT,
+                                        width: PROFILE_CARD_WIDTH,
+                                        borderTopLeftRadius: 12,
+                                        borderTopRightRadius: 12
+                                      }}
+                                      onPhotoCountUpdate={
+                                        !hasPhotos
+                                          ? (count) =>
+                                              setProfileTripPhotoCounts((prev) => ({
+                                                ...prev,
+                                                [trip.tripId]: count,
+                                              }))
+                                          : undefined
+                                      }
+                                    />
+                                  );
+                                }}
+                              />
+                              {photoCount > 1 && (
+                                <View style={styles.profileCardPaginationDots}>
+                                  {Array.from({ length: Math.min(photoCount, 5) }, (_, dotIndex) => (
+                                    <View
+                                      key={dotIndex}
+                                      style={[
+                                        styles.profileCardDot,
+                                        currentIndex === dotIndex && styles.profileCardActiveDot,
+                                      ]}
+                                    />
+                                  ))}
+                                </View>
+                              )}
+                            </View>
+
+                            {/* Trip Info Section */}
+                            <View style={styles.profileCardTripInfo}>
+                              <Text style={styles.profileCardTripTitle} numberOfLines={1}>
+                                {displayTitle}
+                              </Text>
+                              {dateDisplay ? (
+                                <View style={styles.profileCardTripDateRow}>
+                                  <Ionicons name="calendar-outline" size={12} color={Colors.GRAY} />
+                                  <Text style={styles.profileCardTripDates} numberOfLines={1}>
+                                    {dateDisplay}
+                                  </Text>
+                                </View>
+                              ) : null}
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+              </View>
             )}
           </ScrollView>
         </View>
@@ -1302,7 +1808,31 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 15,
+    gap: 8,
+  },
+  exploreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: Colors.WHITE,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2.84,
+  },
+  friendRequestsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: Colors.WHITE,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2.84,
   },
   profileIconButton: {
     width: 40,
@@ -1718,7 +2248,267 @@ const styles = StyleSheet.create({
   },
   profileModalScrollView: {
     flex: 1,
-    paddingHorizontal: 25,
+    paddingHorizontal: 20,
     paddingTop: 20,
+  },
+  // Instagram-style Profile Section
+  profileSection: {
+    paddingBottom: 20,
+  },
+  profileTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  profilePhotoContainer: {
+    marginRight: 24,
+    position: 'relative',
+  },
+  profilePhoto: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.LIGHT_GRAY,
+  },
+  profilePhotoPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profilePhotoCameraIcon: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: Colors.ORANGE,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.WHITE,
+  },
+  profilePhotoUploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileStatsRow: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  profileStatItem: {
+    alignItems: 'center',
+    minWidth: 60,
+  },
+  profileStatNumber: {
+    fontSize: 18,
+    fontFamily: 'outfit-bold',
+    color: '#1a1a1a',
+  },
+  profileStatLabel: {
+    fontSize: 13,
+    fontFamily: 'outfit',
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  profileNameSection: {
+    marginBottom: 12,
+  },
+  profileFullName: {
+    fontSize: 16,
+    fontFamily: 'outfit-bold',
+    color: '#1a1a1a',
+    marginBottom: 2,
+  },
+  profileUsernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileUsernameText: {
+    fontSize: 14,
+    fontFamily: 'outfit',
+    color: '#6B7280',
+    marginRight: 8,
+  },
+  profilePrivateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  profilePrivateText: {
+    fontSize: 11,
+    fontFamily: 'outfit-medium',
+    color: '#6B7280',
+    marginLeft: 4,
+  },
+  profileBioText: {
+    fontSize: 14,
+    fontFamily: 'outfit',
+    color: '#374151',
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  profileTravelStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  profileTravelStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileTravelStatText: {
+    fontSize: 13,
+    fontFamily: 'outfit-medium',
+    color: '#6B7280',
+    marginLeft: 4,
+  },
+  profileTravelStatDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D1D5DB',
+    marginHorizontal: 12,
+  },
+  editProfileButton: {
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  editProfileButtonText: {
+    fontSize: 14,
+    fontFamily: 'outfit-semibold',
+    color: '#1a1a1a',
+  },
+  // Profile Modal Trips Section
+  profileTripsSection: {
+    paddingTop: 20,
+    paddingBottom: 30,
+  },
+  profileTabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    padding: 4,
+    marginBottom: 16,
+  },
+  profileTab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  profileActiveTab: {
+    backgroundColor: Colors.WHITE,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  profileTabText: {
+    fontSize: 14,
+    fontFamily: 'outfit-medium',
+    color: Colors.GRAY,
+  },
+  profileActiveTabText: {
+    color: '#1F2937',
+  },
+  profileLoadingTripsContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  profileEmptyTripsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  profileEmptyTripsText: {
+    fontSize: 16,
+    fontFamily: 'outfit',
+    color: Colors.GRAY,
+    marginTop: 12,
+  },
+  profileTripsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  profileTripCard: {
+    width: PROFILE_CARD_WIDTH,
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Colors.WHITE,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  profileCardCarouselContainer: {
+    position: 'relative',
+    overflow: 'hidden',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  profileCardPaginationDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    bottom: 8,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  profileCardDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginHorizontal: 2,
+  },
+  profileCardActiveDot: {
+    backgroundColor: Colors.WHITE,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  profileCardTripInfo: {
+    padding: 12,
+    paddingTop: 10,
+    backgroundColor: Colors.WHITE,
+  },
+  profileCardTripTitle: {
+    fontSize: 15,
+    fontFamily: 'outfit-medium',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  profileCardTripDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileCardTripDates: {
+    fontSize: 12,
+    fontFamily: 'outfit',
+    color: '#9CA3AF',
+    marginLeft: 4,
   },
 });
