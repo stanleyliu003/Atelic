@@ -105,8 +105,13 @@ export default function FollowersScreen() {
   }, [hasMore, isLoading, loadFollowers]);
 
   const handleUserPress = useCallback((followUsername) => {
-    router.push(`/profile/${followUsername}`);
-  }, [router]);
+    if (followUsername === currentUsername) {
+      // If clicking on own profile, go back to home/profile tab
+      router.replace('/(tabs)/feed');
+    } else {
+      router.push(`/profile/${followUsername}`);
+    }
+  }, [router, currentUsername]);
 
   const handleFollowPress = useCallback(async (followUsername) => {
     const isFollowing = currentUserFollowing.has(followUsername);
@@ -164,6 +169,7 @@ export default function FollowersScreen() {
         onUserPress={handleUserPress}
         onFollowPress={handleFollowPress}
         currentUserFollowing={currentUserFollowing}
+        currentUsername={currentUsername}
       />
     </SafeAreaView>
   );

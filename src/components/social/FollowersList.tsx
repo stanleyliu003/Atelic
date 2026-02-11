@@ -30,6 +30,7 @@ interface FollowersListProps {
   onUserPress: (username: string) => void;
   onFollowPress: (username: string) => void;
   currentUserFollowing: Set<string>;
+  currentUsername?: string;
 }
 
 export function FollowersList({
@@ -42,6 +43,7 @@ export function FollowersList({
   onUserPress,
   onFollowPress,
   currentUserFollowing,
+  currentUsername,
 }: FollowersListProps) {
   const renderItem = ({ item }: { item: Follower }) => (
     <UserCard
@@ -52,6 +54,7 @@ export function FollowersList({
       isPrivate={item.isPrivate}
       isFollowing={currentUserFollowing.has(item.username)}
       hasPendingRequest={false}
+      isCurrentUser={currentUsername === item.username}
       onPress={() => onUserPress(item.username)}
       onFollowPress={() => onFollowPress(item.username)}
     />

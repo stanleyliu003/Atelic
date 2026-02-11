@@ -410,7 +410,9 @@ export default function FeedScreen() {
     }
   }, [loadUserStatistics]);
 
-  const loadUserTrips = async (userID) => {
+  const loadUserTrips = async (userID, retryCount = 0) => {
+    const maxRetries = 2;
+
     try {
       setIsLoadingTrips(true);
       setTripsError(null);
@@ -496,11 +498,9 @@ export default function FeedScreen() {
       setUserTrips(sortedTrips);
       setOwnedTrips(owned);
       setSharedTrips(shared);
+      setIsLoadingTrips(false);
     } catch (error) {
       // Try to extract partial data if available
-      console.warn('[Feed] Error loading trips, attempting recovery:', error?.message || error);
-
-      // If the error contains partial data, try to use it
       if (error?.data?.getTripIDs) {
         const allTrips = error.data.getTripIDs || [];
         const owned = allTrips.filter(trip => trip.userRole === 'owner');
@@ -508,9 +508,20 @@ export default function FeedScreen() {
         setUserTrips(allTrips);
         setOwnedTrips(owned);
         setSharedTrips(shared);
+        setIsLoadingTrips(false);
+      } else if (retryCount < maxRetries) {
+        // Retry after a short delay
+        console.log(`[Feed] Retrying trip load (attempt ${retryCount + 2}/${maxRetries + 1})...`);
+        setTimeout(() => {
+          loadUserTrips(userID, retryCount + 1);
+        }, 1000 * (retryCount + 1)); // 1s, 2s delay
+        // Keep loading state true during retry
+      } else {
+        // Only log if we couldn't recover any data after all retries
+        console.log('[Feed] Error loading trips after retries:', error?.message || 'Unknown error');
+        setTripsError('Failed to load trips. Pull down to refresh.');
+        setIsLoadingTrips(false);
       }
-    } finally {
-      setIsLoadingTrips(false);
     }
   };
 
@@ -849,9 +860,15 @@ export default function FeedScreen() {
   };
 
   const handleFollowerUserPress = (targetUsername) => {
-    setIsProfileModalVisible(false);
-    setProfileModalView('profile');
-    router.push(`/profile/${targetUsername}`);
+    if (targetUsername === username) {
+      // If clicking on own profile, just go back to profile view
+      setProfileModalView('profile');
+    } else {
+      // Navigate to other user's profile
+      setIsProfileModalVisible(false);
+      setProfileModalView('profile');
+      router.push(`/profile/${targetUsername}`);
+    }
   };
 
   const handleUnfollowFromList = async (targetUsername) => {
@@ -1966,6 +1983,7 @@ export default function FeedScreen() {
               onUserPress={handleFollowerUserPress}
               onFollowPress={handleFollowFromFollowersList}
               currentUserFollowing={new Set(followingList.map(u => u.username))}
+              currentUsername={username}
             />
           )}
 
@@ -1980,6 +1998,7 @@ export default function FeedScreen() {
               onRefresh={loadFollowingList}
               onUserPress={handleFollowerUserPress}
               onUnfollowPress={handleUnfollowFromList}
+              currentUsername={username}
             />
           )}
         </View>

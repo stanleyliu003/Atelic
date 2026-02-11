@@ -17,6 +17,7 @@ interface UserCardProps {
   isPrivate: boolean;
   isFollowing?: boolean;
   hasPendingRequest?: boolean;
+  isCurrentUser?: boolean;
   onPress: () => void;
   onFollowPress: () => void;
 }
@@ -31,16 +32,21 @@ export function UserCard({
   isPrivate,
   isFollowing,
   hasPendingRequest,
+  isCurrentUser,
   onPress,
   onFollowPress,
 }: UserCardProps) {
   const getFollowButtonText = () => {
+    if (isCurrentUser) return 'View Profile';
     if (hasPendingRequest) return 'Requested';
     if (isFollowing) return 'Following';
     return 'Follow';
   };
 
   const getFollowButtonStyle = () => {
+    if (isCurrentUser) {
+      return [styles.followButton, styles.viewProfileButton];
+    }
     if (hasPendingRequest) {
       return [styles.followButton, styles.requestedButton];
     }
@@ -51,6 +57,9 @@ export function UserCard({
   };
 
   const getFollowButtonTextStyle = () => {
+    if (isCurrentUser) {
+      return [styles.followButtonText, styles.viewProfileButtonText];
+    }
     if (isFollowing) {
       return [styles.followButtonText, styles.followingButtonText];
     }
@@ -170,5 +179,11 @@ const styles = StyleSheet.create({
   },
   followingButtonText: {
     color: Colors.WHITE,
+  },
+  viewProfileButton: {
+    backgroundColor: Colors.LIGHT_GRAY,
+  },
+  viewProfileButtonText: {
+    color: Colors.BLACK,
   },
 });

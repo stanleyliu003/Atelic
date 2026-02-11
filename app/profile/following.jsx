@@ -100,8 +100,13 @@ export default function FollowingScreen() {
   }, [hasMore, isLoading, loadFollowing]);
 
   const handleUserPress = useCallback((followingUsername) => {
-    router.push(`/profile/${followingUsername}`);
-  }, [router]);
+    if (followingUsername === currentUsername) {
+      // If clicking on own profile, go back to home/profile tab
+      router.replace('/(tabs)/feed');
+    } else {
+      router.push(`/profile/${followingUsername}`);
+    }
+  }, [router, currentUsername]);
 
   const handleUnfollowPress = useCallback(async (followingUsername) => {
     Alert.alert(
@@ -158,6 +163,7 @@ export default function FollowingScreen() {
         onRefresh={handleRefresh}
         onUserPress={handleUserPress}
         onUnfollowPress={handleUnfollowPress}
+        currentUsername={currentUsername}
       />
     </SafeAreaView>
   );

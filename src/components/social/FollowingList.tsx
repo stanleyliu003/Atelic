@@ -29,6 +29,7 @@ interface FollowingListProps {
   onRefresh?: () => void;
   onUserPress: (username: string) => void;
   onUnfollowPress: (username: string) => void;
+  currentUsername?: string;
 }
 
 export function FollowingList({
@@ -40,6 +41,7 @@ export function FollowingList({
   onRefresh,
   onUserPress,
   onUnfollowPress,
+  currentUsername,
 }: FollowingListProps) {
   const renderItem = ({ item }: { item: Following }) => (
     <UserCard
@@ -50,6 +52,7 @@ export function FollowingList({
       isPrivate={item.isPrivate}
       isFollowing={true}
       hasPendingRequest={false}
+      isCurrentUser={currentUsername === item.username}
       onPress={() => onUserPress(item.username)}
       onFollowPress={() => onUnfollowPress(item.username)}
     />
