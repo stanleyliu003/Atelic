@@ -493,8 +493,7 @@ export default function UsernameSetup() {
             username: prefUsername,
             action: action,
             tripData: JSON.stringify(tripDataPayload)
-          },
-          authMode: 'AMAZON_COGNITO_USER_POOLS'
+          }
         });
 
         console.log(`[OnboardingComplete] UserProfile updated with action: ${action}`);
@@ -515,8 +514,7 @@ export default function UsernameSetup() {
                   username: prefUsername,
                   action: 'LINK_ATTRIBUTION',
                   tripData: JSON.stringify({ appsflyerDeviceId: appsflyerId })
-                },
-                authMode: 'AMAZON_COGNITO_USER_POOLS'
+                }
               });
               
               console.log('[Attribution] Successfully linked attribution:', attributionResult);

@@ -262,6 +262,9 @@ type SendNotificationResult {
    devicePushToken: String
    snsEndpointArn: String
 
+   # Admin permissions
+   admin_permission: Boolean
+
    # Subscription info
    subscriptionTier: String!
    subscriptionStartDate: String
@@ -481,7 +484,7 @@ type AppVersionConfig {
    addCollaborator(tripId: String!, userID: String!, userEmail: String!, fullName: String!, username: String!, role: CollaboratorRole!, addedBy: String): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
    removeCollaborator(tripId: String!, username: String!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
    updateCollaboratorRole(tripId: String!, username: String!, role: CollaboratorRole!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
-   updateUserProfile(username: String!, action: String!, tripData: AWSJSON): UserProfileStorage @function(name: "updateUserProfile-${env}") @auth(rules: [{ allow: private }])
+   updateUserProfile(username: String!, action: String!, tripData: AWSJSON): UserProfileStorage @function(name: "updateUserProfile-${env}") @auth(rules: [{ allow: public }])
    registerDeviceToken(username: String, userID: String): RegisterDeviceTokenResult @function(name: "registerDeviceToken-${env}") @auth(rules: [{ allow: private }])
    sendPushNotification(username: String, userID: String, title: String!, body: String!, data: AWSJSON): SendNotificationResult @function(name: "sendPushNotification-${env}") @auth(rules: [{ allow: private }])
  }

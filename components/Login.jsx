@@ -94,8 +94,18 @@ export default function Login() {
   const [showUpdateRequired, setShowUpdateRequired] = useState(false);
   const [minimumRequiredVersion, setMinimumRequiredVersion] = useState(null);
   const isNavigatingRef = useRef(false);
+  const authCheckTimeoutRef = useRef(null);
 
   useEffect(() => {
+    const scheduleAuthCheck = (delayMs = 200) => {
+      if (authCheckTimeoutRef.current) {
+        clearTimeout(authCheckTimeoutRef.current);
+      }
+      authCheckTimeoutRef.current = setTimeout(() => {
+        checkAuthenticationState();
+      }, delayMs);
+    };
+
     // Set up authentication event listeners
     const authListener = Hub.listen('auth', ({ payload: { event } }) => {
       switch (event) {
@@ -115,17 +125,14 @@ export default function Login() {
 
     // Set up URL event listener to handle OAuth redirects
     const urlListener = Linking.addEventListener('url', () => {
-      setTimeout(() => {
-        checkAuthenticationState();
-      }, 1500);
+      // Keep this short; Amplify will process the redirect quickly
+      scheduleAuthCheck(200);
     });
 
     // Set up app state listener for when app comes back to foreground
     const appStateListener = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
-        setTimeout(() => {
-          checkAuthenticationState();
-        }, 1500);
+        scheduleAuthCheck(200);
       }
     });
 
@@ -144,6 +151,9 @@ export default function Login() {
       authListener();
       urlListener.remove();
       appStateListener?.remove();
+      if (authCheckTimeoutRef.current) {
+        clearTimeout(authCheckTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -204,11 +214,25 @@ export default function Login() {
 
       // Check if user has complete profile (username, name, birthdate, gender)
       // Important for both OAuth users and email sign-up users
-      const attributes = await Auth.userAttributes(user);
-      const preferredUsername = attributes.find(attr => attr.Name === 'preferred_username')?.Value;
-      const name = attributes.find(attr => attr.Name === 'name')?.Value;
-      const birthdate = attributes.find(attr => attr.Name === 'birthdate')?.Value;
-      const gender = attributes.find(attr => attr.Name === 'gender')?.Value;
+      const attributeMap = user?.attributes || {};
+      let preferredUsername = attributeMap?.preferred_username;
+      let name = attributeMap?.name;
+      let birthdate = attributeMap?.birthdate;
+      let gender = attributeMap?.gender;
+
+      // Fallback: fetch attributes only if they weren't already loaded
+      if (!preferredUsername || !name || !birthdate || !gender) {
+        try {
+          const attributes = await Auth.userAttributes(user);
+          preferredUsername = preferredUsername || attributes.find(attr => attr.Name === 'preferred_username')?.Value;
+          name = name || attributes.find(attr => attr.Name === 'name')?.Value;
+          birthdate = birthdate || attributes.find(attr => attr.Name === 'birthdate')?.Value;
+          gender = gender || attributes.find(attr => attr.Name === 'gender')?.Value;
+        } catch (e) {
+          // If attribute fetch fails, treat as incomplete profile (safe default)
+          console.warn('[Login] Failed to fetch user attributes:', e?.message || e);
+        }
+      }
 
       // Redirect to username-setup if profile is incomplete
       if (!preferredUsername || !name || !birthdate || !gender) {
@@ -228,10 +252,17 @@ export default function Login() {
       // This ensures old users go through the new onboarding flow
       let needsOnboarding = false;
       try {
-        const profileResult = await API.graphql({
-          query: getUserProfileQuery,
-          variables: { username: preferredUsername }
-        });
+        // Time-bound this call so a slow network doesn't hold the login spinner.
+        // If it times out, we "fail open" and let the user in.
+        const profileResult = await Promise.race([
+          API.graphql({
+            query: getUserProfileQuery,
+            variables: { username: preferredUsername }
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Profile fetch timeout')), 1200)
+          )
+        ]);
 
         const userProfile = profileResult.data?.getUserProfile;
 
@@ -253,42 +284,43 @@ export default function Login() {
         return;
       }
 
-      // Update device info for all users (both old and new)
-      // This ensures backward compatibility: old users without device info will get it populated
-      try {
-        const appVersion = DeviceInfo.getVersion() || null;
-        const osName = DeviceInfo.getSystemName() || null;       // maps to deviceType
-        const osVersion = DeviceInfo.getSystemVersion() || null;
-        const modelName = DeviceInfo.getModel() || null;
-
-        // CRITICAL: Pass the actual Cognito username (user.username = sub/userID)
-        // NOT the preferred_username, so AdminGetUserCommand can fetch Cognito data
-        const actualUsername = user.username; // This is the Cognito Username (sub)
-
-        await API.graphql({
-          query: updateUserProfileMutation,
-          variables: {
-            username: actualUsername, // Use actual Cognito username for API calls
-            action: 'UPDATE_LOGIN',
-            tripData: JSON.stringify({
-              appVersion,
-              deviceType: osName,
-              modelName,
-              osVersion,
-              preferredUsername: preferredUsername // Also pass for reference
-            })
-          },
-          authMode: 'AMAZON_COGNITO_USER_POOLS'
-        });
-        console.log('[Login] Updated device info for user:', preferredUsername, 'userID:', actualUsername);
-      } catch (e) {
-        // Don't block login if device info update fails
-        console.warn('[Login] Failed to update device info:', e?.errors || e?.message || e);
-      }
-
       // User is authenticated and has username, redirect to main app
       isNavigatingRef.current = true;
       router.replace('(tabs)/profile');
+
+      // Update device info in the background (do not block navigation/spinner)
+      // This ensures backward compatibility: old users without device info will get it populated
+      (async () => {
+        try {
+          const appVersion = DeviceInfo.getVersion() || null;
+          const osName = DeviceInfo.getSystemName() || null;       // maps to deviceType
+          const osVersion = DeviceInfo.getSystemVersion() || null;
+          const modelName = DeviceInfo.getModel() || null;
+
+          // CRITICAL: Pass the actual Cognito username (user.username = sub/userID)
+          // NOT the preferred_username, so AdminGetUserCommand can fetch Cognito data
+          const actualUsername = user.username; // This is the Cognito Username (sub)
+
+          await API.graphql({
+            query: updateUserProfileMutation,
+            variables: {
+              username: actualUsername, // Use actual Cognito username for API calls
+              action: 'UPDATE_LOGIN',
+              tripData: JSON.stringify({
+                appVersion,
+                deviceType: osName,
+                modelName,
+                osVersion,
+                preferredUsername: preferredUsername // Also pass for reference
+              })
+            },
+            authMode: 'AMAZON_COGNITO_USER_POOLS'
+          });
+          console.log('[Login] Updated device info for user:', preferredUsername, 'userID:', actualUsername);
+        } catch (e) {
+          console.warn('[Login] Failed to update device info:', e?.errors || e?.message || e);
+        }
+      })();
 
     } catch (error) {
       // Check if this is a token refresh failure

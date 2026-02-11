@@ -2,9 +2,15 @@
 	ENV
 	FUNCTION_GETLOCATIONCOORDINATES_NAME
 	REGION
+	STORAGE_PLACESAPIACTIVITYSTORAGE_ARN
+	STORAGE_PLACESAPIACTIVITYSTORAGE_NAME
+	STORAGE_PLACESAPIACTIVITYSTORAGE_STREAMARN
 	STORAGE_SAVEDPLACESSTORAGE_ARN
 	STORAGE_SAVEDPLACESSTORAGE_NAME
 	STORAGE_SAVEDPLACESSTORAGE_STREAMARN
+	STORAGE_USERPROFILESSTORAGE_ARN
+	STORAGE_USERPROFILESSTORAGE_NAME
+	STORAGE_USERPROFILESSTORAGE_STREAMARN
 Amplify Params - DO NOT EDIT */
 
 /**
@@ -37,6 +43,7 @@ const lambdaClient = new LambdaClient({ region: process.env.REGION });
 
 const SAVED_PLACES_TABLE = process.env.STORAGE_SAVEDPLACESSTORAGE_NAME;
 const GET_LOCATION_COORDINATES_FUNCTION = process.env.FUNCTION_GETLOCATIONCOORDINATES_NAME;
+const USER_PROFILES_TABLE = process.env.STORAGE_USERPROFILESSTORAGE_NAME;
 
 // Cache configuration
 const EXTRACTION_CACHE_TTL_DAYS = 90; // Instagram posts rarely change
@@ -139,6 +146,28 @@ async function getUserSavedPlacesCount(userID) {
 
     console.log(`[index] User ${userID} has ${totalCount} saved places`);
     return totalCount;
+}
+
+/**
+ * Check if user has admin_permission via UserProfilesStorage (GSI lookup by userID)
+ * @param {string} userID - Cognito user ID
+ * @returns {Promise<boolean>} - true if admin
+ */
+async function getUserAdminPermission(userID) {
+    try {
+        const result = await docClient.send(new QueryCommand({
+            TableName: USER_PROFILES_TABLE,
+            IndexName: 'userID-index',
+            KeyConditionExpression: 'userID = :uid',
+            ExpressionAttributeValues: { ':uid': userID },
+            ProjectionExpression: 'admin_permission',
+            Limit: 1
+        }));
+        return result.Items?.[0]?.admin_permission === true;
+    } catch (error) {
+        console.error('[index] Error fetching admin_permission:', error);
+        return false;
+    }
 }
 
 /**
@@ -422,19 +451,24 @@ exports.handler = async (event) => {
     console.log(`[index] Processing Instagram share: url=${instagramUrl}, userID=${userID}`);
 
     try {
-        // Step 0: Check saved places limit
+        // Step 0: Check saved places limit (skip for admin users)
         console.log('[index] Step 0: Checking saved places limit...');
-        const savedPlacesCount = await getUserSavedPlacesCount(userID);
-        if (savedPlacesCount > 10) {
-            console.log(`[index] User ${userID} has ${savedPlacesCount} saved places, exceeds limit of 10`);
-            return {
-                statusCode: 429,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'LIMIT_EXCEEDED',
-                    message: 'Exceeded sharing limit for this week.'
-                })
-            };
+        const isAdmin = await getUserAdminPermission(userID);
+        if (!isAdmin) {
+            const savedPlacesCount = await getUserSavedPlacesCount(userID);
+            if (savedPlacesCount > 10) {
+                console.log(`[index] User ${userID} has ${savedPlacesCount} saved places, exceeds limit of 10`);
+                return {
+                    statusCode: 429,
+                    body: JSON.stringify({
+                        success: false,
+                        error: 'LIMIT_EXCEEDED',
+                        message: 'Exceeded sharing limit for this week.'
+                    })
+                };
+            }
+        } else {
+            console.log(`[index] User ${userID} has admin_permission, skipping limit check`);
         }
 
         // Step 1: Scrape Instagram post

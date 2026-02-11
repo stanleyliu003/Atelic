@@ -19,6 +19,11 @@
         "create",
         "read",
         "update"
+      ],
+      "UserProfilesStorage": [
+        "create",
+        "read",
+        "update"
       ]
     }
   },

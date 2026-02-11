@@ -10,7 +10,7 @@ import { useCallback } from 'react';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { listUserTripsFromCloud, retrieveTripFromCloud, deleteUserAccountFromCloud } from '../../src/services/lambdaService';
 import { deleteTrip } from '../../src/graphql/customMutations';
-import { removeCollaborator } from '../../src/graphql/mutations';
+import { removeCollaborator, updateUserProfile } from '../../src/graphql/mutations';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import { TripCarouselImage } from '../../src/components/profile/TripCarouselImage';
 import { clearAuthData } from '../../src/services/appGroupsService';
@@ -1197,7 +1197,7 @@ export default function Profile() {
             </View>
 
             {/* Settings Content */}
-            <View style={styles.modalContent}>
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
               {/* Privacy Policy */}
               <TouchableOpacity
                 style={styles.settingsMenuItem}
@@ -1237,6 +1237,45 @@ export default function Profile() {
                 <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
               </TouchableOpacity>
 
+              {/* Apply as Admin */}
+              <TouchableOpacity
+                style={styles.settingsMenuItem}
+                onPress={() => {
+                  setIsSettingsModalVisible(false);
+                  Alert.prompt(
+                    'Apply as Admin',
+                    'Enter the 4-digit admin passcode:',
+                    async (passcode) => {
+                      if (passcode === '2000') {
+                        try {
+                          const user = await Auth.currentAuthenticatedUser();
+                          const prefUsername = user.attributes?.preferred_username || user.username;
+                          await API.graphql({
+                            query: updateUserProfile,
+                            variables: {
+                              username: prefUsername,
+                              action: 'UPDATE_ADMIN_PERMISSION',
+                              tripData: JSON.stringify({ admin_permission: true })
+                            }
+                          });
+                          Alert.alert('Success', 'Admin permission granted.');
+                        } catch (error) {
+                          console.error('[Profile] Error setting admin permission:', error);
+                          Alert.alert('Error', 'Failed to update admin permission.');
+                        }
+                      } else {
+                        Alert.alert('Invalid Code', 'The passcode you entered is incorrect.');
+                      }
+                    },
+                    'secure-text'
+                  );
+                }}
+              >
+                <Ionicons name="key-outline" size={24} color={Colors.PRIMARY} />
+                <Text style={styles.settingsMenuItemText}>Apply as Admin</Text>
+                <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
+              </TouchableOpacity>
+
               {/* Logout */}
               <TouchableOpacity
                 style={[styles.settingsMenuItem, styles.logoutMenuItem]}
@@ -1262,7 +1301,7 @@ export default function Profile() {
                 <Text style={[styles.settingsMenuItemText, { color: '#FF4444' }]}>Delete Account</Text>
                 <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -1643,7 +1682,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    flex: 0.6, // Takes up 45% of screen height (increased from 40%)
+    flex: 0.73,
     paddingTop: 8,
     elevation: 5,
     shadowColor: '#000',
@@ -1691,7 +1730,7 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   settingsModalSpacer: {
-    flex: 0.55, // Takes up 55% of screen, leaving 45% for modal (decreased from 67%)
+    flex: 0.42,
   },
   deleteAccountModalOverlay: {
     flex: 1,

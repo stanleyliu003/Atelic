@@ -440,6 +440,111 @@ export const updateCollaboratorRole = /* GraphQL */ `
     }
   }
 `;
+export const updateUserProfile = /* GraphQL */ `
+  mutation UpdateUserProfile(
+    $username: String!
+    $action: String!
+    $tripData: AWSJSON
+  ) {
+    updateUserProfile(
+      username: $username
+      action: $action
+      tripData: $tripData
+    ) {
+      username
+      userID
+      email
+      fullName
+      age
+      gender
+      ownedTripsCount
+      ownedTrips {
+        tripId
+        selectedCity
+        tripPhotoReference
+        startDate
+        endDate
+        tripLength
+        createdAt
+        updatedAt
+        __typename
+      }
+      sharedTripsCount
+      sharedTrips {
+        tripId
+        selectedCity
+        tripPhotoReference
+        startDate
+        endDate
+        tripLength
+        role
+        ownerUsername
+        createdAt
+        updatedAt
+        __typename
+      }
+      totalTripsCompleted
+      totalTripsUpcoming
+      totalTripsInProgress
+      activitiesPerTrip
+      totalActivitiesOwned
+      avgActivitiesPerTrip
+      collaboratorsPerTrip
+      totalCollaboratorsAcrossTrips
+      avgCollaboratorsPerTrip
+      mostVisitedCities
+      totalTripDuration
+      avgTripDuration
+      lastTripDate
+      nextTripDate
+      followersCount
+      followingCount
+      friends
+      bio
+      profilePhotoUrl
+      socialLinks
+      accountCreatedAt
+      appVersion
+      deviceType
+      modelName
+      osVersion
+      attributionSource
+      attributionCampaign
+      attributionCampaignId
+      attributionInstallDate
+      attributionDeviceId
+      attributionStatus
+      activityPreferences
+      selectedUseCases
+      notificationsEnabled
+      devicePushToken
+      snsEndpointArn
+      admin_permission
+      subscriptionTier
+      subscriptionStartDate
+      subscriptionEndDate
+      subscriptionStatus
+      trialEndsAt
+      lastActiveAt
+      accountStatus
+      preferences {
+        theme
+        language
+        defaultCurrency
+        preferredTravelMode
+        distanceUnit
+        timeFormat
+        dateFormat
+        profileVisibility
+        allowCollaborationRequests
+        shareActivityHistory
+        __typename
+      }
+      version
+      __typename
+    }
+  }
+`;
 export const createWishlistAnalysis = /* GraphQL */ `
   mutation CreateWishlistAnalysis(
     $input: CreateWishlistAnalysisInput!
@@ -649,110 +754,6 @@ export const deleteTripOperation = /* GraphQL */ `
       ttl
       createdAt
       updatedAt
-      __typename
-    }
-  }
-`;
-export const updateUserProfile = /* GraphQL */ `
-  mutation UpdateUserProfile(
-    $username: String!
-    $action: String!
-    $tripData: AWSJSON
-  ) {
-    updateUserProfile(
-      username: $username
-      action: $action
-      tripData: $tripData
-    ) {
-      username
-      userID
-      email
-      fullName
-      age
-      gender
-      ownedTripsCount
-      ownedTrips {
-        tripId
-        selectedCity
-        tripPhotoReference
-        startDate
-        endDate
-        tripLength
-        createdAt
-        updatedAt
-        __typename
-      }
-      sharedTripsCount
-      sharedTrips {
-        tripId
-        selectedCity
-        tripPhotoReference
-        startDate
-        endDate
-        tripLength
-        role
-        ownerUsername
-        createdAt
-        updatedAt
-        __typename
-      }
-      totalTripsCompleted
-      totalTripsUpcoming
-      totalTripsInProgress
-      activitiesPerTrip
-      totalActivitiesOwned
-      avgActivitiesPerTrip
-      collaboratorsPerTrip
-      totalCollaboratorsAcrossTrips
-      avgCollaboratorsPerTrip
-      mostVisitedCities
-      totalTripDuration
-      avgTripDuration
-      lastTripDate
-      nextTripDate
-      followersCount
-      followingCount
-      friends
-      bio
-      profilePhotoUrl
-      socialLinks
-      accountCreatedAt
-      appVersion
-      deviceType
-      modelName
-      osVersion
-      attributionSource
-      attributionCampaign
-      attributionCampaignId
-      attributionInstallDate
-      attributionDeviceId
-      attributionStatus
-      activityPreferences
-      selectedUseCases
-      notificationsEnabled
-      devicePushToken
-      snsEndpointArn
-      subscriptionTier
-      subscriptionStartDate
-      subscriptionEndDate
-      subscriptionStatus
-      trialEndsAt
-      lastActiveAt
-      accountStatus
-      preferences {
-        theme
-        language
-        defaultCurrency
-        preferredTravelMode
-        distanceUnit
-        timeFormat
-        dateFormat
-        profileVisibility
-        allowCollaborationRequests
-        shareActivityHistory
-        __typename
-      }
-      version
       __typename
     }
   }

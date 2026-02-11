@@ -123,6 +123,10 @@ exports.handler = async (event) => {
         result = await linkAttribution(username, tripData);
         break;
 
+      case 'UPDATE_ADMIN_PERMISSION':
+        result = await updateAdminPermission(username, tripData);
+        break;
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }
@@ -1768,4 +1772,28 @@ async function linkAttribution(username, data) {
       error: error.message
     };
   }
+}
+
+/**
+ * UPDATE_ADMIN_PERMISSION
+ * Sets admin_permission on the user profile.
+ */
+async function updateAdminPermission(username, tripData) {
+  const { admin_permission } = tripData || {};
+  const now = new Date().toISOString();
+
+  console.log('[UPDATE_ADMIN_PERMISSION] Setting admin_permission for', username, ':', admin_permission);
+
+  const result = await docClient.send(new UpdateCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username },
+    UpdateExpression: 'SET admin_permission = :ap, lastActiveAt = :now',
+    ExpressionAttributeValues: {
+      ':ap': admin_permission === true,
+      ':now': now
+    },
+    ReturnValues: 'ALL_NEW'
+  }));
+
+  return result.Attributes;
 }
