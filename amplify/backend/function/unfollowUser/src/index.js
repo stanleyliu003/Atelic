@@ -1,6 +1,9 @@
 /* Amplify Params - DO NOT EDIT
 	ENV
 	REGION
+	STORAGE_FOLLOWREQUESTSSTORAGE_ARN
+	STORAGE_FOLLOWREQUESTSSTORAGE_NAME
+	STORAGE_FOLLOWREQUESTSSTORAGE_STREAMARN
 	STORAGE_USERFOLLOWSSTORAGE_ARN
 	STORAGE_USERFOLLOWSSTORAGE_NAME
 	STORAGE_USERFOLLOWSSTORAGE_STREAMARN
@@ -8,6 +11,8 @@
 	STORAGE_USERPROFILESSTORAGE_NAME
 	STORAGE_USERPROFILESSTORAGE_STREAMARN
 Amplify Params - DO NOT EDIT */
+
+// Updated: Added cancel pending follow request support
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, DeleteCommand, UpdateCommand, GetCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
@@ -17,6 +22,7 @@ const docClient = DynamoDBDocumentClient.from(client);
 
 const USER_FOLLOWS_TABLE = process.env.STORAGE_USERFOLLOWSSTORAGE_NAME;
 const USER_PROFILES_TABLE = process.env.STORAGE_USERPROFILESSTORAGE_NAME;
+const FOLLOW_REQUESTS_TABLE = process.env.STORAGE_FOLLOWREQUESTSSTORAGE_NAME;
 
 /**
  * Unfollow User Lambda Function
@@ -50,7 +56,28 @@ exports.handler = async (event) => {
       resolved: { actualFollowerUsername, actualTargetUsername }
     });
 
-    // 1. Check if follow relationship exists
+    // 1. Check if there's a pending follow request first
+    const pendingRequest = await checkPendingRequest(actualTargetUsername, actualFollowerUsername);
+    if (pendingRequest) {
+      // Delete the pending request
+      await docClient.send(new DeleteCommand({
+        TableName: FOLLOW_REQUESTS_TABLE,
+        Key: {
+          targetUsername: actualTargetUsername,
+          requesterUsername: actualFollowerUsername
+        }
+      }));
+
+      console.log(`Successfully canceled follow request: ${actualFollowerUsername} -> ${actualTargetUsername}`);
+
+      return {
+        success: true,
+        status: 'request_canceled',
+        message: 'Follow request canceled'
+      };
+    }
+
+    // 2. Check if follow relationship exists
     const existingFollow = await checkExistingFollow(actualFollowerUsername, actualTargetUsername);
 
     if (!existingFollow) {
@@ -177,6 +204,23 @@ async function findFollowRelationship(followerUsername, targetUsername) {
     return match || null;
   } catch (error) {
     console.error('Error finding follow relationship:', error);
+    return null;
+  }
+}
+
+/**
+ * Check if a pending follow request exists
+ */
+async function checkPendingRequest(targetUsername, requesterUsername) {
+  try {
+    const result = await docClient.send(new GetCommand({
+      TableName: FOLLOW_REQUESTS_TABLE,
+      Key: { targetUsername, requesterUsername }
+    }));
+
+    return result.Item;
+  } catch (error) {
+    console.error('Error checking pending request:', error);
     return null;
   }
 }

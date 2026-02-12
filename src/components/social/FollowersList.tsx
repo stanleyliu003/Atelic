@@ -61,7 +61,8 @@ export function FollowersList({
   );
 
   const renderFooter = () => {
-    if (!isLoading || !hasMore) return null;
+    // Don't show footer loading when list is empty (initial load shows in empty component)
+    if (!isLoading || !hasMore || followers.length === 0) return null;
 
     return (
       <View style={styles.footer}>

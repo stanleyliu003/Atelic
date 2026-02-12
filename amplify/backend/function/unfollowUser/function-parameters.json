@@ -8,6 +8,10 @@
       "UserProfilesStorage": [
         "read",
         "update"
+      ],
+      "FollowRequestsStorage": [
+        "read",
+        "delete"
       ]
     }
   },

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   FlatList,
@@ -7,7 +7,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { API, Auth } from 'aws-amplify';
 import { UserSearchBar } from '../../src/components/explore/UserSearchBar';
 import { UserCard } from '../../src/components/explore/UserCard';
@@ -34,6 +34,15 @@ export default function ExploreScreen() {
     };
     loadCurrentUser();
   }, []);
+
+  // Refresh search results when returning to this screen
+  useFocusEffect(
+    useCallback(() => {
+      if (searchQuery.trim().length >= 1 && currentUsername) {
+        handleSearch(searchQuery);
+      }
+    }, [searchQuery, currentUsername, handleSearch])
+  );
 
   const handleSearch = useCallback(async (query) => {
     if (!query.trim()) {
@@ -109,8 +118,8 @@ export default function ExploreScreen() {
 
   const handleFollowPress = useCallback(async (username, isFollowing, hasPendingRequest) => {
     try {
-      if (isFollowing) {
-        // Unfollow
+      if (isFollowing || hasPendingRequest) {
+        // Unfollow or cancel pending request
         await API.graphql({
           query: customMutations.unfollowUser,
           variables: {
@@ -123,11 +132,11 @@ export default function ExploreScreen() {
         setSearchResults((prev) =>
           prev.map((user) =>
             user.username === username
-              ? { ...user, isFollowing: false }
+              ? { ...user, isFollowing: false, hasPendingRequest: false }
               : user
           )
         );
-      } else if (!hasPendingRequest) {
+      } else {
         // Follow or send request
         const response = await API.graphql({
           query: customMutations.followUser,

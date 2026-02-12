@@ -104,6 +104,7 @@ export default function FeedScreen() {
   const [followingList, setFollowingList] = useState([]);
   const [isLoadingFollowers, setIsLoadingFollowers] = useState(false);
   const [isLoadingFollowing, setIsLoadingFollowing] = useState(false);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [profileCarouselIndices, setProfileCarouselIndices] = useState({});
   const [profileTripPhotoCounts, setProfileTripPhotoCounts] = useState({});
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -410,6 +411,27 @@ export default function FeedScreen() {
     }
   }, [loadUserStatistics]);
 
+  const loadPendingRequestsCount = useCallback(async (userName) => {
+    if (!userName) return;
+
+    try {
+      const response = await API.graphql({
+        query: customQueries.getFollowRequests,
+        variables: {
+          targetUsername: userName,
+          limit: 100,
+        },
+      });
+
+      const requests = response.data?.getFollowRequests?.requests || [];
+      setPendingRequestsCount(requests.length);
+    } catch (error) {
+      // Try to extract from partial error
+      const requests = error?.data?.getFollowRequests?.requests || [];
+      setPendingRequestsCount(requests.length);
+    }
+  }, []);
+
   const loadUserTrips = async (userID, retryCount = 0) => {
     const maxRetries = 2;
 
@@ -566,8 +588,19 @@ export default function FeedScreen() {
       setCarouselIndices({});
       setTripPhotoCounts({});
       loadUserData();
-    }, [])
+      // Refresh pending requests count when screen focuses
+      if (username) {
+        loadPendingRequestsCount(username);
+      }
+    }, [username, loadPendingRequestsCount])
   );
+
+  // Load pending follow requests count when username is available
+  useEffect(() => {
+    if (username) {
+      loadPendingRequestsCount(username);
+    }
+  }, [username, loadPendingRequestsCount]);
 
   // Auto-load trip from notification
   useEffect(() => {
@@ -598,9 +631,10 @@ export default function FeedScreen() {
     await loadUserData();
     if (username) {
       await loadFeed(true);
+      loadPendingRequestsCount(username);
     }
     setRefreshing(false);
-  }, [loadUserData, username]);
+  }, [loadUserData, username, loadPendingRequestsCount]);
 
   const handleLoadTrip = async (tripId) => {
     try {
@@ -1250,6 +1284,13 @@ export default function FeedScreen() {
             onPress={() => router.push('/profile/follow-requests')}
           >
             <Ionicons name="people-outline" size={26} color={Colors.GRAY} />
+            {pendingRequestsCount > 0 && (
+              <View style={styles.requestsBadge}>
+                <Text style={styles.requestsBadgeText}>
+                  {pendingRequestsCount > 99 ? '99+' : pendingRequestsCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -2058,6 +2099,23 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2.84,
+  },
+  requestsBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 4,
+    backgroundColor: Colors.ORANGE,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  requestsBadgeText: {
+    color: Colors.WHITE,
+    fontSize: 11,
+    fontFamily: 'outfit-bold',
   },
   profileIconButton: {
     width: 40,

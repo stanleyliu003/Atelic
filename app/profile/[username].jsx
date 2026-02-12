@@ -378,13 +378,18 @@ export default function UserProfileScreen() {
           followersCount: Math.max(0, (prevStats.followersCount || 0) - 1)
         }));
       } else if (hasPendingRequest) {
-        // Show alert - cancel functionality coming soon
-        console.log('[UserProfile] Request already pending');
-        Alert.alert(
-          'Follow Request Pending',
-          'Your follow request is pending approval. The user will see it in their follow requests.',
-          [{ text: 'OK' }]
-        );
+        // Cancel the pending follow request
+        console.log('[UserProfile] Canceling pending follow request');
+        await API.graphql({
+          query: customMutations.unfollowUser,
+          variables: {
+            followerUsername: currentUsername,
+            targetUsername: username,
+          },
+        });
+
+        console.log('[UserProfile] Follow request canceled');
+        setHasPendingRequest(false);
         return;
       } else {
         // Follow or send request
@@ -561,11 +566,19 @@ export default function UserProfileScreen() {
                 <Text style={styles.statNumber}>{userTrips.length > 0 ? userTrips.length : stats.totalTrips}</Text>
                 <Text style={styles.statLabel}>Trips</Text>
               </View>
-              <TouchableOpacity style={styles.statItem} onPress={handleFollowersPress}>
+              <TouchableOpacity
+                style={styles.statItem}
+                onPress={isFollowing ? handleFollowersPress : undefined}
+                disabled={!isFollowing}
+              >
                 <Text style={styles.statNumber}>{stats.followersCount}</Text>
                 <Text style={styles.statLabel}>Followers</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.statItem} onPress={handleFollowingPress}>
+              <TouchableOpacity
+                style={styles.statItem}
+                onPress={isFollowing ? handleFollowingPress : undefined}
+                disabled={!isFollowing}
+              >
                 <Text style={styles.statNumber}>{stats.followingCount}</Text>
                 <Text style={styles.statLabel}>Following</Text>
               </TouchableOpacity>
@@ -610,7 +623,6 @@ export default function UserProfileScreen() {
               hasPendingRequest && styles.requestedButton,
             ]}
             onPress={handleFollowPress}
-            disabled={hasPendingRequest}
           >
             <Text style={[
               styles.followButtonText,

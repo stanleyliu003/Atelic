@@ -60,6 +60,9 @@ export function UserCard({
     if (isCurrentUser) {
       return [styles.followButtonText, styles.viewProfileButtonText];
     }
+    if (hasPendingRequest) {
+      return [styles.followButtonText, styles.requestedButtonText];
+    }
     if (isFollowing) {
       return [styles.followButtonText, styles.followingButtonText];
     }
@@ -106,7 +109,6 @@ export function UserCard({
           e.stopPropagation();
           onFollowPress();
         }}
-        disabled={hasPendingRequest}
       >
         <Text style={getFollowButtonTextStyle()}>{getFollowButtonText()}</Text>
       </TouchableOpacity>
@@ -170,7 +172,12 @@ const styles = StyleSheet.create({
     borderWidth: 0,
   },
   requestedButton: {
-    backgroundColor: Colors.LIGHT_GRAY,
+    backgroundColor: Colors.WHITE,
+    borderWidth: 1,
+    borderColor: Colors.GRAY,
+  },
+  requestedButtonText: {
+    color: Colors.GRAY,
   },
   followButtonText: {
     fontSize: 14,
