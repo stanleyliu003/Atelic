@@ -361,6 +361,7 @@ export const ShareTripModal: React.FC<ShareTripModalProps> = ({
                       onRoleChange={handleRoleChange}
                       onRemove={handleRemoveCollaborator}
                       isCurrentUser={collaborator.userID === currentUserID}
+                      onClose={onClose}
                     />
                   ))}
               </View>

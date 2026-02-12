@@ -4081,6 +4081,7 @@ export default function TripViewMain() {
                                     currentUserRole={currentUserRole}
                                     collaborators={collaborators}
                                     dayRouteLegs={dayRouteLegs}
+                                    onCollaboratorsPress={handleShareTrip}
                                 />
                             </View>
                             </Pressable>

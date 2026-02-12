@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,13 @@ import {
   StyleSheet,
   Alert,
   ActionSheetIOS,
-  Platform
+  Platform,
+  Image
 } from 'react-native';
+import { useRouter } from 'expo-router';
+import { API } from 'aws-amplify';
 import { getAvatarColor } from '../../../utils/avatarColors';
+import { getUserProfile } from '../../../graphql/queries';
 
 interface Collaborator {
   email: string;
@@ -27,6 +31,7 @@ interface CollaboratorListItemProps {
   onRoleChange: (email: string, newRole: CollaboratorRole) => void;
   onRemove: (email: string) => void;
   isCurrentUser: boolean;
+  onClose?: () => void;
 }
 
 export const CollaboratorListItem: React.FC<CollaboratorListItemProps> = ({
@@ -34,8 +39,48 @@ export const CollaboratorListItem: React.FC<CollaboratorListItemProps> = ({
   currentUserRole,
   onRoleChange,
   onRemove,
-  isCurrentUser
+  isCurrentUser,
+  onClose
 }) => {
+  const router = useRouter();
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
+
+  // Fetch profile photo
+  useEffect(() => {
+    const fetchProfilePhoto = async () => {
+      if (!collaborator.username) return;
+
+      try {
+        const response = await API.graphql({
+          query: getUserProfile,
+          variables: { username: collaborator.username },
+        });
+        const profile = (response as any).data?.getUserProfile;
+        setProfilePhotoUrl(profile?.profilePhotoUrl || null);
+      } catch (error) {
+        // Try to extract from partial error
+        const profile = (error as any)?.data?.getUserProfile;
+        setProfilePhotoUrl(profile?.profilePhotoUrl || null);
+      }
+    };
+
+    fetchProfilePhoto();
+  }, [collaborator.username]);
+
+  const handleProfilePress = () => {
+    if (onClose) {
+      onClose();
+    }
+
+    if (isCurrentUser) {
+      // Navigate to own profile tab
+      router.push('/(tabs)/feed');
+    } else {
+      // Navigate to other user's profile
+      router.push(`/profile/${collaborator.username}`);
+    }
+  };
+
   const canManageCollaborator = () => {
     // Owners can manage editors and viewers
     // Editors can manage viewers only
@@ -172,12 +217,19 @@ export const CollaboratorListItem: React.FC<CollaboratorListItemProps> = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.userInfo}>
-        <View style={[styles.userAvatar, { backgroundColor: getAvatarColor(collaborator.email) }]}>
-          <Text style={styles.avatarText}>
-            {collaborator.fullName.charAt(0).toUpperCase()}
-          </Text>
-        </View>
+      <TouchableOpacity style={styles.userInfo} onPress={handleProfilePress}>
+        {profilePhotoUrl ? (
+          <Image
+            source={{ uri: profilePhotoUrl }}
+            style={styles.userAvatarImage}
+          />
+        ) : (
+          <View style={[styles.userAvatar, { backgroundColor: getAvatarColor(collaborator.email) }]}>
+            <Text style={styles.avatarText}>
+              {collaborator.fullName.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.userDetails}>
           <View style={styles.nameContainer}>
@@ -191,7 +243,7 @@ export const CollaboratorListItem: React.FC<CollaboratorListItemProps> = ({
             <Text style={styles.addedByText}>Added by {collaborator.addedBy}</Text>
           )} */}
         </View>
-      </View>
+      </TouchableOpacity>
 
       <View style={styles.roleContainer}>
         <TouchableOpacity
@@ -237,6 +289,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
+  },
+  userAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     marginRight: 12,
   },
   avatarText: {
