@@ -2,12 +2,12 @@ import React from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/Colors';
+import { InitialsAvatar } from '../common/InitialsAvatar';
 
 interface UserCardProps {
   username: string;
@@ -21,8 +21,6 @@ interface UserCardProps {
   onPress: () => void;
   onFollowPress: () => void;
 }
-
-const DEFAULT_AVATAR = require('../../../assets/images/default-avatar.png');
 
 export function UserCard({
   username,
@@ -71,10 +69,10 @@ export function UserCard({
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
-      <Image
-        source={profilePhotoUrl ? { uri: profilePhotoUrl } : DEFAULT_AVATAR}
-        style={styles.profilePhoto}
-        defaultSource={DEFAULT_AVATAR}
+      <InitialsAvatar
+        name={fullName || username}
+        profilePhotoUrl={profilePhotoUrl}
+        size={50}
       />
 
       <View style={styles.userInfo}>
@@ -124,12 +122,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.WHITE,
     borderBottomWidth: 1,
     borderBottomColor: Colors.LIGHT_GRAY,
-  },
-  profilePhoto: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: Colors.LIGHT_GRAY,
   },
   userInfo: {
     flex: 1,

@@ -37,6 +37,7 @@ import Carousel from 'react-native-reanimated-carousel';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import { InitialsAvatar } from '../../src/components/common/InitialsAvatar';
 
 const { width: screenWidth } = Dimensions.get('window');
 const CAROUSEL_WIDTH = screenWidth - 52;
@@ -1259,16 +1260,11 @@ export default function FeedScreen() {
             style={styles.profileIconButton}
             onPress={() => setIsProfileModalVisible(true)}
           >
-            {profilePhotoUrl ? (
-              <Image
-                source={{ uri: profilePhotoUrl }}
-                style={styles.profileIcon}
-              />
-            ) : (
-              <View style={styles.profileIconPlaceholder}>
-                <FontAwesome name="user" size={20} color={Colors.GRAY} />
-              </View>
-            )}
+            <InitialsAvatar
+              name={fullName || username}
+              profilePhotoUrl={profilePhotoUrl}
+              size={44}
+            />
           </TouchableOpacity>
           <Text style={styles.headerText}>Home</Text>
         </View>
@@ -1741,16 +1737,11 @@ export default function FeedScreen() {
                     onPress={handleChangeProfilePhoto}
                     disabled={isUploadingPhoto}
                   >
-                    {profilePhotoUrl ? (
-                      <Image
-                        source={{ uri: profilePhotoUrl }}
-                        style={styles.profilePhoto}
-                      />
-                    ) : (
-                      <View style={[styles.profilePhoto, styles.profilePhotoPlaceholder]}>
-                        <FontAwesome name="user" size={32} color={Colors.GRAY} />
-                      </View>
-                    )}
+                    <InitialsAvatar
+                      name={fullName || username}
+                      profilePhotoUrl={profilePhotoUrl}
+                      size={80}
+                    />
                     {isUploadingPhoto ? (
                       <View style={styles.profilePhotoUploadingOverlay}>
                         <ActivityIndicator size="small" color={Colors.WHITE} />

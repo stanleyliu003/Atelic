@@ -20,6 +20,7 @@ import * as customMutations from '../../src/graphql/customMutations';
 import { getUserProfile, searchUsersPublic } from '../../src/graphql/queries';
 import { listUserTripsFromCloud, retrieveTripFromCloud } from '../../src/services/lambdaService';
 import { TripCarouselImage } from '../../src/components/profile/TripCarouselImage';
+import { InitialsAvatar } from '../../src/components/common/InitialsAvatar';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import Carousel from 'react-native-reanimated-carousel';
 import { Dimensions } from 'react-native';
@@ -552,11 +553,10 @@ export default function UserProfileScreen() {
           <View style={styles.profileTopRow}>
             {/* Profile Photo */}
             <View style={styles.profilePhotoContainer}>
-              <Image
-                source={userProfile.profilePhotoUrl
-                  ? { uri: userProfile.profilePhotoUrl }
-                  : require('../../assets/images/default-avatar.png')}
-                style={styles.profilePhoto}
+              <InitialsAvatar
+                name={userProfile.fullName || username}
+                profilePhotoUrl={userProfile.profilePhotoUrl}
+                size={80}
               />
             </View>
 
