@@ -37,6 +37,7 @@ import { saveOperation, listOperations } from '../../src/services/tripOperations
 import { verifyStateReconstruction, applyOperation, ReconstructedTripState, TransportModeOverrides } from '../../src/services/tripReconstructionService';
 import { getSavedPlacesDetailed } from '../../src/graphql/customQueries';
 import { filterSavedPlacesByCity } from '../../src/utils/cityMatching';
+import { findRelatedLodgingInstancesWithDays } from '../../src/utils/lodging_enforcement';
 
 // GraphQL subscription for real-time trip updates
 const onTripUpdated = /* GraphQL */ `
@@ -390,6 +391,7 @@ export default function TripViewMain() {
         reorderDayActivities,
         deleteDayAndRenumber,
         addActivityToDay,
+        removeLodgingStayByPlaceId,
     } = useDayActivities();
 
     // Refs to track latest trip data for autosave (avoid stale closures)
@@ -2795,91 +2797,174 @@ export default function TripViewMain() {
             return;
         }
 
-        // Add lodging to each day in the range
+        // Helper to check if activity is lodging
+        const isLodgingActivity = (a: Activity) => a?.isLodging === true || a?.primaryType === 'lodging';
+
+        // Find overlapping lodging in the target day range
+        let overlappingPlaceId: string | null = null;
+        let overlappingName: string | null = null;
+        let overlapMinDay = Infinity;
+        let overlapMaxDay = -Infinity;
+
         for (let dayNumber = checkInDayNumber; dayNumber <= checkOutDayNumber; dayNumber++) {
             const currentActivities = getDayActivities(dayNumber) || [];
-            const activitiesToAdd: Activity[] = [];
+            const lodging = currentActivities.find((a) => isLodgingActivity(a));
+            if (lodging?.place_id) {
+                overlappingPlaceId = lodging.place_id;
+                overlappingName = lodging.name || 'Hotel';
+                break;
+            }
+        }
 
-            if (dayNumber === checkInDayNumber) {
+        if (overlappingPlaceId) {
+            // Find full day range of the existing stay
+            for (let d = 1; d <= dayCount; d++) {
+                const acts = getDayActivities(d) || [];
+                const hasMatch = acts.some(
+                    (a) => isLodgingActivity(a) && a.place_id === overlappingPlaceId
+                );
+                if (hasMatch) {
+                    overlapMinDay = Math.min(overlapMinDay, d);
+                    overlapMaxDay = Math.max(overlapMaxDay, d);
+                }
+            }
+
+            const startDayDate = new Date(tripStartDate);
+            startDayDate.setDate(startDayDate.getDate() + (overlapMinDay - 1));
+            const endDayDate = new Date(tripStartDate);
+            endDayDate.setDate(endDayDate.getDate() + (overlapMaxDay - 1));
+            const formatForAlert = (date: Date) =>
+                date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const dateRangeStr = `${formatForAlert(startDayDate)} – ${formatForAlert(endDayDate)}`;
+
+            Alert.alert(
+                'Replace Hotel?',
+                `You are overwriting your previous hotel at "${overlappingName}" from ${dateRangeStr}. Continue?`,
+                [
+                    { text: 'No', style: 'cancel' },
+                    {
+                        text: 'Yes',
+                        onPress: () => {
+                            const toRemove = findRelatedLodgingInstancesWithDays(
+                                overlappingPlaceId!,
+                                dayActivities
+                            );
+                            toRemove.forEach(({ instanceId, dayNumber }) => {
+                                const op = createOperation('remove', 'day', instanceId, dayNumber);
+                                queueSave(op);
+                            });
+                            removeLodgingStayByPlaceId(overlappingPlaceId!);
+                            doAddLodgingToDays(
+                                hotel,
+                                checkInDayNumber,
+                                checkOutDayNumber,
+                                checkInTime,
+                                checkOutTime,
+                                overlappingPlaceId!
+                            );
+                        },
+                    },
+                ]
+            );
+            return;
+        }
+
+        doAddLodgingToDays(
+            hotel,
+            checkInDayNumber,
+            checkOutDayNumber,
+            checkInTime,
+            checkOutTime,
+            null
+        );
+
+        function doAddLodgingToDays(
+            hotelActivity: any,
+            checkInDay: number,
+            checkOutDay: number,
+            checkInTimeStr: string,
+            checkOutTimeStr: string,
+            excludePlaceId: string | null
+        ) {
+            for (let dayNumber = checkInDay; dayNumber <= checkOutDay; dayNumber++) {
+                let currentActivities = getDayActivities(dayNumber) || [];
+                if (excludePlaceId) {
+                    currentActivities = currentActivities.filter(
+                        (a) => !(isLodgingActivity(a) && a.place_id === excludePlaceId)
+                    );
+                }
+                const activitiesToAdd: Activity[] = [];
+
+                if (dayNumber === checkInDay) {
                 // First day: Add check-in activity with times at the beginning
                 const checkInActivity = {
-                    ...hotel,
-                    instanceId: duplicateActivity(hotel).instanceId,
+                    ...hotelActivity,
+                    instanceId: duplicateActivity(hotelActivity).instanceId,
                     notes: 'Check-in',
-                    startTime: addHoursToTime(checkInTime, -1),
-                    endTime: addHoursToTime(checkInTime, 1),
+                    startTime: addHoursToTime(checkInTimeStr, -1),
+                    endTime: addHoursToTime(checkInTimeStr, 1),
                 };
                 activitiesToAdd.push(checkInActivity);
 
-                // If check-in and check-out are on the same day, don't add end lodging
-                if (checkInDayNumber !== checkOutDayNumber) {
-                    // Add regular lodging at the end (no times)
+                if (checkInDay !== checkOutDay) {
                     const endLodging = {
-                        ...hotel,
-                        instanceId: duplicateActivity(hotel).instanceId,
+                        ...hotelActivity,
+                        instanceId: duplicateActivity(hotelActivity).instanceId,
                     };
                     activitiesToAdd.push(endLodging);
                 }
-            } else if (dayNumber === checkOutDayNumber) {
+                } else if (dayNumber === checkOutDay) {
                 // Last day: ONLY add check-out activity at the beginning (first activity)
                 const checkOutActivity = {
-                    ...hotel,
-                    instanceId: duplicateActivity(hotel).instanceId,
+                    ...hotelActivity,
+                    instanceId: duplicateActivity(hotelActivity).instanceId,
                     notes: 'Check-out',
-                    startTime: addHoursToTime(checkOutTime, -1),
-                    endTime: checkOutTime,
+                    startTime: addHoursToTime(checkOutTimeStr, -1),
+                    endTime: checkOutTimeStr,
                 };
                 activitiesToAdd.push(checkOutActivity);
-            } else {
-                // Middle days: Add lodging at beginning and end (no times, no notes)
+                } else {
                 const startLodging = {
-                    ...hotel,
-                    instanceId: duplicateActivity(hotel).instanceId,
+                    ...hotelActivity,
+                    instanceId: duplicateActivity(hotelActivity).instanceId,
                 };
                 const endLodging = {
-                    ...hotel,
-                    instanceId: duplicateActivity(hotel).instanceId,
+                    ...hotelActivity,
+                    instanceId: duplicateActivity(hotelActivity).instanceId,
                 };
                 activitiesToAdd.push(startLodging, endLodging);
             }
 
-            // Construct new order based on which day we're on
-            let newOrder: Activity[];
-            if (dayNumber === checkOutDayNumber) {
-                // Check-out day: only check-out at the beginning
-                newOrder = [...activitiesToAdd, ...currentActivities];
-            } else if (dayNumber === checkInDayNumber && checkInDayNumber === checkOutDayNumber) {
-                // Same day check-in/check-out: only check-in at beginning
-                newOrder = [...activitiesToAdd, ...currentActivities];
-            } else if (dayNumber === checkInDayNumber) {
-                // Check-in day: check-in at beginning, lodging at end
-                newOrder = [activitiesToAdd[0], ...currentActivities, activitiesToAdd[1]];
-            } else {
-                // Middle days: lodging at beginning and end
-                newOrder = [activitiesToAdd[0], ...currentActivities, activitiesToAdd[1]];
+                let newOrder: Activity[];
+                if (dayNumber === checkOutDay) {
+                    newOrder = [...activitiesToAdd, ...currentActivities];
+                } else if (dayNumber === checkInDay && checkInDay === checkOutDay) {
+                    newOrder = [...activitiesToAdd, ...currentActivities];
+                } else if (dayNumber === checkInDay) {
+                    newOrder = [activitiesToAdd[0], ...currentActivities, activitiesToAdd[1]];
+                } else {
+                    newOrder = [activitiesToAdd[0], ...currentActivities, activitiesToAdd[1]];
+                }
+
+                const reorderTimestamp = Date.now();
+                const orderedActivities = newOrder.map((a) => ({
+                    ...a,
+                    lastReordered: reorderTimestamp,
+                }));
+                reorderDayActivities(dayNumber, orderedActivities);
+
+                const addOp = createOperation('add', 'day', activitiesToAdd, dayNumber);
+                queueSave(addOp);
+
+                const reorderOp = createOperation('reorder', 'day', {
+                    reorderedIds: orderedActivities.map((a) => a.instanceId),
+                    lastReordered: reorderTimestamp,
+                }, dayNumber);
+                queueSave(reorderOp);
             }
 
-            // Reorder the day's activities
-            const reorderTimestamp = Date.now();
-            const orderedActivities = newOrder.map(a => ({
-                ...a,
-                lastReordered: reorderTimestamp
-            }));
-            reorderDayActivities(dayNumber, orderedActivities);
-
-            // Track the ADD operation for the lodging activities
-            const addOp = createOperation('add', 'day', activitiesToAdd, dayNumber);
-            queueSave(addOp);
-
-            // Track the REORDER operation to ensure correct positioning
-            const reorderOp = createOperation('reorder', 'day', {
-                reorderedIds: orderedActivities.map(a => a.instanceId),
-                lastReordered: reorderTimestamp
-            }, dayNumber);
-            queueSave(reorderOp);
+            console.log('[trip-view_main] Successfully added lodging to days', checkInDay, 'through', checkOutDay);
         }
-
-        console.log('[trip-view_main] Successfully added lodging to days', checkInDayNumber, 'through', checkOutDayNumber);
     };
 
     // Handler for saving search results (new direct flow)

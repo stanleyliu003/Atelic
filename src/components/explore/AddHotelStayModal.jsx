@@ -49,6 +49,7 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
   const [showCheckOutTimeModal, setShowCheckOutTimeModal] = useState(false);
   const [checkInButtonLayout, setCheckInButtonLayout] = useState(null);
   const [checkOutButtonLayout, setCheckOutButtonLayout] = useState(null);
+  const [stayType, setStayType] = useState('hotel'); // 'hotel' | 'airbnb' | 'custom_address'
   const searchInputRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
   const checkInDateRef = useRef(null);
@@ -115,6 +116,7 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
     setCheckInDate(null);
     setCheckOutDate(null);
     setStayLength(null);
+    setStayType('hotel');
     setCheckInTime('15:00'); // Reset to default 3:00 PM
     setCheckOutTime('11:00'); // Reset to default 11:00 AM
     setError(null);
@@ -312,8 +314,67 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Search Section - Only show after dates are selected */}
+          {/* Stay Type Selector - Only show after dates are selected */}
           {stayLength && (
+            <View style={styles.stayTypeSection}>
+              <Text style={styles.stayTypeTitle}>What type of place are you staying at?</Text>
+              <View style={styles.stayTypeOptionsRow}>
+                <TouchableOpacity
+                  style={[styles.stayTypeOption, stayType === 'hotel' && styles.stayTypeOptionSelected]}
+                  onPress={() => setStayType('hotel')}
+                  activeOpacity={0.7}
+                >
+                  <MaterialIcons
+                    name="hotel"
+                    size={22}
+                    color={stayType === 'hotel' ? Colors.WHITE : '#666'}
+                  />
+                  <Text style={[styles.stayTypeOptionText, stayType === 'hotel' && styles.stayTypeOptionTextSelected]}>
+                    Hotel
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.stayTypeOption, stayType === 'airbnb' && styles.stayTypeOptionSelected]}
+                  onPress={() => {
+                    setStayType('airbnb');
+                    setSelectedPlace(null);
+                    setSearchQuery('');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons
+                    name="home-city-outline"
+                    size={22}
+                    color={stayType === 'airbnb' ? Colors.WHITE : '#666'}
+                  />
+                  <Text style={[styles.stayTypeOptionText, stayType === 'airbnb' && styles.stayTypeOptionTextSelected]}>
+                    AirBnB
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.stayTypeOption, stayType === 'custom_address' && styles.stayTypeOptionSelected]}
+                  onPress={() => {
+                    setStayType('custom_address');
+                    setSelectedPlace(null);
+                    setSearchQuery('');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons
+                    name="map-marker-plus-outline"
+                    size={22}
+                    color={stayType === 'custom_address' ? Colors.WHITE : '#666'}
+                  />
+                  <Text style={[styles.stayTypeOptionText, stayType === 'custom_address' && styles.stayTypeOptionTextSelected]}>
+                    Custom Address
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Search Section - Only show when Hotel is selected (uses getPlaceDetails) */}
+          {stayLength && stayType === 'hotel' && (
             <View style={styles.searchSection}>
               <Text style={styles.searchSectionTitle}>Where are you staying?</Text>
 
@@ -347,8 +408,25 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
             </View>
           )}
 
-          {/* Selected Place Activity Card */}
-          {(selectedPlace || loadingPlaceDetails) && (
+          {/* AirBnB / Custom Address - Coming soon placeholder */}
+          {stayLength && stayType !== 'hotel' && (
+            <View style={styles.comingSoonContainer}>
+              <MaterialCommunityIcons
+                name={stayType === 'airbnb' ? 'home-city-outline' : 'map-marker-plus-outline'}
+                size={40}
+                color="#ccc"
+              />
+              <Text style={styles.comingSoonText}>
+                {stayType === 'airbnb' ? 'AirBnB' : 'Custom Address'} coming soon
+              </Text>
+              <Text style={styles.comingSoonSubtext}>
+                Switch to Hotel to add your stay for now
+              </Text>
+            </View>
+          )}
+
+          {/* Selected Place Activity Card - Hotel only */}
+          {stayType === 'hotel' && (selectedPlace || loadingPlaceDetails) && (
             <View style={styles.selectedPlaceContainer}>
               {loadingPlaceDetails ? (
                 <View style={styles.loadingPlaceDetailsContainer}>
@@ -367,8 +445,8 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
             </View>
           )}
 
-          {/* Check-in and Check-out Time Buttons Row - Show below activity card when dates selected */}
-          {selectedPlace && !loadingPlaceDetails && stayLength && (
+          {/* Check-in and Check-out Time Buttons Row - Show below activity card when dates selected (Hotel only) */}
+          {stayType === 'hotel' && selectedPlace && !loadingPlaceDetails && stayLength && (
             <View style={styles.timeButtonsSection}>
               <View style={styles.timeButtonsRow}>
                 {/* Check-in Time Button */}
@@ -422,8 +500,8 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
             </View>
           )}
 
-          {/* Suggestions List - Only show when no place is selected or being loaded */}
-          {!selectedPlace && !loadingPlaceDetails && (
+          {/* Suggestions List - Only show for Hotel when no place is selected or being loaded */}
+          {stayType === 'hotel' && !selectedPlace && !loadingPlaceDetails && (
             <ScrollView style={styles.suggestionsContainer} showsVerticalScrollIndicator={false}>
               {/* Loading State */}
               {loading && (
@@ -486,8 +564,8 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
             </ScrollView>
           )}
 
-          {/* Add Lodging Button - Show when place, dates, and times are selected */}
-          {selectedPlace && checkInDate && checkOutDate && stayLength && (
+          {/* Add Lodging Button - Show when Hotel selected with place, dates, and times */}
+          {stayType === 'hotel' && selectedPlace && checkInDate && checkOutDate && stayLength && (
             <View style={styles.addLodgingButtonContainer}>
               <TouchableOpacity
                 style={styles.addLodgingButton}
@@ -775,7 +853,68 @@ const styles = StyleSheet.create({
   stayDurationSection: {
     paddingHorizontal: 20,
     marginTop: 0,
-    marginBottom: 30,
+    marginBottom: 20,
+  },
+  stayTypeSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  stayTypeTitle: {
+    fontFamily: 'outfit-bold',
+    fontSize: 18,
+    color: '#333',
+    marginBottom: 12,
+  },
+  stayTypeOptionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  stayTypeOption: {
+    flex: 1,
+    minWidth: 90,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  stayTypeOptionSelected: {
+    backgroundColor: Colors.PRIMARY || '#FFA53F',
+    borderColor: Colors.PRIMARY || '#FFA53F',
+  },
+  stayTypeOptionText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 14,
+    color: '#666',
+  },
+  stayTypeOptionTextSelected: {
+    color: Colors.WHITE,
+  },
+  comingSoonContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 30,
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 16,
+    gap: 8,
+  },
+  comingSoonText: {
+    fontFamily: 'outfit-bold',
+    fontSize: 16,
+    color: '#666',
+  },
+  comingSoonSubtext: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: '#999',
   },
   stayDurationTitle: {
     fontFamily: 'outfit-bold',

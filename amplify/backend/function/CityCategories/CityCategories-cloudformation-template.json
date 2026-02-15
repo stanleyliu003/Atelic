@@ -16,23 +16,15 @@
     "s3Key": {
       "Type": "String"
     },
-    "storagecategoryStorageName": {
-      "Type": "String",
-      "Default": "storagecategoryStorageName"
-    },
-    "storagecategoryStorageArn": {
-      "Type": "String",
-      "Default": "storagecategoryStorageArn"
-    },
-    "storagecategoryStorageStreamArn": {
-      "Type": "String",
-      "Default": "storagecategoryStorageStreamArn"
-    },
     "geminiApiKey": {
       "Type": "String"
     },
     "googlePlacesApiKey": {
       "Type": "String"
+    },
+    "authamplifybackend59ccdbf8UserPoolId": {
+      "Type": "String",
+      "Default": "authamplifybackend59ccdbf8UserPoolId"
     }
   },
   "Conditions": {
@@ -88,20 +80,14 @@
             "REGION": {
               "Ref": "AWS::Region"
             },
-            "STORAGE_CATEGORYSTORAGE_NAME": {
-              "Ref": "storagecategoryStorageName"
-            },
-            "STORAGE_CATEGORYSTORAGE_ARN": {
-              "Ref": "storagecategoryStorageArn"
-            },
-            "STORAGE_CATEGORYSTORAGE_STREAMARN": {
-              "Ref": "storagecategoryStorageStreamArn"
-            },
             "GEMINI_API_KEY": {
               "Ref": "geminiApiKey"
             },
             "GOOGLE_PLACES_API_KEY": {
               "Ref": "googlePlacesApiKey"
+            },
+            "AUTH_AMPLIFYBACKEND59CCDBF8_USERPOOLID": {
+              "Ref": "authamplifybackend59ccdbf8UserPoolId"
             }
           }
         },
@@ -216,35 +202,36 @@
             {
               "Effect": "Allow",
               "Action": [
-                "dynamodb:Put*",
-                "dynamodb:Create*",
-                "dynamodb:BatchWriteItem",
-                "dynamodb:PartiQLInsert",
-                "dynamodb:Get*",
-                "dynamodb:BatchGetItem",
-                "dynamodb:List*",
-                "dynamodb:Describe*",
-                "dynamodb:Scan",
-                "dynamodb:Query",
-                "dynamodb:PartiQLSelect",
-                "dynamodb:Update*",
-                "dynamodb:RestoreTable*",
-                "dynamodb:PartiQLUpdate",
-                "dynamodb:Delete*",
-                "dynamodb:PartiQLDelete"
+                "cognito-idp:ForgotPassword",
+                "cognito-idp:UpdateAuthEventFeedback",
+                "cognito-idp:UpdateResourceServer",
+                "cognito-idp:UpdateUserPoolClient",
+                "cognito-idp:AdminUpdateUserAttributes",
+                "cognito-idp:UpdateUserAttributes",
+                "cognito-idp:UpdateUserPoolDomain",
+                "cognito-idp:UpdateIdentityProvider",
+                "cognito-idp:UpdateGroup",
+                "cognito-idp:AdminUpdateAuthEventFeedback",
+                "cognito-idp:UpdateDeviceStatus",
+                "cognito-idp:UpdateUserPool"
               ],
               "Resource": [
                 {
-                  "Ref": "storagecategoryStorageArn"
-                },
-                {
                   "Fn::Join": [
-                    "/",
+                    "",
                     [
+                      "arn:aws:cognito-idp:",
                       {
-                        "Ref": "storagecategoryStorageArn"
+                        "Ref": "AWS::Region"
                       },
-                      "index/*"
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":userpool/",
+                      {
+                        "Ref": "authamplifybackend59ccdbf8UserPoolId"
+                      }
                     ]
                   ]
                 }
