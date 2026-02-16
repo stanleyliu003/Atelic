@@ -525,6 +525,7 @@ export const CreateTripProvider = ({ children }) => {
         setVersion(1);
         setUpdatedAt(null);
         setLastUpdatedBy(null);
+        setDeletedSavedPlaceIds(new Set());
         // Reset new fields for future features
         setNotes(null);
         setDuration(null);

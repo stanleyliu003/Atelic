@@ -3769,8 +3769,13 @@ export default function TripViewMain() {
         }
 
         console.log('[trip-view_main] Filtering', allSavedPlaces.length, 'saved places for city:', selectedCity);
+        console.log('[trip-view_main] Current activities count:', activities?.length || 0);
         const filtered = filterSavedPlacesByCity(allSavedPlaces, selectedCity);
         console.log('[trip-view_main] Found', filtered.length, 'matching saved places');
+        
+        // Debug: Log cities in filtered saved places
+        const cities = filtered.map(sp => sp.city || sp.activity?.city).filter(Boolean);
+        console.log('[trip-view_main] Cities in filtered saved places:', [...new Set(cities)]);
 
         // Extract activity objects from saved places, preserving savedPlaceId
         const savedPlacesActivities = filtered
@@ -3803,53 +3808,58 @@ export default function TripViewMain() {
             }))
         );
 
-        // Check which activities are not already in the trip
-        // Use savedPlaceId + place_id combination to identify exact matches
-        const existingSavedPlaceIds = new Set(
-            (activities || [])
-                .filter((a: Activity) => a.savedPlaceId)
-                .map((a: Activity) => `${a.savedPlaceId}_${a.place_id}`)
-        );
+        // Use functional update to access current activities without including it in dependencies
+        // This prevents the effect from re-running every time activities change
+        updateActivities((currentActivities: Activity[]) => {
+            // Check which activities are not already in the trip
+            // Use savedPlaceId + place_id combination to identify exact matches
+            const existingSavedPlaceIds = new Set(
+                (currentActivities || [])
+                    .filter((a: Activity) => a.savedPlaceId)
+                    .map((a: Activity) => `${a.savedPlaceId}_${a.place_id}`)
+            );
 
-        const newActivities = normalizedActivities.filter(activity => {
-            const key = `${activity.savedPlaceId}_${activity.place_id}`;
-            
-            // Check if not already in trip
-            if (existingSavedPlaceIds.has(key)) {
-                return false;
-            }
-            
-            // Check if already processed in this session (prevents duplicate adds during rapid re-renders)
-            if (activity.savedPlaceId && processedSavedPlacesRef.current.has(activity.savedPlaceId)) {
-                return false;
-            }
-            
-            // Check if user has explicitly deleted this saved place from the trip
-            if (activity.savedPlaceId && isDeletedSavedPlace(activity.savedPlaceId)) {
-                console.log('[trip-view_main] Filtering out deleted saved place:', activity.name, 'savedPlaceId:', activity.savedPlaceId);
-                return false;
-            }
-            
-            return true;
-        });
-
-        // Add new Instagram saved places to the trip's activities
-        if (newActivities.length > 0) {
-            console.log('[trip-view_main] ✨ Adding', newActivities.length, 'new Instagram saved places to trip:', 
-                newActivities.map(a => a.name).join(', '));
-            
-            // Mark these as processed to prevent duplicate adds during rapid re-renders
-            newActivities.forEach(activity => {
-                if (activity.savedPlaceId) {
-                    processedSavedPlacesRef.current.add(activity.savedPlaceId);
+            const newActivities = normalizedActivities.filter(activity => {
+                const key = `${activity.savedPlaceId}_${activity.place_id}`;
+                
+                // Check if not already in trip
+                if (existingSavedPlaceIds.has(key)) {
+                    return false;
                 }
+                
+                // Check if already processed in this session (prevents duplicate adds during rapid re-renders)
+                if (activity.savedPlaceId && processedSavedPlacesRef.current.has(activity.savedPlaceId)) {
+                    return false;
+                }
+                
+                // Check if user has explicitly deleted this saved place from the trip
+                if (activity.savedPlaceId && isDeletedSavedPlace(activity.savedPlaceId)) {
+                    console.log('[trip-view_main] Filtering out deleted saved place:', activity.name, 'savedPlaceId:', activity.savedPlaceId);
+                    return false;
+                }
+                
+                return true;
             });
-            
-            updateActivities([...activities, ...newActivities]);
-        } else {
-            console.log('[trip-view_main] No new saved places to add (all already in trip or deleted)');
-        }
-    }, [selectedCity, allSavedPlaces, activities, updateActivities, isDeletedSavedPlace]);
+
+            // Add new Instagram saved places to the trip's activities
+            if (newActivities.length > 0) {
+                console.log('[trip-view_main] ✨ Adding', newActivities.length, 'new Instagram saved places to trip:', 
+                    newActivities.map(a => a.name).join(', '));
+                
+                // Mark these as processed to prevent duplicate adds during rapid re-renders
+                newActivities.forEach(activity => {
+                    if (activity.savedPlaceId) {
+                        processedSavedPlacesRef.current.add(activity.savedPlaceId);
+                    }
+                });
+                
+                return [...currentActivities, ...newActivities];
+            } else {
+                console.log('[trip-view_main] No new saved places to add (all already in trip or deleted)');
+                return currentActivities;
+            }
+        });
+    }, [selectedCity, allSavedPlaces, updateActivities, isDeletedSavedPlace]);
 
     // Handle collaboration modal
     const handleShareTrip = async () => {
