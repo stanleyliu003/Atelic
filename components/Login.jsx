@@ -203,7 +203,7 @@ export default function Login() {
       const userID = user.attributes.sub;
       const idToken = session.getIdToken().getJwtToken();
       console.log('[Login] Attempting to store auth data in App Groups...');
-      const authStored = await storeAuthData(userID, idToken);
+      const authStored = await storeAuthData(userID, idToken, user.username);
       if (authStored) {
         console.log('[Login] ✅ Successfully stored auth data in App Groups');
       } else {

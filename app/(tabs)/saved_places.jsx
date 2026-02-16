@@ -59,31 +59,70 @@ export default function SavedPlaces() {
     try {
       setError(null);
       const user = await Auth.currentAuthenticatedUser();
-      const userID = user.attributes.sub; // Use Cognito sub (matches what's stored in DynamoDB)
+      const cognitoUsername = user.username; // e.g. signinwithapple_xxx
+      const cognitoSub = user.attributes?.sub; // e.g. 34d8c438-...
 
-      console.log('[SavedPlaces] Fetching saved places for userID:', userID);
+      // Query both identifiers to catch places saved under either one.
+      // For native users these are the same; for federated (Google/Apple) users they differ.
+      const ids = [cognitoUsername];
+      if (cognitoSub && cognitoSub !== cognitoUsername) {
+        ids.push(cognitoSub);
+      }
 
-      const result = await API.graphql({
-        query: getSavedPlacesDetailed,
-        variables: { userID },
-      });
+      console.log('[SavedPlaces] Fetching saved places for userIDs:', ids);
 
-      const data = result.data.getSavedPlaces;
+      const results = await Promise.all(
+        ids.map(id =>
+          API.graphql({ query: getSavedPlacesDetailed, variables: { userID: id } })
+        )
+      );
+
+      // Merge results, deduplicating by savedPlaceId
+      const seenIds = new Set();
+      const mergedPlaces = [];
+      const citiesMap = new Map(); // city -> cityData
+
+      for (const result of results) {
+        const data = result.data.getSavedPlaces;
+        for (const place of (data.savedPlaces || [])) {
+          if (!seenIds.has(place.savedPlaceId)) {
+            seenIds.add(place.savedPlaceId);
+            mergedPlaces.push(place);
+          }
+        }
+        for (const cityData of (data.cities || [])) {
+          if (!citiesMap.has(cityData.city)) {
+            citiesMap.set(cityData.city, { ...cityData });
+          }
+        }
+      }
+
+      // Recompute city counts from merged places
+      const cityCountMap = {};
+      for (const place of mergedPlaces) {
+        const city = place.city || 'Unknown';
+        cityCountMap[city] = (cityCountMap[city] || 0) + 1;
+      }
+      const mergedCities = Array.from(citiesMap.values()).map(c => ({
+        ...c,
+        count: cityCountMap[c.city] || c.count,
+      }));
+
       console.log('[SavedPlaces] Received data:', {
-        totalCount: data.totalCount,
-        citiesCount: data.cities?.length || 0,
+        totalCount: mergedPlaces.length,
+        citiesCount: mergedCities.length,
       });
 
       // Log country information for verification
-      if (data.cities && data.cities.length > 0) {
-        console.log('[SavedPlaces] Cities with country info:', 
-          data.cities.map(c => ({ city: c.city, country: c.country, count: c.count }))
+      if (mergedCities.length > 0) {
+        console.log('[SavedPlaces] Cities with country info:',
+          mergedCities.map(c => ({ city: c.city, country: c.country, count: c.count }))
         );
       }
 
-      setCities(data.cities || []);
-      setTotalCount(data.totalCount || 0);
-      setAllSavedPlaces(data.savedPlaces || []);
+      setCities(mergedCities);
+      setTotalCount(mergedPlaces.length);
+      setAllSavedPlaces(mergedPlaces);
     } catch (err) {
       console.error('[SavedPlaces] Error fetching saved places:', err);
       setError(err.message || 'Failed to load saved places');

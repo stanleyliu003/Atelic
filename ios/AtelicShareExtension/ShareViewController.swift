@@ -444,11 +444,14 @@ class ShareViewController: UIViewController {
     }
 
     // MARK: - Get User ID from App Groups
+    // Prefer cognitoUsername (e.g. signinwithapple_xxx) which matches userID in DynamoDB.
+    // Falls back to userID (Cognito sub) for backward compatibility.
     private func getUserID() -> String? {
         guard let sharedDefaults = UserDefaults(suiteName: appGroupID) else {
             return nil
         }
-        return sharedDefaults.string(forKey: "userID")
+        return sharedDefaults.string(forKey: "cognitoUsername")
+            ?? sharedDefaults.string(forKey: "userID")
     }
 
     // MARK: - Call Lambda

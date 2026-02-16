@@ -1242,6 +1242,7 @@ export default function Profile() {
                 style={styles.settingsMenuItem}
                 onPress={() => {
                   setIsSettingsModalVisible(false);
+                  setTimeout(() => {
                   Alert.prompt(
                     'Apply as Admin',
                     'Enter the 4-digit admin passcode:',
@@ -1269,6 +1270,7 @@ export default function Profile() {
                     },
                     'secure-text'
                   );
+                  }, 500);
                 }}
               >
                 <Ionicons name="key-outline" size={24} color={Colors.PRIMARY} />

@@ -6,6 +6,7 @@
  * 
  * Keys stored:
  * - userID: Cognito user ID (sub claim)
+ * - cognitoUsername: Cognito username (e.g. signinwithapple_xxx) — matches userID in DynamoDB
  * - cognitoIdToken: JWT ID token for Lambda authentication
  * - isLoggedIn: Boolean flag for quick auth check
  */
@@ -47,9 +48,9 @@ if (AppGroupsStorage) {
  * 
  * @returns {Promise<boolean>} true if storage succeeded, false if unavailable
  */
-export const storeAuthData = async (userID: string, idToken: string): Promise<boolean> => {
+export const storeAuthData = async (userID: string, idToken: string, cognitoUsername?: string): Promise<boolean> => {
   console.log('[AppGroups] storeAuthData() called with userID:', userID?.substring(0, 8) + '...');
-  
+
   if (!AppGroupsStorage) {
     console.warn('[AppGroups] ❌ Cannot store auth data - native module not available');
     console.warn('[AppGroups]    Platform:', Platform.OS);
@@ -58,17 +59,22 @@ export const storeAuthData = async (userID: string, idToken: string): Promise<bo
   }
 
   try {
-    console.log('[AppGroups] Attempting to store 3 keys: userID, cognitoIdToken, isLoggedIn');
-    
+    console.log('[AppGroups] Attempting to store keys: userID, cognitoUsername, cognitoIdToken, isLoggedIn');
+
     AppGroupsStorage.setGroupValue(userID, 'userID');
     console.log('[AppGroups]   ✅ Stored userID');
-    
+
+    if (cognitoUsername) {
+      AppGroupsStorage.setGroupValue(cognitoUsername, 'cognitoUsername');
+      console.log('[AppGroups]   ✅ Stored cognitoUsername');
+    }
+
     AppGroupsStorage.setGroupValue(idToken, 'cognitoIdToken');
     console.log('[AppGroups]   ✅ Stored cognitoIdToken');
-    
+
     AppGroupsStorage.setGroupValue('true', 'isLoggedIn');
     console.log('[AppGroups]   ✅ Stored isLoggedIn flag');
-    
+
     console.log('[AppGroups] ✅ Successfully stored all auth data for userID:', userID?.substring(0, 8) + '...');
     return true;
   } catch (error) {

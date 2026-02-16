@@ -164,7 +164,10 @@ async function getUserAdminPermission(userID) {
             ProjectionExpression: 'admin_permission',
             Limit: 1
         }));
-        return result.Items?.[0]?.admin_permission === true;
+        const item = result.Items?.[0];
+        const adminVal = item?.admin_permission;
+        console.log(`[index] Admin permission lookup for ${userID}: found=${!!item}, admin_permission=${adminVal} (type=${typeof adminVal})`);
+        return adminVal === true || adminVal === 'true';
     } catch (error) {
         console.error('[index] Error fetching admin_permission:', error);
         return false;
