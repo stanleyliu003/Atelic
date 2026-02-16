@@ -66,7 +66,7 @@ export default function TripViewMain() {
     const router = useRouter();
     const navigation = useNavigation();
     const params = useLocalSearchParams();
-    const { restoreTrip } = params;
+    const { restoreTrip, fromSavedPlaces } = params;
     const {
         activities,
         removeActivities,
@@ -115,7 +115,10 @@ export default function TripViewMain() {
     } = useCreateTrip();
     // Primary tab state for Overview/Itinerary toggle
     type PrimaryTab = 'overview' | 'itinerary';
-    const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('overview');
+    // If coming from saved places, start on itinerary tab instead of overview
+    const [primaryTab, setPrimaryTab] = useState<PrimaryTab>(
+        fromSavedPlaces === 'true' ? 'itinerary' : 'overview'
+    );
 
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);

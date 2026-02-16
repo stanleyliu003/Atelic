@@ -14,7 +14,7 @@ import CalendarPicker from 'react-native-calendar-picker';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import { createTrip } from '../../src/graphql/mutations';
 
-export default function create_trip_1_city({ showBackButton = true, prefilledCity: prefilledCityProp = null }) {
+export default function create_trip_1_city({ showBackButton = true, prefilledCity: prefilledCityProp = null, fromSavedPlaces = null }) {
     const router = useRouter();
     const navigation = useNavigation();
     const params = useLocalSearchParams();
@@ -430,7 +430,15 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
             console.error('Error clearing categories cache:', error);
         }
 
-        router.push('trip-view/trip-view_main');
+        // Pass fromSavedPlaces param if present
+        if (fromSavedPlaces === 'true') {
+            router.push({
+                pathname: 'trip-view/trip-view_main',
+                params: { fromSavedPlaces: 'true' }
+            });
+        } else {
+            router.push('trip-view/trip-view_main');
+        }
     };
 
     const dayOptions = Array.from({ length: 30 }, (_, i) => i + 1);

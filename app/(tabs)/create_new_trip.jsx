@@ -17,6 +17,10 @@ export default function Create_New_Trip() {
   }, []); // Empty dependency array - only run on mount
 
   // Render the city selection component directly within this tab
-  // Pass prefilledCity prop if it exists in params
-  return <CreateTrip1City showBackButton={false} prefilledCity={params.prefilledCity} />;
+  // Pass prefilledCity and fromSavedPlaces props if they exist in params
+  return <CreateTrip1City 
+    showBackButton={false} 
+    prefilledCity={params.prefilledCity}
+    fromSavedPlaces={params.fromSavedPlaces}
+  />;
 }
