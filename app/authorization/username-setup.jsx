@@ -632,7 +632,39 @@ export default function UsernameSetup() {
         setError('Username must be 5-20 characters and contain only letters, numbers, and underscores.');
         return;
       }
-      setCurrentPage(5);
+
+      // Check if username is already taken
+      setIsLoading(true);
+      try {
+        console.log('Checking username availability for:', username.trim());
+
+        const result = await API.graphql({
+          query: searchUsers,
+          variables: { searchTerm: username.trim() }
+        });
+
+        const users = result.data?.searchUsers || [];
+
+        // Check if any user has this exact username
+        const usernameExists = users.some(
+          user => user.username?.toLowerCase() === username.trim().toLowerCase()
+        );
+
+        if (usernameExists) {
+          setError('This username is already taken. Please choose another one.');
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('Username is available, proceeding to next page...');
+        setIsLoading(false);
+        setCurrentPage(5);
+      } catch (err) {
+        console.error('Error checking username availability:', err);
+        setError('Failed to verify username availability. Please try again.');
+        setIsLoading(false);
+        return;
+      }
     } else if (currentPage === 5) {
       // Page 5: Good company page - no validation required
       setCurrentPage(7);
