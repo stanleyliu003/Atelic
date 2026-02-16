@@ -3700,25 +3700,49 @@ export default function TripViewMain() {
             try {
                 setLoadingSavedPlaces(true);
                 
-                // IMPORTANT: Saved places are stored using Cognito sub (user.attributes.sub)
-                // not username (user.username), so we need to fetch the user to get the sub
                 const user = await Auth.currentAuthenticatedUser();
-                const cognitoSub = user.attributes.sub;
+                const cognitoUsername = user.username; // e.g. signinwithapple_xxx for federated users
+                const cognitoSub = user.attributes?.sub; // e.g. 34d8c438-... UUID
                 
-                console.log('[trip-view_main] Fetching saved places for Cognito sub:', cognitoSub);
+                // Query both identifiers to catch places saved under either one.
+                // For native users these are the same; for federated (Google/Apple) users they differ.
+                const ids = [cognitoUsername];
+                if (cognitoSub && cognitoSub !== cognitoUsername) {
+                    ids.push(cognitoSub);
+                }
+                
+                console.log('[trip-view_main] Fetching saved places for userIDs:', ids);
 
-                const result = await API.graphql({
-                    query: getSavedPlacesDetailed,
-                    variables: { userID: cognitoSub },
-                });
+                const results = await Promise.all(
+                    ids.map(id =>
+                        API.graphql({
+                            query: getSavedPlacesDetailed,
+                            variables: { userID: id },
+                        })
+                    )
+                );
 
-                const data = (result as any).data.getSavedPlaces;
+                // Merge results, deduplicating by savedPlaceId
+                const seenIds = new Set<string>();
+                const mergedPlaces: any[] = [];
+
+                for (const result of results) {
+                    const data = (result as any).data.getSavedPlaces;
+                    for (const place of (data.savedPlaces || [])) {
+                        if (!seenIds.has(place.savedPlaceId)) {
+                            seenIds.add(place.savedPlaceId);
+                            mergedPlaces.push(place);
+                        }
+                    }
+                }
+
                 console.log('[trip-view_main] Received saved places:', {
-                    totalCount: data.totalCount,
-                    savedPlacesCount: data.savedPlaces?.length || 0,
+                    totalCount: mergedPlaces.length,
+                    savedPlacesCount: mergedPlaces.length,
+                    fromUserIDs: ids,
                 });
 
-                setAllSavedPlaces(data.savedPlaces || []);
+                setAllSavedPlaces(mergedPlaces);
             } catch (error) {
                 console.error('[trip-view_main] Error fetching saved places:', error);
             } finally {
