@@ -60,6 +60,10 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
     const [isShareModalVisible, setIsShareModalVisible] = useState(false);
     const [currentUserID, setCurrentUserID] = useState('');
     const [isSavingTrip, setIsSavingTrip] = useState(false);
+    
+    // Local state for city selection - only commit to context when user presses "Next"
+    const [localSelectedCity, setLocalSelectedCity] = useState('');
+    const [localSelectedCityLocation, setLocalSelectedCityLocation] = useState(null);
 
 
     // Pan responder for swipe-down gesture to close calendar
@@ -159,12 +163,12 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
         };
     }, [])
 
-    // Clear categories when selectedCity is cleared, but don't interfere with user input
+    // Clear categories when localSelectedCity is cleared, but don't interfere with user input
     useEffect(() => {
-        if (!selectedCity) {
+        if (!localSelectedCity) {
             setCityCategories(null);
         }
-    }, [selectedCity, setCityCategories])
+    }, [localSelectedCity, setCityCategories])
 
     // Handle prefilled city from props or route params (e.g., from Saved Places)
     useEffect(() => {
@@ -178,7 +182,8 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                     // Set the text in the search field
                     googlePlacesRef.current.setAddressText(prefilledCity);
                     setSearchText(prefilledCity);
-                    setSelectedCity(prefilledCity);
+                    // Use LOCAL state instead of context
+                    setLocalSelectedCity(prefilledCity);
                     selectedCityRef.current = prefilledCity;
                     setHasSelectedPlace(true);
                     // Fetch city categories for this city
@@ -358,7 +363,7 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                 days,
                 wishlist,
                 tripLength: tripLength,
-                selectedCity: selectedCity,
+                selectedCity: localSelectedCity || selectedCity, // Use local state if available, fallback to context
                 tripPhotoReference: Array.isArray(tripPhotoReference)
                     ? tripPhotoReference
                     : (tripPhotoReference ? [String(tripPhotoReference)] : []),
@@ -407,9 +412,15 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
     };
 
     const handleNext = async () => {
-        if (!selectedCity || !tripLength) {
+        if (!localSelectedCity || !tripLength) {
             return;
         }
+
+        // ✨ COMMIT LOCAL STATE TO CONTEXT - Only update when user explicitly presses "Next"
+        // This prevents saved places from being added for cities that were selected but then changed
+        console.log('[create_trip_1_city] Committing city to context:', localSelectedCity);
+        setSelectedCity(localSelectedCity);
+        setSelectedCityLocation(localSelectedCityLocation);
 
         // Clear categories cache when user moves forward
         // This ensures categories won't show if user goes back to this page
@@ -460,15 +471,16 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                         ref={googlePlacesRef}
                         placeholder='Ex: Boston, MA, USA'
                         onPress={async (data, details = null) => {
-                            setSelectedCity(data.description);
+                            // Use LOCAL state instead of context - only commit to context on "Next"
+                            setLocalSelectedCity(data.description);
                             selectedCityRef.current = data.description;
                             setHasSelectedPlace(true);
                             // Store selected city's coordinates for initial map centering
                             if (details && details.geometry && details.geometry.location) {
                                 const { lat, lng } = details.geometry.location;
-                                setSelectedCityLocation({ lat, lng });
+                                setLocalSelectedCityLocation({ lat, lng });
                             } else {
-                                setSelectedCityLocation(null);
+                                setLocalSelectedCityLocation(null);
                             }
                             // Update the text field to show the selected city immediately
                             if (googlePlacesRef.current) {
@@ -557,7 +569,7 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                 )}
 
                 {/* Trip Length Selection - Only show when a place has been selected from autocomplete */}
-                {selectedCity && hasSelectedPlace && (
+                {localSelectedCity && hasSelectedPlace && (
                     <View style={styles.tripLengthSection}>
                         <View style={styles.promptSection}>
                             <Text style={styles.promptTitle}>How long is your trip?</Text>
@@ -887,9 +899,9 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                         onPress={handleNext}
                         style={[
                             styles.nextButton,
-                            { opacity: (selectedCity && hasSelectedPlace && tripLength) ? 1 : 0 }
+                            { opacity: (localSelectedCity && hasSelectedPlace && tripLength) ? 1 : 0 }
                         ]}
-                        disabled={!selectedCity || !hasSelectedPlace || !tripLength}
+                        disabled={!localSelectedCity || !hasSelectedPlace || !tripLength}
                     >
                         <Text style={styles.nextButtonText}>Next</Text>
                     </TouchableOpacity>
@@ -906,7 +918,7 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                     collaborators={collaborators || []}
                     currentUserRole="owner"
                     currentUserID={currentUserID}
-                    selectedCity={selectedCity}
+                    selectedCity={localSelectedCity || selectedCity}
                     onCollaboratorsUpdate={handleCollaboratorsUpdate}
                 />
             )}
