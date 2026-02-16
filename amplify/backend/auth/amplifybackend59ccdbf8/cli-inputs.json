@@ -22,7 +22,7 @@
     ],
     "aliasAttributes": [],
     "userpoolClientGenerateSecret": false,
-    "userpoolClientRefreshTokenValidity": 30,
+    "userpoolClientRefreshTokenValidity": 60,
     "userpoolClientWriteAttributes": [
       "birthdate",
       "gender",
