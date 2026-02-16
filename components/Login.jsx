@@ -158,81 +158,70 @@ export default function Login() {
   }, []);
 
   const checkAuthenticationState = async () => {
-    // ========== VERSION CHECK (BEFORE ANYTHING ELSE) ==========
-    // Fetch minimum version from backend (DynamoDB via Lambda)
-    // This ensures version enforcement works even for users with outdated app bundles
-    const minimumVersion = await checkUpdateRequired();
-
-    if (minimumVersion) {
-      console.log('[Login] App version outdated, showing update prompt');
-      setMinimumRequiredVersion(minimumVersion);
-      setShowUpdateRequired(true);
-      setIsCheckingAuth(false);
-      return; // Block further execution - don't proceed to auth
-    }
-    // ===========================================================
-
     // Prevent multiple simultaneous navigation attempts
     if (isNavigatingRef.current) {
       return;
     }
 
     try {
-      // This automatically handles token refresh if needed
-      const user = await Auth.currentAuthenticatedUser({
-        bypassCache: false // Use cached tokens for better performance
-      });
+      // ===== FIX 1: Parallelize version check with auth check =====
+      // These are independent operations — run concurrently instead of sequentially
+      const [minimumVersion, user] = await Promise.all([
+        checkUpdateRequired(),
+        Auth.currentAuthenticatedUser({ bypassCache: false }),
+      ]);
 
-      // Check again after async operation in case another call started
+      // Handle version check result
+      if (minimumVersion) {
+        console.log('[Login] App version outdated, showing update prompt');
+        setMinimumRequiredVersion(minimumVersion);
+        setShowUpdateRequired(true);
+        setIsCheckingAuth(false);
+        return;
+      }
+
       if (isNavigatingRef.current) {
         return;
       }
 
-      // Get current session to check token expiry
-      const session = await Auth.currentSession();
-      const accessToken = session.getAccessToken();
-      const now = Math.floor(Date.now() / 1000);
-      const expiresIn = accessToken.payload.exp - now;
-
-      // If token expires within 30 minutes, proactively refresh
-      if (expiresIn < 1800) {
-        await Auth.currentSession(); // This triggers refresh
-      }
-
-      // Store/update auth data in App Groups for Share Extension
-      const userID = user.attributes.sub;
-      const idToken = session.getIdToken().getJwtToken();
-      console.log('[Login] Attempting to store auth data in App Groups...');
-      const authStored = await storeAuthData(userID, idToken, user.username);
-      if (authStored) {
-        console.log('[Login] ✅ Successfully stored auth data in App Groups');
-      } else {
-        console.log('[Login] ⚠️ Could not store auth data in App Groups (native module unavailable)');
-        console.log('[Login]    This is expected if running in Expo Go or non-iOS platform');
-        console.log('[Login]    Share Extension will not have access to auth until running on device');
-      }
-
-      // Check if user has complete profile (username, name, birthdate, gender)
-      // Important for both OAuth users and email sign-up users
+      // ===== FIX 4: Parallelize session fetch with attribute fetch =====
       const attributeMap = user?.attributes || {};
       let preferredUsername = attributeMap?.preferred_username;
       let name = attributeMap?.name;
       let birthdate = attributeMap?.birthdate;
       let gender = attributeMap?.gender;
+      const needsAttributeFetch = !preferredUsername || !name || !birthdate || !gender;
 
-      // Fallback: fetch attributes only if they weren't already loaded
-      if (!preferredUsername || !name || !birthdate || !gender) {
-        try {
-          const attributes = await Auth.userAttributes(user);
-          preferredUsername = preferredUsername || attributes.find(attr => attr.Name === 'preferred_username')?.Value;
-          name = name || attributes.find(attr => attr.Name === 'name')?.Value;
-          birthdate = birthdate || attributes.find(attr => attr.Name === 'birthdate')?.Value;
-          gender = gender || attributes.find(attr => attr.Name === 'gender')?.Value;
-        } catch (e) {
-          // If attribute fetch fails, treat as incomplete profile (safe default)
-          console.warn('[Login] Failed to fetch user attributes:', e?.message || e);
-        }
+      // ===== FIX 2: Single session call (currentSession auto-refreshes expired tokens) =====
+      // Run session + attribute fetch concurrently when both are needed
+      const [session, fetchedAttributes] = await Promise.all([
+        Auth.currentSession(),
+        needsAttributeFetch
+          ? Auth.userAttributes(user).catch((e) => {
+              console.warn('[Login] Failed to fetch user attributes:', e?.message || e);
+              return null;
+            })
+          : Promise.resolve(null),
+      ]);
+
+      // Merge fetched attributes if needed
+      if (needsAttributeFetch && fetchedAttributes) {
+        preferredUsername = preferredUsername || fetchedAttributes.find(attr => attr.Name === 'preferred_username')?.Value;
+        name = name || fetchedAttributes.find(attr => attr.Name === 'name')?.Value;
+        birthdate = birthdate || fetchedAttributes.find(attr => attr.Name === 'birthdate')?.Value;
+        gender = gender || fetchedAttributes.find(attr => attr.Name === 'gender')?.Value;
       }
+
+      // Store auth data in App Groups for Share Extension (fire-and-forget)
+      const userID = user.attributes.sub;
+      const idToken = session.getIdToken().getJwtToken();
+      storeAuthData(userID, idToken, user.username).then((stored) => {
+        if (stored) {
+          console.log('[Login] ✅ Stored auth data in App Groups');
+        } else {
+          console.log('[Login] ⚠️ Could not store auth data in App Groups (native module unavailable)');
+        }
+      });
 
       // Redirect to username-setup if profile is incomplete
       if (!preferredUsername || !name || !birthdate || !gender) {
@@ -248,62 +237,30 @@ export default function Login() {
         return;
       }
 
-      // DISABLED: Re-onboarding check for notificationsEnabled field.
-      // Was causing existing users (who signed up before this field existed) to be
-      // forced through onboarding again. Can be re-enabled with a proper backfill.
-      // See: https://github.com/anthropics/claude-code/issues — notificationsEnabled migration
-      // let needsOnboarding = false;
-      // try {
-      //   const profileResult = await Promise.race([
-      //     API.graphql({
-      //       query: getUserProfileQuery,
-      //       variables: { username: preferredUsername }
-      //     }),
-      //     new Promise((_, reject) =>
-      //       setTimeout(() => reject(new Error('Profile fetch timeout')), 1200)
-      //     )
-      //   ]);
-      //   const userProfile = profileResult.data?.getUserProfile;
-      //   if (userProfile && userProfile.notificationsEnabled === null) {
-      //     needsOnboarding = true;
-      //   }
-      // } catch (profileErr) {
-      //   console.warn('[Login] Failed to fetch user profile:', profileErr);
-      // }
-      // if (needsOnboarding) {
-      //   isNavigatingRef.current = true;
-      //   router.replace('/authorization/username-setup?mode=returning');
-      //   return;
-      // }
-
       // User is authenticated and has username, redirect to main app
       isNavigatingRef.current = true;
       router.replace('(tabs)/profile');
 
       // Update device info in the background (do not block navigation/spinner)
-      // This ensures backward compatibility: old users without device info will get it populated
       (async () => {
         try {
           const appVersion = DeviceInfo.getVersion() || null;
-          const osName = DeviceInfo.getSystemName() || null;       // maps to deviceType
+          const osName = DeviceInfo.getSystemName() || null;
           const osVersion = DeviceInfo.getSystemVersion() || null;
           const modelName = DeviceInfo.getModel() || null;
-
-          // CRITICAL: Pass the actual Cognito username (user.username = sub/userID)
-          // NOT the preferred_username, so AdminGetUserCommand can fetch Cognito data
-          const actualUsername = user.username; // This is the Cognito Username (sub)
+          const actualUsername = user.username;
 
           await API.graphql({
             query: updateUserProfileMutation,
             variables: {
-              username: actualUsername, // Use actual Cognito username for API calls
+              username: actualUsername,
               action: 'UPDATE_LOGIN',
               tripData: JSON.stringify({
                 appVersion,
                 deviceType: osName,
                 modelName,
                 osVersion,
-                preferredUsername: preferredUsername // Also pass for reference
+                preferredUsername: preferredUsername
               })
             },
             authMode: 'AMAZON_COGNITO_USER_POOLS'
@@ -315,14 +272,12 @@ export default function Login() {
       })();
 
     } catch (error) {
-      // Check if this is a token refresh failure
+      // If auth failed but it might be a refresh issue, try one more time
       if (error.message?.includes('refresh') || error.code === 'NotAuthorizedException') {
         try {
-          // Force a token refresh attempt
           await Auth.currentSession();
           await Auth.currentAuthenticatedUser({ bypassCache: true });
 
-          // Check navigation flag again
           if (!isNavigatingRef.current) {
             isNavigatingRef.current = true;
             router.replace('(tabs)/profile');
@@ -333,7 +288,15 @@ export default function Login() {
         }
       }
 
-      // User needs to sign in
+      // User needs to sign in — version check still needed for unauthenticated users
+      // (Promise.all rejects early if auth fails, so version check may not have completed)
+      checkUpdateRequired().then((minimumVersion) => {
+        if (minimumVersion) {
+          setMinimumRequiredVersion(minimumVersion);
+          setShowUpdateRequired(true);
+        }
+      });
+
       setIsCheckingAuth(false);
     }
   };

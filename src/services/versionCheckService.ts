@@ -9,6 +9,10 @@ import { API, graphqlOperation } from 'aws-amplify';
 import { CURRENT_ENV } from '../../constants/AppConfig';
 import DeviceInfo from 'react-native-device-info';
 import { isVersionOutdated } from '../utils/versionComparison';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const VERSION_CACHE_KEY = '@version_check_cache';
+const CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 6 hours
 
 const GET_VERSION_CONFIG = /* GraphQL */ `
   query GetVersionConfig($platform: String!, $environment: String!) {
@@ -48,6 +52,22 @@ export const checkUpdateRequired = async (): Promise<string | null> => {
     const platform = Platform.OS; // 'ios' or 'android'
     const environment = CURRENT_ENV; // 'dev', 'staging', or 'prod'
 
+    // Check AsyncStorage cache first to avoid network call on most launches
+    try {
+      const cached = await AsyncStorage.getItem(VERSION_CACHE_KEY);
+      if (cached) {
+        const { minimumVersion, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+        if (age < CACHE_TTL_MS) {
+          console.log('[VersionCheck] Using cached result (age:', Math.round(age / 60000), 'min)');
+          const updateRequired = isVersionOutdated(currentVersion, minimumVersion);
+          return updateRequired ? minimumVersion : null;
+        }
+      }
+    } catch (cacheErr) {
+      // Cache read failed, proceed with network fetch
+    }
+
     console.log('[VersionCheck] Checking version requirements:', {
       currentVersion,
       platform,
@@ -65,6 +85,16 @@ export const checkUpdateRequired = async (): Promise<string | null> => {
     const config: VersionConfig = response.data.getVersionConfig;
 
     console.log('[VersionCheck] Received config from backend:', config);
+
+    // Cache the result for subsequent launches
+    try {
+      await AsyncStorage.setItem(VERSION_CACHE_KEY, JSON.stringify({
+        minimumVersion: config.minimumVersion,
+        timestamp: Date.now(),
+      }));
+    } catch (cacheErr) {
+      // Cache write failed, non-critical
+    }
 
     // Compare versions
     const updateRequired = isVersionOutdated(currentVersion, config.minimumVersion);

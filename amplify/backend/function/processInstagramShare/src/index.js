@@ -460,7 +460,7 @@ exports.handler = async (event) => {
         const isAdmin = await getUserAdminPermission(userID);
         if (!isAdmin) {
             const savedPlacesCount = await getUserSavedPlacesCount(userID);
-            if (savedPlacesCount > 10) {
+            if (savedPlacesCount > 30) {
                 console.log(`[index] User ${userID} has ${savedPlacesCount} saved places, exceeds limit of 10`);
                 return {
                     statusCode: 429,
