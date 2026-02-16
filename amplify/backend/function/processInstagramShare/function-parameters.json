@@ -6,6 +6,10 @@
         "create",
         "read",
         "update"
+      ],
+      "getUserProfile": [
+        "read",
+        "update"
       ]
     },
     "storage": {

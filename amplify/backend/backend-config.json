@@ -532,6 +532,13 @@
         },
         {
           "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "getUserProfile"
+        },
+        {
+          "attributes": [
             "Name",
             "Arn",
             "StreamArn"

@@ -56,6 +56,10 @@
       "Type": "String",
       "Default": "storageUserProfilesStorageStreamArn"
     },
+    "functiongetUserProfileName": {
+      "Type": "String",
+      "Default": "functiongetUserProfileName"
+    },
     "geminiApiKey": {
       "Type": "String"
     },
@@ -145,6 +149,9 @@
             },
             "STORAGE_USERPROFILESSTORAGE_STREAMARN": {
               "Ref": "storageUserProfilesStorageStreamArn"
+            },
+            "FUNCTION_GETUSERPROFILE_NAME": {
+              "Ref": "functiongetUserProfileName"
             },
             "GEMINI_API_KEY": {
               "Ref": "geminiApiKey"
@@ -290,6 +297,36 @@
                       ":function:",
                       {
                         "Ref": "functiongetLocationCoordinatesName"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "lambda:Get*",
+                "lambda:List*",
+                "lambda:Invoke*",
+                "lambda:Update*"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:lambda:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":function:",
+                      {
+                        "Ref": "functiongetUserProfileName"
                       }
                     ]
                   ]
