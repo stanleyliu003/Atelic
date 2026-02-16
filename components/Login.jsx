@@ -248,41 +248,33 @@ export default function Login() {
         return;
       }
 
-      // Check if user has completed updated onboarding (notificationsEnabled field)
-      // This ensures old users go through the new onboarding flow
-      let needsOnboarding = false;
-      try {
-        // Time-bound this call so a slow network doesn't hold the login spinner.
-        // If it times out, we "fail open" and let the user in.
-        const profileResult = await Promise.race([
-          API.graphql({
-            query: getUserProfileQuery,
-            variables: { username: preferredUsername }
-          }),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Profile fetch timeout')), 1200)
-          )
-        ]);
-
-        const userProfile = profileResult.data?.getUserProfile;
-
-        // If notificationsEnabled field is missing (null/undefined), user needs onboarding
-        // Note: false is a valid value (user chose not to enable notifications)
-        if (userProfile && userProfile.notificationsEnabled === null) {
-          console.log('[Login] User missing notificationsEnabled field, sending to onboarding');
-          needsOnboarding = true;
-        }
-      } catch (profileErr) {
-        console.warn('[Login] Failed to fetch user profile, skipping onboarding check:', profileErr?.errors || profileErr?.message || profileErr);
-        // Don't block login if profile check fails
-      }
-
-      // If user needs onboarding, redirect to username-setup with query param
-      if (needsOnboarding) {
-        isNavigatingRef.current = true;
-        router.replace('/authorization/username-setup?mode=returning');
-        return;
-      }
+      // DISABLED: Re-onboarding check for notificationsEnabled field.
+      // Was causing existing users (who signed up before this field existed) to be
+      // forced through onboarding again. Can be re-enabled with a proper backfill.
+      // See: https://github.com/anthropics/claude-code/issues — notificationsEnabled migration
+      // let needsOnboarding = false;
+      // try {
+      //   const profileResult = await Promise.race([
+      //     API.graphql({
+      //       query: getUserProfileQuery,
+      //       variables: { username: preferredUsername }
+      //     }),
+      //     new Promise((_, reject) =>
+      //       setTimeout(() => reject(new Error('Profile fetch timeout')), 1200)
+      //     )
+      //   ]);
+      //   const userProfile = profileResult.data?.getUserProfile;
+      //   if (userProfile && userProfile.notificationsEnabled === null) {
+      //     needsOnboarding = true;
+      //   }
+      // } catch (profileErr) {
+      //   console.warn('[Login] Failed to fetch user profile:', profileErr);
+      // }
+      // if (needsOnboarding) {
+      //   isNavigatingRef.current = true;
+      //   router.replace('/authorization/username-setup?mode=returning');
+      //   return;
+      // }
 
       // User is authenticated and has username, redirect to main app
       isNavigatingRef.current = true;
