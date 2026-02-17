@@ -133,6 +133,16 @@ type DeleteTripResult {
   deletedTripID: String!
 }
 
+type DeleteSavedPlaceResult {
+  savedPlaceId: String!
+  userID: String!
+}
+
+type DeleteSavedCityResult {
+  success: Boolean!
+  count: Int
+}
+
 type DeleteAccountResult {
   success: Boolean!
   message: String!
@@ -480,6 +490,8 @@ type AppVersionConfig {
    optimizeRoute(activities: [ActivityInput!]!): [Activity] @function(name: "OptimizeRoute-${env}") @auth(rules: [{ allow: public }])
    createTrip(input: CreateTripInput!): Trip @function(name: "CreateTripStorage-${env}") @auth(rules: [{ allow: public }])
    deleteTrip(userID: String!, tripID: String!): DeleteTripResult @function(name: "deleteTrip-${env}") @auth(rules: [{ allow: public }])
+   deleteSavedPlace(userID: String!, savedPlaceId: String!): DeleteSavedPlaceResult @function(name: "deleteSavedPlace-${env}") @auth(rules: [{ allow: public }])
+   deleteSavedCity(userID: String!, city: String!): DeleteSavedCityResult @function(name: "deleteSavedCity-${env}") @auth(rules: [{ allow: public }])
    deleteUserAccount(userID: String!): DeleteAccountResult @function(name: "deleteAccount-${env}") @auth(rules: [{ allow: public }])
    addCollaborator(tripId: String!, userID: String!, userEmail: String!, fullName: String!, username: String!, role: CollaboratorRole!, addedBy: String): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
    removeCollaborator(tripId: String!, username: String!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,11 +13,22 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { ActivityCard } from '../trip-view/activity/activity_card';
 import { ActivityDetailView } from '../trip-view/description_card';
 import { useRouter } from 'expo-router';
+import { API, Auth } from 'aws-amplify';
+import { deleteSavedPlace } from '../../graphql/mutations';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-export function CitySavedPlacesModal({ visible, onClose, cityName, places }) {
+export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPlaceDeleted }) {
   const router = useRouter();
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [descriptionCardVisible, setDescriptionCardVisible] = useState(false);
+  const [localPlaces, setLocalPlaces] = useState(places);
+
+  useEffect(() => {
+    // This effect syncs the local state when the places prop changes.
+    // This is important for when the modal is re-opened for a different city,
+    // or if the parent component refreshes the data.
+    setLocalPlaces(places);
+  }, [places]);
 
   const handleCreateTrip = () => {
     console.log('[CitySavedPlacesModal] handleCreateTrip called with cityName:', cityName);
@@ -36,6 +47,35 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places }) {
   const handleDescriptionCardClose = () => {
     setDescriptionCardVisible(false);
     setSelectedActivity(null);
+  };
+
+  const handleDeleteActivity = async (activityToDelete) => {
+    // The activity object from ActivityCard contains the savedPlaceId we added
+    const { savedPlaceId } = activityToDelete;
+    if (!savedPlaceId) {
+      console.error('[CitySavedPlacesModal] Cannot delete: savedPlaceId is missing.');
+      return;
+    }
+
+    // Optimistic UI update
+    setLocalPlaces(currentPlaces =>
+      currentPlaces.filter(p => p.savedPlaceId !== savedPlaceId)
+    );
+
+    try {
+      const user = await Auth.currentAuthenticatedUser();
+      const userID = user.attributes.sub;
+
+      await API.graphql({
+        query: deleteSavedPlace,
+        variables: { userID, savedPlaceId },
+      });
+
+      onPlaceDeleted?.(savedPlaceId);
+    } catch (error) {
+      console.error('[CitySavedPlacesModal] Error deleting saved place:', error);
+      setLocalPlaces(places); // Revert on failure
+    }
   };
 
   const renderActivityItem = ({ item }) => {
@@ -58,18 +98,22 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places }) {
     }
     
     // Copy source and sourceUrl from SavedPlace to Activity for display in description card
-    const activityWithSource = {
+    // Also pass savedPlaceId so the delete function can find it
+    const activityWithDetails = {
       ...activity,
+      savedPlaceId: item.savedPlaceId,
       source: item.source,
       sourceUrl: item.sourceUrl,
     };
     
     return (
       <ActivityCard
-        activity={activityWithSource}
-        onDescriptionCardPress={() => handleActivityPress(activityWithSource)}
+        activity={activityWithDetails}
+        onDescriptionCardPress={() => handleActivityPress(activityWithDetails)}
+        onSwipeDelete={handleDeleteActivity}
         hideNotesButton={true}
         hideRouteInfo={true}
+        deleteSavedPlace={true}
       />
     );
   };
@@ -81,6 +125,7 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places }) {
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
@@ -97,7 +142,7 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places }) {
         {/* Activity List */}
         {places && places.length > 0 ? (
           <FlatList
-            data={places}
+            data={localPlaces}
             renderItem={renderActivityItem}
             keyExtractor={(item, index) => item.savedPlaceId || `saved-place-${index}`}
             contentContainerStyle={styles.listContent}
@@ -142,6 +187,7 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places }) {
           </SafeAreaView>
         </Modal>
       </SafeAreaView>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -194,13 +240,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 16,
-    paddingBottom: 34,
+    paddingBottom: 34, // Safe area padding
     paddingTop: 12,
     backgroundColor: Colors.WHITE,
     borderTopWidth: 1,
     borderTopColor: '#e5e5e5',
+    flexDirection: 'row',
+    gap: 12,
   },
   createTripButton: {
+    flex: 1,
     backgroundColor: '#F36406',
     borderRadius: 15,
     paddingVertical: 15,

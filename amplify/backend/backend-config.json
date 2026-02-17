@@ -264,6 +264,38 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "deleteSavedCity": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "SavedPlacesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "deleteSavedPlace": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "SavedPlacesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "deleteTrip": {
       "build": true,
       "dependsOn": [
@@ -831,6 +863,38 @@
         {
           "category": "function",
           "resourceName": "deleteAccount"
+        }
+      ]
+    },
+    "AMPLIFY_function_deleteSavedCity_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "deleteSavedCity"
+        }
+      ]
+    },
+    "AMPLIFY_function_deleteSavedCity_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "deleteSavedCity"
+        }
+      ]
+    },
+    "AMPLIFY_function_deleteSavedPlace_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "deleteSavedPlace"
+        }
+      ]
+    },
+    "AMPLIFY_function_deleteSavedPlace_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "deleteSavedPlace"
         }
       ]
     },

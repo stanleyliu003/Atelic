@@ -14,8 +14,10 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
 } from 'react-native';
 import { getSavedPlacesDetailed } from '../../src/graphql/customQueries';
+import { deleteSavedCity } from '../../src/graphql/mutations';
 import { CitySavedPlacesModal } from '../../src/components/saved-places/CitySavedPlacesModal';
 import { CityCard } from '../../src/components/saved-places/CityCard';
 import { SavedPlacesSearchBar } from '../../src/components/saved-places/SavedPlacesSearchBar';
@@ -149,6 +151,63 @@ export default function SavedPlaces() {
   const handleCloseCityModal = () => {
     setCityModalVisible(false);
     setSelectedCity(null);
+  };
+
+  const handlePlaceDeleted = (deletedPlaceId) => {
+    const deletedPlace = allSavedPlaces.find(p => p.savedPlaceId === deletedPlaceId);
+    if (!deletedPlace) return;
+
+    // Update allSavedPlaces state
+    setAllSavedPlaces(prevPlaces => prevPlaces.filter(p => p.savedPlaceId !== deletedPlaceId));
+
+    // Update total count
+    setTotalCount(prev => prev - 1);
+
+    // Update cities state (decrement count or remove city if count reaches 0)
+    setCities(prevCities =>
+      prevCities
+        .map(c => (c.city === deletedPlace.city ? { ...c, count: c.count - 1 } : c))
+        .filter(c => c.count > 0)
+    );
+  };
+
+  const handleCityDeleted = (cityData) => {
+    Alert.alert(
+      `Delete ${cityData.city}?`,
+      "This will remove all saved places for this city. This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete All",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const user = await Auth.currentAuthenticatedUser();
+              const userID = user.attributes.sub;
+              const deletedCityName = cityData.city;
+
+              // Optimistic UI Update
+              // Remove the city from the cities list
+              setCities(prevCities => prevCities.filter(c => c.city !== deletedCityName));
+              // Remove all places associated with that city
+              const placesToRemove = allSavedPlaces.filter(p => p.city === deletedCityName);
+              setAllSavedPlaces(prevPlaces => prevPlaces.filter(p => p.city !== deletedCityName));
+              // Update total count
+              setTotalCount(prev => prev - placesToRemove.length);
+
+              await API.graphql({
+                query: deleteSavedCity,
+                variables: { userID, city: deletedCityName },
+              });
+            } catch (err) {
+              console.error('[SavedPlaces] Error deleting city:', err);
+              Alert.alert("Error", "Failed to delete city. Please refresh and try again.");
+              fetchSavedPlaces(); // Revert/Refresh on error
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleInstagramPress = async () => {
@@ -304,6 +363,7 @@ export default function SavedPlaces() {
                   onCarouselIndexChange={(city, idx) =>
                     setCarouselIndices(prev => ({ ...prev, [city]: idx }))
                   }
+                  onDelete={() => handleCityDeleted(cityData)}
                 />
               );
             })}
@@ -330,6 +390,7 @@ export default function SavedPlaces() {
           onClose={handleCloseCityModal}
           cityName={selectedCity.city}
           places={getPlacesForCity(selectedCity.city)}
+          onPlaceDeleted={handlePlaceDeleted}
         />
       )}
     </View>

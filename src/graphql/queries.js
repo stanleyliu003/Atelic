@@ -35,6 +35,7 @@ export const analyzeWishlist = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       __typename
@@ -147,6 +148,7 @@ export const addAdditionalPlace = /* GraphQL */ `
       }
       source
       sourceUrl
+      detailsLoaded
       __typename
     }
   }
@@ -190,6 +192,7 @@ export const generateCategoryActivities = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       category
@@ -249,6 +252,7 @@ export const getPlaceDetails = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       query
@@ -297,6 +301,7 @@ export const searchActivities = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       query
@@ -359,6 +364,7 @@ export const getUserTrips = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       tripLength
@@ -488,6 +494,7 @@ export const getUserProfile = /* GraphQL */ `
       notificationsEnabled
       devicePushToken
       snsEndpointArn
+      admin_permission
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate
@@ -572,6 +579,60 @@ export const getPlacePhoto = /* GraphQL */ `
     }
   }
 `;
+export const fetchPlaceDetailsLazy = /* GraphQL */ `
+  query FetchPlaceDetailsLazy($place_id: String!, $lazyLoad: Boolean!) {
+    fetchPlaceDetailsLazy(place_id: $place_id, lazyLoad: $lazyLoad) {
+      instanceId
+      savedPlaceId
+      name
+      city
+      lat
+      lng
+      rating
+      user_ratings_total
+      formatted_address
+      types
+      primaryType
+      place_id
+      photo_reference
+      is_recommended
+      display_name
+      website_uri
+      regular_opening_hours {
+        open_now
+        weekday_text
+        __typename
+      }
+      reviews {
+        author_name
+        rating
+        text
+        time
+        author_url
+        profile_photo_url
+        __typename
+      }
+      editorial_summary
+      primary_type_display_name
+      international_phone_number
+      notes
+      startTime
+      endTime
+      isLodging
+      lodgingCheckIn
+      lodgingCheckOut
+      lodgingTime {
+        checkIn
+        checkOut
+        __typename
+      }
+      source
+      sourceUrl
+      detailsLoaded
+      __typename
+    }
+  }
+`;
 export const getWishlistAnalysis = /* GraphQL */ `
   query GetWishlistAnalysis($id: ID!) {
     getWishlistAnalysis(id: $id) {
@@ -608,6 +669,7 @@ export const getWishlistAnalysis = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       createdAt

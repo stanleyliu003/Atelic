@@ -4,6 +4,7 @@ import Carousel from 'react-native-reanimated-carousel';
 import { TripCarouselImage } from '../profile/TripCarouselImage';
 import { useLazyCarousel } from '../../hooks/useLazyCarousel';
 import { Colors } from '../../../constants/Colors';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 interface CityData {
   city: string;
@@ -20,6 +21,7 @@ interface CityCardProps {
   photoCount: number;
   currentCarouselIndex: number;
   onCarouselIndexChange: (city: string, index: number) => void;
+  onDelete: () => void;
 }
 
 export function CityCard({
@@ -31,6 +33,7 @@ export function CityCard({
   photoCount,
   currentCarouselIndex,
   onCarouselIndexChange,
+  onDelete,
 }: CityCardProps) {
   // Lazy loading hook - only load images user has scrolled to
   const { onSnapToItem, shouldLoad } = useLazyCarousel(photoCount);
@@ -86,12 +89,17 @@ export function CityCard({
         )}
       </View>
       <View style={styles.cityCardInfo}>
-        <Text style={styles.cityName} numberOfLines={1}>
-          {cityData.city}
-        </Text>
-        <Text style={styles.cityCount}>
-          {cityData.count} place{cityData.count !== 1 ? 's' : ''}
-        </Text>
+        <View style={styles.cityTextContainer}>
+          <Text style={styles.cityName} numberOfLines={1}>
+            {cityData.city}
+          </Text>
+          <Text style={styles.cityCount}>
+            {cityData.count} place{cityData.count !== 1 ? 's' : ''}
+          </Text>
+        </View>
+        <TouchableOpacity onPress={onDelete} style={styles.deleteButton} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+            <MaterialIcons name="delete" size={18} color="red" />
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -148,7 +156,18 @@ const styles = StyleSheet.create({
   },
   cityCardInfo: {
     padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cityTextContainer: {
+    flex: 1,
     alignItems: 'flex-start',
+  },
+  deleteButton: {
+    padding: 4,
+    marginTop: -20,
+    marginRight: -10,
   },
   cityName: {
     fontFamily: 'outfit-medium',

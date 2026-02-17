@@ -50,6 +50,7 @@ export const optimizeRoute = /* GraphQL */ `
       }
       source
       sourceUrl
+      detailsLoaded
       __typename
     }
   }
@@ -93,6 +94,7 @@ export const createTrip = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       tripLength
@@ -144,6 +146,24 @@ export const deleteTrip = /* GraphQL */ `
       success
       message
       deletedTripID
+      __typename
+    }
+  }
+`;
+export const deleteSavedPlace = /* GraphQL */ `
+  mutation DeleteSavedPlace($userID: String!, $savedPlaceId: String!) {
+    deleteSavedPlace(userID: $userID, savedPlaceId: $savedPlaceId) {
+      savedPlaceId
+      userID
+      __typename
+    }
+  }
+`;
+export const deleteSavedCity = /* GraphQL */ `
+  mutation DeleteSavedCity($userID: String!, $city: String!) {
+    deleteSavedCity(userID: $userID, city: $city) {
+      success
+      count
       __typename
     }
   }
@@ -218,6 +238,7 @@ export const addCollaborator = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       tripLength
@@ -302,6 +323,7 @@ export const removeCollaborator = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       tripLength
@@ -390,6 +412,7 @@ export const updateCollaboratorRole = /* GraphQL */ `
         lodgingCheckOut
         source
         sourceUrl
+        detailsLoaded
         __typename
       }
       tripLength
@@ -431,216 +454,6 @@ export const updateCollaboratorRole = /* GraphQL */ `
         __typename
       }
       deletedSavedPlaceIds
-      __typename
-    }
-  }
-`;
-export const createWishlistAnalysis = /* GraphQL */ `
-  mutation CreateWishlistAnalysis(
-    $input: CreateWishlistAnalysisInput!
-    $condition: ModelWishlistAnalysisConditionInput
-  ) {
-    createWishlistAnalysis(input: $input, condition: $condition) {
-      id
-      wishlist_text
-      timestamp
-      analysis
-      status
-      activities {
-        instanceId
-        savedPlaceId
-        name
-        city
-        lat
-        lng
-        rating
-        user_ratings_total
-        formatted_address
-        types
-        primaryType
-        place_id
-        photo_reference
-        is_recommended
-        display_name
-        website_uri
-        editorial_summary
-        primary_type_display_name
-        international_phone_number
-        notes
-        startTime
-        endTime
-        isLodging
-        lodgingCheckIn
-        lodgingCheckOut
-        source
-        sourceUrl
-        __typename
-      }
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const updateWishlistAnalysis = /* GraphQL */ `
-  mutation UpdateWishlistAnalysis(
-    $input: UpdateWishlistAnalysisInput!
-    $condition: ModelWishlistAnalysisConditionInput
-  ) {
-    updateWishlistAnalysis(input: $input, condition: $condition) {
-      id
-      wishlist_text
-      timestamp
-      analysis
-      status
-      activities {
-        instanceId
-        savedPlaceId
-        name
-        city
-        lat
-        lng
-        rating
-        user_ratings_total
-        formatted_address
-        types
-        primaryType
-        place_id
-        photo_reference
-        is_recommended
-        display_name
-        website_uri
-        editorial_summary
-        primary_type_display_name
-        international_phone_number
-        notes
-        startTime
-        endTime
-        isLodging
-        lodgingCheckIn
-        lodgingCheckOut
-        source
-        sourceUrl
-        __typename
-      }
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const deleteWishlistAnalysis = /* GraphQL */ `
-  mutation DeleteWishlistAnalysis(
-    $input: DeleteWishlistAnalysisInput!
-    $condition: ModelWishlistAnalysisConditionInput
-  ) {
-    deleteWishlistAnalysis(input: $input, condition: $condition) {
-      id
-      wishlist_text
-      timestamp
-      analysis
-      status
-      activities {
-        instanceId
-        savedPlaceId
-        name
-        city
-        lat
-        lng
-        rating
-        user_ratings_total
-        formatted_address
-        types
-        primaryType
-        place_id
-        photo_reference
-        is_recommended
-        display_name
-        website_uri
-        editorial_summary
-        primary_type_display_name
-        international_phone_number
-        notes
-        startTime
-        endTime
-        isLodging
-        lodgingCheckIn
-        lodgingCheckOut
-        source
-        sourceUrl
-        __typename
-      }
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const createTripOperation = /* GraphQL */ `
-  mutation CreateTripOperation(
-    $input: CreateTripOperationInput!
-    $condition: ModelTripOperationConditionInput
-  ) {
-    createTripOperation(input: $input, condition: $condition) {
-      id
-      tripID
-      timestamp
-      opId
-      userId
-      sequenceNumber
-      type
-      target
-      dayNumber
-      operationData
-      ttl
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const updateTripOperation = /* GraphQL */ `
-  mutation UpdateTripOperation(
-    $input: UpdateTripOperationInput!
-    $condition: ModelTripOperationConditionInput
-  ) {
-    updateTripOperation(input: $input, condition: $condition) {
-      id
-      tripID
-      timestamp
-      opId
-      userId
-      sequenceNumber
-      type
-      target
-      dayNumber
-      operationData
-      ttl
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const deleteTripOperation = /* GraphQL */ `
-  mutation DeleteTripOperation(
-    $input: DeleteTripOperationInput!
-    $condition: ModelTripOperationConditionInput
-  ) {
-    deleteTripOperation(input: $input, condition: $condition) {
-      id
-      tripID
-      timestamp
-      opId
-      userId
-      sequenceNumber
-      type
-      target
-      dayNumber
-      operationData
-      ttl
-      createdAt
-      updatedAt
       __typename
     }
   }
@@ -724,6 +537,7 @@ export const updateUserProfile = /* GraphQL */ `
       notificationsEnabled
       devicePushToken
       snsEndpointArn
+      admin_permission
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate
@@ -745,6 +559,219 @@ export const updateUserProfile = /* GraphQL */ `
         __typename
       }
       version
+      __typename
+    }
+  }
+`;
+export const createWishlistAnalysis = /* GraphQL */ `
+  mutation CreateWishlistAnalysis(
+    $input: CreateWishlistAnalysisInput!
+    $condition: ModelWishlistAnalysisConditionInput
+  ) {
+    createWishlistAnalysis(input: $input, condition: $condition) {
+      id
+      wishlist_text
+      timestamp
+      analysis
+      status
+      activities {
+        instanceId
+        savedPlaceId
+        name
+        city
+        lat
+        lng
+        rating
+        user_ratings_total
+        formatted_address
+        types
+        primaryType
+        place_id
+        photo_reference
+        is_recommended
+        display_name
+        website_uri
+        editorial_summary
+        primary_type_display_name
+        international_phone_number
+        notes
+        startTime
+        endTime
+        isLodging
+        lodgingCheckIn
+        lodgingCheckOut
+        source
+        sourceUrl
+        detailsLoaded
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateWishlistAnalysis = /* GraphQL */ `
+  mutation UpdateWishlistAnalysis(
+    $input: UpdateWishlistAnalysisInput!
+    $condition: ModelWishlistAnalysisConditionInput
+  ) {
+    updateWishlistAnalysis(input: $input, condition: $condition) {
+      id
+      wishlist_text
+      timestamp
+      analysis
+      status
+      activities {
+        instanceId
+        savedPlaceId
+        name
+        city
+        lat
+        lng
+        rating
+        user_ratings_total
+        formatted_address
+        types
+        primaryType
+        place_id
+        photo_reference
+        is_recommended
+        display_name
+        website_uri
+        editorial_summary
+        primary_type_display_name
+        international_phone_number
+        notes
+        startTime
+        endTime
+        isLodging
+        lodgingCheckIn
+        lodgingCheckOut
+        source
+        sourceUrl
+        detailsLoaded
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteWishlistAnalysis = /* GraphQL */ `
+  mutation DeleteWishlistAnalysis(
+    $input: DeleteWishlistAnalysisInput!
+    $condition: ModelWishlistAnalysisConditionInput
+  ) {
+    deleteWishlistAnalysis(input: $input, condition: $condition) {
+      id
+      wishlist_text
+      timestamp
+      analysis
+      status
+      activities {
+        instanceId
+        savedPlaceId
+        name
+        city
+        lat
+        lng
+        rating
+        user_ratings_total
+        formatted_address
+        types
+        primaryType
+        place_id
+        photo_reference
+        is_recommended
+        display_name
+        website_uri
+        editorial_summary
+        primary_type_display_name
+        international_phone_number
+        notes
+        startTime
+        endTime
+        isLodging
+        lodgingCheckIn
+        lodgingCheckOut
+        source
+        sourceUrl
+        detailsLoaded
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createTripOperation = /* GraphQL */ `
+  mutation CreateTripOperation(
+    $input: CreateTripOperationInput!
+    $condition: ModelTripOperationConditionInput
+  ) {
+    createTripOperation(input: $input, condition: $condition) {
+      id
+      tripID
+      timestamp
+      opId
+      userId
+      sequenceNumber
+      type
+      target
+      dayNumber
+      operationData
+      ttl
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateTripOperation = /* GraphQL */ `
+  mutation UpdateTripOperation(
+    $input: UpdateTripOperationInput!
+    $condition: ModelTripOperationConditionInput
+  ) {
+    updateTripOperation(input: $input, condition: $condition) {
+      id
+      tripID
+      timestamp
+      opId
+      userId
+      sequenceNumber
+      type
+      target
+      dayNumber
+      operationData
+      ttl
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteTripOperation = /* GraphQL */ `
+  mutation DeleteTripOperation(
+    $input: DeleteTripOperationInput!
+    $condition: ModelTripOperationConditionInput
+  ) {
+    deleteTripOperation(input: $input, condition: $condition) {
+      id
+      tripID
+      timestamp
+      opId
+      userId
+      sequenceNumber
+      type
+      target
+      dayNumber
+      operationData
+      ttl
+      createdAt
+      updatedAt
       __typename
     }
   }

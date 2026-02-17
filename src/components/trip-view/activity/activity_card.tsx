@@ -45,6 +45,7 @@ interface ActivityCardProps {
   hideNotesButton?: boolean; // Hide the notes button (e.g., in CategoryModal)
   currentUserRole?: 'owner' | 'editor' | 'viewer'; // User's role for permission control
   onSwipeDelete?: (activity: Activity) => void; // Callback for swipe-left-to-delete
+  deleteSavedPlace?: boolean; // When true (e.g. CitySavedPlacesModal), reduce swipeDeleteAction marginBottom to 10
 }
 
 // Helper function to convert our travel modes to Google Maps travel modes
@@ -96,7 +97,8 @@ export function ActivityCard({
   activeTab,
   hideNotesButton = false,
   currentUserRole,
-  onSwipeDelete
+  onSwipeDelete,
+  deleteSavedPlace = false,
 }: ActivityCardProps) {
   const [notesModalVisible, setNotesModalVisible] = useState(false);
   const swipeableRef = useRef<Swipeable>(null);
@@ -232,7 +234,7 @@ export function ActivityCard({
     });
     return (
       <TouchableOpacity
-        style={styles.swipeDeleteAction}
+        style={[styles.swipeDeleteAction, deleteSavedPlace && { marginBottom: 5 }]}
         onPress={() => {
           swipeableRef.current?.close();
           onSwipeDelete?.(activity);
