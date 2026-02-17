@@ -295,6 +295,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   hideNotesButton?: boolean; // Hide the notes button (e.g., in CategoryModal)
   currentUserRole?: 'owner' | 'editor' | 'viewer'; // User's role for permission control
   onDelete?: (activity: Activity) => void; // Callback for swipe-left-to-delete
+  onScroll?: (y: number) => void; // Callback for scroll position updates
 }
 
 export function ActivityList({
@@ -330,6 +331,7 @@ export function ActivityList({
   currentUserRole,
   onOpenSettings,
   onDelete,
+  onScroll,
 }: EnhancedActivityListProps) {
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
@@ -485,7 +487,11 @@ export function ActivityList({
     if (autoScrollDirection.current === 'none') {
       currentScrollY.value = newScrollY;
     }
-  }, []);
+
+    if (onScroll) {
+      onScroll(newScrollY);
+    }
+  }, [onScroll]);
 
   // Drag and drop handlers - always define these
   const moveItem = useCallback((fromIndex: number, toIndex: number) => {

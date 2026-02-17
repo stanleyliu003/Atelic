@@ -168,6 +168,15 @@ export const deleteSavedCity = /* GraphQL */ `
     }
   }
 `;
+export const deleteSavedCountry = /* GraphQL */ `
+  mutation DeleteSavedCountry($userID: String!, $country: String!) {
+    deleteSavedCountry(userID: $userID, country: $country) {
+      success
+      count
+      __typename
+    }
+  }
+`;
 export const deleteUserAccount = /* GraphQL */ `
   mutation DeleteUserAccount($userID: String!) {
     deleteUserAccount(userID: $userID) {

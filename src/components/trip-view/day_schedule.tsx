@@ -1,7 +1,9 @@
+import React, { useEffect } from 'react';
 import { Colors } from '../../../constants/Colors';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Activity, EnhancedRouteLeg } from '../../types/activity.types';
 import { ActivityList } from './activity/activity_list';
+import Animated, { useAnimatedRef, runOnUI, scrollTo } from 'react-native-reanimated';
 
 interface DayScheduleProps {
   dayNumber: number;
@@ -64,8 +66,17 @@ export function DaySchedule({
 }: DayScheduleProps) {
   const selectedCount = selectedActivities.length;
 
-  // Note: Scroll position tracking removed since ActivityList now handles its own scrolling
-  // scrollPosition, onScrollPositionChange, shouldRestorePosition are kept in props for backward compatibility
+  // Create a ref for the scroll view inside ActivityList
+  const scrollViewRef = useAnimatedRef<Animated.ScrollView>();
+
+  useEffect(() => {
+    if (shouldRestorePosition) {
+      runOnUI(() => {
+        'worklet';
+        scrollTo(scrollViewRef, 0, scrollPosition, false);
+      })();
+    }
+  }, [shouldRestorePosition, scrollPosition]);
 
   const handleOptimizeRoute = () => {
     if (onOptimizeRoute) {
@@ -134,6 +145,8 @@ export function DaySchedule({
         currentUserRole={currentUserRole}
         onOpenSettings={onOpenSettings}
         onDelete={onDelete ? (activity) => onDelete(activity, dayNumber) : undefined}
+        parentScrollViewRef={scrollViewRef}
+        onScroll={(y) => onScrollPositionChange?.(y)}
       />
     </View>
   );

@@ -17,7 +17,7 @@ import {
   Alert,
 } from 'react-native';
 import { getSavedPlacesDetailed } from '../../src/graphql/customQueries';
-import { deleteSavedCity } from '../../src/graphql/mutations';
+import { deleteSavedCity, deleteSavedCountry } from '../../src/graphql/mutations';
 import { CitySavedPlacesModal } from '../../src/components/saved-places/CitySavedPlacesModal';
 import { CityCard } from '../../src/components/saved-places/CityCard';
 import { SavedPlacesSearchBar } from '../../src/components/saved-places/SavedPlacesSearchBar';
@@ -46,16 +46,36 @@ export default function SavedPlaces() {
   // Track Instagram share processing status (timer-based)
   const [isShareProcessing, setIsShareProcessing] = useState(false);
 
-  // Filter cities based on search query
-  const filteredCities = useMemo(() => {
+  // Derive country cards from allSavedPlaces (group by country where country exists)
+  const derivedCountryCards = useMemo(() => {
+    const countryMap = {};
+    for (const place of allSavedPlaces) {
+      const country = place.country?.trim();
+      if (!country) continue;
+      if (!countryMap[country]) {
+        countryMap[country] = { city: country, country, count: 0, isCountry: true };
+      }
+      countryMap[country].count++;
+    }
+    return Object.values(countryMap).sort((a, b) => b.count - a.count);
+  }, [allSavedPlaces]);
+
+  // Combine city cards and country cards for display (city cards first, then country)
+  const allCards = useMemo(() => {
+    const cityCards = cities.map((c) => ({ ...c, isCountry: false }));
+    return [...cityCards, ...derivedCountryCards];
+  }, [cities, derivedCountryCards]);
+
+  // Filter cards based on search query (matches city or country name)
+  const filteredCards = useMemo(() => {
     if (!searchQuery.trim()) {
-      return cities;
+      return allCards;
     }
     const query = searchQuery.toLowerCase().trim();
-    return cities.filter((cityData) =>
-      cityData.city?.toLowerCase().includes(query)
+    return allCards.filter((cardData) =>
+      cardData.city?.toLowerCase().includes(query)
     );
-  }, [cities, searchQuery]);
+  }, [allCards, searchQuery]);
 
   const fetchSavedPlaces = useCallback(async () => {
     try {
@@ -143,8 +163,8 @@ export default function SavedPlaces() {
     fetchSavedPlaces();
   }, [fetchSavedPlaces]);
 
-  const handleCityPress = (city) => {
-    setSelectedCity(city);
+  const handleCardPress = (cardData) => {
+    setSelectedCity(cardData);
     setCityModalVisible(true);
   };
 
@@ -169,12 +189,14 @@ export default function SavedPlaces() {
         .map(c => (c.city === deletedPlace.city ? { ...c, count: c.count - 1 } : c))
         .filter(c => c.count > 0)
     );
+    // countryCards is derived from allSavedPlaces, so it updates automatically
   };
 
-  const handleCityDeleted = (cityData) => {
+  const handleCardDeleted = (cardData) => {
+    const label = cardData.isCountry ? 'country' : 'city';
     Alert.alert(
-      `Delete ${cityData.city}?`,
-      "This will remove all saved places for this city. This action cannot be undone.",
+      `Delete ${cardData.city}?`,
+      `This will remove all saved places for this ${label}. This action cannot be undone.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -184,24 +206,38 @@ export default function SavedPlaces() {
             try {
               const user = await Auth.currentAuthenticatedUser();
               const userID = user.attributes.sub;
-              const deletedCityName = cityData.city;
+              const deletedName = cardData.city;
 
-              // Optimistic UI Update
-              // Remove the city from the cities list
-              setCities(prevCities => prevCities.filter(c => c.city !== deletedCityName));
-              // Remove all places associated with that city
-              const placesToRemove = allSavedPlaces.filter(p => p.city === deletedCityName);
-              setAllSavedPlaces(prevPlaces => prevPlaces.filter(p => p.city !== deletedCityName));
-              // Update total count
-              setTotalCount(prev => prev - placesToRemove.length);
-
-              await API.graphql({
-                query: deleteSavedCity,
-                variables: { userID, city: deletedCityName },
-              });
+              if (cardData.isCountry) {
+                // Delete by country - remove places matching country
+                const placesToRemove = allSavedPlaces.filter(p => p.country === deletedName);
+                setAllSavedPlaces(prevPlaces => prevPlaces.filter(p => p.country !== deletedName));
+                setTotalCount(prev => prev - placesToRemove.length);
+                // Update cities for any that had places in this country
+                const citiesToUpdate = new Set(placesToRemove.map(p => p.city));
+                setCities(prevCities =>
+                  prevCities
+                    .map(c => (citiesToUpdate.has(c.city) ? { ...c, count: c.count - placesToRemove.filter(p => p.city === c.city).length } : c))
+                    .filter(c => c.count > 0)
+                );
+                await API.graphql({
+                  query: deleteSavedCountry,
+                  variables: { userID, country: deletedName },
+                });
+              } else {
+                // Delete by city
+                setCities(prevCities => prevCities.filter(c => c.city !== deletedName));
+                const placesToRemove = allSavedPlaces.filter(p => p.city === deletedName);
+                setAllSavedPlaces(prevPlaces => prevPlaces.filter(p => p.city !== deletedName));
+                setTotalCount(prev => prev - placesToRemove.length);
+                await API.graphql({
+                  query: deleteSavedCity,
+                  variables: { userID, city: deletedName },
+                });
+              }
             } catch (err) {
-              console.error('[SavedPlaces] Error deleting city:', err);
-              Alert.alert("Error", "Failed to delete city. Please refresh and try again.");
+              console.error('[SavedPlaces] Error deleting:', err);
+              Alert.alert("Error", "Failed to delete. Please refresh and try again.");
               fetchSavedPlaces(); // Revert/Refresh on error
             }
           }
@@ -228,13 +264,12 @@ export default function SavedPlaces() {
     }
   };
 
-  // Get places for the selected city
-  const getPlacesForCity = (cityName) => {
-    const filtered = allSavedPlaces.filter((place) => place.city === cityName);
-    console.log(`[SavedPlaces] Filtered ${filtered.length} places for city: ${cityName}`);
-    if (filtered.length > 0) {
-      console.log('[SavedPlaces] Sample place structure:', JSON.stringify(filtered[0], null, 2));
-    }
+  // Get places for the selected city or country card
+  const getPlacesForCard = (cardData) => {
+    const filtered = cardData.isCountry
+      ? allSavedPlaces.filter((place) => place.country === cardData.city)
+      : allSavedPlaces.filter((place) => place.city === cardData.city);
+    console.log(`[SavedPlaces] Filtered ${filtered.length} places for ${cardData.isCountry ? 'country' : 'city'}: ${cardData.city}`);
     return filtered;
   };
 
@@ -288,7 +323,7 @@ export default function SavedPlaces() {
         showsVerticalScrollIndicator={false}
       >
         {/* Search Bar */}
-        {cities.length > 0 && (
+        {allCards.length > 0 && (
           <SavedPlacesSearchBar
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -336,34 +371,36 @@ export default function SavedPlaces() {
               <Text style={styles.instagramButtonText}>Open Instagram</Text>
             </TouchableOpacity>
           </View>
-        ) : filteredCities.length === 0 ? (
+        ) : filteredCards.length === 0 ? (
           <View style={styles.noResultsContainer}>
             <Ionicons name="search-outline" size={48} color={Colors.GRAY} />
-            <Text style={styles.noResultsText}>No cities match "{searchQuery}"</Text>
+            <Text style={styles.noResultsText}>No cities or countries match "{searchQuery}"</Text>
           </View>
         ) : (
           <View style={styles.citiesGrid}>
-            {filteredCities.map((cityData, index) => {
-              // Calculate dimensions for 2-column layout with 1.5x vertical aspect ratio
-              const cardWidth = (screenWidth - 60) * 0.5; // 49% width with reduced spacing
-              const imageHeight = cardWidth * 1.5; // 1.5x vertical height
+            {filteredCards.map((cardData, index) => {
+              const cardKey = cardData.isCountry
+                ? `country-${cardData.city}-${index}`
+                : `city-${cardData.city}-${index}`;
+              const cardWidth = (screenWidth - 60) * 0.5;
+              const imageHeight = cardWidth * 1.5;
 
               return (
                 <CityCard
-                  key={`${cityData.city}-${index}`}
-                  cityData={cityData}
+                  key={cardKey}
+                  cityData={cardData}
                   cardWidth={cardWidth}
                   imageHeight={imageHeight}
-                  onPress={() => handleCityPress(cityData)}
+                  onPress={() => handleCardPress(cardData)}
                   onPhotoCountUpdate={(city, count) =>
                     setCityPhotoCounts(prev => ({ ...prev, [city]: count }))
                   }
-                  photoCount={cityPhotoCounts[cityData.city] || 5}
-                  currentCarouselIndex={carouselIndices[cityData.city] || 0}
+                  photoCount={cityPhotoCounts[cardData.city] || 5}
+                  currentCarouselIndex={carouselIndices[cardData.city] || 0}
                   onCarouselIndexChange={(city, idx) =>
                     setCarouselIndices(prev => ({ ...prev, [city]: idx }))
                   }
-                  onDelete={() => handleCityDeleted(cityData)}
+                  onDelete={() => handleCardDeleted(cardData)}
                 />
               );
             })}
@@ -383,13 +420,13 @@ export default function SavedPlaces() {
         </View>
       )}
 
-      {/* City Saved Places Modal */}
+      {/* City/Country Saved Places Modal */}
       {selectedCity && (
         <CitySavedPlacesModal
           visible={cityModalVisible}
           onClose={handleCloseCityModal}
           cityName={selectedCity.city}
-          places={getPlacesForCity(selectedCity.city)}
+          places={getPlacesForCard(selectedCity)}
           onPlaceDeleted={handlePlaceDeleted}
         />
       )}

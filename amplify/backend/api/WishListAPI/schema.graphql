@@ -492,6 +492,7 @@ type AppVersionConfig {
    deleteTrip(userID: String!, tripID: String!): DeleteTripResult @function(name: "deleteTrip-${env}") @auth(rules: [{ allow: public }])
    deleteSavedPlace(userID: String!, savedPlaceId: String!): DeleteSavedPlaceResult @function(name: "deleteSavedPlace-${env}") @auth(rules: [{ allow: public }])
    deleteSavedCity(userID: String!, city: String!): DeleteSavedCityResult @function(name: "deleteSavedCity-${env}") @auth(rules: [{ allow: public }])
+   deleteSavedCountry(userID: String!, country: String!): DeleteSavedCityResult @function(name: "deleteSavedCity-${env}") @auth(rules: [{ allow: public }])
    deleteUserAccount(userID: String!): DeleteAccountResult @function(name: "deleteAccount-${env}") @auth(rules: [{ allow: public }])
    addCollaborator(tripId: String!, userID: String!, userEmail: String!, fullName: String!, username: String!, role: CollaboratorRole!, addedBy: String): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
    removeCollaborator(tripId: String!, username: String!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])

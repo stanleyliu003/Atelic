@@ -10,6 +10,7 @@ interface CityData {
   city: string;
   country?: string;
   count: number;
+  isCountry?: boolean; // When true, this card represents a country group
 }
 
 interface CityCardProps {

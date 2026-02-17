@@ -13,12 +13,25 @@ const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
 exports.handler = async (event) => {
-  const { userID, city } = event.arguments;
+  const { userID, city, country } = event.arguments;
   const tableName = process.env.STORAGE_SAVEDPLACESSTORAGE_NAME;
 
+  // Support both deleteSavedCity (city) and deleteSavedCountry (country) mutations
+  const filterByCountry = typeof country === 'string' && country.trim().length > 0;
+  const filterByCity = typeof city === 'string' && city.trim().length > 0;
+
+  if (!filterByCountry && !filterByCity) {
+    throw new Error('Either city or country is required');
+  }
+  if (filterByCountry && filterByCity) {
+    throw new Error('Provide either city or country, not both');
+  }
+
+  const filterField = filterByCountry ? 'country' : 'city';
+  const filterValue = filterByCountry ? country : city;
+
   try {
-    // 1. Query all items for this user and city
-    // We query by userID (Partition Key) and filter by city
+    // 1. Query all items for this user and filter by city or country
     let itemsToDelete = [];
     let lastEvaluatedKey = undefined;
 
@@ -26,10 +39,10 @@ exports.handler = async (event) => {
       const params = {
         TableName: tableName,
         KeyConditionExpression: 'userID = :uid',
-        FilterExpression: 'city = :city',
+        FilterExpression: `${filterField} = :val`,
         ExpressionAttributeValues: {
           ':uid': userID,
-          ':city': city
+          ':val': filterValue
         },
         ExclusiveStartKey: lastEvaluatedKey
       };

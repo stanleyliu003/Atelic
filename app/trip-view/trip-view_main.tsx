@@ -169,6 +169,10 @@ export default function TripViewMain() {
     const [dayScrollPositions, setDayScrollPositions] = useState<{ [key: number]: number }>({});
     const [shouldRestoreScrollPositions, setShouldRestoreScrollPositions] = useState<{ [key: number]: boolean }>({});
 
+    // Refs for wishlist scroll position
+    const wishlistScrollPosRef = useRef(0);
+    const wishlistScrollViewRef = useRef<ScrollView>(null);
+
     // State for transportation settings modal
     const [settingsModalVisible, setSettingsModalVisible] = useState(false);
     const [selectedLegIndex, setSelectedLegIndex] = useState<number | null>(null);
@@ -534,6 +538,14 @@ export default function TripViewMain() {
                     ...prev,
                     [dayNumber]: false
                 }));
+            }, 100);
+        } else if (tab === 'wishlist') {
+            // Restore wishlist scroll position
+            setTimeout(() => {
+                wishlistScrollViewRef.current?.scrollTo({ 
+                    y: wishlistScrollPosRef.current, 
+                    animated: false 
+                });
             }, 100);
         }
     };
@@ -2700,17 +2712,30 @@ export default function TripViewMain() {
         // Trigger scroll position restore for the current active tab only
         if (activeTab.startsWith('day')) {
             const currentDayNumber = parseInt(activeTab.replace('day', ''));
-            setShouldRestoreScrollPositions(prev => ({
-                ...prev,
-                [currentDayNumber]: true
-            }));
-            // Reset the flag immediately after next render
+            
+            // Delay setting to true to ensure component is mounted
+            setTimeout(() => {
+                setShouldRestoreScrollPositions(prev => ({
+                    ...prev,
+                    [currentDayNumber]: true
+                }));
+            }, 100);
+
+            // Reset the flag after restoration
             setTimeout(() => {
                 setShouldRestoreScrollPositions(prev => ({
                     ...prev,
                     [currentDayNumber]: false
                 }));
-            }, 0);
+            }, 300);
+        } else if (activeTab === 'wishlist') {
+            // Restore wishlist scroll position
+            setTimeout(() => {
+                wishlistScrollViewRef.current?.scrollTo({ 
+                    y: wishlistScrollPosRef.current, 
+                    animated: false 
+                });
+            }, 100);
         }
     };
 
@@ -4221,6 +4246,9 @@ export default function TripViewMain() {
 
                                     return (
                                         <ScrollView
+                                            ref={wishlistScrollViewRef}
+                                            onScroll={(e) => { wishlistScrollPosRef.current = e.nativeEvent.contentOffset.y; }}
+                                            scrollEventThrottle={16}
                                             style={styles.wishlistContainer}
                                             contentContainerStyle={styles.wishlistContent}
                                             showsVerticalScrollIndicator={false}
