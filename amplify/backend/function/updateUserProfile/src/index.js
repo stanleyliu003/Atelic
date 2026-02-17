@@ -922,15 +922,20 @@ async function updateDemographics(username, data) {
 }
 
 /**
- * Update profile information (bio, photo, location, website, social links)
+ * Update profile information (fullName, bio, photo, location, website, social links)
  */
 async function updateProfileInfo(username, data) {
-  const { bio, profilePhotoUrl, socialLinks } = data;
+  const { fullName, bio, profilePhotoUrl, socialLinks } = data;
 
   const updateParts = [];
   const expressionAttributeValues = {
     ':now': new Date().toISOString()
   };
+
+  if (fullName !== undefined) {
+    updateParts.push('fullName = :fullName');
+    expressionAttributeValues[':fullName'] = fullName;
+  }
 
   if (bio !== undefined) {
     updateParts.push('bio = :bio');

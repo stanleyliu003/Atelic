@@ -83,17 +83,19 @@ export default function EditProfileScreen() {
         name: fullName.trim(),
       });
 
-      // Update bio and profile photo in UserProfilesStorage
+      // Update fullName, bio, and profile photo in UserProfilesStorage
       await API.graphql({
-        query: customMutations.updateUserProfile,
+        query: customMutations.updateUserProfilePhoto,
         variables: {
           username: username,
           action: 'UPDATE_PROFILE_INFO',
           tripData: JSON.stringify({
+            fullName: fullName.trim(),
             bio: bio.trim() || null,
             profilePhotoUrl: profilePhotoUrl || null,
           }),
         },
+        authMode: 'AMAZON_COGNITO_USER_POOLS',
       });
 
       Alert.alert('Success', 'Profile updated successfully', [

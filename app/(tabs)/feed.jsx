@@ -963,7 +963,9 @@ export default function FeedScreen() {
 
   const handleEditProfile = () => {
     setIsProfileModalVisible(false);
-    router.push('/edit-profile');
+    setTimeout(() => {
+      router.push('/edit-profile');
+    }, 500);
   };
 
   const handlePrivacyToggle = async (newPrivacyValue) => {
