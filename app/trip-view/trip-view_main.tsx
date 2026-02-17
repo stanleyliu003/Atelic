@@ -140,6 +140,8 @@ export default function TripViewMain() {
     // Ref to store transport mode overrides from operations (persisted across collaborators)
     // Key format: `${dayNumber}_${originInstanceId}` -> TravelMode
     const transportModeOverridesRef = useRef<TransportModeOverrides>({});
+    // Ref to prevent duplicate overview route prefetching
+    const overviewRoutesFetchedRef = useRef(false);
 
     // State for SearchBar and AutocompleteModal
     const [searchQuery, setSearchQuery] = useState('');
@@ -217,6 +219,11 @@ export default function TripViewMain() {
 
     // Ref for immediate tripID access (avoids async state update issues)
     const tripIdRef = useRef(tripId);
+
+    // Reset overview route prefetch flag when trip changes
+    useEffect(() => {
+        overviewRoutesFetchedRef.current = false;
+    }, [tripId]);
 
     // ===== REMOVED: Version-based autosave refs =====
     // - versionRef: No longer using optimistic locking
@@ -2002,6 +2009,50 @@ export default function TripViewMain() {
             }
         });
     }, [dayActivities, activities, daysArray]);
+
+    // Prefetch routes for all days on trip load so overview map shows polylines
+    useEffect(() => {
+        if (overviewRoutesFetchedRef.current) return;
+
+        const dayNumbers = Object.keys(dayActivities).map(Number).sort((a, b) => a - b);
+        if (dayNumbers.length === 0) return;
+
+        // Find days with 2+ routable activities but no existing polyline
+        const daysNeedingRoutes = dayNumbers.filter(dayNum => {
+            if (dayPolylines[dayNum]) return false;
+            const acts = getDayActivities(dayNum);
+            const validActs = acts.filter((a: Activity) => a.lat != null && a.lng != null && a.place_id);
+            return validActs.length >= 2;
+        });
+
+        if (daysNeedingRoutes.length === 0) {
+            overviewRoutesFetchedRef.current = true;
+            return;
+        }
+
+        overviewRoutesFetchedRef.current = true;
+
+        const fetchAllRoutes = async () => {
+            const results = await Promise.allSettled(
+                daysNeedingRoutes.map(async (dayNum) => {
+                    const acts = getDayActivities(dayNum);
+                    const routeData = await fetchRoutePolyline(acts);
+                    if (routeData.polyline && routeData.polyline.length > 1) {
+                        const encoded = encodePolyline(routeData.polyline);
+                        setDayPolyline(dayNum, encoded);
+                    }
+                })
+            );
+            results.forEach((result, index) => {
+                if (result.status === 'rejected') {
+                    console.error(`[Overview] Failed to prefetch route for day ${daysNeedingRoutes[index]}:`, result.reason);
+                }
+            });
+        };
+
+        fetchAllRoutes();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dayActivities, dayPolylines]);
 
     // Get all available days as an array, and add 'wishlist' (trip saved places) as the last option
     const dayCount = getDayCount();
