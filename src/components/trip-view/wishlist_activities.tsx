@@ -13,6 +13,7 @@ interface WishlistActivitiesProps {
   activeTab?: string; // Current active tab (wishlist or day#)
   hideNotesButton?: boolean; // Hide the notes button (e.g., in CategoryModal)
   currentUserRole?: 'owner' | 'editor' | 'viewer'; // User's role for permission control
+  onDelete?: (activity: Activity) => void; // Callback for swipe-to-delete
 }
 
 export function WishlistActivities({
@@ -27,6 +28,7 @@ export function WishlistActivities({
   activeTab = 'wishlist',
   hideNotesButton = false,
   currentUserRole,
+  onDelete,
 }: WishlistActivitiesProps) {
   return (
     <ActivityList
@@ -44,6 +46,7 @@ export function WishlistActivities({
       activeTab={activeTab}
       hideNotesButton={hideNotesButton}
       currentUserRole={currentUserRole}
+      onDelete={onDelete}
     />
   );
 }

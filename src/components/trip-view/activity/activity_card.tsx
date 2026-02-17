@@ -2,8 +2,9 @@ import { Colors } from '../../../../constants/Colors';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import React, { useState } from 'react';
-import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Activity } from '../../../types/activity.types';
 import { formatDistance, formatDuration } from '../../../utils/routeUtils';
 import { ActivityImage } from './activity_image';
@@ -43,6 +44,7 @@ interface ActivityCardProps {
   activeTab?: string; // Current active tab (wishlist or day#)
   hideNotesButton?: boolean; // Hide the notes button (e.g., in CategoryModal)
   currentUserRole?: 'owner' | 'editor' | 'viewer'; // User's role for permission control
+  onSwipeDelete?: (activity: Activity) => void; // Callback for swipe-left-to-delete
 }
 
 // Helper function to convert our travel modes to Google Maps travel modes
@@ -93,9 +95,30 @@ export function ActivityCard({
   useInlineSelectionLayout = false,
   activeTab,
   hideNotesButton = false,
-  currentUserRole
+  currentUserRole,
+  onSwipeDelete
 }: ActivityCardProps) {
   const [notesModalVisible, setNotesModalVisible] = useState(false);
+  const swipeableRef = useRef<Swipeable>(null);
+  const dragValueRef = useRef(0);
+  const dragXListenerRef = useRef<{ dragX: any; id: string } | null>(null);
+  const isSwipeOpenRef = useRef(false);
+  const deleteTriggeredRef = useRef(false);
+
+  // Refs for stable access inside Animated listener
+  const onSwipeDeleteRef = useRef(onSwipeDelete);
+  onSwipeDeleteRef.current = onSwipeDelete;
+  const activityRef = useRef(activity);
+  activityRef.current = activity;
+
+  // Cleanup drag listener on unmount
+  useEffect(() => {
+    return () => {
+      if (dragXListenerRef.current) {
+        dragXListenerRef.current.dragX.removeListener(dragXListenerRef.current.id);
+      }
+    };
+  }, []);
 
   const handlePress = () => {
     if (!disabled && onPress) {
@@ -174,7 +197,56 @@ export function ActivityCard({
     return 'Add Notes';
   };
 
-  return (
+  const renderRightActions = (_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+    // Track drag value for full-swipe detection
+    if (!dragXListenerRef.current || dragXListenerRef.current.dragX !== dragX) {
+      if (dragXListenerRef.current) {
+        dragXListenerRef.current.dragX.removeListener(dragXListenerRef.current.id);
+      }
+      const id = dragX.addListener(({ value }: { value: number }) => {
+        dragValueRef.current = value;
+
+        // Case 1: Already open (trash revealed) -> Swipe further left to delete
+        // Threshold: -100 (20px past the 80px open width)
+        if (isSwipeOpenRef.current && value < -100 && !deleteTriggeredRef.current) {
+          deleteTriggeredRef.current = true;
+          swipeableRef.current?.close();
+          onSwipeDeleteRef.current?.(activityRef.current);
+        }
+
+        // Case 2: Closed -> Full swipe left to delete in one go
+        // Threshold: -200
+        if (!isSwipeOpenRef.current && value < -200 && !deleteTriggeredRef.current) {
+          deleteTriggeredRef.current = true;
+          swipeableRef.current?.close();
+          onSwipeDeleteRef.current?.(activityRef.current);
+        }
+      });
+      dragXListenerRef.current = { dragX, id };
+    }
+
+    const scale = dragX.interpolate({
+      inputRange: [-80, 0],
+      outputRange: [1, 0.5],
+      extrapolate: 'clamp',
+    });
+    return (
+      <TouchableOpacity
+        style={styles.swipeDeleteAction}
+        onPress={() => {
+          swipeableRef.current?.close();
+          onSwipeDelete?.(activity);
+        }}
+        activeOpacity={0.7}
+      >
+        <Animated.View style={{ transform: [{ scale }] }}>
+          <MaterialIcons name="delete" size={36} color="#fff" />
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  };
+
+  const cardContent = (
     <View style={styles.cardContainer}>
       <View
         style={[
@@ -330,6 +402,29 @@ export function ActivityCard({
       />
     </View>
   );
+
+  if (onSwipeDelete) {
+    return (
+      <Swipeable
+        ref={swipeableRef}
+        renderRightActions={renderRightActions}
+        rightThreshold={40}
+        onSwipeableOpen={(direction) => {
+          if (direction === 'right' && !deleteTriggeredRef.current) {
+            isSwipeOpenRef.current = true;
+          }
+        }}
+        onSwipeableClose={() => {
+          isSwipeOpenRef.current = false;
+          deleteTriggeredRef.current = false;
+        }}
+      >
+        {cardContent}
+      </Swipeable>
+    );
+  }
+
+  return cardContent;
 }
 
 const styles = StyleSheet.create({
@@ -583,5 +678,14 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit',
     fontSize: 12,
     color: '#94A3B8',
+  },
+  swipeDeleteAction: {
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    borderRadius: 10,
+    marginBottom: 16,
+    marginLeft: 4,
   },
 });

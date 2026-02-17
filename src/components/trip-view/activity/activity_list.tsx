@@ -294,6 +294,7 @@ interface EnhancedActivityListProps extends ActivityListProps {
   activeTab?: string; // Current active tab (wishlist or day#)
   hideNotesButton?: boolean; // Hide the notes button (e.g., in CategoryModal)
   currentUserRole?: 'owner' | 'editor' | 'viewer'; // User's role for permission control
+  onDelete?: (activity: Activity) => void; // Callback for swipe-left-to-delete
 }
 
 export function ActivityList({
@@ -328,6 +329,7 @@ export function ActivityList({
   hideNotesButton = false,
   currentUserRole,
   onOpenSettings,
+  onDelete,
 }: EnhancedActivityListProps) {
   // Always initialize state and callbacks (fix for hooks rule violation)
   const [currentActivities, setCurrentActivities] = useState(activities);
@@ -611,6 +613,7 @@ export function ActivityList({
         activeTab,
         hideNotesButton,
         currentUserRole,
+        onSwipeDelete: onDelete,
       };
 
       if (enableDragDrop && scrollable) {
@@ -717,29 +720,31 @@ export function ActivityList({
     : { style: styles.container };
 
   return (
-    <Container {...containerProps}>
-      {/* SearchBar at top of scrollable content */}
-      {onAddPlace && (
-        <View style={styles.searchBarContainer}>
-          <SearchBar
-            value={searchQuery}
-            onChangeText={onSearchQueryChange || (() => {})}
-            onPress={onAddPlace}
-            placeholder="Add places"
-          />
-        </View>
-      )}
+    <GestureHandlerRootView style={styles.container}>
+      <Container {...containerProps}>
+        {/* SearchBar at top of scrollable content */}
+        {onAddPlace && (
+          <View style={styles.searchBarContainer}>
+            <SearchBar
+              value={searchQuery}
+              onChangeText={onSearchQueryChange || (() => {})}
+              onPress={onAddPlace}
+              placeholder="Add places"
+            />
+          </View>
+        )}
 
-      {renderActivities()}
+        {renderActivities()}
 
-      {/* Inline loading indicator when adding a place from AutocompleteModal */}
-      {isAddingPlaceFromAutocomplete && (
-        <View style={styles.autocompleteLoadingContainer}>
-          <ActivityIndicator size="small" color={Colors.PRIMARY} />
-          <Text style={styles.autocompleteLoadingText}>Activity Loading</Text>
-        </View>
-      )}
-    </Container>
+        {/* Inline loading indicator when adding a place from AutocompleteModal */}
+        {isAddingPlaceFromAutocomplete && (
+          <View style={styles.autocompleteLoadingContainer}>
+            <ActivityIndicator size="small" color={Colors.PRIMARY} />
+            <Text style={styles.autocompleteLoadingText}>Activity Loading</Text>
+          </View>
+        )}
+      </Container>
+    </GestureHandlerRootView>
   );
 }
 
@@ -781,6 +786,7 @@ interface DraggableActivityCardProps {
   activeTab?: string; // Current active tab (wishlist or day#)
   hideNotesButton?: boolean; // Hide the notes button (e.g., in CategoryModal)
   onOpenSettings?: (legIndex: number) => void; // Callback for opening transportation settings
+  onSwipeDelete?: (activity: Activity) => void; // Callback for swipe-to-delete
 }
 
 const DraggableActivityCard = React.memo(function DraggableActivityCard({
@@ -820,6 +826,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
   activeTab,
   hideNotesButton = false,
   onOpenSettings,
+  onSwipeDelete,
 }: DraggableActivityCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -1216,6 +1223,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
             useInlineSelectionLayout={useInlineSelectionLayout}
             activeTab={activeTab}
             hideNotesButton={hideNotesButton}
+            onSwipeDelete={onSwipeDelete}
           />
         </Animated.View>
       </GestureDetector>

@@ -4313,6 +4313,7 @@ export default function TripViewMain() {
                                                                     activeTab={activeTab}
                                                                     currentUserRole={currentUserRole}
                                                                     hideNotesButton={true}
+                                                                    onDelete={currentUserRole !== 'viewer' ? handleDeleteActivity : undefined}
                                                                 />
                                                             </View>
                                                         ))}
@@ -4400,6 +4401,7 @@ export default function TripViewMain() {
                                                 activeTab={activeTab}
                                                 currentUserRole={currentUserRole}
                                                 onOpenSettings={currentUserRole !== 'viewer' ? handleOpenSettings : undefined}
+                                                onDelete={currentUserRole !== 'viewer' ? handleDeleteActivity : undefined}
                                             />
                                         </Pressable>
                                     );

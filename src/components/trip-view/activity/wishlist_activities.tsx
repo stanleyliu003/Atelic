@@ -12,6 +12,7 @@ interface WishlistActivitiesProps {
   onDuplicate?: (activity: Activity, targetDayNumber?: number) => void; // Callback for duplicating an activity
   activeTab?: string; // Current active tab (wishlist or day#)
   currentUserRole?: 'owner' | 'editor' | 'viewer'; // User's role for permission control
+  onDelete?: (activity: Activity) => void; // Callback for swipe-to-delete
 }
 
 export function WishlistActivities({
@@ -24,7 +25,8 @@ export function WishlistActivities({
   wishlistActivities,
   onDuplicate,
   activeTab = 'wishlist',
-  currentUserRole
+  currentUserRole,
+  onDelete,
 }: WishlistActivitiesProps) {
   return (
     <ActivityList
@@ -41,6 +43,7 @@ export function WishlistActivities({
       onDuplicate={onDuplicate}
       activeTab={activeTab}
       currentUserRole={currentUserRole}
+      onDelete={onDelete}
     />
   );
 }

@@ -30,6 +30,7 @@ interface DayScheduleProps {
   isAddingPlaceFromAutocomplete?: boolean; // Show inline loading row below last activity
   activeTab?: string; // Current active tab (wishlist or day#)
   onOpenSettings?: (legIndex: number) => void; // Callback for opening transportation settings
+  onDelete?: (activity: Activity, dayNumber: number) => void; // Callback for swipe-to-delete
 }
 
 export function DaySchedule({
@@ -59,6 +60,7 @@ export function DaySchedule({
   isAddingPlaceFromAutocomplete,
   activeTab,
   onOpenSettings,
+  onDelete,
 }: DayScheduleProps) {
   const selectedCount = selectedActivities.length;
 
@@ -131,6 +133,7 @@ export function DaySchedule({
         activeTab={activeTab}
         currentUserRole={currentUserRole}
         onOpenSettings={onOpenSettings}
+        onDelete={onDelete ? (activity) => onDelete(activity, dayNumber) : undefined}
       />
     </View>
   );
