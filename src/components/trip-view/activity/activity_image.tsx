@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Text, View, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-import { GOOGLE_PLACES_API_KEY, UNSPLASH_ACCESS_KEY } from '../../../constants/api';
+import { UNSPLASH_ACCESS_KEY } from '../../../constants/api';
 import { getPhotoUrl as getCachedPhotoUrl, invalidateCacheForPlace } from '../../../services/photoService';
+import { buildDirectPhotoUrl, fetchPhotoRefs } from '../../../utils/googlePhotoUtils';
 import type { UnsplashImageWithAttribution } from '../../../types/unsplash.types';
 import {
   shouldUseUnsplashFirst,
@@ -163,13 +164,9 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
                     return;
                 }
 
-                // No photo_reference: fetch place details once and cache refs so carousel doesn't call again
-                const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=photos&key=${GOOGLE_PLACES_API_KEY}`;
-                const response = await fetch(url);
-                const data = await response.json();
-
-                if (data.status === 'OK' && data.result?.photos?.length) {
-                    const refs = data.result.photos.slice(0, 5).map((p: any) => p.photo_reference);
+                // No photo_reference: fetch photo refs using New Places API (IDs Only = $0)
+                const refs = await fetchPhotoRefs(place_id);
+                if (refs.length) {
                     setCachedGoogleRefs(place_id, refs);
                     const photoRef = refs[0];
                     const photoUrl = await getCachedPhotoUrl(place_id, photoRef, 400);
@@ -200,7 +197,7 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
                 });
             } catch (error) {
                 console.error('[ActivityImage] Error with cached photo service, using direct URL:', error);
-                const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photo_reference}&key=${GOOGLE_PLACES_API_KEY}`;
+                const photoUrl = buildDirectPhotoUrl(photo_reference, 400);
                 setImageUrl(photoUrl);
                 setCachedFirstPhoto(place_id, activityName, {
                     source: 'google',
@@ -210,7 +207,7 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
                 });
             }
         } else if (photo_reference) {
-            const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photo_reference}&key=${GOOGLE_PLACES_API_KEY}`;
+            const photoUrl = buildDirectPhotoUrl(photo_reference, 400);
             setImageUrl(photoUrl);
             setCachedFirstPhoto(place_id, activityName, {
                 source: 'google',
@@ -248,13 +245,11 @@ export function ActivityImage({ photo_reference, place_id, style, onPhotoRefUpda
             clearCachedFirstPhoto(place_id, activityName);
             invalidateCacheForPlace(place_id);
 
-            // Fetch a fresh photo_reference from Google Places Details API (ID Only SKU - free)
-            const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=photos&key=${GOOGLE_PLACES_API_KEY}`;
-            const response = await fetch(detailsUrl);
-            const data = await response.json();
+            // Fetch fresh photo refs using New Places API (IDs Only = $0)
+            const freshRefs = await fetchPhotoRefs(place_id);
 
-            if (data.status === 'OK' && data.result?.photos?.[0]) {
-                const freshPhotoRef = data.result.photos[0].photo_reference;
+            if (freshRefs.length > 0) {
+                const freshPhotoRef = freshRefs[0];
 
                 // Re-call Lambda with fresh photo_reference and forceRefresh to bypass stale DynamoDB cache
                 const freshPhotoUrl = await getCachedPhotoUrl(place_id, freshPhotoRef, 400, true);

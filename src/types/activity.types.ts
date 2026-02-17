@@ -69,6 +69,9 @@ export type Activity = {
   source?: string; // Source platform (e.g., "instagram", "google", etc.)
   sourceUrl?: string; // Original URL from the source platform
 
+  // Lazy loading flag (New Places API migration)
+  detailsLoaded?: boolean; // false = lazy fields not yet loaded, true/null = fully loaded
+
   // Real-time collaboration timestamps
   lastModified?: number; // Timestamp when this activity was last modified
   modifiedBy?: string; // UserID who last modified

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
-import { GOOGLE_PLACES_API_KEY, UNSPLASH_ACCESS_KEY } from '../../constants/api';
+import { UNSPLASH_ACCESS_KEY } from '../../constants/api';
+import { buildDirectPhotoUrl, fetchPhotoRefs } from '../../utils/googlePhotoUtils';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Colors } from '../../../constants/Colors';
 import { getPhotoUrl as getCachedPhotoUrl } from '../../services/photoService';
@@ -279,7 +280,7 @@ export function TripCarouselImage({
     // Fallback: If we have photo_reference but no place_id, use direct Google URL
     if (photo_reference) {
       console.log(`[TripCarouselImage] Using direct Google URL (no place_id for caching)`);
-      const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photo_reference}&key=${GOOGLE_PLACES_API_KEY}`;
+      const photoUrl = buildDirectPhotoUrl(photo_reference, 800);
       setImageUrl(photoUrl);
       setImageError(false);
 
@@ -296,14 +297,11 @@ export function TripCarouselImage({
       try {
         console.log(`[TripCarouselImage] Fetching Google Places photo for place_id: ${place_id}`);
 
-        // Fetch place details to get photo_reference (ID Only SKU - free)
-        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=photos&key=${GOOGLE_PLACES_API_KEY}`;
+        // Fetch photo refs using New Places API (IDs Only = $0)
+        const photoRefs = await fetchPhotoRefs(place_id);
 
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.status === 'OK' && data.result?.photos?.[0]) {
-          const photoRef = data.result.photos[0].photo_reference;
+        if (photoRefs.length > 0) {
+          const photoRef = photoRefs[0];
 
           // Use S3/CloudFront cached service
           const photoUrl = await getCachedPhotoUrl(place_id, photoRef, 800);

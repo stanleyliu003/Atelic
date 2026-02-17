@@ -106,6 +106,11 @@ export default function UsernameSetup() {
 
   const useCaseOptions = [
     {
+      label: 'Save places from Instagram',
+      description: 'Import travel reels and posts from Instagram to your itinerary.',
+      value: 'manage_expenses'
+    },
+    {
       label: 'Collaborate with friends',
       description: 'Invite your friends and family to join your trip and plan special memories together.',
       value: 'collaborate'
@@ -120,6 +125,7 @@ export default function UsernameSetup() {
       description: 'Receive activity recommendations personalized to your interests.',
       value: 'discovery'
     },
+    /*
     {
       label: 'Manage trip expenses',
       description: 'Track costs of each travel expenses to stay within your travel budget.',
@@ -130,6 +136,7 @@ export default function UsernameSetup() {
       description: 'Import your flight, hotel, reservations, and ticket details into your itinerary.',
       value: 'organize_bookings'
     },
+    */
   ];
 
   useEffect(() => {
@@ -493,8 +500,7 @@ export default function UsernameSetup() {
             username: prefUsername,
             action: action,
             tripData: JSON.stringify(tripDataPayload)
-          },
-          authMode: 'AMAZON_COGNITO_USER_POOLS'
+          }
         });
 
         console.log(`[OnboardingComplete] UserProfile updated with action: ${action}`);
@@ -515,8 +521,7 @@ export default function UsernameSetup() {
                   username: prefUsername,
                   action: 'LINK_ATTRIBUTION',
                   tripData: JSON.stringify({ appsflyerDeviceId: appsflyerId })
-                },
-                authMode: 'AMAZON_COGNITO_USER_POOLS'
+                }
               });
               
               console.log('[Attribution] Successfully linked attribution:', attributionResult);
@@ -627,12 +632,41 @@ export default function UsernameSetup() {
         setError('Username must be 5-20 characters and contain only letters, numbers, and underscores.');
         return;
       }
-      setCurrentPage(5);
+
+      // Check if username is already taken
+      setIsLoading(true);
+      try {
+        console.log('Checking username availability for:', username.trim());
+
+        const result = await API.graphql({
+          query: searchUsers,
+          variables: { searchTerm: username.trim() }
+        });
+
+        const users = result.data?.searchUsers || [];
+
+        // Check if any user has this exact username
+        const usernameExists = users.some(
+          user => user.username?.toLowerCase() === username.trim().toLowerCase()
+        );
+
+        if (usernameExists) {
+          setError('This username is already taken. Please choose another one.');
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('Username is available, proceeding to next page...');
+        setIsLoading(false);
+        setCurrentPage(5);
+      } catch (err) {
+        console.error('Error checking username availability:', err);
+        setError('Failed to verify username availability. Please try again.');
+        setIsLoading(false);
+        return;
+      }
     } else if (currentPage === 5) {
       // Page 5: Good company page - no validation required
-      setCurrentPage(6);
-    } else if (currentPage === 6) {
-      // Page 6: Activities page - no validation required
       setCurrentPage(7);
     } else if (currentPage === 7) {
       // Page 7: Use cases page - no validation required
@@ -669,6 +703,12 @@ export default function UsernameSetup() {
     setError('');
 
     if (currentPage > 1) {
+      // Skip disabled Activity Preferences page (page 6)
+      if (currentPage === 7) {
+        setCurrentPage(5);
+        return;
+      }
+
       // Special handling for returning users: skip pages 3 and 4 when going backwards
       if (currentPage === 5 && isReturningUser) {
         // From page 5 (Good Company), go back to page 2 (Birthday), skipping gender and username
@@ -737,7 +777,7 @@ export default function UsernameSetup() {
       <ScrollView
         contentContainerStyle={{
           paddingTop: 60,
-          paddingBottom: currentPage === 7 ? 180 : ([6, 8].includes(currentPage) ? 120 : 40)
+          paddingBottom: currentPage === 7 ? 180 : (currentPage === 8 ? 120 : 40)
         }}
         keyboardShouldPersistTaps="handled"
         style={{ backgroundColor: Colors.WHITE }}
@@ -957,41 +997,8 @@ export default function UsernameSetup() {
               </>
             )}
 
-            {/* Page 6: Activity Preferences */}
-            {currentPage === 6 && (
-              <>
-                <Text style={styles.title}>What types of activities do you enjoy?</Text>
-                <Text style={styles.subtitle}>
-                  When you create a trip, Atelic recommends activities personalized to your interests.
-                </Text>
-
-                <View style={{ marginTop: 40 }}>
-                  <View style={styles.activityGrid}>
-                    {activityOptions.map((activity) => {
-                      const isSelected = activityPreferences.includes(activity.value);
-                      return (
-                        <TouchableOpacity
-                          key={activity.value}
-                          style={[
-                            styles.activityBox,
-                            isSelected && styles.activityBoxSelected
-                          ]}
-                          onPress={() => toggleActivity(activity.value)}
-                        >
-                          <Text style={styles.activityEmoji}>{activity.emoji}</Text>
-                          <Text style={[
-                            styles.activityLabel,
-                            { color: isSelected ? Colors.WHITE : Colors.BLACK }
-                          ]}>
-                            {activity.label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-              </>
-            )}
+            {/* Page 6: Activity Preferences (disabled) */}
+            {currentPage === 6 && null}
 
             {/* Page 7: Use Cases */}
             {currentPage === 7 && (

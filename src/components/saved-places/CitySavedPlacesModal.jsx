@@ -35,7 +35,10 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
     onClose(); // Close the modal first
     router.push({
       pathname: '/(tabs)/create_new_trip',
-      params: { prefilledCity: cityName }
+      params: { 
+        prefilledCity: cityName,
+        fromSavedPlaces: 'true'
+      }
     });
   };
 

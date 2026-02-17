@@ -67,7 +67,7 @@ export default function TripViewMain() {
     const router = useRouter();
     const navigation = useNavigation();
     const params = useLocalSearchParams();
-    const { restoreTrip } = params;
+    const { restoreTrip, fromSavedPlaces } = params;
     const {
         activities,
         removeActivities,
@@ -116,7 +116,10 @@ export default function TripViewMain() {
     } = useCreateTrip();
     // Primary tab state for Overview/Itinerary toggle
     type PrimaryTab = 'overview' | 'itinerary';
-    const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('overview');
+    // If coming from saved places, start on itinerary tab instead of overview
+    const [primaryTab, setPrimaryTab] = useState<PrimaryTab>(
+        fromSavedPlaces === 'true' ? 'itinerary' : 'overview'
+    );
 
     const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
@@ -3847,26 +3850,50 @@ export default function TripViewMain() {
 
             try {
                 setLoadingSavedPlaces(true);
-
-                // IMPORTANT: Saved places are stored using Cognito sub (user.attributes.sub)
-                // not username (user.username), so we need to fetch the user to get the sub
+                
                 const user = await Auth.currentAuthenticatedUser();
-                const cognitoSub = user.attributes.sub;
+                const cognitoUsername = user.username; // e.g. signinwithapple_xxx for federated users
+                const cognitoSub = user.attributes?.sub; // e.g. 34d8c438-... UUID
+                
+                // Query both identifiers to catch places saved under either one.
+                // For native users these are the same; for federated (Google/Apple) users they differ.
+                const ids = [cognitoUsername];
+                if (cognitoSub && cognitoSub !== cognitoUsername) {
+                    ids.push(cognitoSub);
+                }
+                
+                console.log('[trip-view_main] Fetching saved places for userIDs:', ids);
 
-                console.log('[trip-view_main] Fetching saved places for Cognito sub:', cognitoSub);
+                const results = await Promise.all(
+                    ids.map(id =>
+                        API.graphql({
+                            query: getSavedPlacesDetailed,
+                            variables: { userID: id },
+                        })
+                    )
+                );
 
-                const result = await API.graphql({
-                    query: getSavedPlacesDetailed,
-                    variables: { userID: cognitoSub },
-                });
+                // Merge results, deduplicating by savedPlaceId
+                const seenIds = new Set<string>();
+                const mergedPlaces: any[] = [];
 
-                const data = (result as any).data.getSavedPlaces;
+                for (const result of results) {
+                    const data = (result as any).data.getSavedPlaces;
+                    for (const place of (data.savedPlaces || [])) {
+                        if (!seenIds.has(place.savedPlaceId)) {
+                            seenIds.add(place.savedPlaceId);
+                            mergedPlaces.push(place);
+                        }
+                    }
+                }
+
                 console.log('[trip-view_main] Received saved places:', {
-                    totalCount: data.totalCount,
-                    savedPlacesCount: data.savedPlaces?.length || 0,
+                    totalCount: mergedPlaces.length,
+                    savedPlacesCount: mergedPlaces.length,
+                    fromUserIDs: ids,
                 });
 
-                setAllSavedPlaces(data.savedPlaces || []);
+                setAllSavedPlaces(mergedPlaces);
             } catch (error) {
                 console.error('[trip-view_main] Error fetching saved places:', error);
             } finally {
@@ -3890,8 +3917,13 @@ export default function TripViewMain() {
         }
 
         console.log('[trip-view_main] Filtering', allSavedPlaces.length, 'saved places for city:', selectedCity);
+        console.log('[trip-view_main] Current activities count:', activities?.length || 0);
         const filtered = filterSavedPlacesByCity(allSavedPlaces, selectedCity);
         console.log('[trip-view_main] Found', filtered.length, 'matching saved places');
+        
+        // Debug: Log cities in filtered saved places
+        const cities = filtered.map(sp => sp.city || sp.activity?.city).filter(Boolean);
+        console.log('[trip-view_main] Cities in filtered saved places:', [...new Set(cities)]);
 
         // Extract activity objects from saved places, preserving savedPlaceId
         const savedPlacesActivities = filtered
@@ -3924,53 +3956,58 @@ export default function TripViewMain() {
             }))
         );
 
-        // Check which activities are not already in the trip
-        // Use savedPlaceId + place_id combination to identify exact matches
-        const existingSavedPlaceIds = new Set(
-            (activities || [])
-                .filter((a: Activity) => a.savedPlaceId)
-                .map((a: Activity) => `${a.savedPlaceId}_${a.place_id}`)
-        );
+        // Use functional update to access current activities without including it in dependencies
+        // This prevents the effect from re-running every time activities change
+        updateActivities((currentActivities: Activity[]) => {
+            // Check which activities are not already in the trip
+            // Use savedPlaceId + place_id combination to identify exact matches
+            const existingSavedPlaceIds = new Set(
+                (currentActivities || [])
+                    .filter((a: Activity) => a.savedPlaceId)
+                    .map((a: Activity) => `${a.savedPlaceId}_${a.place_id}`)
+            );
 
-        const newActivities = normalizedActivities.filter(activity => {
-            const key = `${activity.savedPlaceId}_${activity.place_id}`;
-
-            // Check if not already in trip
-            if (existingSavedPlaceIds.has(key)) {
-                return false;
-            }
-
-            // Check if already processed in this session (prevents duplicate adds during rapid re-renders)
-            if (activity.savedPlaceId && processedSavedPlacesRef.current.has(activity.savedPlaceId)) {
-                return false;
-            }
-
-            // Check if user has explicitly deleted this saved place from the trip
-            if (activity.savedPlaceId && isDeletedSavedPlace(activity.savedPlaceId)) {
-                console.log('[trip-view_main] Filtering out deleted saved place:', activity.name, 'savedPlaceId:', activity.savedPlaceId);
-                return false;
-            }
-
-            return true;
-        });
-
-        // Add new Instagram saved places to the trip's activities
-        if (newActivities.length > 0) {
-            console.log('[trip-view_main] ✨ Adding', newActivities.length, 'new Instagram saved places to trip:',
-                newActivities.map(a => a.name).join(', '));
-
-            // Mark these as processed to prevent duplicate adds during rapid re-renders
-            newActivities.forEach(activity => {
-                if (activity.savedPlaceId) {
-                    processedSavedPlacesRef.current.add(activity.savedPlaceId);
+            const newActivities = normalizedActivities.filter(activity => {
+                const key = `${activity.savedPlaceId}_${activity.place_id}`;
+                
+                // Check if not already in trip
+                if (existingSavedPlaceIds.has(key)) {
+                    return false;
                 }
+                
+                // Check if already processed in this session (prevents duplicate adds during rapid re-renders)
+                if (activity.savedPlaceId && processedSavedPlacesRef.current.has(activity.savedPlaceId)) {
+                    return false;
+                }
+                
+                // Check if user has explicitly deleted this saved place from the trip
+                if (activity.savedPlaceId && isDeletedSavedPlace(activity.savedPlaceId)) {
+                    console.log('[trip-view_main] Filtering out deleted saved place:', activity.name, 'savedPlaceId:', activity.savedPlaceId);
+                    return false;
+                }
+                
+                return true;
             });
 
-            updateActivities([...activities, ...newActivities]);
-        } else {
-            console.log('[trip-view_main] No new saved places to add (all already in trip or deleted)');
-        }
-    }, [selectedCity, allSavedPlaces, activities, updateActivities, isDeletedSavedPlace]);
+            // Add new Instagram saved places to the trip's activities
+            if (newActivities.length > 0) {
+                console.log('[trip-view_main] ✨ Adding', newActivities.length, 'new Instagram saved places to trip:', 
+                    newActivities.map(a => a.name).join(', '));
+                
+                // Mark these as processed to prevent duplicate adds during rapid re-renders
+                newActivities.forEach(activity => {
+                    if (activity.savedPlaceId) {
+                        processedSavedPlacesRef.current.add(activity.savedPlaceId);
+                    }
+                });
+                
+                return [...currentActivities, ...newActivities];
+            } else {
+                console.log('[trip-view_main] No new saved places to add (all already in trip or deleted)');
+                return currentActivities;
+            }
+        });
+    }, [selectedCity, allSavedPlaces, updateActivities, isDeletedSavedPlace]);
 
     // Handle collaboration modal
     const handleShareTrip = async () => {
@@ -4197,42 +4234,42 @@ export default function TripViewMain() {
                 )}
 
                 {/* Tab Content */}
+                <View style={styles.tabContent}>
+                {showActivityDetail && selectedActivityForDetail ? (
+                    <ActivityDetailView
+                        activity={selectedActivityForDetail}
+                        onClose={handleCloseActivityDetail}
+                        showDragIndicator={false}
+                        onDuplicate={(activity) => handleDuplicateActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
+                        onDelete={(activity) => handleDeleteActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
+                        currentUserRole={currentUserRole}
+                        onScrollStateChange={handleActivityDetailScrollStateChange}
+                    />
+                ) : (
                 <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
-                    <View style={styles.tabContent}>
-                        {showActivityDetail && selectedActivityForDetail ? (
-                            <ActivityDetailView
-                                activity={selectedActivityForDetail}
-                                onClose={handleCloseActivityDetail}
-                                showDragIndicator={false}
-                                onDuplicate={(activity) => handleDuplicateActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
-                                onDelete={(activity) => handleDeleteActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
-                                currentUserRole={currentUserRole}
-                                onScrollStateChange={handleActivityDetailScrollStateChange}
-                            />
-                        ) : (
-                            <>
-                                {/* Overview Content - shown when primaryTab is 'overview' */}
-                                {primaryTab === 'overview' && (
-                                    <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
-                                        <View style={styles.overviewWrapper}>
-                                            <OverviewContent
-                                                tripTitle={tripTitle}
-                                                onTitleChange={handleTitleChange}
-                                                startDate={startDate}
-                                                endDate={endDate}
-                                                tripLength={tripLength}
-                                                selectedCity={selectedCity || ''}
-                                                dayActivities={dayActivities}
-                                                activities={activities}
-                                                onDayPress={handleOverviewDayPress}
-                                                onDatePress={() => setDatePickerVisible(true)}
-                                                currentUserRole={currentUserRole}
-                                                collaborators={collaborators}
-                                                dayRouteLegs={dayRouteLegs}
-                                            />
-                                        </View>
-                                    </Pressable>
-                                )}
+                    <>
+                        {/* Overview Content - shown when primaryTab is 'overview' */}
+                        {primaryTab === 'overview' && (
+                            <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
+                            <View style={styles.overviewWrapper}>
+                                <OverviewContent
+                                    tripTitle={tripTitle}
+                                    onTitleChange={handleTitleChange}
+                                    startDate={startDate}
+                                    endDate={endDate}
+                                    tripLength={tripLength}
+                                    selectedCity={selectedCity || ''}
+                                    dayActivities={dayActivities}
+                                    activities={activities}
+                                    onDayPress={handleOverviewDayPress}
+                                    onDatePress={() => setDatePickerVisible(true)}
+                                    currentUserRole={currentUserRole}
+                                    collaborators={collaborators}
+                                    dayRouteLegs={dayRouteLegs}
+                                />
+                            </View>
+                            </Pressable>
+                        )}
 
                                 {/* Wishlist/Saved Places Content - shown when in itinerary mode */}
                                 {primaryTab === 'itinerary' && activeTab === 'wishlist' && (() => {
@@ -4398,46 +4435,45 @@ export default function TripViewMain() {
                                     );
                                 })()}
 
-                                {/* Day Schedule Content - shown when in itinerary mode */}
-                                {primaryTab === 'itinerary' && activeTab.startsWith('day') && (() => {
-                                    const currentDayNumber = parseInt(activeTab.replace('day', ''));
-                                    return (
-                                        <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
-                                            <DaySchedule
-                                                dayNumber={currentDayNumber}
-                                                activities={getActivitiesForTab(activeTab)}
-                                                selectedActivities={selectedActivities}
-                                                onActivitySelect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
-                                                onActivityDeselect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
-                                                onDescriptionCardPress={handleActivityDescriptionCardSelect}
-                                                onTransferToWishlist={handleTransferToWishlist}
-                                                onOptimizeRoute={currentUserRole !== 'viewer' ? handleOptimizeRoute : undefined}
-                                                showSelectionIndicator={isSelectionMode && currentUserRole !== 'viewer'}
-                                                routeLegs={routeData.legs}
-                                                onAddPlace={currentUserRole !== 'viewer' ? handleSearchPress : undefined}
-                                                searchQuery={searchQuery}
-                                                onSearchQueryChange={handleSearchQueryChange}
-                                                scrollPosition={dayScrollPositions[currentDayNumber] || 0}
-                                                onScrollPositionChange={(position) => handleScrollPositionChange(currentDayNumber, position)}
-                                                shouldRestorePosition={shouldRestoreScrollPositions[currentDayNumber] || false}
-                                                travelMode={routeData.travelMode}
-                                                onReorder={currentUserRole !== 'viewer' ? handleDayActivityReorder : undefined}
-                                                routeLoading={routeLoading}
-                                                onGoToWishlist={() => handleTabChange('wishlist')}
-                                                onDuplicate={currentUserRole !== 'viewer' ? handleDuplicateActivity : undefined}
-                                                isAddingPlaceFromAutocomplete={isAutocompleteAddingPlace}
-                                                activeTab={activeTab}
-                                                currentUserRole={currentUserRole}
-                                                onOpenSettings={currentUserRole !== 'viewer' ? handleOpenSettings : undefined}
-                                                onDelete={currentUserRole !== 'viewer' ? handleDeleteActivity : undefined}
-                                            />
-                                        </Pressable>
-                                    );
-                                })()}
-                            </>
-                        )}
-                    </View>
+                        {/* Day Schedule Content - shown when in itinerary mode */}
+                        {primaryTab === 'itinerary' && activeTab.startsWith('day') && (() => {
+                            const currentDayNumber = parseInt(activeTab.replace('day', ''));
+                            return (
+                                <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
+                                <DaySchedule
+                                    dayNumber={currentDayNumber}
+                                    activities={getActivitiesForTab(activeTab)}
+                                    selectedActivities={selectedActivities}
+                                    onActivitySelect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
+                                    onActivityDeselect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
+                                    onDescriptionCardPress={handleActivityDescriptionCardSelect}
+                                    onTransferToWishlist={handleTransferToWishlist}
+                                    onOptimizeRoute={currentUserRole !== 'viewer' ? handleOptimizeRoute : undefined}
+                                    showSelectionIndicator={isSelectionMode && currentUserRole !== 'viewer'}
+                                    routeLegs={routeData.legs}
+                                    onAddPlace={currentUserRole !== 'viewer' ? handleSearchPress : undefined}
+                                    searchQuery={searchQuery}
+                                    onSearchQueryChange={handleSearchQueryChange}
+                                    scrollPosition={dayScrollPositions[currentDayNumber] || 0}
+                                    onScrollPositionChange={(position) => handleScrollPositionChange(currentDayNumber, position)}
+                                    shouldRestorePosition={shouldRestoreScrollPositions[currentDayNumber] || false}
+                                    travelMode={routeData.travelMode}
+                                    onReorder={currentUserRole !== 'viewer' ? handleDayActivityReorder : undefined}
+                                    routeLoading={routeLoading}
+                                    onGoToWishlist={() => handleTabChange('wishlist')}
+                                    onDuplicate={currentUserRole !== 'viewer' ? handleDuplicateActivity : undefined}
+                                    isAddingPlaceFromAutocomplete={isAutocompleteAddingPlace}
+                                    activeTab={activeTab}
+                                    currentUserRole={currentUserRole}
+                                    onOpenSettings={currentUserRole !== 'viewer' ? handleOpenSettings : undefined}
+                                />
+                                </Pressable>
+                            );
+                        })()}
+                    </>
                 </Pressable>
+                )}
+                </View>
 
                 {/* Transfer Button Container */}
                 <TransferButtonContainer
