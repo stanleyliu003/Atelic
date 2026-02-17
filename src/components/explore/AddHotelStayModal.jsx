@@ -315,7 +315,7 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
           </View>
 
           {/* Stay Type Selector - Only show after dates are selected */}
-          {stayLength && (
+          {/* {stayLength && (
             <View style={styles.stayTypeSection}>
               <Text style={styles.stayTypeTitle}>What type of place are you staying at?</Text>
               <View style={styles.stayTypeOptionsRow}>
@@ -371,7 +371,7 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
                 </TouchableOpacity>
               </View>
             </View>
-          )}
+          )} */}
 
           {/* Search Section - Only show when Hotel is selected (uses getPlaceDetails) */}
           {stayLength && stayType === 'hotel' && (

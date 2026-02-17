@@ -177,6 +177,9 @@ async function createInitialProfile(username, userID) {
     devicePushToken: null,
     snsEndpointArn: null,
 
+    // Admin permissions
+    admin_permission: false,
+
     // System fields
     lastActiveAt: now,
     accountStatus: 'active',

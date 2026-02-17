@@ -42,6 +42,8 @@
     # Source tracking (from SavedPlaces)
     source: String  # Source platform (e.g., "instagram", "google", etc.)
     sourceUrl: String  # Original URL from the source platform
+    # Lazy loading flag (New Places API migration)
+    detailsLoaded: Boolean  # false = lazy fields not yet loaded, true/null = fully loaded
   }
 
    type WishlistAnalysisResult {
@@ -260,6 +262,9 @@ type SendNotificationResult {
    devicePushToken: String
    snsEndpointArn: String
 
+   # Admin permissions
+   admin_permission: Boolean
+
    # Subscription info
    subscriptionTier: String!
    subscriptionStartDate: String
@@ -400,6 +405,7 @@ type AppVersionConfig {
    getVersionConfig(platform: String!, environment: String!): AppVersionConfig @function(name: "getVersionConfig-${env}") @auth(rules: [{ allow: public }])
    getSavedPlaces(userID: String!, city: String): SavedPlacesResult @function(name: "getSavedPlaces-${env}") @auth(rules: [{ allow: public }])
    getPlacePhoto(placeId: String!, photoReference: String!, maxWidth: Int, forceRefresh: Boolean): PhotoResult @function(name: "getPlacePhoto-${env}") @auth(rules: [{ allow: public }])
+   fetchPlaceDetailsLazy(place_id: String!, lazyLoad: Boolean!): Activity @function(name: "getLocationCoordinates-${env}") @auth(rules: [{ allow: public }])
  }
 
    input WaypointInput {
@@ -478,7 +484,7 @@ type AppVersionConfig {
    addCollaborator(tripId: String!, userID: String!, userEmail: String!, fullName: String!, username: String!, role: CollaboratorRole!, addedBy: String): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
    removeCollaborator(tripId: String!, username: String!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
    updateCollaboratorRole(tripId: String!, username: String!, role: CollaboratorRole!): Trip @function(name: "manageCollaborators-${env}") @auth(rules: [{ allow: public }])
-   updateUserProfile(username: String!, action: String!, tripData: AWSJSON): UserProfileStorage @function(name: "updateUserProfile-${env}") @auth(rules: [{ allow: private }])
+   updateUserProfile(username: String!, action: String!, tripData: AWSJSON): UserProfileStorage @function(name: "updateUserProfile-${env}") @auth(rules: [{ allow: public }])
    registerDeviceToken(username: String, userID: String): RegisterDeviceTokenResult @function(name: "registerDeviceToken-${env}") @auth(rules: [{ allow: private }])
    sendPushNotification(username: String, userID: String, title: String!, body: String!, data: AWSJSON): SendNotificationResult @function(name: "sendPushNotification-${env}") @auth(rules: [{ allow: private }])
  }
@@ -524,6 +530,8 @@ type AppVersionConfig {
      # Source tracking (from SavedPlaces)
      source: String  # Source platform (e.g., "instagram", "google", etc.)
      sourceUrl: String  # Original URL from the source platform
+     # Lazy loading flag (New Places API migration)
+     detailsLoaded: Boolean
    }
 
    input DayInput {

@@ -26,6 +26,196 @@ const tableName = process.env.STORAGE_PLACESAPIACTIVITYSTORAGE_NAME;
 const FINDPLACE_TTL = 365 * 24 * 60 * 60; // 1 year (31,536,000 seconds)
 const PLACEDETAILS_TTL = 365 * 24 * 60 * 60; // 1 year (31,536,000 seconds)
 
+// ============================================================================
+// NEW PLACES API HELPERS
+// ============================================================================
+
+/**
+ * Generate a deterministic placeholder rating from a place_id.
+ * Same place_id always produces the same rating (4.4 – 4.9).
+ */
+function generatePlaceholderRating(placeId) {
+    if (!placeId) return 4.5;
+    let hash = 0;
+    for (let i = 0; i < placeId.length; i++) {
+        hash = ((hash << 5) - hash) + placeId.charCodeAt(i);
+        hash |= 0;
+    }
+    const ratings = [4.4, 4.5, 4.6, 4.7, 4.8, 4.9];
+    return ratings[Math.abs(hash) % ratings.length];
+}
+
+/**
+ * Generic helper to make HTTPS requests (supports GET and POST with JSON body).
+ * Returns parsed JSON response.
+ */
+const httpsRequest = (url, options = {}) => {
+    return new Promise((resolve, reject) => {
+        const method = options.method || 'GET';
+        const parsedUrl = new URL(url);
+
+        const reqOptions = {
+            hostname: parsedUrl.hostname,
+            path: parsedUrl.pathname + parsedUrl.search,
+            method,
+            headers: {
+                ...options.headers,
+            },
+        };
+
+        if (options.body) {
+            reqOptions.headers['Content-Type'] = 'application/json';
+            const bodyStr = JSON.stringify(options.body);
+            reqOptions.headers['Content-Length'] = Buffer.byteLength(bodyStr);
+        }
+
+        const req = https.request(reqOptions, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    resolve(JSON.parse(data));
+                } catch (e) {
+                    reject(new Error(`Failed to parse JSON response: ${e.message}`));
+                }
+            });
+        });
+
+        req.on('error', (err) => reject(err));
+
+        if (options.body) {
+            req.write(JSON.stringify(options.body));
+        }
+        req.end();
+    });
+};
+
+/**
+ * Text Search (IDs Only) — $0.000 per request
+ * Returns the place_id for the best match.
+ */
+const textSearchIdsOnly = async (query, locationBias) => {
+    const body = { textQuery: query };
+
+    if (locationBias && locationBias.lat && locationBias.lng) {
+        body.locationBias = {
+            circle: {
+                center: { latitude: locationBias.lat, longitude: locationBias.lng },
+                radius: 50000.0,
+            },
+        };
+    }
+
+    const data = await httpsRequest(
+        'https://places.googleapis.com/v1/places:searchText',
+        {
+            method: 'POST',
+            headers: {
+                'X-Goog-Api-Key': apiKey,
+                'X-Goog-FieldMask': 'places.id',
+            },
+            body,
+        }
+    );
+
+    if (data.places && data.places.length > 0) {
+        return data.places[0].id;
+    }
+    return null;
+};
+
+/**
+ * Place Details — Pro tier ($0.017 per request)
+ * Returns eager fields: displayName, location, formattedAddress, types, primaryType,
+ * primaryTypeDisplayName, and photos (photos included free within Pro).
+ */
+const placeDetailsEager = async (placeId) => {
+    const data = await httpsRequest(
+        `https://places.googleapis.com/v1/places/${placeId}`,
+        {
+            headers: {
+                'X-Goog-Api-Key': apiKey,
+                'X-Goog-FieldMask': 'displayName,location,formattedAddress,types,primaryType,primaryTypeDisplayName,photos',
+            },
+        }
+    );
+
+    return {
+        display_name: data.displayName?.text || null,
+        lat: data.location?.latitude || null,
+        lng: data.location?.longitude || null,
+        formatted_address: data.formattedAddress || null,
+        types: data.types || [],
+        primaryType: data.primaryType || null,
+        primary_type_display_name: data.primaryTypeDisplayName?.text || null,
+        // New API photo resource names (e.g. "places/ChIJ.../photos/AUc7tX...")
+        photo_references: data.photos ? data.photos.slice(0, 5).map(p => p.name) : [],
+    };
+};
+
+/**
+ * Place Details — Enterprise + Atmosphere tier ($0.025 per request)
+ * Returns lazy fields: rating, reviews, opening hours, website, phone, editorial summary.
+ */
+const placeDetailsLazy = async (placeId) => {
+    const data = await httpsRequest(
+        `https://places.googleapis.com/v1/places/${placeId}`,
+        {
+            headers: {
+                'X-Goog-Api-Key': apiKey,
+                'X-Goog-FieldMask': 'rating,userRatingCount,reviews,editorialSummary,regularOpeningHours,websiteUri,internationalPhoneNumber',
+            },
+        }
+    );
+
+    return mapLazyFieldsToSchema(data);
+};
+
+/**
+ * Map New API lazy response fields to existing schema format.
+ */
+const mapLazyFieldsToSchema = (data) => {
+    // Process opening hours
+    let regular_opening_hours = null;
+    if (data.regularOpeningHours) {
+        const oh = data.regularOpeningHours;
+        regular_opening_hours = {
+            open_now: oh.openNow || false,
+            weekday_text: oh.weekdayDescriptions || [],
+            periods: (oh.periods || []).map(period => ({
+                open: period.open ? {
+                    day: period.open.day,
+                    time: `${String(period.open.hour || 0).padStart(2, '0')}${String(period.open.minute || 0).padStart(2, '0')}`,
+                } : null,
+                close: period.close ? {
+                    day: period.close.day,
+                    time: `${String(period.close.hour || 0).padStart(2, '0')}${String(period.close.minute || 0).padStart(2, '0')}`,
+                } : null,
+            })),
+        };
+    }
+
+    // Process reviews (limit to 5)
+    const reviews = (data.reviews || []).slice(0, 5).map(review => ({
+        author_name: review.authorAttribution?.displayName || null,
+        rating: review.rating || null,
+        text: review.text?.text || null,
+        time: review.publishTime ? Math.floor(new Date(review.publishTime).getTime() / 1000) : null,
+        author_url: review.authorAttribution?.uri || null,
+        profile_photo_url: review.authorAttribution?.photoUri || null,
+    }));
+
+    return {
+        rating: data.rating || null,
+        user_ratings_total: data.userRatingCount || null,
+        editorial_summary: data.editorialSummary?.text || null,
+        website_uri: data.websiteUri || null,
+        international_phone_number: data.internationalPhoneNumber || null,
+        regular_opening_hours,
+        reviews,
+    };
+};
+
 // Cache helper functions
 const getCachedData = async (cacheType, cacheKey) => {
     try {
@@ -360,20 +550,21 @@ const getPlaceDetailsByPlaceId = async (placeId) => {
 };
 
 // Helper function to get coordinates and place details for a single location
+// NEW PLACES API: Text Search IDs Only ($0) + Place Details Pro ($0.017) = $0.017 per cache miss
 const getLocationInfo = async (locationName, bias) => {
-    // Generate cache key for FindPlace API
+    // Generate cache key for FindPlace API (same key strategy as before)
     const findPlaceCacheKey = generateFindPlaceCacheKey(locationName, bias);
-    
+
     // Check cache first
     const cachedFindPlaceData = await getCachedData('findplace', findPlaceCacheKey);
     if (cachedFindPlaceData) {
-        // We have cached FindPlace data, now check if we need PlaceDetails
         if (cachedFindPlaceData.place_id) {
             const cachedPlaceDetails = await getCachedData('placedetails', cachedFindPlaceData.place_id);
             if (cachedPlaceDetails) {
-                // Both FindPlace and PlaceDetails are cached
-                // Fetch fresh photo_reference (FREE - ID Only SKU)
-                const photo_reference = await getFreshPhotoReference(cachedFindPlaceData.place_id);
+                // Both cached — $0 cost
+                // Backward compat: old cached entries have rating/reviews (legacy full details).
+                // New cached entries have only eager fields + detailsLoaded: false.
+                const isLegacyCache = cachedPlaceDetails.rating !== undefined && cachedPlaceDetails.rating !== null;
                 return {
                     name: locationName,
                     foundName: cachedFindPlaceData.name,
@@ -381,21 +572,39 @@ const getLocationInfo = async (locationName, bias) => {
                     lat: cachedFindPlaceData.lat,
                     lng: cachedFindPlaceData.lng,
                     ...cachedPlaceDetails,
-                    photo_reference: photo_reference
+                    // Legacy cache has real photo_reference; new cache stores it in photo_references array
+                    photo_reference: cachedPlaceDetails.photo_reference || (cachedPlaceDetails.photo_references && cachedPlaceDetails.photo_references[0]) || null,
+                    // Legacy cache already has real rating; new cache will have placeholder
+                    rating: isLegacyCache ? cachedPlaceDetails.rating : generatePlaceholderRating(cachedFindPlaceData.place_id),
+                    detailsLoaded: isLegacyCache ? true : false,
                 };
             } else {
-                // FindPlace is cached but PlaceDetails is not, fetch PlaceDetails only
-                const details = await getPlaceDetailsByPlaceId(cachedFindPlaceData.place_id);
-                // Fetch fresh photo_reference (FREE - ID Only SKU)
-                const photo_reference = await getFreshPhotoReference(cachedFindPlaceData.place_id);
+                // FindPlace cached but PlaceDetails not — fetch eager only ($0.017)
+                const eagerDetails = await placeDetailsEager(cachedFindPlaceData.place_id);
+
+                // Cache eager details
+                await setCachedData('placedetails', cachedFindPlaceData.place_id, eagerDetails, PLACEDETAILS_TTL);
+
                 return {
                     name: locationName,
                     foundName: cachedFindPlaceData.name,
                     place_id: cachedFindPlaceData.place_id,
                     lat: cachedFindPlaceData.lat,
                     lng: cachedFindPlaceData.lng,
-                    ...details,
-                    photo_reference: photo_reference
+                    display_name: eagerDetails.display_name,
+                    formatted_address: eagerDetails.formatted_address,
+                    types: eagerDetails.types,
+                    primaryType: eagerDetails.primaryType,
+                    primary_type_display_name: eagerDetails.primary_type_display_name,
+                    photo_reference: eagerDetails.photo_references[0] || null,
+                    rating: generatePlaceholderRating(cachedFindPlaceData.place_id),
+                    user_ratings_total: null,
+                    website_uri: null,
+                    regular_opening_hours: null,
+                    reviews: [],
+                    editorial_summary: null,
+                    international_phone_number: null,
+                    detailsLoaded: false,
                 };
             }
         } else {
@@ -418,85 +627,60 @@ const getLocationInfo = async (locationName, bias) => {
                 reviews: [],
                 editorial_summary: null,
                 primary_type_display_name: null,
-                international_phone_number: null
+                international_phone_number: null,
+                detailsLoaded: false,
             };
         }
     }
-    
-    // Cache miss, make API call
-    let url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(locationName)}&inputtype=textquery&fields=name,geometry,place_id&language=en&key=${apiKey}`;
-    
-    // Add location bias if provided. This helps narrow down searches.
-    // The bias should be a point: "point:latitude,longitude"
-    if (bias && bias.lat && bias.lng) {
-        url += `&locationbias=point:${bias.lat},${bias.lng}`;
+
+    // Full cache miss — Text Search IDs Only ($0) + Place Details Pro ($0.017)
+    try {
+        const placeId = await textSearchIdsOnly(locationName, bias);
+
+        if (!placeId) {
+            console.warn(`Could not find place for "${locationName}" via Text Search.`);
+            return { name: locationName, error: 'Not Found' };
+        }
+
+        const eagerDetails = await placeDetailsEager(placeId);
+
+        // Cache FindPlace result
+        const findPlaceResult = {
+            name: eagerDetails.display_name || locationName,
+            place_id: placeId,
+            lat: eagerDetails.lat,
+            lng: eagerDetails.lng,
+        };
+        await setCachedData('findplace', findPlaceCacheKey, findPlaceResult, FINDPLACE_TTL);
+
+        // Cache eager PlaceDetails
+        await setCachedData('placedetails', placeId, eagerDetails, PLACEDETAILS_TTL);
+
+        return {
+            name: locationName,
+            foundName: eagerDetails.display_name || locationName,
+            place_id: placeId,
+            lat: eagerDetails.lat,
+            lng: eagerDetails.lng,
+            display_name: eagerDetails.display_name,
+            formatted_address: eagerDetails.formatted_address,
+            types: eagerDetails.types,
+            primaryType: eagerDetails.primaryType,
+            primary_type_display_name: eagerDetails.primary_type_display_name,
+            photo_reference: eagerDetails.photo_references[0] || null,
+            rating: generatePlaceholderRating(placeId),
+            user_ratings_total: null,
+            website_uri: null,
+            regular_opening_hours: null,
+            reviews: [],
+            editorial_summary: null,
+            international_phone_number: null,
+            detailsLoaded: false,
+        };
+    } catch (error) {
+        console.error(`Error in getLocationInfo for "${locationName}":`, error);
+        return { name: locationName, error: 'Request Failed' };
     }
-
-    return new Promise((resolve, reject) => {
-        const req = https.get(url, (res) => {
-            let data = '';
-            res.on('data', (chunk) => { data += chunk; });
-            res.on('end', async () => {
-                try {
-                    const result = JSON.parse(data);
-                    if (result.status === 'OK' && result.candidates && result.candidates.length > 0) {
-                        const candidate = result.candidates[0];
-                        
-                        // Cache the FindPlace result
-                        const findPlaceResult = {
-                            name: candidate.name,
-                            place_id: candidate.place_id || null,
-                            lat: candidate.geometry.location.lat,
-                            lng: candidate.geometry.location.lng
-                        };
-                        await setCachedData('findplace', findPlaceCacheKey, findPlaceResult, FINDPLACE_TTL);
-
-                        // Get additional details if we have a place_id
-                        let details = {
-                            display_name: candidate.name,
-                            formatted_address: null,
-                            types: [],
-                            primaryType: null,
-                            rating: null,
-                            user_ratings_total: null,
-                            website_uri: null,
-                            regular_opening_hours: null,
-                            reviews: [],
-                            editorial_summary: null,
-                            primary_type_display_name: null,
-                            international_phone_number: null
-                        };
-                        let photo_reference = null;
-                        if (candidate.place_id) {
-                            details = await getPlaceDetailsByPlaceId(candidate.place_id);
-                            // Fetch fresh photo_reference (FREE - ID Only SKU)
-                            photo_reference = await getFreshPhotoReference(candidate.place_id);
-                        }
-
-                        resolve({
-                            name: locationName, // Return original name for matching
-                            foundName: candidate.name, // Return what Google found
-                            place_id: candidate.place_id,
-                            ...candidate.geometry.location,
-                            ...details,
-                            photo_reference: photo_reference
-                        });
-
-                    } else {
-                        console.warn(`Could not find coordinates for "${locationName}". Status: ${result.status}`);
-                        resolve({ name: locationName, error: 'Not Found' });
-                    }
-                } catch (e) {
-                    console.error(`Error parsing JSON for "${locationName}":`, e);
-                    resolve({ name: locationName, error: 'Parse Error' });
-                }
-            });
-        });
-        req.on('error', (err) => {
-            console.error(`HTTPS request error for "${locationName}":`, err);
-            resolve({ name: locationName, error: 'Request Failed' });
-        });
-    });
 };
 
 /**
@@ -511,9 +695,44 @@ exports.handler = async (event) => {
     }
 
     // ============================================================================
+    // LAZY LOADING: Fetch Enterprise+Atmosphere fields on demand ($0.025)
+    // Called via GraphQL fetchPlaceDetailsLazy query
+    // ============================================================================
+    if (event.arguments && event.arguments.lazyLoad) {
+        const { place_id } = event.arguments;
+        console.log(`[LAZY LOAD] Processing request for place_id: ${place_id}`);
+        console.log(`[LAZY LOAD] Full event.arguments:`, JSON.stringify(event.arguments));
+
+        if (!place_id) {
+            throw new Error('place_id is required for lazy loading');
+        }
+
+        // Check placedetails_lazy cache first
+        const cached = await getCachedData('placedetails_lazy', place_id);
+        if (cached) {
+            console.log(`[LAZY LOAD] Cache HIT for ${place_id} - returning cached data`);
+            return cached;
+        }
+
+        console.log(`[LAZY LOAD] Cache MISS for ${place_id} - fetching from New Places API ($0.025)`);
+
+        // Fetch from New Places API (Enterprise + Atmosphere tier)
+        const lazyData = await placeDetailsLazy(place_id);
+
+        console.log(`[LAZY LOAD] Fetched data:`, JSON.stringify(lazyData));
+
+        // Cache with 1-year TTL
+        await setCachedData('placedetails_lazy', place_id, lazyData, PLACEDETAILS_TTL);
+
+        console.log(`[LAZY LOAD] Successfully cached lazy details for ${place_id}`);
+        return lazyData;
+    }
+
+    // ============================================================================
     // ADD ADDITIONAL PLACE FUNCTIONALITY (GraphQL @function directive calls)
     // This section ONLY runs when called via GraphQL from the "Add Additional Places" feature
     // in trip-view_main.tsx. It processes a single place name and returns Activity data.
+    // Fetches ONLY eager fields ($0.017), lazy fields ($0.025) loaded on-demand via description_card.tsx
     // ============================================================================
     if (event.arguments) {
         console.log('Processing ADD ADDITIONAL PLACE request via GraphQL');
@@ -530,66 +749,65 @@ exports.handler = async (event) => {
 
         if (isPlaceId) {
             console.log(`Detected place_id format: ${placeName}`);
-            // Fetch place details directly using the place_id
-            const details = await getPlaceDetailsByPlaceId(placeName);
+            // Fetch eager details using New API
+            const eagerDetails = await placeDetailsEager(placeName);
 
-            if (!details.lat || !details.lng) {
+            if (!eagerDetails.lat || !eagerDetails.lng) {
                 throw new Error(`Could not get coordinates for place_id: ${placeName}`);
             }
 
             // CHECK IF THIS IS A STREET ADDRESS (not an establishment)
-            // If it's an address type, try to find lodging at this address
-            const isAddressType = details.types && details.types.some(t =>
+            const isAddressType = eagerDetails.types && eagerDetails.types.some(t =>
                 ['street_address', 'premise', 'route', 'geocode'].includes(t)
             );
-            const isLodgingType = details.types && details.types.some(t =>
+            const isLodgingType = eagerDetails.types && eagerDetails.types.some(t =>
                 ['lodging', 'hotel', 'campground', 'rv_park'].includes(t)
             );
 
             let finalPlaceId = placeName;
-            let finalDetails = details;
+            let finalEagerDetails = eagerDetails;
 
             // If it's an address (not already a lodging), try reverse lookup
-            if (isAddressType && !isLodgingType && details.formatted_address) {
-                console.log(`[Reverse Lookup] Detected address type, searching for establishment at: ${details.formatted_address}`);
+            if (isAddressType && !isLodgingType && eagerDetails.formatted_address) {
+                console.log(`[Reverse Lookup] Detected address type, searching for establishment at: ${eagerDetails.formatted_address}`);
                 const establishmentResult = await findEstablishmentAtAddress(
-                    details.formatted_address,
-                    details.lat,
-                    details.lng
+                    eagerDetails.formatted_address,
+                    eagerDetails.lat,
+                    eagerDetails.lng
                 );
 
                 if (establishmentResult.found) {
-                    // Found an establishment! Use that place_id instead
                     console.log(`[Reverse Lookup] SUCCESS! Found ${establishmentResult.type}: ${establishmentResult.name} (place_id: ${establishmentResult.place_id})`);
                     finalPlaceId = establishmentResult.place_id;
-                    finalDetails = await getPlaceDetailsByPlaceId(establishmentResult.place_id);
+                    finalEagerDetails = await placeDetailsEager(finalPlaceId);
                 } else {
                     console.log(`[Reverse Lookup] No establishment found, using original address place_id`);
                 }
             }
 
-            // Fetch fresh photo_reference
-            const photo_reference = await getFreshPhotoReference(finalPlaceId);
+            // Cache only eager details (lazy will be fetched on-demand when user opens description)
+            await setCachedData('placedetails', finalPlaceId, finalEagerDetails, PLACEDETAILS_TTL);
 
             result = {
                 name: placeName,
-                foundName: finalDetails.display_name,
+                foundName: finalEagerDetails.display_name,
                 place_id: finalPlaceId,
-                lat: finalDetails.lat || details.lat,
-                lng: finalDetails.lng || details.lng,
-                display_name: finalDetails.display_name,
-                formatted_address: finalDetails.formatted_address,
-                types: finalDetails.types,
-                primaryType: finalDetails.primaryType,
-                rating: finalDetails.rating,
-                user_ratings_total: finalDetails.user_ratings_total,
-                website_uri: finalDetails.website_uri,
-                photo_reference: photo_reference,
-                regular_opening_hours: finalDetails.regular_opening_hours,
-                reviews: finalDetails.reviews,
-                editorial_summary: finalDetails.editorial_summary,
-                primary_type_display_name: finalDetails.primary_type_display_name,
-                international_phone_number: finalDetails.international_phone_number
+                lat: finalEagerDetails.lat || eagerDetails.lat,
+                lng: finalEagerDetails.lng || eagerDetails.lng,
+                display_name: finalEagerDetails.display_name,
+                formatted_address: finalEagerDetails.formatted_address,
+                types: finalEagerDetails.types,
+                primaryType: finalEagerDetails.primaryType,
+                primary_type_display_name: finalEagerDetails.primary_type_display_name,
+                photo_reference: finalEagerDetails.photo_references[0] || null,
+                rating: generatePlaceholderRating(finalPlaceId),
+                user_ratings_total: null,
+                website_uri: null,
+                regular_opening_hours: null,
+                reviews: [],
+                editorial_summary: null,
+                international_phone_number: null,
+                detailsLoaded: false,
             };
         } else {
             // Regular text-based search
@@ -599,7 +817,6 @@ exports.handler = async (event) => {
             let bias = null;
             if (selectedCity) {
                 console.log(`Creating location bias for additional place search using city: ${selectedCity}`);
-                // Get coordinates for the selected city to create bias
                 const cityResult = await getLocationInfo(selectedCity, null);
                 if (cityResult.lat && cityResult.lng) {
                     bias = { lat: cityResult.lat, lng: cityResult.lng };
@@ -607,12 +824,15 @@ exports.handler = async (event) => {
                 }
             }
 
-            result = await getLocationInfo(placeName, bias);
+            // getLocationInfo returns eager-only data with detailsLoaded: false
+            const eagerResult = await getLocationInfo(placeName, bias);
 
-            // Return in Activity format for GraphQL
-            if (result.error) {
-                throw new Error(`Could not find additional place "${placeName}": ${result.error}`);
+            if (eagerResult.error) {
+                throw new Error(`Could not find additional place "${placeName}": ${eagerResult.error}`);
             }
+
+            // Use eager-only result - lazy details will be fetched on-demand when user opens description
+            result = eagerResult;
         }
 
         console.log(`Successfully processed additional place: ${result.foundName || result.name}`);
@@ -635,6 +855,7 @@ exports.handler = async (event) => {
             editorial_summary: result.editorial_summary,
             primary_type_display_name: result.primary_type_display_name,
             international_phone_number: result.international_phone_number,
+            detailsLoaded: result.detailsLoaded || false,
             is_recommended: false
         };
     }

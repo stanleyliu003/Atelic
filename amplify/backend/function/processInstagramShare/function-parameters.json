@@ -6,6 +6,10 @@
         "create",
         "read",
         "update"
+      ],
+      "getUserProfile": [
+        "read",
+        "update"
       ]
     },
     "storage": {
@@ -19,18 +23,15 @@
         "create",
         "read",
         "update"
+      ],
+      "UserProfilesStorage": [
+        "create",
+        "read",
+        "update"
       ]
     }
   },
   "environmentVariableList": [
-    {
-      "cloudFormationParameterName": "geminiApiKey",
-      "environmentVariableName": "GEMINI_API_KEY"
-    },
-    {
-      "cloudFormationParameterName": "apifyApiKey",
-      "environmentVariableName": "APIFY_API_KEY"
-    },
     {
       "cloudFormationParameterName": "geminiApiKey",
       "environmentVariableName": "GEMINI_API_KEY"

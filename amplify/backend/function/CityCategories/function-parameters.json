@@ -16,20 +16,15 @@
     {
       "cloudFormationParameterName": "googlePlacesApiKey",
       "environmentVariableName": "GOOGLE_PLACES_API_KEY"
-    },
-    {
-      "cloudFormationParameterName": "geminiApiKey",
-      "environmentVariableName": "GEMINI_API_KEY"
-    },
-    {
-      "cloudFormationParameterName": "googlePlacesApiKey",
-      "environmentVariableName": "GOOGLE_PLACES_API_KEY"
     }
   ],
   "permissions": {
-    "auth": {
-      "amplifybackend59ccdbf8": [
-        "update"
+    "storage": {
+      "categoryStorage": [
+        "create",
+        "read",
+        "update",
+        "delete"
       ]
     }
   }

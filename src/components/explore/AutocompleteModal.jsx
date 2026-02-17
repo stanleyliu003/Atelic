@@ -355,14 +355,14 @@ export const AutocompleteModal = ({
                 <Text style={styles.hotelButtonText}>Add Hotel/Stay</Text>
               </TouchableOpacity>
               {/* Temporarily disabled - Add Flight button */}
-              { <TouchableOpacity
+              {/* <TouchableOpacity
                 style={styles.hotelButton}
                 onPress={() => setShowFlightModal(true)}
                 activeOpacity={0.7}
               >
                 <Ionicons name="airplane" size={24} color="black" />
                 <Text style={styles.hotelButtonText}>Add Flight</Text>
-              </TouchableOpacity>}
+              </TouchableOpacity> */}
             </View>
           )}
 

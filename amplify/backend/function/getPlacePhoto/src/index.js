@@ -13,6 +13,7 @@ const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const https = require('https');
+const crypto = require('crypto');
 
 // Initialize clients
 const s3Client = new S3Client({ region: process.env.REGION });
@@ -27,6 +28,23 @@ const CACHE_TABLE = process.env.STORAGE_PLACESAPIACTIVITYSTORAGE_NAME;
 const PHOTO_CACHE_TTL_DAYS = 90;
 
 /**
+ * Detect if a photo_reference is in the New Places API resource name format
+ * New format: "places/ChIJ.../photos/AUc7tX..."
+ * Legacy format: opaque string like "AUc7tXnT..."
+ */
+function isNewApiPhotoRef(photoReference) {
+    return photoReference.startsWith('places/');
+}
+
+/**
+ * Generate a stable, short hash for use in cache keys and S3 paths.
+ * Works for both legacy (short opaque strings) and new (long resource names) formats.
+ */
+function hashPhotoRef(photoReference) {
+    return crypto.createHash('sha256').update(photoReference).digest('hex').substring(0, 16);
+}
+
+/**
  * Check if photo is cached in DynamoDB
  * @param {string} placeId - Google place_id
  * @param {string} photoReference - Google photo_reference
@@ -34,7 +52,8 @@ const PHOTO_CACHE_TTL_DAYS = 90;
  * @returns {Promise<string|null>} - CloudFront URL or null
  */
 async function getCachedPhotoUrl(placeId, photoReference, maxWidth) {
-    const cacheKey = `${placeId}_${photoReference}_${maxWidth}`;
+    const photoId = hashPhotoRef(photoReference);
+    const cacheKey = `${placeId}_${photoId}_${maxWidth}`;
 
     try {
         const result = await ddbDocClient.send(new GetCommand({
@@ -69,7 +88,14 @@ async function getCachedPhotoUrl(placeId, photoReference, maxWidth) {
  * @returns {Promise<{buffer: Buffer, contentType: string}>}
  */
 async function fetchGooglePhoto(photoReference, maxWidth) {
-    const url = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photoreference=${photoReference}&key=${GOOGLE_API_KEY}`;
+    let url;
+    if (isNewApiPhotoRef(photoReference)) {
+        // New Places API photo format: resource name → /media endpoint
+        url = `https://places.googleapis.com/v1/${photoReference}/media?maxHeightPx=${maxWidth}&maxWidthPx=${maxWidth}&key=${GOOGLE_API_KEY}`;
+    } else {
+        // Legacy Places API photo format
+        url = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photoreference=${photoReference}&key=${GOOGLE_API_KEY}`;
+    }
 
     return new Promise((resolve, reject) => {
         const request = https.get(url, (response) => {
@@ -88,7 +114,7 @@ async function fetchGooglePhoto(photoReference, maxWidth) {
                     imgResponse.on('error', reject);
                 }).on('error', reject);
             } else if (response.statusCode === 200) {
-                // Direct response (less common)
+                // Direct response (common for New API)
                 const chunks = [];
                 response.on('data', chunk => chunks.push(chunk));
                 response.on('end', () => {
@@ -116,8 +142,8 @@ async function fetchGooglePhoto(photoReference, maxWidth) {
  */
 async function uploadToS3(placeId, photoReference, maxWidth, buffer, contentType) {
     const extension = contentType.includes('png') ? 'png' : 'jpg';
-    // Use first 8 chars of photoReference as unique identifier
-    const photoId = photoReference.substring(0, 8);
+    // Use hash of photoReference for stable, short identifier (works for both legacy and new formats)
+    const photoId = hashPhotoRef(photoReference);
     const s3Key = `photos/${placeId}/${photoId}_${maxWidth}.${extension}`;
 
     await s3Client.send(new PutObjectCommand({
@@ -141,7 +167,8 @@ async function uploadToS3(placeId, photoReference, maxWidth, buffer, contentType
  * @returns {Promise<string>} - CloudFront URL
  */
 async function cachePhotoUrl(placeId, photoReference, maxWidth, s3Key) {
-    const cacheKey = `${placeId}_${photoReference}_${maxWidth}`;
+    const photoId = hashPhotoRef(photoReference);
+    const cacheKey = `${placeId}_${photoId}_${maxWidth}`;
     const cloudfrontUrl = `https://${CLOUDFRONT_DOMAIN}/${s3Key}`;
     const ttl = Math.floor(Date.now() / 1000) + (PHOTO_CACHE_TTL_DAYS * 24 * 60 * 60);
 
@@ -232,7 +259,12 @@ exports.handler = async (event) => {
         console.error('[getPlacePhoto] Error:', error);
 
         // Fallback: Return direct Google URL (still works, just costs more)
-        const fallbackUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photoreference=${photoReference}&key=${GOOGLE_API_KEY}`;
+        let fallbackUrl;
+        if (isNewApiPhotoRef(photoReference)) {
+            fallbackUrl = `https://places.googleapis.com/v1/${photoReference}/media?maxHeightPx=${maxWidth}&maxWidthPx=${maxWidth}&key=${GOOGLE_API_KEY}`;
+        } else {
+            fallbackUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photoreference=${photoReference}&key=${GOOGLE_API_KEY}`;
+        }
 
         return {
             statusCode: 200,
