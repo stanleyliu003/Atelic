@@ -2346,24 +2346,35 @@ export default function TripViewMain() {
             // Immediately update the ref for tripLength
             latestTripDataRef.current.tripLength = remainingDayCount;
 
-            // Update endDate to reflect the new trip length
+            // Update dates to reflect the new trip length
+            let newStartDate = startDate;
             let newEndDate = endDate;
             if (startDate && remainingDayCount > 0) {
-                const start = new Date(startDate);
-                const end = new Date(start);
-                end.setDate(start.getDate() + (remainingDayCount - 1));
-                newEndDate = end.toISOString();
-                setEndDate(newEndDate);
-
-                // Immediately update the ref to ensure saveTrip uses the latest value
-                latestTripDataRef.current.endDate = newEndDate;
+                if (dayToDelete === 1) {
+                    // Deleting day 1: advance startDate by 1, keep endDate
+                    const start = new Date(startDate);
+                    start.setDate(start.getDate() + 1);
+                    newStartDate = start.toISOString();
+                    setStartDate(newStartDate);
+                    latestTripDataRef.current.startDate = newStartDate;
+                } else {
+                    // Deleting any other day: keep startDate, move endDate back by 1
+                    const end = new Date(endDate!);
+                    end.setDate(end.getDate() - 1);
+                    newEndDate = end.toISOString();
+                    setEndDate(newEndDate);
+                    latestTripDataRef.current.endDate = newEndDate;
+                }
             }
 
-            if (remainingDayCount === 0 || dayToDelete === 1) {
-                // If no days left or deleting day 1, go to wishlist
+            if (remainingDayCount === 0) {
+                // No days left, go to wishlist
                 setActiveTab('wishlist');
+            } else if (dayToDelete === 1) {
+                // Deleting day 1: go to new day 1 (formerly day 2)
+                setActiveTab('day1');
             } else {
-                // If deleting any other day, go to the previous day
+                // Deleting any other day, go to the previous day
                 setActiveTab(`day${dayToDelete - 1}`);
             }
 
