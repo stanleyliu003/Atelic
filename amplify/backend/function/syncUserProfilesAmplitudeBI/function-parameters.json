@@ -20,6 +20,10 @@
     {
       "cloudFormationParameterName": "amplitudeApiKey",
       "environmentVariableName": "AMPLITUDE_API_KEY"
+    },
+    {
+      "cloudFormationParameterName": "amplitudeApiKey",
+      "environmentVariableName": "AMPLITUDE_API_KEY"
     }
   ]
 }

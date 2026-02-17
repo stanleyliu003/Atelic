@@ -21,6 +21,18 @@
     {
       "cloudFormationParameterName": "cloudfrontDomain",
       "environmentVariableName": "CLOUDFRONT_DOMAIN"
+    },
+    {
+      "cloudFormationParameterName": "googlePlacesApiKey",
+      "environmentVariableName": "GOOGLE_PLACES_API_KEY"
+    },
+    {
+      "cloudFormationParameterName": "cloudfrontDomain",
+      "environmentVariableName": "cloudfrontDomain"
+    },
+    {
+      "cloudFormationParameterName": "photoS3BucketName",
+      "environmentVariableName": "photoS3BucketName"
     }
   ]
 }

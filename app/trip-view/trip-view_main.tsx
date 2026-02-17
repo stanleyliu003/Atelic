@@ -37,6 +37,7 @@ import { saveOperation, listOperations } from '../../src/services/tripOperations
 import { verifyStateReconstruction, applyOperation, ReconstructedTripState, TransportModeOverrides } from '../../src/services/tripReconstructionService';
 import { getSavedPlacesDetailed } from '../../src/graphql/customQueries';
 import { filterSavedPlacesByCity } from '../../src/utils/cityMatching';
+import { findRelatedLodgingInstancesWithDays } from '../../src/utils/lodging_enforcement';
 
 // GraphQL subscription for real-time trip updates
 const onTripUpdated = /* GraphQL */ `
@@ -160,10 +161,10 @@ export default function TripViewMain() {
     // State for activity detail view
     const [selectedActivityForDetail, setSelectedActivityForDetail] = useState<Activity | null>(null);
     const [showActivityDetail, setShowActivityDetail] = useState(false);
-    
+
     // State for selected marker
     const [selectedMarker, setSelectedMarker] = useState<string | null>(null);
-    
+
     // State for scroll positions per day
     const [dayScrollPositions, setDayScrollPositions] = useState<{ [key: number]: number }>({});
     const [shouldRestoreScrollPositions, setShouldRestoreScrollPositions] = useState<{ [key: number]: boolean }>({});
@@ -179,17 +180,17 @@ export default function TripViewMain() {
     const MIN_HEIGHT = 0.30; // 30% of screen height (minimum)
     const DEFAULT_HEIGHT = 0.65; // 65% of screen height (default)
     const MAX_HEIGHT = 0.90; // 90% of screen height (maximum)
-    
+
     // Current height state (0 = min, 1 = default, 2 = max)
     const [currentHeightState, setCurrentHeightState] = useState(1); // Start at default
     const [bottomHeight] = useState(new Animated.Value(DEFAULT_HEIGHT));
-    
+
     // Ref to track current state for pan responder (avoids stale closure)
     const currentHeightStateRef = useRef(1);
-    
+
     // Array of height states for easy access
     const heightStates = [MIN_HEIGHT, DEFAULT_HEIGHT, MAX_HEIGHT];
-    
+
     // Function to programmatically change height state
     const changeHeightState = (newState: number) => {
         if (newState >= 0 && newState < heightStates.length && newState !== currentHeightState) {
@@ -390,6 +391,7 @@ export default function TripViewMain() {
         reorderDayActivities,
         deleteDayAndRenumber,
         addActivityToDay,
+        removeLodgingStayByPlaceId,
     } = useDayActivities();
 
     // Refs to track latest trip data for autosave (avoid stale closures)
@@ -2795,91 +2797,212 @@ export default function TripViewMain() {
             return;
         }
 
-        // Add lodging to each day in the range
+        // Helper to check if activity is lodging
+        const isLodgingActivity = (a: Activity) => a?.isLodging === true || a?.primaryType === 'lodging';
+
+        // Find overlapping lodging in the target day range
+        let overlappingPlaceId: string | null = null;
+        let overlappingName: string | null = null;
+        let overlapMinDay = Infinity;
+        let overlapMaxDay = -Infinity;
+
         for (let dayNumber = checkInDayNumber; dayNumber <= checkOutDayNumber; dayNumber++) {
             const currentActivities = getDayActivities(dayNumber) || [];
-            const activitiesToAdd: Activity[] = [];
-
-            if (dayNumber === checkInDayNumber) {
-                // First day: Add check-in activity with times at the beginning
-                const checkInActivity = {
-                    ...hotel,
-                    instanceId: duplicateActivity(hotel).instanceId,
-                    notes: 'Check-in',
-                    startTime: addHoursToTime(checkInTime, -1),
-                    endTime: addHoursToTime(checkInTime, 1),
-                };
-                activitiesToAdd.push(checkInActivity);
-
-                // If check-in and check-out are on the same day, don't add end lodging
-                if (checkInDayNumber !== checkOutDayNumber) {
-                    // Add regular lodging at the end (no times)
-                    const endLodging = {
-                        ...hotel,
-                        instanceId: duplicateActivity(hotel).instanceId,
-                    };
-                    activitiesToAdd.push(endLodging);
-                }
-            } else if (dayNumber === checkOutDayNumber) {
-                // Last day: ONLY add check-out activity at the beginning (first activity)
-                const checkOutActivity = {
-                    ...hotel,
-                    instanceId: duplicateActivity(hotel).instanceId,
-                    notes: 'Check-out',
-                    startTime: addHoursToTime(checkOutTime, -1),
-                    endTime: checkOutTime,
-                };
-                activitiesToAdd.push(checkOutActivity);
-            } else {
-                // Middle days: Add lodging at beginning and end (no times, no notes)
-                const startLodging = {
-                    ...hotel,
-                    instanceId: duplicateActivity(hotel).instanceId,
-                };
-                const endLodging = {
-                    ...hotel,
-                    instanceId: duplicateActivity(hotel).instanceId,
-                };
-                activitiesToAdd.push(startLodging, endLodging);
+            const lodging = currentActivities.find((a) => isLodgingActivity(a));
+            if (lodging?.place_id) {
+                overlappingPlaceId = lodging.place_id;
+                overlappingName = lodging.name || 'Hotel';
+                break;
             }
-
-            // Construct new order based on which day we're on
-            let newOrder: Activity[];
-            if (dayNumber === checkOutDayNumber) {
-                // Check-out day: only check-out at the beginning
-                newOrder = [...activitiesToAdd, ...currentActivities];
-            } else if (dayNumber === checkInDayNumber && checkInDayNumber === checkOutDayNumber) {
-                // Same day check-in/check-out: only check-in at beginning
-                newOrder = [...activitiesToAdd, ...currentActivities];
-            } else if (dayNumber === checkInDayNumber) {
-                // Check-in day: check-in at beginning, lodging at end
-                newOrder = [activitiesToAdd[0], ...currentActivities, activitiesToAdd[1]];
-            } else {
-                // Middle days: lodging at beginning and end
-                newOrder = [activitiesToAdd[0], ...currentActivities, activitiesToAdd[1]];
-            }
-
-            // Reorder the day's activities
-            const reorderTimestamp = Date.now();
-            const orderedActivities = newOrder.map(a => ({
-                ...a,
-                lastReordered: reorderTimestamp
-            }));
-            reorderDayActivities(dayNumber, orderedActivities);
-
-            // Track the ADD operation for the lodging activities
-            const addOp = createOperation('add', 'day', activitiesToAdd, dayNumber);
-            queueSave(addOp);
-
-            // Track the REORDER operation to ensure correct positioning
-            const reorderOp = createOperation('reorder', 'day', {
-                reorderedIds: orderedActivities.map(a => a.instanceId),
-                lastReordered: reorderTimestamp
-            }, dayNumber);
-            queueSave(reorderOp);
         }
 
-        console.log('[trip-view_main] Successfully added lodging to days', checkInDayNumber, 'through', checkOutDayNumber);
+        if (overlappingPlaceId) {
+            // Find full day range of the existing stay
+            for (let dayNumber = checkInDayNumber; dayNumber <= checkOutDayNumber; dayNumber++) {
+                const currentActivities = getDayActivities(dayNumber) || [];
+                const hasMatch = currentActivities.some(
+                    (a) => isLodgingActivity(a) && a.place_id === overlappingPlaceId
+                );
+                if (hasMatch) {
+                    overlapMinDay = Math.min(overlapMinDay, dayNumber);
+                    overlapMaxDay = Math.max(overlapMaxDay, dayNumber);
+                }
+            }
+
+            const startDayDate = new Date(tripStartDate);
+            startDayDate.setDate(startDayDate.getDate() + (overlapMinDay - 1));
+            const endDayDate = new Date(tripStartDate);
+            endDayDate.setDate(endDayDate.getDate() + (overlapMaxDay - 1));
+            const formatForAlert = (date: Date) =>
+                date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const dateRangeStr = `${formatForAlert(startDayDate)} – ${formatForAlert(endDayDate)}`;
+
+            //Alert to confirm if the user would like to override their hotel with a new one. Maybe modal in the future
+            //(cont.) for customization?
+            Alert.alert(
+                'Replace Hotel?',
+                `You are replacing your previous hotel at "${overlappingName}" from ${dateRangeStr}. Continue?`,
+                [
+                    { text: 'No', style: 'cancel' },
+                    {
+                        text: 'Yes',
+                        onPress: () => {
+                            const toRemove = findRelatedLodgingInstancesWithDays(
+                                overlappingPlaceId!,
+                                dayActivities
+                            ).filter(({ dayNumber }) =>
+                                dayNumber >= checkInDayNumber &&
+                                dayNumber <= checkOutDayNumber
+                            ); //removing ONLY the days selected, not all instances of the old hotel
+                            toRemove.forEach(({ instanceId, dayNumber }) => {
+                                const op = createOperation('remove', 'day', instanceId, dayNumber);
+                                queueSave(op);
+                            });
+                            doAddLodgingToDays(
+                                hotel,
+                                checkInDayNumber,
+                                checkOutDayNumber,
+                                checkInTime,
+                                checkOutTime,
+                                overlappingPlaceId!
+                            );
+                        },
+                    },
+                ]
+            );
+            return;
+        }
+
+        doAddLodgingToDays(
+            hotel,
+            checkInDayNumber,
+            checkOutDayNumber,
+            checkInTime,
+            checkOutTime,
+            null
+        );
+
+        function doAddLodgingToDays(
+            hotelActivity: any,
+            checkInDay: number,
+            checkOutDay: number,
+            checkInTimeStr: string,
+            checkOutTimeStr: string,
+            excludePlaceId: string | null
+        ) {
+            for (let dayNumber = checkInDay; dayNumber <= checkOutDay; dayNumber++) {
+                let currentActivities = getDayActivities(dayNumber) || [];
+                //Checking to see if activity is lodging related
+                const lodgingActivities = currentActivities.filter(
+                    (a) => isLodgingActivity(a) && a.place_id === excludePlaceId
+                );
+                const nonLodgingActivities = currentActivities.filter(
+                    (a) => !isLodgingActivity(a)
+                );
+
+                const oldFirstLodging = lodgingActivities[0];
+                const oldLastLodging = lodgingActivities[lodgingActivities.length - 1];
+                const activitiesToAdd: Activity[] = [];
+
+                let preservedOldLodging: Activity[] = [];
+                if (excludePlaceId) {
+                    if (excludePlaceId && dayNumber === checkInDay && dayNumber !== 1 && oldFirstLodging) {
+                        preservedOldLodging.push(oldFirstLodging);
+                    }
+                    if (dayNumber === checkOutDay && oldLastLodging) {
+                        preservedOldLodging.push(oldLastLodging);
+                    }
+                }
+                //if not the first day, and old hotel remains at the borders of override, but are replaced throughout by new hotel
+
+                if (dayNumber === checkInDay && dayNumber === checkOutDay) {
+                    // Same-day stay, or last day
+                    activitiesToAdd.push({
+                        ...hotelActivity,
+                        instanceId: duplicateActivity(hotelActivity).instanceId,
+                        notes: 'Check-in / Check-out',
+                        startTime: addHoursToTime(checkInTimeStr, -1),
+                        endTime: checkOutTimeStr,
+                    });
+                }
+                else if (dayNumber === checkInDay) {
+                    // First day: ONLY last stop
+                    activitiesToAdd.push({
+                        ...hotelActivity,
+                        instanceId: duplicateActivity(hotelActivity).instanceId,
+                        notes: 'Check-in',
+                        startTime: addHoursToTime(checkInTimeStr, -1),
+                        endTime: addHoursToTime(checkInTimeStr, 1),
+                    });
+                }
+                else if (dayNumber === checkOutDay) {
+                    // Last day: ONLY first stop
+                    activitiesToAdd.push({
+                        ...hotelActivity,
+                        instanceId: duplicateActivity(hotelActivity).instanceId,
+                        notes: 'Check-out',
+                        startTime: addHoursToTime(checkOutTimeStr, -1),
+                        endTime: checkOutTimeStr,
+                    });
+                }
+                else {
+                    // Middle days: first + last
+                    activitiesToAdd.push(
+                        {
+                            ...hotelActivity,
+                            instanceId: duplicateActivity(hotelActivity).instanceId,
+                        },
+                        {
+                            ...hotelActivity,
+                            instanceId: duplicateActivity(hotelActivity).instanceId,
+                        }
+                    );
+                }
+
+                let newOrder: Activity[] = [];
+
+                if (dayNumber === checkInDay) {
+                    newOrder = [
+                        ...preservedOldLodging,
+                        ...nonLodgingActivities,
+                        ...activitiesToAdd, // always exactly 1 here
+                    ];
+                }
+                else if (dayNumber === checkOutDay) {
+                    newOrder = [
+                        ...activitiesToAdd, // always exactly 1 here
+                        ...nonLodgingActivities,
+                        ...preservedOldLodging,
+                    ];
+                }
+                else {
+                    newOrder = [
+                        activitiesToAdd[0],
+                        ...nonLodgingActivities,
+                        activitiesToAdd[1],
+                    ];
+                }
+
+
+                const reorderTimestamp = Date.now();
+                const orderedActivities = newOrder.map((a) => ({
+                    ...a,
+                    lastReordered: reorderTimestamp,
+                }));
+                reorderDayActivities(dayNumber, orderedActivities);
+
+                const addOp = createOperation('add', 'day', activitiesToAdd, dayNumber);
+                queueSave(addOp);
+
+                const reorderOp = createOperation('reorder', 'day', {
+                    reorderedIds: orderedActivities.map((a) => a.instanceId),
+                    lastReordered: reorderTimestamp,
+                }, dayNumber);
+                queueSave(reorderOp);
+            }
+
+            console.log('[trip-view_main] Successfully added lodging to days', checkInDay, 'through', checkOutDay);
+        }
     };
 
     // Handler for saving search results (new direct flow)
@@ -3475,8 +3598,8 @@ export default function TripViewMain() {
 
     useEffect(() => {
         navigation.setOptions({
-          headerShown: false,
-          gestureEnabled: false, // Disable swipe-back gesture to prevent returning to create_trip_1_city
+            headerShown: false,
+            gestureEnabled: false, // Disable swipe-back gesture to prevent returning to create_trip_1_city
         });
     }, []);
 
@@ -3693,18 +3816,18 @@ export default function TripViewMain() {
     useEffect(() => {
         // Clear processed ref when user changes or component mounts
         processedSavedPlacesRef.current.clear();
-        
+
         const fetchSavedPlaces = async () => {
             if (!currentUserID) return;
 
             try {
                 setLoadingSavedPlaces(true);
-                
+
                 // IMPORTANT: Saved places are stored using Cognito sub (user.attributes.sub)
                 // not username (user.username), so we need to fetch the user to get the sub
                 const user = await Auth.currentAuthenticatedUser();
                 const cognitoSub = user.attributes.sub;
-                
+
                 console.log('[trip-view_main] Fetching saved places for Cognito sub:', cognitoSub);
 
                 const result = await API.graphql({
@@ -3786,38 +3909,38 @@ export default function TripViewMain() {
 
         const newActivities = normalizedActivities.filter(activity => {
             const key = `${activity.savedPlaceId}_${activity.place_id}`;
-            
+
             // Check if not already in trip
             if (existingSavedPlaceIds.has(key)) {
                 return false;
             }
-            
+
             // Check if already processed in this session (prevents duplicate adds during rapid re-renders)
             if (activity.savedPlaceId && processedSavedPlacesRef.current.has(activity.savedPlaceId)) {
                 return false;
             }
-            
+
             // Check if user has explicitly deleted this saved place from the trip
             if (activity.savedPlaceId && isDeletedSavedPlace(activity.savedPlaceId)) {
                 console.log('[trip-view_main] Filtering out deleted saved place:', activity.name, 'savedPlaceId:', activity.savedPlaceId);
                 return false;
             }
-            
+
             return true;
         });
 
         // Add new Instagram saved places to the trip's activities
         if (newActivities.length > 0) {
-            console.log('[trip-view_main] ✨ Adding', newActivities.length, 'new Instagram saved places to trip:', 
+            console.log('[trip-view_main] ✨ Adding', newActivities.length, 'new Instagram saved places to trip:',
                 newActivities.map(a => a.name).join(', '));
-            
+
             // Mark these as processed to prevent duplicate adds during rapid re-renders
             newActivities.forEach(activity => {
                 if (activity.savedPlaceId) {
                     processedSavedPlacesRef.current.add(activity.savedPlaceId);
                 }
             });
-            
+
             updateActivities([...activities, ...newActivities]);
         } else {
             console.log('[trip-view_main] No new saved places to add (all already in trip or deleted)');
@@ -3973,9 +4096,9 @@ export default function TripViewMain() {
                 activities={primaryTab === 'overview' ? getAllDayActivities() : getActivitiesForTab(activeTab)}
                 activeTab={activeTab}
                 routeCoordinates={
-                  activeTab.startsWith('day') && getActivitiesForTab(activeTab).length > 0
-                    ? routeData.polyline
-                    : []
+                    activeTab.startsWith('day') && getActivitiesForTab(activeTab).length > 0
+                        ? routeData.polyline
+                        : []
                 }
                 routeLoading={routeLoading}
                 selectedActivities={selectedActivities}
@@ -4050,260 +4173,262 @@ export default function TripViewMain() {
 
                 {/* Tab Content */}
                 <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
-                <View style={styles.tabContent}>
-                {showActivityDetail && selectedActivityForDetail ? (
-                    <ActivityDetailView
-                        activity={selectedActivityForDetail}
-                        onClose={handleCloseActivityDetail}
-                        showDragIndicator={false}
-                        onDuplicate={(activity) => handleDuplicateActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
-                        onDelete={(activity) => handleDeleteActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
-                        currentUserRole={currentUserRole}
-                        onScrollStateChange={handleActivityDetailScrollStateChange}
-                    />
-                ) : (
-                    <>
-                        {/* Overview Content - shown when primaryTab is 'overview' */}
-                        {primaryTab === 'overview' && (
-                            <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
-                            <View style={styles.overviewWrapper}>
-                                <OverviewContent
-                                    tripTitle={tripTitle}
-                                    onTitleChange={handleTitleChange}
-                                    startDate={startDate}
-                                    endDate={endDate}
-                                    tripLength={tripLength}
-                                    selectedCity={selectedCity || ''}
-                                    dayActivities={dayActivities}
-                                    activities={activities}
-                                    onDayPress={handleOverviewDayPress}
-                                    onDatePress={() => setDatePickerVisible(true)}
-                                    currentUserRole={currentUserRole}
-                                    collaborators={collaborators}
-                                    dayRouteLegs={dayRouteLegs}
-                                />
-                            </View>
-                            </Pressable>
-                        )}
-
-                        {/* Wishlist/Saved Places Content - shown when in itinerary mode */}
-                        {primaryTab === 'itinerary' && activeTab === 'wishlist' && (() => {
-                            const wishlistActivities = getActivitiesForTab('wishlist');
-                            const activitiesByCity = wishlistActivities.reduce((acc: { [key: string]: Activity[] }, activity) => {
-                                const city = activity.city || 'Unknown City';
-                                if (!acc[city]) acc[city] = [];
-                                acc[city].push(activity);
-                                return acc;
-                            }, {} as { [key: string]: Activity[] });
-
-                            return (
-                                <ScrollView
-                                    style={styles.wishlistContainer}
-                                    contentContainerStyle={styles.wishlistContent}
-                                    showsVerticalScrollIndicator={false}
-                                >
+                    <View style={styles.tabContent}>
+                        {showActivityDetail && selectedActivityForDetail ? (
+                            <ActivityDetailView
+                                activity={selectedActivityForDetail}
+                                onClose={handleCloseActivityDetail}
+                                showDragIndicator={false}
+                                onDuplicate={(activity) => handleDuplicateActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
+                                onDelete={(activity) => handleDeleteActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
+                                currentUserRole={currentUserRole}
+                                onScrollStateChange={handleActivityDetailScrollStateChange}
+                            />
+                        ) : (
+                            <>
+                                {/* Overview Content - shown when primaryTab is 'overview' */}
+                                {primaryTab === 'overview' && (
                                     <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
-                                    {wishlistActivities.length === 0 ? (
-                                        <View>
-                                            {/* City Title */}
-                                            {(displayCityName || selectedCity) && (
-                                                <Text style={styles.cityTitle}>{displayCityName || selectedCity}</Text>
-                                            )}
-
-                                            {/* SearchBar - right below city title, scrolls with content */}
-                                            {currentUserRole !== 'viewer' && (
-                                                <View style={styles.wishlistSearchBarContainer}>
-                                                    <SearchBar
-                                                        value={searchQuery}
-                                                        onChangeText={handleSearchQueryChange}
-                                                        onPress={handleSearchPress}
-                                                        placeholder="Add places"
-                                                    />
-                                                </View>
-                                            )}
-
-                                            {/* Category Cards - hide for viewers */}
-                                            {currentUserRole !== 'viewer' && (
-                                                <View style={styles.categoriesSection}>
-                                                    <Text style={styles.categoriesTitle}>Browse by Category</Text>
-                                                        {Array.isArray(cityCategories) && cityCategories.length > 0 ? (
-                                                        <View style={styles.categoriesGrid}>
-                                                            {cityCategories.map((category: any, index: number) => (
-                                                                <TouchableOpacity
-                                                                    key={index}
-                                                                    style={styles.categoryCard}
-                                                                    onPress={() => handleCategoryPress(category)}
-                                                                    activeOpacity={0.7}
-                                                                >
-                                                                    <View style={styles.categoryContent}>
-                                                                        {category.emoji && (
-                                                                            <View style={styles.emojiContainer}>
-                                                                                <Text style={styles.categoryEmoji}>{category.emoji}</Text>
-                                                                            </View>
-                                                                        )}
-                                                                        <Text style={styles.categoryName}>{category.category}</Text>
-                                                                        <Text style={styles.categoryItems} numberOfLines={1}>
-                                                                            {category.category_items[0]}
-                                                                        </Text>
-                                                                    </View>
-                                                                </TouchableOpacity>
-                                                            ))}
-                                                        </View>
-                                                    ) : (
-                                                        <View style={styles.loadingContainer}>
-                                                            <ActivityIndicator size="large" color={Colors.PRIMARY} />
-                                                            <Text style={styles.loadingText}>
-                                                                Loading categories for {selectedCity}...
-                                                            </Text>
-                                                        </View>
-                                                    )}
-                                                </View>
-                                            )}
+                                        <View style={styles.overviewWrapper}>
+                                            <OverviewContent
+                                                tripTitle={tripTitle}
+                                                onTitleChange={handleTitleChange}
+                                                startDate={startDate}
+                                                endDate={endDate}
+                                                tripLength={tripLength}
+                                                selectedCity={selectedCity || ''}
+                                                dayActivities={dayActivities}
+                                                activities={activities}
+                                                onDayPress={handleOverviewDayPress}
+                                                onDatePress={() => setDatePickerVisible(true)}
+                                                currentUserRole={currentUserRole}
+                                                collaborators={collaborators}
+                                                dayRouteLegs={dayRouteLegs}
+                                            />
                                         </View>
-                                    ) : (
-                                        <>
-                                            {Object.entries(activitiesByCity).map(([city, cityActivities]: [string, Activity[]], cityIndex: number) => (
-                                                <View key={`wishlist-${city}`} style={styles.citySection}>
-                                                    {/* City Title */}
-                                                    <Text style={styles.cityTitle}>{displayCityName || city}</Text>
+                                    </Pressable>
+                                )}
 
-                                                    {/* SearchBar - right below city title (only for first city), scrolls with content */}
-                                                    {cityIndex === 0 && currentUserRole !== 'viewer' && (
-                                                        <View style={styles.wishlistSearchBarContainer}>
-                                                            <SearchBar
-                                                                value={searchQuery}
-                                                                onChangeText={handleSearchQueryChange}
-                                                                onPress={handleSearchPress}
-                                                                placeholder="Add places"
-                                                            />
-                                                        </View>
-                                                    )}
+                                {/* Wishlist/Saved Places Content - shown when in itinerary mode */}
+                                {primaryTab === 'itinerary' && activeTab === 'wishlist' && (() => {
+                                    const wishlistActivities = getActivitiesForTab('wishlist');
+                                    const activitiesByCity = wishlistActivities.reduce((acc: { [key: string]: Activity[] }, activity) => {
+                                        const city = activity.city || 'Unknown City';
+                                        if (!acc[city]) acc[city] = [];
+                                        acc[city].push(activity);
+                                        return acc;
+                                    }, {} as { [key: string]: Activity[] });
 
-                                                    <WishlistActivities
-                                                        activities={cityActivities}
-                                                        selectedActivities={selectedActivities}
-                                                        onActivitySelect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
-                                                        onActivityDeselect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
-                                                        onDescriptionCardPress={handleActivityDescriptionCardSelect}
-                                                        showSelectionIndicator={isSelectionMode && currentUserRole !== 'viewer'}
-                                                        onDuplicate={currentUserRole !== 'viewer' ? handleDuplicateActivity : undefined}
-                                                        activeTab={activeTab}
-                                                        currentUserRole={currentUserRole}
-                                                        hideNotesButton={true}
-                                                    />
-                                                </View>
-                                            ))}
+                                    return (
+                                        <ScrollView
+                                            style={styles.wishlistContainer}
+                                            contentContainerStyle={styles.wishlistContent}
+                                            showsVerticalScrollIndicator={false}
+                                        >
+                                            <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
+                                                {wishlistActivities.length === 0 ? (
+                                                    <View>
+                                                        {/* City Title */}
+                                                        {(displayCityName || selectedCity) && (
+                                                            <Text style={styles.cityTitle}>{displayCityName || selectedCity}</Text>
+                                                        )}
 
-                                            {/* Loading indicator while activity is being added from AutocompleteModal */}
-                                            {isAutocompleteAddingPlace && (
-                                                <View style={styles.autocompleteLoadingContainer}>
-                                                    <ActivityIndicator size="small" color={Colors.PRIMARY} />
-                                                    <Text style={styles.autocompleteLoadingText}>Activity Loading</Text>
-                                                </View>
-                                            )}
+                                                        {/* SearchBar - right below city title, scrolls with content */}
+                                                        {currentUserRole !== 'viewer' && (
+                                                            <View style={styles.wishlistSearchBarContainer}>
+                                                                <SearchBar
+                                                                    value={searchQuery}
+                                                                    onChangeText={handleSearchQueryChange}
+                                                                    onPress={handleSearchPress}
+                                                                    placeholder="Add places"
+                                                                />
+                                                            </View>
+                                                        )}
 
-                                            {/* Category Cards - hide for viewers */}
-                                            {currentUserRole !== 'viewer' && (
-                                                <View style={styles.categoriesSection}>
-                                                    <Text style={styles.categoriesTitle}>Browse by Category</Text>
-                                                        {Array.isArray(cityCategories) && cityCategories.length > 0 ? (
-                                                        <View style={styles.categoriesGrid}>
-                                                            {cityCategories.map((category: any, index: number) => (
-                                                                <TouchableOpacity
-                                                                    key={index}
-                                                                    style={styles.categoryCard}
-                                                                    onPress={() => handleCategoryPress(category)}
-                                                                    activeOpacity={0.7}
-                                                                >
-                                                                    <View style={styles.categoryContent}>
-                                                                        {category.emoji && (
-                                                                            <View style={styles.emojiContainer}>
-                                                                                <Text style={styles.categoryEmoji}>{category.emoji}</Text>
-                                                                            </View>
-                                                                        )}
-                                                                        <Text style={styles.categoryName}>{category.category}</Text>
-                                                                        <Text style={styles.categoryItems} numberOfLines={1}>
-                                                                            {category.category_items[0]}
+                                                        {/* Category Cards - hide for viewers */}
+                                                        {currentUserRole !== 'viewer' && (
+                                                            <View style={styles.categoriesSection}>
+                                                                <Text style={styles.categoriesTitle}>Browse by Category</Text>
+                                                                {Array.isArray(cityCategories) && cityCategories.length > 0 ? (
+                                                                    <View style={styles.categoriesGrid}>
+                                                                        {cityCategories.map((category: any, index: number) => (
+                                                                            <TouchableOpacity
+                                                                                key={index}
+                                                                                style={styles.categoryCard}
+                                                                                onPress={() => handleCategoryPress(category)}
+                                                                                activeOpacity={0.7}
+                                                                            >
+                                                                                <View style={styles.categoryContent}>
+                                                                                    {category.emoji && (
+                                                                                        <View style={styles.emojiContainer}>
+                                                                                            <Text style={styles.categoryEmoji}>{category.emoji}</Text>
+                                                                                        </View>
+                                                                                    )}
+                                                                                    <Text style={styles.categoryName}>{category.category}</Text>
+                                                                                    <Text style={styles.categoryItems} numberOfLines={1}>
+                                                                                        {category.category_items[0]}
+                                                                                    </Text>
+                                                                                </View>
+                                                                            </TouchableOpacity>
+                                                                        ))}
+                                                                    </View>
+                                                                ) : (
+                                                                    <View style={styles.loadingContainer}>
+                                                                        <ActivityIndicator size="large" color={Colors.PRIMARY} />
+                                                                        <Text style={styles.loadingText}>
+                                                                            Loading categories for {selectedCity}...
                                                                         </Text>
                                                                     </View>
-                                                                </TouchableOpacity>
-                                                            ))}
-                                                        </View>
-                                                    ) : (
-                                                        <View style={styles.loadingContainer}>
-                                                            <ActivityIndicator size="large" color={Colors.PRIMARY} />
-                                                            <Text style={styles.loadingText}>
-                                                                Loading categories for {selectedCity}...
-                                                            </Text>
-                                                        </View>
-                                                    )}
-                                                </View>
-                                            )}
-                                        </>
-                                    )}
-                                    </Pressable>
-                                </ScrollView>
-                            );
-                        })()}
+                                                                )}
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                ) : (
+                                                    <>
+                                                        {Object.entries(activitiesByCity).map(([city, cityActivities]: [string, Activity[]], cityIndex: number) => (
+                                                            <View key={`wishlist-${city}`} style={styles.citySection}>
+                                                                {/* City Title */}
+                                                                <Text style={styles.cityTitle}>{displayCityName || city}</Text>
 
-                        {/* Day Schedule Content - shown when in itinerary mode */}
-                        {primaryTab === 'itinerary' && activeTab.startsWith('day') && (() => {
-                            const currentDayNumber = parseInt(activeTab.replace('day', ''));
-                            return (
-                                <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
-                                <DaySchedule
-                                    dayNumber={currentDayNumber}
-                                    activities={getActivitiesForTab(activeTab)}
-                                    selectedActivities={selectedActivities}
-                                    onActivitySelect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
-                                    onActivityDeselect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
-                                    onDescriptionCardPress={handleActivityDescriptionCardSelect}
-                                    onTransferToWishlist={handleTransferToWishlist}
-                                    onOptimizeRoute={currentUserRole !== 'viewer' ? handleOptimizeRoute : undefined}
-                                    showSelectionIndicator={isSelectionMode && currentUserRole !== 'viewer'}
-                                    routeLegs={routeData.legs}
-                                    onAddPlace={currentUserRole !== 'viewer' ? handleSearchPress : undefined}
-                                    searchQuery={searchQuery}
-                                    onSearchQueryChange={handleSearchQueryChange}
-                                    scrollPosition={dayScrollPositions[currentDayNumber] || 0}
-                                    onScrollPositionChange={(position) => handleScrollPositionChange(currentDayNumber, position)}
-                                    shouldRestorePosition={shouldRestoreScrollPositions[currentDayNumber] || false}
-                                    travelMode={routeData.travelMode}
-                                    onReorder={currentUserRole !== 'viewer' ? handleDayActivityReorder : undefined}
-                                    routeLoading={routeLoading}
-                                    onGoToWishlist={() => handleTabChange('wishlist')}
-                                    onDuplicate={currentUserRole !== 'viewer' ? handleDuplicateActivity : undefined}
-                                    isAddingPlaceFromAutocomplete={isAutocompleteAddingPlace}
-                                    activeTab={activeTab}
-                                    currentUserRole={currentUserRole}
-                                    onOpenSettings={currentUserRole !== 'viewer' ? handleOpenSettings : undefined}
-                                />
-                                </Pressable>
-                            );
-                        })()}
-                    </>
-                )}
-                </View>
+                                                                {/* SearchBar - right below city title (only for first city), scrolls with content */}
+                                                                {cityIndex === 0 && currentUserRole !== 'viewer' && (
+                                                                    <View style={styles.wishlistSearchBarContainer}>
+                                                                        <SearchBar
+                                                                            value={searchQuery}
+                                                                            onChangeText={handleSearchQueryChange}
+                                                                            onPress={handleSearchPress}
+                                                                            placeholder="Add places"
+                                                                        />
+                                                                    </View>
+                                                                )}
+
+                                                                <WishlistActivities
+                                                                    activities={cityActivities}
+                                                                    selectedActivities={selectedActivities}
+                                                                    onActivitySelect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
+                                                                    onActivityDeselect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
+                                                                    onDescriptionCardPress={handleActivityDescriptionCardSelect}
+                                                                    showSelectionIndicator={isSelectionMode && currentUserRole !== 'viewer'}
+                                                                    onDuplicate={currentUserRole !== 'viewer' ? handleDuplicateActivity : undefined}
+                                                                    activeTab={activeTab}
+                                                                    currentUserRole={currentUserRole}
+                                                                    hideNotesButton={true}
+                                                                    onDelete={currentUserRole !== 'viewer' ? handleDeleteActivity : undefined}
+                                                                />
+                                                            </View>
+                                                        ))}
+
+                                                        {/* Loading indicator while activity is being added from AutocompleteModal */}
+                                                        {isAutocompleteAddingPlace && (
+                                                            <View style={styles.autocompleteLoadingContainer}>
+                                                                <ActivityIndicator size="small" color={Colors.PRIMARY} />
+                                                                <Text style={styles.autocompleteLoadingText}>Activity Loading</Text>
+                                                            </View>
+                                                        )}
+
+                                                        {/* Category Cards - hide for viewers */}
+                                                        {currentUserRole !== 'viewer' && (
+                                                            <View style={styles.categoriesSection}>
+                                                                <Text style={styles.categoriesTitle}>Browse by Category</Text>
+                                                                {Array.isArray(cityCategories) && cityCategories.length > 0 ? (
+                                                                    <View style={styles.categoriesGrid}>
+                                                                        {cityCategories.map((category: any, index: number) => (
+                                                                            <TouchableOpacity
+                                                                                key={index}
+                                                                                style={styles.categoryCard}
+                                                                                onPress={() => handleCategoryPress(category)}
+                                                                                activeOpacity={0.7}
+                                                                            >
+                                                                                <View style={styles.categoryContent}>
+                                                                                    {category.emoji && (
+                                                                                        <View style={styles.emojiContainer}>
+                                                                                            <Text style={styles.categoryEmoji}>{category.emoji}</Text>
+                                                                                        </View>
+                                                                                    )}
+                                                                                    <Text style={styles.categoryName}>{category.category}</Text>
+                                                                                    <Text style={styles.categoryItems} numberOfLines={1}>
+                                                                                        {category.category_items[0]}
+                                                                                    </Text>
+                                                                                </View>
+                                                                            </TouchableOpacity>
+                                                                        ))}
+                                                                    </View>
+                                                                ) : (
+                                                                    <View style={styles.loadingContainer}>
+                                                                        <ActivityIndicator size="large" color={Colors.PRIMARY} />
+                                                                        <Text style={styles.loadingText}>
+                                                                            Loading categories for {selectedCity}...
+                                                                        </Text>
+                                                                    </View>
+                                                                )}
+                                                            </View>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </Pressable>
+                                        </ScrollView>
+                                    );
+                                })()}
+
+                                {/* Day Schedule Content - shown when in itinerary mode */}
+                                {primaryTab === 'itinerary' && activeTab.startsWith('day') && (() => {
+                                    const currentDayNumber = parseInt(activeTab.replace('day', ''));
+                                    return (
+                                        <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
+                                            <DaySchedule
+                                                dayNumber={currentDayNumber}
+                                                activities={getActivitiesForTab(activeTab)}
+                                                selectedActivities={selectedActivities}
+                                                onActivitySelect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
+                                                onActivityDeselect={currentUserRole !== 'viewer' ? toggleActivitySelection : undefined}
+                                                onDescriptionCardPress={handleActivityDescriptionCardSelect}
+                                                onTransferToWishlist={handleTransferToWishlist}
+                                                onOptimizeRoute={currentUserRole !== 'viewer' ? handleOptimizeRoute : undefined}
+                                                showSelectionIndicator={isSelectionMode && currentUserRole !== 'viewer'}
+                                                routeLegs={routeData.legs}
+                                                onAddPlace={currentUserRole !== 'viewer' ? handleSearchPress : undefined}
+                                                searchQuery={searchQuery}
+                                                onSearchQueryChange={handleSearchQueryChange}
+                                                scrollPosition={dayScrollPositions[currentDayNumber] || 0}
+                                                onScrollPositionChange={(position) => handleScrollPositionChange(currentDayNumber, position)}
+                                                shouldRestorePosition={shouldRestoreScrollPositions[currentDayNumber] || false}
+                                                travelMode={routeData.travelMode}
+                                                onReorder={currentUserRole !== 'viewer' ? handleDayActivityReorder : undefined}
+                                                routeLoading={routeLoading}
+                                                onGoToWishlist={() => handleTabChange('wishlist')}
+                                                onDuplicate={currentUserRole !== 'viewer' ? handleDuplicateActivity : undefined}
+                                                isAddingPlaceFromAutocomplete={isAutocompleteAddingPlace}
+                                                activeTab={activeTab}
+                                                currentUserRole={currentUserRole}
+                                                onOpenSettings={currentUserRole !== 'viewer' ? handleOpenSettings : undefined}
+                                                onDelete={currentUserRole !== 'viewer' ? handleDeleteActivity : undefined}
+                                            />
+                                        </Pressable>
+                                    );
+                                })()}
+                            </>
+                        )}
+                    </View>
                 </Pressable>
 
                 {/* Transfer Button Container */}
                 <TransferButtonContainer
-                activeTab={activeTab}
-                isSelectionMode={isSelectionMode}
-                selectedActivities={selectedActivities}
-                onTransferPress={handleOpenTransferModal}
-                onDeletePress={handleDeleteActivities}
-                currentUserRole={currentUserRole}
+                    activeTab={activeTab}
+                    isSelectionMode={isSelectionMode}
+                    selectedActivities={selectedActivities}
+                    onTransferPress={handleOpenTransferModal}
+                    onDeletePress={handleDeleteActivities}
+                    currentUserRole={currentUserRole}
                 />
 
                 {/* Transfer Modal */}
                 <TransferActivitiesModal
-                visible={isModalVisible}
-                daysArray={daysArray}
-                selectedDay={selectedDay}
-                onSelectDay={handleDaySelection}
-                onClose={() => setIsModalVisible(false)}
-                startDate={startDate}
+                    visible={isModalVisible}
+                    daysArray={daysArray}
+                    selectedDay={selectedDay}
+                    onSelectDay={handleDaySelection}
+                    onClose={() => setIsModalVisible(false)}
+                    startDate={startDate}
                 />
             </Animated.View>
 

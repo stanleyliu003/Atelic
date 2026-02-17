@@ -85,12 +85,10 @@
       "dependsOn": [
         {
           "attributes": [
-            "Name",
-            "Arn",
-            "StreamArn"
+            "UserPoolId"
           ],
-          "category": "storage",
-          "resourceName": "categoryStorage"
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
         }
       ],
       "providerPlugin": "awscloudformation",

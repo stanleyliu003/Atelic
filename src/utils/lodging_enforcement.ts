@@ -122,3 +122,35 @@ export function findRelatedLodgingInstances(
 
   return relatedInstanceIds;
 }
+
+/**
+ * Finds all instance IDs and their day numbers for lodging activities that share the same place_id.
+ * Useful for queueing remove operations when overwriting a hotel stay.
+ *
+ * @param placeId - The place_id of the lodging to find
+ * @param dayActivities - Object mapping day numbers to day data
+ * @returns Array of { instanceId, dayNumber } for all lodging activities with the given place_id
+ */
+export function findRelatedLodgingInstancesWithDays(
+  placeId: string,
+  dayActivities: { [dayNumber: number]: { activities: Activity[] } }
+): { instanceId: string; dayNumber: number }[] {
+  const result: { instanceId: string; dayNumber: number }[] = [];
+
+  Object.entries(dayActivities).forEach(([dayStr, dayData]) => {
+    const dayNumber = Number(dayStr);
+    if (dayData && dayData.activities) {
+      dayData.activities.forEach(activity => {
+        if (
+          isLodgingActivity(activity) &&
+          activity.place_id === placeId &&
+          activity.instanceId
+        ) {
+          result.push({ instanceId: activity.instanceId, dayNumber });
+        }
+      });
+    }
+  });
+
+  return result;
+}

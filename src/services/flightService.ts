@@ -106,9 +106,15 @@ export const getFlightInfo = async (flightIdent: string, flightDate?: Date): Pro
     // Cache the result
     await cacheFlightData(cacheKey, flightData);
 
-    return flightData;
+    return;
   } catch (error: any) {
-    console.error('[flightService] Error fetching flight:', error);
+    console.error('[flightService] Error fetching flight:', {
+      message: error.message, 
+      response: error.response,
+      data: error.response?.data,
+      status: error.response?.status,
+    });
+
 
     if (error.response?.status === 404) {
       throw new Error('Flight not found. Please check the flight number.');
