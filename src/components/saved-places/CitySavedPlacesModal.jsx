@@ -17,7 +17,7 @@ import { API, Auth } from 'aws-amplify';
 import { deleteSavedPlace } from '../../graphql/mutations';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPlaceDeleted }) {
+export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPlaceDeleted, isCountry }) {
   const router = useRouter();
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [descriptionCardVisible, setDescriptionCardVisible] = useState(false);
@@ -67,11 +67,11 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
 
     try {
       const user = await Auth.currentAuthenticatedUser();
-      const userID = user.attributes.sub;
+      const userID = user.username;
 
       await API.graphql({
         query: deleteSavedPlace,
-        variables: { userID, savedPlaceId },
+        variables: { userID, savedPlaceId, deleteType: isCountry ? 'country' : 'city' },
       });
 
       onPlaceDeleted?.(savedPlaceId);

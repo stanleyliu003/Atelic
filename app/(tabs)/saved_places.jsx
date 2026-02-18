@@ -138,8 +138,8 @@ export default function SavedPlaces() {
       // Recompute city counts from merged places
       const cityCountMap = {};
       for (const place of mergedPlaces) {
-        const city = place.city || 'Unknown';
-        cityCountMap[city] = (cityCountMap[city] || 0) + 1;
+        if (!place.city) continue; // Skip places without a city (they appear in country cards)
+        cityCountMap[place.city] = (cityCountMap[place.city] || 0) + 1;
       }
       const mergedCities = Array.from(citiesMap.values()).map(c => ({
         ...c,
@@ -238,22 +238,41 @@ export default function SavedPlaces() {
   };
 
   const handlePlaceDeleted = (deletedPlaceId) => {
-    const deletedPlace = allSavedPlaces.find(p => p.savedPlaceId === deletedPlaceId);
-    if (!deletedPlace) return;
+    // Determine context from the currently selected city card
+    const isCountryContext = selectedCity?.isCountry;
+    const isCityContext = !isCountryContext && selectedCity;
 
-    // Update allSavedPlaces state
-    setAllSavedPlaces(prevPlaces => prevPlaces.filter(p => p.savedPlaceId !== deletedPlaceId));
+    setAllSavedPlaces(prevPlaces => {
+      const updatedPlaces = prevPlaces.map(p => {
+        if (p.savedPlaceId !== deletedPlaceId) return p;
 
-    // Update total count
-    setTotalCount(prev => prev - 1);
+        // Create a copy to modify
+        const updatedPlace = { ...p };
 
-    // Update cities state (decrement count or remove city if count reaches 0)
-    setCities(prevCities =>
-      prevCities
-        .map(c => (c.city === deletedPlace.city ? { ...c, count: c.count - 1 } : c))
-        .filter(c => c.count > 0)
-    );
-    // countryCards is derived from allSavedPlaces, so it updates automatically
+        if (isCountryContext) {
+          delete updatedPlace.country;
+        } else if (isCityContext) {
+          delete updatedPlace.city;
+        }
+
+        // If place has neither city nor country, filter it out (return null)
+        if (!updatedPlace.city && !updatedPlace.country) return null;
+        
+        return updatedPlace;
+      }).filter(Boolean);
+
+      setTotalCount(updatedPlaces.length);
+      return updatedPlaces;
+    });
+
+    // If we deleted from a city context, update the city counts
+    if (isCityContext) {
+      setCities(prevCities =>
+        prevCities
+          .map(c => (c.city === selectedCity.city ? { ...c, count: c.count - 1 } : c))
+          .filter(c => c.count > 0)
+      );
+    }
   };
 
   const handleCardDeleted = (cardData) => {
@@ -269,21 +288,31 @@ export default function SavedPlaces() {
           onPress: async () => {
             try {
               const user = await Auth.currentAuthenticatedUser();
-              const userID = user.attributes.sub;
+              const userID = user.username;
               const deletedName = cardData.city;
 
               if (cardData.isCountry) {
                 // Delete by country - remove places matching country
-                const placesToRemove = allSavedPlaces.filter(p => p.country === deletedName);
-                setAllSavedPlaces(prevPlaces => prevPlaces.filter(p => p.country !== deletedName));
-                setTotalCount(prev => prev - placesToRemove.length);
+                setAllSavedPlaces(prevPlaces => {
+                  const updated = prevPlaces.map(p => {
+                    if (p.country === deletedName) {
+                      const newP = { ...p };
+                      delete newP.country;
+                      if (!newP.city) return null; // Remove if no city either
+                      return newP;
+                    }
+                    return p;
+                  }).filter(Boolean);
+                  setTotalCount(updated.length);
+                  return updated;
+                });
+
                 // Update cities for any that had places in this country
-                const citiesToUpdate = new Set(placesToRemove.map(p => p.city));
-                setCities(prevCities =>
-                  prevCities
-                    .map(c => (citiesToUpdate.has(c.city) ? { ...c, count: c.count - placesToRemove.filter(p => p.city === c.city).length } : c))
-                    .filter(c => c.count > 0)
-                );
+                // Note: Deleting a country folder shouldn't affect city counts unless the place is deleted entirely.
+                // Since we don't easily know which were deleted entirely without complex logic, 
+                // and city counts are usually derived from 'city' field presence, we can leave cities state as is 
+                // or trigger a refresh. For now, we assume city counts persist if the place persists in the city.
+                
                 await API.graphql({
                   query: deleteSavedCountry,
                   variables: { userID, country: deletedName },
@@ -291,9 +320,21 @@ export default function SavedPlaces() {
               } else {
                 // Delete by city
                 setCities(prevCities => prevCities.filter(c => c.city !== deletedName));
-                const placesToRemove = allSavedPlaces.filter(p => p.city === deletedName);
-                setAllSavedPlaces(prevPlaces => prevPlaces.filter(p => p.city !== deletedName));
-                setTotalCount(prev => prev - placesToRemove.length);
+                
+                setAllSavedPlaces(prevPlaces => {
+                  const updated = prevPlaces.map(p => {
+                    if (p.city === deletedName) {
+                      const newP = { ...p };
+                      delete newP.city;
+                      if (!newP.country) return null;
+                      return newP;
+                    }
+                    return p;
+                  }).filter(Boolean);
+                  setTotalCount(updated.length);
+                  return updated;
+                });
+
                 await API.graphql({
                   query: deleteSavedCity,
                   variables: { userID, city: deletedName },
@@ -500,6 +541,7 @@ export default function SavedPlaces() {
           cityName={selectedCity.city}
           places={getPlacesForCard(selectedCity)}
           onPlaceDeleted={handlePlaceDeleted}
+          isCountry={selectedCity.isCountry}
         />
       )}
     </View>

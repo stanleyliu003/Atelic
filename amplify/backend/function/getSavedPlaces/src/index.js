@@ -106,7 +106,8 @@ function groupByCity(savedPlaces) {
     const cityMap = {};
 
     for (const place of savedPlaces) {
-        const city = place.city || 'Unknown';
+        const city = place.city;
+        if (!city) continue; // Skip places without a city (they appear in country cards on the frontend)
         const country = place.country || '';
         
         if (!cityMap[city]) {

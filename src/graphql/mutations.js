@@ -151,8 +151,16 @@ export const deleteTrip = /* GraphQL */ `
   }
 `;
 export const deleteSavedPlace = /* GraphQL */ `
-  mutation DeleteSavedPlace($userID: String!, $savedPlaceId: String!) {
-    deleteSavedPlace(userID: $userID, savedPlaceId: $savedPlaceId) {
+  mutation DeleteSavedPlace(
+    $userID: String!
+    $savedPlaceId: String!
+    $deleteType: String
+  ) {
+    deleteSavedPlace(
+      userID: $userID
+      savedPlaceId: $savedPlaceId
+      deleteType: $deleteType
+    ) {
       savedPlaceId
       userID
       __typename
