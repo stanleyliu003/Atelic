@@ -1,6 +1,7 @@
 import { Colors } from '../../constants/Colors';
 import { API } from 'aws-amplify';
 import { Auth } from 'aws-amplify';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
@@ -43,6 +44,19 @@ export default function SavedPlaces() {
   const [emptyStatePage, setEmptyStatePage] = useState(
     searchParams.skipOnboarding === 'true' ? 14 : 8
   );
+
+  // Persist onboarding completion across sessions
+  const ONBOARDING_KEY = 'savedPlacesOnboardingComplete';
+
+  useEffect(() => {
+    if (searchParams.skipOnboarding === 'true') {
+      AsyncStorage.setItem(ONBOARDING_KEY, 'true');
+    } else {
+      AsyncStorage.getItem(ONBOARDING_KEY).then((value) => {
+        if (value === 'true') setEmptyStatePage(14);
+      });
+    }
+  }, [searchParams.skipOnboarding]);
   // Track Instagram share processing status (timer-based)
   const [isShareProcessing, setIsShareProcessing] = useState(false);
   const [shareNoResults, setShareNoResults] = useState(false);
