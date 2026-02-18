@@ -202,8 +202,8 @@ export default function SavedPlaces() {
     let stopped = false;
     let pollTimer;
 
-    const POLL_INTERVAL = 2000; // Check every 3 seconds
-    const MAX_WAIT = 25000;     // Give up after 25 seconds from share start
+    const POLL_INTERVAL = 1500; // Check every 1.5 seconds
+    const MAX_WAIT = 20000;     // Give up after 20 seconds from share start
 
     // Wait a few seconds before first poll to give Lambda a head start
     const initialDelay = Math.max(8000 - (now - startTime), 1000);

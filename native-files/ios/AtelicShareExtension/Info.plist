@@ -40,6 +40,6 @@
 	<key>AppGroupIdentifier</key>
 	<string>group.com.atelic.shared</string>
 	<key>LambdaEndpoint</key>
-	<string>https://adetk4ycvtm7wkwbzppbleegra0auhxi.lambda-url.us-east-1.on.aws/</string>
+	<string>https://4waslmaifuc4dt7cwpoekuowwq0wcmql.lambda-url.us-east-1.on.aws/</string>
 </dict>
 </plist>
