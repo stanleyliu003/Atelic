@@ -1885,6 +1885,17 @@ export default function TripViewMain() {
             const currentTabActivities = getActivitiesForTab(activeTab);
             const dayNumber = parseInt(activeTab.replace('day', ''));
             const activitiesHash = hashActivities(currentTabActivities);
+
+            // If there are fewer than 2 routable activities, clear any existing polyline for this day
+            const validRoutableActivities = currentTabActivities.filter(
+                (a: Activity) => a.lat != null && a.lng != null && a.place_id
+            );
+            if (validRoutableActivities.length < 2) {
+                setDayPolyline(dayNumber, '');
+                setRouteLoading(false);
+                return;
+            }
+
             const cached = routeCache.current[activeTab];
             if (cached && cached.activitiesHash === activitiesHash) {
                 setRouteData(cached.routeData);
@@ -1987,6 +1998,9 @@ export default function TripViewMain() {
             if (newRouteData.polyline && newRouteData.polyline.length > 1) {
                 const encoded = encodePolyline(newRouteData.polyline);
                 setDayPolyline(dayNumber, encoded);
+            } else {
+                // If recalculation produced no usable polyline, clear any stale overview polyline
+                setDayPolyline(dayNumber, '');
             }
             setRouteLoading(false);
         };
@@ -4528,6 +4542,7 @@ export default function TripViewMain() {
                                     activeTab={activeTab}
                                     currentUserRole={currentUserRole}
                                     onOpenSettings={currentUserRole !== 'viewer' ? handleOpenSettings : undefined}
+                                    onDelete={currentUserRole !== 'viewer' ? (activity, dayNumber) => handleDeleteActivity(activity, dayNumber) : undefined}
                                 />
                                 </Pressable>
                             );
