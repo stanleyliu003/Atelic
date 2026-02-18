@@ -401,7 +401,7 @@ type AppVersionConfig {
    searchAutocomplete(selectedCity: String!, query: String!, filters: [String!]): SearchAutocompleteResponse @function(name: "searchAutocomplete-${env}") @auth(rules: [{ allow: public }])
    getPlaceDetails(place_id: String!, selectedCity: String!): GetPlaceDetailsResponse @function(name: "searchBarActivities-${env}") @auth(rules: [{ allow: public }])
    searchActivities(selectedCity: String!, searchQuery: String!, filters: [String!], existingWishlistActivities: [ActivityDeduplicationInput!]): SearchActivitiesResult @function(name: "searchBarActivities-${env}") @auth(rules: [{ allow: public }]) @deprecated(reason: "Use getPlaceDetails instead")
-   getTripIDs(userID: String!): [TripSummary] @function(name: "getTripIDs-${env}") @auth(rules: [{ allow: public }])
+   getTripIDs(userID: String!, viewerUserID: String): [TripSummary] @function(name: "getTripIDs-${env}") @auth(rules: [{ allow: public }])
    getUserTrips(userID: String!, tripID: String!): Trip @function(name: "getUserTrips-${env}") @auth(rules: [{ allow: public }])
    searchUsers(searchTerm: String!): [UserProfile] @function(name: "searchUsers-${env}") @auth(rules: [{ allow: public }])
    getUserProfile(username: String, userID: String): UserProfileStorage @function(name: "getUserProfile-${env}") @auth(rules: [{ allow: public }])
@@ -465,6 +465,7 @@ type AppVersionConfig {
     savedActivities: String
     recentSearches: [RecentSearch]
     deletedSavedPlaceIds: [String]  # SavedPlaceIds that user has explicitly deleted from this trip
+    isVisibleOnProfile: Boolean  # Whether this trip is visible to friends on profile (defaults to false)
   }
 
    type TripSummary {
@@ -477,6 +478,7 @@ type AppVersionConfig {
      endDate: String
      tripLength: Int
      userRole: CollaboratorRole
+     isVisibleOnProfile: Boolean
    }
 
    type Day {
@@ -607,6 +609,7 @@ type AppVersionConfig {
     savedActivities: String
     recentSearches: [RecentSearchInput]
     deletedSavedPlaceIds: [String]  # SavedPlaceIds that user has explicitly deleted from this trip
+    isVisibleOnProfile: Boolean  # Whether this trip is visible to friends on profile (defaults to false)
   }
 
 

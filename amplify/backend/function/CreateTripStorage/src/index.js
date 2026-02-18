@@ -86,7 +86,9 @@ exports.handler = async (event) => {
     // Deleted saved places tracking
     deletedSavedPlaceIds: Array.isArray(input.deletedSavedPlaceIds) ? input.deletedSavedPlaceIds : [],
     // Recent searches
-    recentSearches: Array.isArray(input.recentSearches) ? input.recentSearches : []
+    recentSearches: Array.isArray(input.recentSearches) ? input.recentSearches : [],
+    // Trip visibility on profile (defaults to false)
+    isVisibleOnProfile: input.isVisibleOnProfile === true
   };
 
   console.log('[CreateTripStorage] 💾 Item to save - tripTitle:', item.tripTitle);
@@ -206,8 +208,8 @@ exports.handler = async (event) => {
       flight: item.flight,
       savedActivities: item.savedActivities,
       recentSearches: item.recentSearches || [],
-      deletedSavedPlaceIds: item.deletedSavedPlaceIds || []
-
+      deletedSavedPlaceIds: item.deletedSavedPlaceIds || [],
+      isVisibleOnProfile: item.isVisibleOnProfile || false
     };
   } catch (error) {
     console.error('DynamoDB put error:', error);

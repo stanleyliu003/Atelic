@@ -14,8 +14,8 @@ const normalizePhotoReferences = (photoRef) => {
 exports.handler = async (event) => {
   console.log('Received event:', JSON.stringify(event));
 
-  // Get userID from GraphQL arguments
-  const { userID } = event.arguments;
+  // Get userID and optional viewerUserID from GraphQL arguments
+  const { userID, viewerUserID } = event.arguments;
 
   // Validate required parameters
   if (!userID) {
@@ -23,6 +23,11 @@ exports.handler = async (event) => {
   }
 
   console.log('userID:', userID);
+  console.log('viewerUserID:', viewerUserID);
+
+  // Determine if this is the user viewing their own profile or someone else's
+  const isViewingOwnProfile = !viewerUserID || viewerUserID === userID;
+  console.log('isViewingOwnProfile:', isViewingOwnProfile);
 
   try {
     // 1. Query for trips owned by the user (existing logic)
@@ -32,7 +37,7 @@ exports.handler = async (event) => {
       ExpressionAttributeValues: {
         ':userID': userID
       },
-      ProjectionExpression: 'tripID, tripTitle, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators'
+      ProjectionExpression: 'tripID, tripTitle, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators, isVisibleOnProfile'
     };
 
     console.log('Querying owned trips:', JSON.stringify(ownedTripsParams));
@@ -48,7 +53,7 @@ exports.handler = async (event) => {
       ExpressionAttributeValues: {
         ':userID': userID
       },
-      ProjectionExpression: 'tripID, tripTitle, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators, userID'
+      ProjectionExpression: 'tripID, tripTitle, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators, userID, isVisibleOnProfile'
     };
 
     console.log('Scanning for collaborated trips with pagination...');
@@ -116,7 +121,7 @@ exports.handler = async (event) => {
     };
 
     // Process owned trips
-    const ownedTripSummaries = ownedTripsResult.Items.map(item => ({
+    let ownedTripSummaries = ownedTripsResult.Items.map(item => ({
       tripId: item.tripID,
       tripTitle: item.tripTitle || null,
       selectedCity: item.selectedCity,
@@ -125,8 +130,16 @@ exports.handler = async (event) => {
       startDate: item.startDate || null,
       endDate: item.endDate || null,
       tripLength: item.tripLength,
-      userRole: getUserRole(item, userID)
+      userRole: getUserRole(item, userID),
+      isVisibleOnProfile: item.isVisibleOnProfile || false
     }));
+
+    // If viewing someone else's profile, filter to only visible trips
+    if (!isViewingOwnProfile) {
+      console.log(`[Visibility Filter] Filtering trips for viewer. Before: ${ownedTripSummaries.length}`);
+      ownedTripSummaries = ownedTripSummaries.filter(trip => trip.isVisibleOnProfile === true);
+      console.log(`[Visibility Filter] After filtering: ${ownedTripSummaries.length} visible trips`);
+    }
 
     // Process collaborated trips - filter to only include trips where user is actually a collaborator
     console.log(`[Processing] Checking ${allCollaboratedItems.length} scanned trips for collaborations`);
@@ -146,7 +159,8 @@ exports.handler = async (event) => {
         startDate: item.startDate || null,
         endDate: item.endDate || null,
         tripLength: item.tripLength,
-        userRole: getUserRole(item, userID)
+        userRole: getUserRole(item, userID),
+        isVisibleOnProfile: item.isVisibleOnProfile || false
       }));
 
     console.log(`[Processing] Found ${collaboratedTripSummaries.length} collaborated trips`);

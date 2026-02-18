@@ -78,6 +78,7 @@ export default function FeedScreen() {
   const [isLoadingTrip, setIsLoadingTrip] = useState(false);
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [leavingTripId, setLeavingTripId] = useState(null);
+  const [togglingVisibilityTripId, setTogglingVisibilityTripId] = useState(null);
   const [carouselIndices, setCarouselIndices] = useState({});
   const [tripPhotoCounts, setTripPhotoCounts] = useState({});
 
@@ -751,6 +752,132 @@ export default function FeedScreen() {
     );
   };
 
+  const handleToggleVisibility = async (tripId, newVisibility) => {
+    try {
+      setTogglingVisibilityTripId(tripId);
+
+      // Load the full trip data
+      const fullTripData = await retrieveTripFromCloud(currentUserID, tripId);
+      if (!fullTripData) {
+        Alert.alert('Error', 'Failed to load trip data');
+        setTogglingVisibilityTripId(null);
+        return;
+      }
+
+      // Import createTrip mutation
+      const { createTrip } = await import('../../src/graphql/mutations');
+
+      // Sanitize activity for GraphQL input
+      const sanitizeActivity = (activity) => {
+        const { __typename, regular_opening_hours, reviews, ...sanitized } = activity || {};
+        let cleanOpeningHours = null;
+        if (regular_opening_hours) {
+          const { __typename: openingTypename, periods, ...openingHoursRest } = regular_opening_hours;
+          cleanOpeningHours = {
+            ...openingHoursRest,
+            ...(periods && {
+              periods: periods.map((period) => {
+                const { __typename: periodTypename, open, close, ...periodRest } = period;
+                const cleanPeriod = { ...periodRest };
+                if (open) {
+                  const { __typename: openTypename, ...openRest } = open;
+                  cleanPeriod.open = openRest;
+                }
+                if (close) {
+                  const { __typename: closeTypename, ...closeRest } = close;
+                  cleanPeriod.close = closeRest;
+                }
+                return cleanPeriod;
+              })
+            })
+          };
+        }
+        let cleanReviews = null;
+        if (reviews && Array.isArray(reviews)) {
+          cleanReviews = reviews.map((review) => {
+            const { __typename: reviewTypename, ...reviewRest } = review;
+            return reviewRest;
+          });
+        }
+        return {
+          ...sanitized,
+          ...(cleanOpeningHours && { regular_opening_hours: cleanOpeningHours }),
+          ...(cleanReviews && { reviews: cleanReviews })
+        };
+      };
+
+      // Sanitize days
+      const sanitizedDays = (fullTripData.days || []).map(day => ({
+        dayNumber: day.dayNumber,
+        activities: (day.activities || []).map(sanitizeActivity),
+        encodedPolyline: day.encodedPolyline || null,
+        travelModes: day.travelModes || null,
+      }));
+
+      // Sanitize wishlist
+      const sanitizedWishlist = (fullTripData.wishlist || []).map(sanitizeActivity);
+
+      // Sanitize collaborators
+      const sanitizedCollaborators = (fullTripData.collaborators || []).map(c => ({
+        email: c.email,
+        fullName: c.fullName,
+        username: c.username,
+        userID: c.userID,
+        role: c.role,
+        addedBy: c.addedBy,
+      }));
+
+      // Find owner's userID
+      const owner = sanitizedCollaborators.find(c => c.role === 'owner');
+      const ownerUserID = owner?.userID || currentUserID;
+
+      // Prepare trip data with updated visibility
+      const tripData = {
+        tripId: tripId,
+        userID: ownerUserID,
+        tripTitle: fullTripData.tripTitle || null,
+        days: sanitizedDays,
+        wishlist: sanitizedWishlist,
+        tripLength: fullTripData.tripLength,
+        selectedCity: fullTripData.selectedCity,
+        tripPhotoReference: Array.isArray(fullTripData.tripPhotoReference)
+          ? fullTripData.tripPhotoReference
+          : (fullTripData.tripPhotoReference ? [String(fullTripData.tripPhotoReference)] : []),
+        createdAt: fullTripData.createdAt,
+        startDate: fullTripData.startDate || null,
+        endDate: fullTripData.endDate || null,
+        collaborators: sanitizedCollaborators,
+        updatedAt: new Date().toISOString(),
+        lastUpdatedBy: username,
+        isVisibleOnProfile: newVisibility,
+      };
+
+      // Save to database
+      await API.graphql({
+        query: createTrip,
+        variables: { input: tripData }
+      });
+
+      // Update local state
+      setUserTrips(prev => prev.map(trip =>
+        trip.tripId === tripId
+          ? { ...trip, isVisibleOnProfile: newVisibility }
+          : trip
+      ));
+      setOwnedTrips(prev => prev.map(trip =>
+        trip.tripId === tripId
+          ? { ...trip, isVisibleOnProfile: newVisibility }
+          : trip
+      ));
+
+    } catch (error) {
+      console.error('[Feed] Error toggling visibility:', error);
+      Alert.alert('Error', 'Failed to update trip visibility. Please try again.');
+    } finally {
+      setTogglingVisibilityTripId(null);
+    }
+  };
+
   const handleInviteCollaborators = async (tripId) => {
     try {
       setIsLoadingTripData(true);
@@ -1411,6 +1538,36 @@ export default function FeedScreen() {
                   </>
                 )}
               </TouchableOpacity>
+
+              {/* Visibility Toggle - only for owners */}
+              {(() => {
+                const currentTrip = userTrips.find(trip => trip.tripId === menuVisible);
+                const isOwner = currentTrip?.userRole === 'owner';
+                if (!isOwner) return null;
+
+                const isToggling = togglingVisibilityTripId === menuVisible;
+
+                return (
+                  <View style={styles.visibilityMenuItem}>
+                    <Ionicons name="eye-outline" size={30} color={Colors.PRIMARY} />
+                    <View style={styles.visibilityTextContainer}>
+                      <Text style={styles.menuItemText}>Visible on Profile</Text>
+                      <Text style={styles.visibilitySubtext}>Let friends see this trip</Text>
+                    </View>
+                    {isToggling ? (
+                      <ActivityIndicator size="small" color={Colors.PRIMARY} />
+                    ) : (
+                      <Switch
+                        value={currentTrip?.isVisibleOnProfile === true}
+                        onValueChange={(newValue) => handleToggleVisibility(menuVisible, newValue)}
+                        trackColor={{ false: '#D1D5DB', true: '#FFA53F' }}
+                        thumbColor={currentTrip?.isVisibleOnProfile ? '#FFFFFF' : '#f4f3f4'}
+                        ios_backgroundColor="#D1D5DB"
+                      />
+                    )}
+                  </View>
+                );
+              })()}
 
               {(() => {
                 const currentTrip = userTrips.find(trip => trip.tripId === menuVisible);
@@ -2356,6 +2513,25 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit-medium',
     fontSize: 20,
     marginLeft: 12,
+  },
+  visibilityMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    marginVertical: 4,
+  },
+  visibilityTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  visibilitySubtext: {
+    fontFamily: 'outfit',
+    fontSize: 13,
+    color: Colors.GRAY,
+    marginTop: 2,
   },
   settingsModal: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',

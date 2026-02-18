@@ -45,6 +45,7 @@ export default function UserProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [currentUsername, setCurrentUsername] = useState('');
+  const [currentUserID, setCurrentUserID] = useState('');
   const [isOpeningTrip, setIsOpeningTrip] = useState(false);
   const [loadingTripId, setLoadingTripId] = useState(null);
 
@@ -149,7 +150,9 @@ export default function UserProfileScreen() {
       // Get current user
       const user = await Auth.currentAuthenticatedUser();
       const currentUserName = user.attributes?.preferred_username || '';
+      const viewerUserID = user.username; // Cognito ID for visibility filtering
       setCurrentUsername(currentUserName);
+      setCurrentUserID(viewerUserID);
 
       // Load target user's profile
       let profile = null;
@@ -277,9 +280,9 @@ export default function UserProfileScreen() {
 
       setCanViewTrips(canView);
 
-      // Load trips if allowed
+      // Load trips if allowed - pass viewerUserID so backend filters by visibility
       if (canView && profile.userID) {
-        await loadUserTrips(profile.userID);
+        await loadUserTrips(profile.userID, viewerUserID);
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -289,10 +292,11 @@ export default function UserProfileScreen() {
     }
   }, [username]);
 
-  const loadUserTrips = async (userID) => {
+  const loadUserTrips = async (userID, viewerUserID = null) => {
     setIsLoadingTrips(true);
     try {
-      const tripSummaries = await listUserTripsFromCloud(userID);
+      // Pass viewerUserID so backend can filter to only visible trips
+      const tripSummaries = await listUserTripsFromCloud(userID, viewerUserID);
       const allTrips = tripSummaries || [];
 
       // Separate owned and shared trips
@@ -427,9 +431,9 @@ export default function UserProfileScreen() {
             followersCount: (prevStats.followersCount || 0) + 1
           }));
 
-          // Load trips now that we're following
+          // Load trips now that we're following - pass currentUserID for visibility filtering
           if (userProfile?.userID) {
-            await loadUserTrips(userProfile.userID);
+            await loadUserTrips(userProfile.userID, currentUserID);
           }
         } else if (status === 'requested' || status === 'pending') {
           console.log('[UserProfile] Follow request sent');

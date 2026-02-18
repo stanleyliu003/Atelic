@@ -80,6 +80,9 @@ export const CreateTripProvider = ({ children }) => {
     // Stores savedPlaceIds that user has explicitly deleted from this trip
     const [deletedSavedPlaceIds, setDeletedSavedPlaceIds] = useState(new Set());
 
+    // Trip visibility on profile - whether friends can see this trip
+    const [isVisibleOnProfile, setIsVisibleOnProfile] = useState(false);
+
     // Permission helpers
     const canEdit = () => ['owner','editor'].includes(currentUserRole);
     const canInviteEditors = () => currentUserRole === 'owner';
@@ -402,6 +405,9 @@ export const CreateTripProvider = ({ children }) => {
                 // Don't call setDeletedSavedPlaceIds - keep current state
             }
 
+            // Restore trip visibility setting
+            setIsVisibleOnProfile(trip.isVisibleOnProfile === true);
+
             console.log('[CreateTripContext] Restored trip - createdAt:', trip.createdAt, 'version:', trip.version || 1);
         });
     };
@@ -485,6 +491,7 @@ export const CreateTripProvider = ({ children }) => {
         setSavedActivities(null);
         setRecentSearches([]);
         setDeletedSavedPlaceIds(new Set());
+        setIsVisibleOnProfile(false);
         // Note: Don't reset selectedCity and tripLength during create trip flow
         // setSelectedCity('');
         // setTripLength(null);
@@ -535,6 +542,7 @@ export const CreateTripProvider = ({ children }) => {
         setSavedActivities(null);
         setRecentSearches([]);
         setDeletedSavedPlaceIds(new Set());
+        setIsVisibleOnProfile(false);
     };
 
     // Load trip from cloud storage
@@ -970,6 +978,9 @@ export const CreateTripProvider = ({ children }) => {
         removeFromDeletedSavedPlaces,
         clearDeletedSavedPlaces,
         isDeletedSavedPlace,
+        // Trip visibility on profile
+        isVisibleOnProfile,
+        setIsVisibleOnProfile,
     };
 
     return (

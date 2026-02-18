@@ -112,6 +112,7 @@ export default function TripViewMain() {
         addToDeletedSavedPlaces,
         deletedSavedPlaceIds,
         isDeletedSavedPlace,
+        isVisibleOnProfile,
     } = useCreateTrip();
     // Primary tab state for Overview/Itinerary toggle
     type PrimaryTab = 'overview' | 'itinerary';
@@ -407,6 +408,7 @@ export default function TripViewMain() {
         startDate,
         endDate,
         tripTitle,
+        isVisibleOnProfile,
     });
 
     // Keep latestTripDataRef in sync with the latest values
@@ -425,8 +427,9 @@ export default function TripViewMain() {
             startDate,
             endDate,
             tripTitle,
+            isVisibleOnProfile,
         };
-    }, [activities, dayActivities, dayPolylines, dayTravelModes, tripLength, selectedCity, tripPhotoReference, createdAt, recentSearches, deletedSavedPlaceIds, tripTitle, startDate, endDate]);
+    }, [activities, dayActivities, dayPolylines, dayTravelModes, tripLength, selectedCity, tripPhotoReference, createdAt, recentSearches, deletedSavedPlaceIds, tripTitle, startDate, endDate, isVisibleOnProfile]);
 
     // Initialize days based on tripLength (only for new trips, not existing ones)
     const [hasInitialized, setHasInitialized] = useState(false);
@@ -3173,6 +3176,7 @@ export default function TripViewMain() {
                 endDate: latestEndDate,
                 tripTitle: latestTripTitle,
                 tripLength: latestTripLength,
+                isVisibleOnProfile: latestIsVisibleOnProfile,
             } = latestTripDataRef.current;
 
             // Gather days and their activities (sanitize activities for GraphQL input)
@@ -3242,6 +3246,7 @@ export default function TripViewMain() {
                 cityCategories: cleanCityCategories || null, // Save city categories for restoration
                 recentSearches: cleanRecentSearches,
                 deletedSavedPlaceIds: Array.from(latestDeletedSavedPlaceIds), // Convert Set to Array for GraphQL
+                isVisibleOnProfile: latestIsVisibleOnProfile === true,
             };
 
             // Get current user information

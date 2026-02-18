@@ -305,8 +305,8 @@ export const searchActivities = /* GraphQL */ `
   }
 `;
 export const getTripIDs = /* GraphQL */ `
-  query GetTripIDs($userID: String!) {
-    getTripIDs(userID: $userID) {
+  query GetTripIDs($userID: String!, $viewerUserID: String) {
+    getTripIDs(userID: $userID, viewerUserID: $viewerUserID) {
       tripId
       tripTitle
       selectedCity
@@ -316,6 +316,7 @@ export const getTripIDs = /* GraphQL */ `
       endDate
       tripLength
       userRole
+      isVisibleOnProfile
       __typename
     }
   }

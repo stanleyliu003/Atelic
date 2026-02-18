@@ -60,17 +60,22 @@ export const analyzeWishlistDirect = async (wishlistText, selectedCity) => {
 
 /**
  * List all trips for a user (summary data only)
+ * @param {string} userID - The user whose trips to list
+ * @param {string} viewerUserID - Optional. The user viewing the profile. If different from userID, only visible trips are returned.
  */
-export const listUserTripsFromCloud = async (userID) => {
+export const listUserTripsFromCloud = async (userID, viewerUserID = null) => {
     try {
         console.log('[Lambda Service] Listing user trips from cloud storage...');
-        console.log('[Lambda Service] UserID:', userID);
+        console.log('[Lambda Service] UserID:', userID, 'ViewerUserID:', viewerUserID);
+
+        const variables = { userID };
+        if (viewerUserID) {
+            variables.viewerUserID = viewerUserID;
+        }
 
         const result = await API.graphql({
             query: getTripIDsQuery,
-            variables: {
-                userID: userID
-            },
+            variables,
             authMode: 'API_KEY',
             // Force network fetch to bypass AppSync cache and get fresh tripTitle data
             fetchPolicy: 'network-only'

@@ -45,7 +45,9 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
         dayPolylines,
         tripPhotoReference,
         createdAt,
-        recentSearches
+        recentSearches,
+        isVisibleOnProfile,
+        setIsVisibleOnProfile
     } = useCreateTrip();
     const googlePlacesRef = useRef(null);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -370,7 +372,8 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                 collaborators: collaboratorsToSave,
                 version: 1,
                 updatedAt: new Date().toISOString(),
-                lastUpdatedBy: currentUserEmail
+                lastUpdatedBy: currentUserEmail,
+                isVisibleOnProfile: isVisibleOnProfile === true
             };
 
             // Save to database
@@ -806,6 +809,27 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                             </View>
                         </Modal>
 
+                        {/* Trip Visibility Toggle - shown after trip length is selected */}
+                        {tripLength && (
+                            <View style={styles.visibilitySection}>
+                                <View style={styles.visibilityToggleContainer}>
+                                    <View style={styles.visibilityTextContainer}>
+                                        <Text style={styles.visibilityTitle}>Visible on profile</Text>
+                                        <Text style={styles.visibilityDescription}>Let friends see this trip on your profile</Text>
+                                    </View>
+                                    <Switch
+                                        value={isVisibleOnProfile}
+                                        onValueChange={(value) => {
+                                            setIsVisibleOnProfile(value);
+                                        }}
+                                        trackColor={{ false: '#D1D5DB', true: '#FFA53F' }}
+                                        thumbColor={isVisibleOnProfile ? '#FFFFFF' : '#f4f3f4'}
+                                        ios_backgroundColor="#D1D5DB"
+                                    />
+                                </View>
+                            </View>
+                        )}
+
                         {/* Invite Tripmate Button - shown after trip length is selected */}
                         {tripLength && (
                             <View style={{ marginTop: 15 }}>
@@ -1238,5 +1262,37 @@ const styles = StyleSheet.create({
     },
     tripmateRemoveButton: {
         padding: 2,
+    },
+    visibilitySection: {
+        marginTop: 20,
+    },
+    visibilityToggleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 15,
+        borderRadius: 20,
+        backgroundColor: 'white',
+        minHeight: 55,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    visibilityTextContainer: {
+        flex: 1,
+        marginRight: 10,
+    },
+    visibilityTitle: {
+        fontFamily: 'outfit',
+        fontSize: 16,
+        color: '#1a1a1a',
+    },
+    visibilityDescription: {
+        fontFamily: 'outfit',
+        fontSize: 13,
+        color: '#999999',
+        marginTop: 2,
     },
 })
