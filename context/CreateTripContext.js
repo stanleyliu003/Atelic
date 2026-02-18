@@ -43,8 +43,6 @@ export const CreateTripProvider = ({ children }) => {
     const [selectedCityLocation, setSelectedCityLocation] = useState(null); // { lat, lng } | null
     const [tripLength, setTripLength] = useState(null);
     const [cityCategories, setCityCategories] = useState(null);
-    const [isLoadingCityCategories, setIsLoadingCityCategories] = useState(false);
-    const [cityCategoriesError, setCityCategoriesError] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [tripPhotoReference, setTripPhotoReference] = useState([]);
 
@@ -910,10 +908,6 @@ export const CreateTripProvider = ({ children }) => {
         setTripLength: setTripLengthWithLog,
         cityCategories,
         setCityCategories,
-        isLoadingCityCategories,
-        setIsLoadingCityCategories,
-        cityCategoriesError,
-        setCityCategoriesError,
         selectedCategories,
         setSelectedCategories,
         categoryActivities,

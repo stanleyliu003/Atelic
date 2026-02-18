@@ -27,10 +27,6 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
         clearTripCreationCache,
         cityCategories,
         setCityCategories,
-        isLoadingCityCategories,
-        setIsLoadingCityCategories,
-        cityCategoriesError,
-        setCityCategoriesError,
         tripLength,
         setTripLength,
         setStartDate: setContextStartDate,
@@ -200,29 +196,20 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
 
     // Fetch city categories independently - this can be slow due to Gemini
     const fetchCityCategories = async (cityName) => {
-        setIsLoadingCityCategories(true);
-        setCityCategoriesError(false);
         try {
             const categoriesResult = await API.graphql({
                 query: getCityCategories,
                 variables: { selectedCity: cityName }
             });
-
+            
             const categories = categoriesResult.data.getCityCategories.categories;
-            if (categories && Array.isArray(categories) && categories.length > 0) {
-                setCityCategories(categories);
-                setCityCategoriesError(false);
-            } else {
-                console.error('No categories returned from API');
-                setCityCategories(null);
-                setCityCategoriesError(true);
-            }
+            setCityCategories(categories);
+            
+            // No longer saving to cache - fields should always start empty
+            
         } catch (error) {
             console.error('Error fetching city categories:', error);
             setCityCategories(null);
-            setCityCategoriesError(true);
-        } finally {
-            setIsLoadingCityCategories(false);
         }
     };
 
