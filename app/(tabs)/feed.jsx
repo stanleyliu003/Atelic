@@ -1685,7 +1685,7 @@ export default function FeedScreen() {
               <View style={styles.settingsMenuItem}>
                 <Ionicons name="eye-off-outline" size={24} color={Colors.PRIMARY} />
                 <View style={styles.settingsMenuItemTextContainer}>
-                  <Text style={styles.settingsMenuItemText}>Private Account</Text>
+                  <Text style={styles.settingsMenuItemTitle}>Private Account</Text>
                   <Text style={styles.settingsMenuItemSubtext}>
                     Require approval for new followers
                   </Text>
@@ -2546,7 +2546,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     flex: 0.65,
     paddingTop: 8,
-    paddingBottom: 40,
+    paddingBottom: 20,
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
@@ -2577,18 +2577,23 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     marginVertical: 4,
-    justifyContent: 'space-between',
   },
   settingsMenuItemText: {
     fontFamily: 'outfit-medium',
     fontSize: 18,
+    color: Colors.PRIMARY,
     flex: 1,
     marginLeft: 12,
-    color: Colors.PRIMARY,
   },
   settingsMenuItemTextContainer: {
     flex: 1,
     marginLeft: 12,
+    marginRight: 8,
+  },
+  settingsMenuItemTitle: {
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
+    color: Colors.PRIMARY,
   },
   settingsMenuItemSubtext: {
     fontFamily: 'outfit',

@@ -130,7 +130,7 @@ exports.handler = async (event) => {
 };
 
 /**
- * Get user profile by username (case-insensitive lookup)
+ * Get user profile by username (case-insensitive lookup with pagination)
  */
 async function getProfileByUsername(username) {
   try {
@@ -144,20 +144,36 @@ async function getProfileByUsername(username) {
       return result.Item;
     }
 
-    // If not found, scan and filter case-insensitively in JavaScript
-    // Note: DynamoDB's contains() is case-sensitive, so we scan and filter locally
-    const scanResult = await docClient.send(new ScanCommand({
-      TableName: USER_PROFILES_TABLE,
-      ProjectionExpression: 'username, userID',
-      Limit: 500
-    }));
+    // If not found, scan with pagination and filter case-insensitively
+    const usernameLower = username.toLowerCase();
+    let lastEvaluatedKey = undefined;
 
-    // Find case-insensitive match
-    const match = scanResult.Items?.find(
-      item => item.username?.toLowerCase() === username.toLowerCase()
-    );
+    do {
+      const scanParams = {
+        TableName: USER_PROFILES_TABLE,
+        ProjectionExpression: 'username, userID',
+        Limit: 500
+      };
 
-    return match || null;
+      if (lastEvaluatedKey) {
+        scanParams.ExclusiveStartKey = lastEvaluatedKey;
+      }
+
+      const scanResult = await docClient.send(new ScanCommand(scanParams));
+
+      // Find case-insensitive match
+      const match = scanResult.Items?.find(
+        item => item.username?.toLowerCase() === usernameLower
+      );
+
+      if (match) {
+        return match;
+      }
+
+      lastEvaluatedKey = scanResult.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    return null;
   } catch (error) {
     console.error('Error getting profile:', error);
     return null;

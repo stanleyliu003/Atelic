@@ -41,23 +41,40 @@ exports.handler = async (event) => {
 
 async function searchUsers(searchTerm) {
   const searchLower = searchTerm.toLowerCase();
+  const filteredUsers = [];
+  let lastEvaluatedKey = undefined;
 
-  // Scan UserProfilesStorage - retrieve all users (no filter on DynamoDB side)
-  // We'll do case-insensitive filtering in-memory since DynamoDB's contains() is case-sensitive
-  const scanParams = {
-    TableName: USER_PROFILES_TABLE,
-    ProjectionExpression: 'userID, email, fullName, username, isPrivateAccount, profilePhotoUrl, bio',
-  };
+  // Scan UserProfilesStorage with pagination
+  // We do case-insensitive filtering in-memory since DynamoDB's contains() is case-sensitive
+  do {
+    const scanParams = {
+      TableName: USER_PROFILES_TABLE,
+      ProjectionExpression: 'userID, email, fullName, username, isPrivateAccount, profilePhotoUrl, bio',
+      Limit: 500
+    };
 
-  const result = await docClient.send(new ScanCommand(scanParams));
-  const allUsers = result.Items || [];
+    if (lastEvaluatedKey) {
+      scanParams.ExclusiveStartKey = lastEvaluatedKey;
+    }
 
-  // Filter case-insensitively
-  const filteredUsers = allUsers.filter(user => {
-    const usernameLower = (user.username || '').toLowerCase();
-    const fullNameLower = (user.fullName || '').toLowerCase();
-    return usernameLower.includes(searchLower) || fullNameLower.includes(searchLower);
-  });
+    const result = await docClient.send(new ScanCommand(scanParams));
+    const items = result.Items || [];
+
+    // Filter case-insensitively and add to results
+    for (const user of items) {
+      const usernameLower = (user.username || '').toLowerCase();
+      const fullNameLower = (user.fullName || '').toLowerCase();
+      if (usernameLower.includes(searchLower) || fullNameLower.includes(searchLower)) {
+        filteredUsers.push(user);
+        // Stop early if we have enough results
+        if (filteredUsers.length >= 50) {
+          return filteredUsers.slice(0, 50);
+        }
+      }
+    }
+
+    lastEvaluatedKey = result.LastEvaluatedKey;
+  } while (lastEvaluatedKey);
 
   // Limit to 50 results
   return filteredUsers.slice(0, 50);
@@ -121,24 +138,39 @@ async function checkFollowRelationship(followerUsername, followingUsername) {
       return true;
     }
 
-    // If exact match fails, try case-insensitive search
+    // If exact match fails, try case-insensitive search with pagination
     // This handles legacy records that may have case mismatches
     const followerLower = followerUsername.toLowerCase();
     const followingLower = followingUsername.toLowerCase();
+    let lastEvaluatedKey = undefined;
 
-    const scanResult = await docClient.send(new ScanCommand({
-      TableName: USER_FOLLOWS_TABLE,
-      FilterExpression: 'attribute_exists(followerUsername)',
-      Limit: 500
-    }));
+    do {
+      const scanParams = {
+        TableName: USER_FOLLOWS_TABLE,
+        FilterExpression: 'attribute_exists(followerUsername)',
+        Limit: 500
+      };
 
-    const match = scanResult.Items?.find(item =>
-      item.followerUsername?.toLowerCase() === followerLower &&
-      item.followingUsername?.toLowerCase() === followingLower &&
-      item.status === 'active'
-    );
+      if (lastEvaluatedKey) {
+        scanParams.ExclusiveStartKey = lastEvaluatedKey;
+      }
 
-    return !!match;
+      const scanResult = await docClient.send(new ScanCommand(scanParams));
+
+      const match = scanResult.Items?.find(item =>
+        item.followerUsername?.toLowerCase() === followerLower &&
+        item.followingUsername?.toLowerCase() === followingLower &&
+        item.status === 'active'
+      );
+
+      if (match) {
+        return true;
+      }
+
+      lastEvaluatedKey = scanResult.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    return false;
   } catch (error) {
     console.error('[checkFollowRelationship] Error:', error);
     return false;

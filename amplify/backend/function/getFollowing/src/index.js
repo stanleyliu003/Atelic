@@ -56,20 +56,33 @@ exports.handler = async (event) => {
 
     let result = await docClient.send(new QueryCommand(params));
 
-    // If no results, try case-insensitive scan
+    // If no results, try case-insensitive scan with pagination
     if (!result.Items || result.Items.length === 0) {
       console.log('No exact match found, trying case-insensitive search...');
       const usernameLower = username.toLowerCase();
+      const matchingRecords = [];
+      let lastEvaluatedKey = undefined;
 
-      // Scan for all follow records and filter case-insensitively
-      const scanResult = await docClient.send(new ScanCommand({
-        TableName: USER_FOLLOWS_TABLE,
-        Limit: 500
-      }));
+      // Scan for all follow records with pagination and filter case-insensitively
+      do {
+        const scanParams = {
+          TableName: USER_FOLLOWS_TABLE,
+          Limit: 500
+        };
 
-      const matchingRecords = scanResult.Items?.filter(
-        item => item.followerUsername?.toLowerCase() === usernameLower
-      ) || [];
+        if (lastEvaluatedKey) {
+          scanParams.ExclusiveStartKey = lastEvaluatedKey;
+        }
+
+        const scanResult = await docClient.send(new ScanCommand(scanParams));
+
+        const batchMatches = scanResult.Items?.filter(
+          item => item.followerUsername?.toLowerCase() === usernameLower
+        ) || [];
+
+        matchingRecords.push(...batchMatches);
+        lastEvaluatedKey = scanResult.LastEvaluatedKey;
+      } while (lastEvaluatedKey);
 
       console.log(`Found ${matchingRecords.length} following (case-insensitive)`);
 
