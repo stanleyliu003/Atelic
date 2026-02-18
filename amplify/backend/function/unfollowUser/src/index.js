@@ -43,99 +43,80 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Get the actual username from the database (handles case sensitivity)
-    const followerProfile = await getProfileByUsername(followerUsername);
-    const targetProfile = await getProfileByUsername(targetUsername);
+    console.log('Unfollow request:', { followerUsername, targetUsername });
 
-    // Use the exact usernames from the database
-    const actualFollowerUsername = followerProfile?.username || followerUsername;
-    const actualTargetUsername = targetProfile?.username || targetUsername;
+    // ALWAYS use case-insensitive search to find the follow record
+    // This is the most reliable approach to handle any case mismatches
+    const followRecord = await findFollowRelationship(followerUsername, targetUsername);
 
-    console.log('Username resolution:', {
-      input: { followerUsername, targetUsername },
-      resolved: { actualFollowerUsername, actualTargetUsername }
-    });
+    if (!followRecord) {
+      // No follow record found - check for pending request
+      const pendingRequest = await findPendingRequest(followerUsername, targetUsername);
 
-    // 1. Check if there's a pending follow request first
-    const pendingRequest = await checkPendingRequest(actualTargetUsername, actualFollowerUsername);
-    if (pendingRequest) {
-      // Delete the pending request
-      await docClient.send(new DeleteCommand({
-        TableName: FOLLOW_REQUESTS_TABLE,
-        Key: {
-          targetUsername: actualTargetUsername,
-          requesterUsername: actualFollowerUsername
-        }
-      }));
+      if (pendingRequest) {
+        // Delete the pending request using the actual keys from the found record
+        await docClient.send(new DeleteCommand({
+          TableName: FOLLOW_REQUESTS_TABLE,
+          Key: {
+            targetUsername: pendingRequest.targetUsername,
+            requesterUsername: pendingRequest.requesterUsername
+          }
+        }));
 
-      console.log(`Successfully canceled follow request: ${actualFollowerUsername} -> ${actualTargetUsername}`);
+        console.log(`Successfully canceled follow request: ${pendingRequest.requesterUsername} -> ${pendingRequest.targetUsername}`);
 
-      return {
-        success: true,
-        status: 'request_canceled',
-        message: 'Follow request canceled'
-      };
-    }
-
-    // 2. Check if follow relationship exists
-    const existingFollow = await checkExistingFollow(actualFollowerUsername, actualTargetUsername);
-
-    if (!existingFollow) {
-      // Try case-insensitive search as fallback
-      console.log('No exact match found, trying case-insensitive search...');
-      const followRecord = await findFollowRelationship(followerUsername, targetUsername);
-
-      if (!followRecord) {
         return {
           success: true,
-          status: 'not_following',
-          message: 'Not following this user'
+          status: 'request_canceled',
+          message: 'Follow request canceled'
         };
       }
 
-      // Use the keys from the found record
-      console.log('Found follow record with keys:', {
-        followerUsername: followRecord.followerUsername,
-        followingUsername: followRecord.followingUsername
-      });
-
-      // Delete using the actual keys from the record
-      await docClient.send(new DeleteCommand({
-        TableName: USER_FOLLOWS_TABLE,
-        Key: {
-          followerUsername: followRecord.followerUsername,
-          followingUsername: followRecord.followingUsername
-        }
-      }));
-
-      // Decrement counts using the actual usernames
-      await Promise.all([
-        updateFollowingCount(followRecord.followerUsername, -1),
-        updateFollowersCount(followRecord.followingUsername, -1)
-      ]);
-
-      console.log(`Successfully removed follow (case-insensitive): ${followRecord.followerUsername} -> ${followRecord.followingUsername}`);
-
+      console.log('No follow relationship or pending request found');
       return {
         success: true,
-        status: 'unfollowed',
-        message: 'Successfully unfollowed user'
+        status: 'not_following',
+        message: 'Not following this user'
       };
     }
 
-    // 2. Delete follow relationship
+    // Found the follow record - delete using the EXACT keys from the record
+    console.log('Found follow record, deleting:', {
+      followerUsername: followRecord.followerUsername,
+      followingUsername: followRecord.followingUsername
+    });
+
     await docClient.send(new DeleteCommand({
       TableName: USER_FOLLOWS_TABLE,
-      Key: { followerUsername: actualFollowerUsername, followingUsername: actualTargetUsername }
+      Key: {
+        followerUsername: followRecord.followerUsername,
+        followingUsername: followRecord.followingUsername
+      }
     }));
 
-    // 3. Decrement counts
+    // Verify deletion
+    const verifyResult = await docClient.send(new GetCommand({
+      TableName: USER_FOLLOWS_TABLE,
+      Key: {
+        followerUsername: followRecord.followerUsername,
+        followingUsername: followRecord.followingUsername
+      }
+    }));
+
+    if (verifyResult.Item) {
+      console.error('DELETION FAILED - record still exists after delete!');
+      throw new Error('Failed to delete follow record');
+    }
+
+    console.log('Deletion verified - record no longer exists');
+
+    // Decrement counts using the actual usernames from the record
     await Promise.all([
-      updateFollowingCount(actualFollowerUsername, -1),
-      updateFollowersCount(actualTargetUsername, -1)
+      updateFollowingCount(followRecord.followerUsername, -1),
+      updateFollowersCount(followRecord.followingUsername, -1)
     ]);
 
-    console.log(`Successfully removed follow: ${actualFollowerUsername} -> ${actualTargetUsername}`);
+    console.log(`Successfully removed follow: ${followRecord.followerUsername} -> ${followRecord.followingUsername}`);
 
     return {
       success: true,
@@ -163,13 +144,12 @@ async function getProfileByUsername(username) {
       return result.Item;
     }
 
-    // If not found, try case-insensitive scan
+    // If not found, scan and filter case-insensitively in JavaScript
+    // Note: DynamoDB's contains() is case-sensitive, so we scan and filter locally
     const scanResult = await docClient.send(new ScanCommand({
       TableName: USER_PROFILES_TABLE,
-      FilterExpression: 'contains(#u, :search)',
-      ExpressionAttributeNames: { '#u': 'username' },
-      ExpressionAttributeValues: { ':search': username.toLowerCase() },
-      Limit: 10
+      ProjectionExpression: 'username, userID',
+      Limit: 500
     }));
 
     // Find case-insensitive match
@@ -190,18 +170,37 @@ async function getProfileByUsername(username) {
 async function findFollowRelationship(followerUsername, targetUsername) {
   try {
     // Scan for follow relationships matching case-insensitively
-    const result = await docClient.send(new ScanCommand({
-      TableName: USER_FOLLOWS_TABLE,
-      Limit: 100
-    }));
+    // Using pagination to handle large tables
+    let lastEvaluatedKey = undefined;
+    const followerLower = followerUsername.toLowerCase();
+    const targetLower = targetUsername.toLowerCase();
 
-    // Find case-insensitive match
-    const match = result.Items?.find(item =>
-      item.followerUsername?.toLowerCase() === followerUsername.toLowerCase() &&
-      item.followingUsername?.toLowerCase() === targetUsername.toLowerCase()
-    );
+    do {
+      const scanParams = {
+        TableName: USER_FOLLOWS_TABLE,
+        Limit: 500
+      };
 
-    return match || null;
+      if (lastEvaluatedKey) {
+        scanParams.ExclusiveStartKey = lastEvaluatedKey;
+      }
+
+      const result = await docClient.send(new ScanCommand(scanParams));
+
+      // Find case-insensitive match
+      const match = result.Items?.find(item =>
+        item.followerUsername?.toLowerCase() === followerLower &&
+        item.followingUsername?.toLowerCase() === targetLower
+      );
+
+      if (match) {
+        return match;
+      }
+
+      lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    return null;
   } catch (error) {
     console.error('Error finding follow relationship:', error);
     return null;
@@ -209,18 +208,44 @@ async function findFollowRelationship(followerUsername, targetUsername) {
 }
 
 /**
- * Check if a pending follow request exists
+ * Find pending follow request with case-insensitive search
  */
-async function checkPendingRequest(targetUsername, requesterUsername) {
+async function findPendingRequest(requesterUsername, targetUsername) {
   try {
-    const result = await docClient.send(new GetCommand({
-      TableName: FOLLOW_REQUESTS_TABLE,
-      Key: { targetUsername, requesterUsername }
-    }));
+    const requesterLower = requesterUsername.toLowerCase();
+    const targetLower = targetUsername.toLowerCase();
 
-    return result.Item;
+    // Scan for pending requests matching case-insensitively
+    let lastEvaluatedKey = undefined;
+
+    do {
+      const scanParams = {
+        TableName: FOLLOW_REQUESTS_TABLE,
+        Limit: 500
+      };
+
+      if (lastEvaluatedKey) {
+        scanParams.ExclusiveStartKey = lastEvaluatedKey;
+      }
+
+      const result = await docClient.send(new ScanCommand(scanParams));
+
+      const match = result.Items?.find(item =>
+        item.requesterUsername?.toLowerCase() === requesterLower &&
+        item.targetUsername?.toLowerCase() === targetLower &&
+        item.status === 'pending'
+      );
+
+      if (match) {
+        return match;
+      }
+
+      lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    return null;
   } catch (error) {
-    console.error('Error checking pending request:', error);
+    console.error('Error finding pending request:', error);
     return null;
   }
 }

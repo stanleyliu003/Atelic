@@ -35,13 +35,70 @@ export default function ExploreScreen() {
     loadCurrentUser();
   }, []);
 
+  // Track if this is the initial mount to avoid double-fetching
+  const isInitialMount = useRef(true);
+
   // Refresh search results when returning to this screen
   useFocusEffect(
     useCallback(() => {
-      if (searchQuery.trim().length >= 1 && currentUsername) {
-        handleSearch(searchQuery);
+      // Skip on initial mount (useEffect with debounce will handle it)
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
       }
-    }, [searchQuery, currentUsername, handleSearch])
+
+      console.log('[Explore] Screen focused, refreshing search...', {
+        searchQuery: searchQuery.trim(),
+        currentUsername
+      });
+
+      // Re-run search to get fresh follow status from backend
+      if (searchQuery.trim().length >= 1 && currentUsername) {
+        // Inline search to avoid dependency issues
+        const refreshSearch = async () => {
+          setIsSearching(true);
+          try {
+            const response = await API.graphql({
+              query: `
+                query SearchUsersPublic($searchTerm: String!, $currentUsername: String!) {
+                  searchUsersPublic(searchTerm: $searchTerm, currentUsername: $currentUsername) {
+                    userID
+                    email
+                    fullName
+                    username
+                    isPrivate
+                    isFollowing
+                    isFollower
+                    hasPendingRequest
+                    profilePhotoUrl
+                    bio
+                  }
+                }
+              `,
+              variables: {
+                searchTerm: searchQuery,
+                currentUsername: currentUsername,
+              },
+            });
+
+            const results = (response.data.searchUsersPublic || []).filter(item => item != null);
+            console.log('[Explore] Refreshed search results:', results.length, 'users');
+            setSearchResults(results);
+          } catch (error) {
+            if (error?.data?.searchUsersPublic) {
+              const results = error.data.searchUsersPublic.filter(item => item != null);
+              setSearchResults(results);
+            } else {
+              console.error('[Explore] Error refreshing search:', error);
+            }
+          } finally {
+            setIsSearching(false);
+          }
+        };
+
+        refreshSearch();
+      }
+    }, [searchQuery, currentUsername])
   );
 
   const handleSearch = useCallback(async (query) => {
@@ -147,15 +204,17 @@ export default function ExploreScreen() {
         });
 
         const { status } = response.data.followUser;
+        console.log('[Explore] Follow response status:', status);
 
         // Update local state based on response
+        // Note: Lambda returns 'requested' for private accounts, handle both 'requested' and 'pending'
         setSearchResults((prev) =>
           prev.map((user) =>
             user.username === username
               ? {
                   ...user,
                   isFollowing: status === 'following',
-                  hasPendingRequest: status === 'pending',
+                  hasPendingRequest: status === 'requested' || status === 'pending',
                 }
               : user
           )

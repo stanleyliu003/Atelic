@@ -1,5 +1,5 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, ScanCommand, QueryCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, ScanCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
@@ -107,6 +107,7 @@ async function enrichUserWithFollowStatus(user, currentUsername) {
 
 async function checkFollowRelationship(followerUsername, followingUsername) {
   try {
+    // Try exact match first
     const params = {
       TableName: USER_FOLLOWS_TABLE,
       Key: {
@@ -116,7 +117,28 @@ async function checkFollowRelationship(followerUsername, followingUsername) {
     };
 
     const result = await docClient.send(new GetCommand(params));
-    return !!(result.Item && result.Item.status === 'active');
+    if (result.Item && result.Item.status === 'active') {
+      return true;
+    }
+
+    // If exact match fails, try case-insensitive search
+    // This handles legacy records that may have case mismatches
+    const followerLower = followerUsername.toLowerCase();
+    const followingLower = followingUsername.toLowerCase();
+
+    const scanResult = await docClient.send(new ScanCommand({
+      TableName: USER_FOLLOWS_TABLE,
+      FilterExpression: 'attribute_exists(followerUsername)',
+      Limit: 500
+    }));
+
+    const match = scanResult.Items?.find(item =>
+      item.followerUsername?.toLowerCase() === followerLower &&
+      item.followingUsername?.toLowerCase() === followingLower &&
+      item.status === 'active'
+    );
+
+    return !!match;
   } catch (error) {
     console.error('[checkFollowRelationship] Error:', error);
     return false;

@@ -908,17 +908,46 @@ export default function FeedScreen() {
 
   const handleUnfollowFromList = async (targetUsername) => {
     try {
-      await API.graphql({
+      console.log('[Feed] Unfollowing user:', { followerUsername: username, targetUsername });
+
+      const response = await API.graphql({
         query: customMutations.unfollowUser,
         variables: {
           followerUsername: username,
           targetUsername: targetUsername,
         },
       });
-      // Remove from following list
-      setFollowingList(prev => prev.filter(u => u.username !== targetUsername));
-      // Update following count
-      setFollowingCount(prev => Math.max(0, prev - 1));
+
+      const result = response.data?.unfollowUser;
+      console.log('[Feed] Unfollow response:', JSON.stringify(result, null, 2));
+
+      // Debug: Show what the backend returned
+      console.log('[Feed] Unfollow result details:', {
+        success: result?.success,
+        status: result?.status,
+        message: result?.message,
+        followerUsername: username,
+        targetUsername: targetUsername
+      });
+
+      if (result?.success && result?.status === 'unfollowed') {
+        // Remove from following list
+        setFollowingList(prev => prev.filter(u => u.username?.toLowerCase() !== targetUsername?.toLowerCase()));
+        // Update following count
+        setFollowingCount(prev => Math.max(0, prev - 1));
+      } else if (result?.status === 'not_following') {
+        console.warn('[Feed] User was not following:', targetUsername);
+        // Still remove from UI since they're not following
+        setFollowingList(prev => prev.filter(u => u.username?.toLowerCase() !== targetUsername?.toLowerCase()));
+        // Also decrement count since the relationship doesn't exist
+        setFollowingCount(prev => Math.max(0, prev - 1));
+      } else if (result?.status === 'request_canceled') {
+        // Follow request was canceled
+        setFollowingList(prev => prev.filter(u => u.username?.toLowerCase() !== targetUsername?.toLowerCase()));
+      } else {
+        console.error('[Feed] Unfollow failed:', result?.message);
+        Alert.alert('Error', result?.message || 'Failed to unfollow user');
+      }
     } catch (error) {
       console.error('[Feed] Error unfollowing:', error);
       Alert.alert('Error', 'Failed to unfollow user');
@@ -962,10 +991,8 @@ export default function FeedScreen() {
   };
 
   const handleEditProfile = () => {
-    setIsProfileModalVisible(false);
-    setTimeout(() => {
-      router.push('/edit-profile');
-    }, 500);
+    // Keep profile modal open, edit-profile will appear on top as a modal
+    router.push('/edit-profile');
   };
 
   const handlePrivacyToggle = async (newPrivacyValue) => {

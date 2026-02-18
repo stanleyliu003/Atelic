@@ -10,7 +10,7 @@
 Amplify Params - DO NOT EDIT */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, QueryCommand, BatchGetCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, QueryCommand, BatchGetCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
@@ -37,7 +37,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Query UserFollowsStorage using partition key (followerUsername)
+    // First try exact match query (most efficient)
     const params = {
       TableName: USER_FOLLOWS_TABLE,
       KeyConditionExpression: 'followerUsername = :username',
@@ -54,7 +54,34 @@ exports.handler = async (event) => {
 
     console.log('Querying following with params:', JSON.stringify(params));
 
-    const result = await docClient.send(new QueryCommand(params));
+    let result = await docClient.send(new QueryCommand(params));
+
+    // If no results, try case-insensitive scan
+    if (!result.Items || result.Items.length === 0) {
+      console.log('No exact match found, trying case-insensitive search...');
+      const usernameLower = username.toLowerCase();
+
+      // Scan for all follow records and filter case-insensitively
+      const scanResult = await docClient.send(new ScanCommand({
+        TableName: USER_FOLLOWS_TABLE,
+        Limit: 500
+      }));
+
+      const matchingRecords = scanResult.Items?.filter(
+        item => item.followerUsername?.toLowerCase() === usernameLower
+      ) || [];
+
+      console.log(`Found ${matchingRecords.length} following (case-insensitive)`);
+
+      // Use the matching records
+      const followingUsernames = matchingRecords.map(item => item.followingUsername);
+      const followingProfiles = await getProfilesByUsernames(followingUsernames);
+
+      return {
+        following: followingProfiles,
+        nextToken: null
+      };
+    }
 
     console.log(`Found ${result.Items?.length || 0} following`);
 

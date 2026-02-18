@@ -236,9 +236,15 @@ export default function UserProfileScreen() {
           console.warn('[UserProfile] Error in search:', searchError);
         }
       }
-      const userInSearch = searchResults.find(u => u.username === username);
+      // Case-insensitive username matching to handle case mismatches
+      const userInSearch = searchResults.find(u =>
+        u.username?.toLowerCase() === username?.toLowerCase()
+      );
 
       console.log('[UserProfile] Search results for follow status:', {
+        searchTerm: username,
+        currentUsername: currentUserName,
+        resultsCount: searchResults.length,
         userInSearch,
         isFollowing: userInSearch?.isFollowing,
         hasPendingRequest: userInSearch?.hasPendingRequest,
@@ -362,9 +368,13 @@ export default function UserProfileScreen() {
           return;
         }
 
-        // Check if we were actually following (status could be 'not_following')
+        // Handle 'not_following' status - still update UI to reflect true state
         if (result.status === 'not_following') {
-          console.warn('[UserProfile] Was not following this user');
+          console.warn('[UserProfile] Was not following this user - syncing UI state');
+          // Update local state to match backend reality
+          setIsFollowing(false);
+          setCanViewTrips(false);
+          setUserTrips([]);
           return;
         }
 

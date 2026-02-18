@@ -53,8 +53,9 @@ exports.handler = async (event) => {
   }
 
   try {
-    // 1. Get target user's profile
+    // 1. Get both user profiles to normalize usernames (handle case sensitivity)
     const targetProfile = await getProfile(targetUsername);
+    const followerProfile = await getProfile(followerUsername);
 
     if (!targetProfile) {
       return {
@@ -64,8 +65,17 @@ exports.handler = async (event) => {
       };
     }
 
-    // 2. Check if already following
-    const existingFollow = await checkExistingFollow(followerUsername, targetUsername);
+    // Use the exact usernames from profiles to ensure consistency
+    const actualFollowerUsername = followerProfile?.username || followerUsername;
+    const actualTargetUsername = targetProfile.username || targetUsername;
+
+    console.log('Username normalization:', {
+      input: { followerUsername, targetUsername },
+      normalized: { actualFollowerUsername, actualTargetUsername }
+    });
+
+    // 2. Check if already following (using normalized usernames)
+    const existingFollow = await checkExistingFollow(actualFollowerUsername, actualTargetUsername);
     if (existingFollow) {
       return {
         success: false,
@@ -76,8 +86,8 @@ exports.handler = async (event) => {
 
     // 3. Check if account is private
     if (targetProfile.isPrivateAccount) {
-      // Check for existing pending request
-      const existingRequest = await checkExistingRequest(targetUsername, followerUsername);
+      // Check for existing pending request (using normalized usernames)
+      const existingRequest = await checkExistingRequest(actualTargetUsername, actualFollowerUsername);
       if (existingRequest && existingRequest.status === 'pending') {
         return {
           success: false,
@@ -86,16 +96,15 @@ exports.handler = async (event) => {
         };
       }
 
-      // Create follow request for private account
-      return await createFollowRequest(followerUsername, targetUsername, targetProfile.userID);
+      // Create follow request for private account (using normalized usernames)
+      return await createFollowRequest(actualFollowerUsername, actualTargetUsername, targetProfile.userID);
     }
 
-    // 4. For public accounts: create follow relationship directly
-    const followerProfile = await getProfile(followerUsername);
+    // 4. For public accounts: create follow relationship directly (using normalized usernames)
     const follow = {
-      followerUsername,
-      followingUsername: targetUsername,
-      followerUserID: followerProfile?.userID || followerUsername,
+      followerUsername: actualFollowerUsername,
+      followingUsername: actualTargetUsername,
+      followerUserID: followerProfile?.userID || actualFollowerUsername,
       followingUserID: targetProfile.userID,
       followedAt: new Date().toISOString(),
       status: 'active'
@@ -107,13 +116,13 @@ exports.handler = async (event) => {
       ConditionExpression: 'attribute_not_exists(followerUsername)' // Prevent duplicates
     }));
 
-    // 5. Update follower/following counts atomically
+    // 5. Update follower/following counts atomically (using normalized usernames)
     await Promise.all([
-      updateFollowingCount(followerUsername, 1),
-      updateFollowersCount(targetUsername, 1)
+      updateFollowingCount(actualFollowerUsername, 1),
+      updateFollowersCount(actualTargetUsername, 1)
     ]);
 
-    console.log(`Successfully created follow: ${followerUsername} -> ${targetUsername}`);
+    console.log(`Successfully created follow: ${actualFollowerUsername} -> ${actualTargetUsername}`);
 
     // TODO: Send push notification to target user
     // await sendNotification(targetUsername, {
