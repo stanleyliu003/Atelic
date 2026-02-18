@@ -144,7 +144,7 @@ exports.handler = async (event) => {
     // Process collaborated trips - filter to only include trips where user is actually a collaborator
     console.log(`[Processing] Checking ${allCollaboratedItems.length} scanned trips for collaborations`);
 
-    const collaboratedTripSummaries = allCollaboratedItems
+    let collaboratedTripSummaries = allCollaboratedItems
       .filter(item => {
         const role = getUserRole(item, userID);
         console.log(`[Filter] Trip ${item.tripID}: role = ${role}`);
@@ -164,6 +164,14 @@ exports.handler = async (event) => {
       }));
 
     console.log(`[Processing] Found ${collaboratedTripSummaries.length} collaborated trips`);
+
+    // If viewing someone else's profile, filter collaborated trips to only visible ones
+    // (shared trips should only show on your profile if the owner made them visible)
+    if (!isViewingOwnProfile) {
+      console.log(`[Visibility Filter] Filtering collaborated trips for viewer. Before: ${collaboratedTripSummaries.length}`);
+      collaboratedTripSummaries = collaboratedTripSummaries.filter(trip => trip.isVisibleOnProfile === true);
+      console.log(`[Visibility Filter] After filtering collaborated trips: ${collaboratedTripSummaries.length} visible`);
+    }
 
     // Combine results
     const allTripSummaries = [...ownedTripSummaries, ...collaboratedTripSummaries];

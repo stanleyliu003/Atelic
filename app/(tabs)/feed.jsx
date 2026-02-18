@@ -1549,9 +1549,9 @@ export default function FeedScreen() {
 
                 return (
                   <View style={styles.visibilityMenuItem}>
-                    <Ionicons name="eye-outline" size={30} color={Colors.PRIMARY} />
+                    <Ionicons name="eye-outline" size={26} color={Colors.PRIMARY} />
                     <View style={styles.visibilityTextContainer}>
-                      <Text style={styles.menuItemText}>Visible on Profile</Text>
+                      <Text style={styles.visibilityTitle}>Visible on Profile</Text>
                       <Text style={styles.visibilitySubtext}>Let friends see this trip</Text>
                     </View>
                     {isToggling ? (
@@ -2467,8 +2467,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    flex: 0.33,
+    flex: 0.42,
     paddingTop: 8,
+    paddingBottom: 30,
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
@@ -2517,7 +2518,7 @@ const styles = StyleSheet.create({
   visibilityMenuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
@@ -2526,12 +2527,18 @@ const styles = StyleSheet.create({
   visibilityTextContainer: {
     flex: 1,
     marginLeft: 12,
+    marginRight: 8,
+  },
+  visibilityTitle: {
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
+    color: '#1a1a1a',
   },
   visibilitySubtext: {
     fontFamily: 'outfit',
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.GRAY,
-    marginTop: 2,
+    marginTop: 1,
   },
   settingsModal: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
