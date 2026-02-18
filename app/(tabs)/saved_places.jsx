@@ -479,7 +479,7 @@ export default function SavedPlaces() {
           </View>
         )}
 
-        {cities.length === 0 && emptyStatePage === 8 ? (
+        {allCards.length === 0 && emptyStatePage === 8 ? (
           /* Page 8: Instagram Capture */
           <View style={styles.emptyOnboardingContainer}>
             <Text style={styles.onboardingTitle}>Save spots from Instagram!</Text>
@@ -491,7 +491,7 @@ export default function SavedPlaces() {
               />
             </View>
           </View>
-        ) : cities.length === 0 && emptyStatePage > 13 ? (
+        ) : allCards.length === 0 && emptyStatePage > 13 ? (
           /* Normal empty state after onboarding */
           <View style={styles.emptyContainer}>
             <Ionicons name="bookmark-outline" size={64} color={Colors.GRAY} />
@@ -550,7 +550,7 @@ export default function SavedPlaces() {
       </ScrollView>
 
       {/* Fixed button at bottom for page 8 */}
-      {cities.length === 0 && emptyStatePage === 8 && (
+      {allCards.length === 0 && emptyStatePage === 8 && (
         <View style={styles.fixedButtonContainer}>
           <TouchableOpacity
             onPress={() => router.push('/IG_Demo')}
