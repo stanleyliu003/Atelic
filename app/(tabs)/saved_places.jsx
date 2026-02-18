@@ -1,7 +1,7 @@
 import { Colors } from '../../constants/Colors';
 import { API } from 'aws-amplify';
 import { Auth } from 'aws-amplify';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   ActivityIndicator,
@@ -45,6 +45,8 @@ export default function SavedPlaces() {
   );
   // Track Instagram share processing status (timer-based)
   const [isShareProcessing, setIsShareProcessing] = useState(false);
+  const [shareNoResults, setShareNoResults] = useState(false);
+  const totalCountRef = useRef(0);
 
   // Derive country cards from allSavedPlaces (group by country where country exists)
   const derivedCountryCards = useMemo(() => {
@@ -145,9 +147,11 @@ export default function SavedPlaces() {
       setCities(mergedCities);
       setTotalCount(mergedPlaces.length);
       setAllSavedPlaces(mergedPlaces);
+      return mergedPlaces.length;
     } catch (err) {
       console.error('[SavedPlaces] Error fetching saved places:', err);
       setError(err.message || 'Failed to load saved places');
+      return null;
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -157,6 +161,8 @@ export default function SavedPlaces() {
   useEffect(() => {
     fetchSavedPlaces();
   }, [fetchSavedPlaces]);
+
+  useEffect(() => { totalCountRef.current = totalCount; }, [totalCount]);
 
   // Handle Instagram share timer when navigating from Share Extension
   // The Share Extension passes shareStartTime in the deep link query params
@@ -185,10 +191,15 @@ export default function SavedPlaces() {
     console.log('[SavedPlaces] Instagram share detected, waiting', remainingMs, 'ms before refresh');
 
     // Set timer to refresh after remaining time
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       console.log('[SavedPlaces] Share timer complete, refreshing saved places');
+      const prevCount = totalCountRef.current;
       setIsShareProcessing(false);
-      fetchSavedPlaces();
+      const newCount = await fetchSavedPlaces();
+      if (newCount !== null && newCount <= prevCount) {
+        setShareNoResults(true);
+        setTimeout(() => setShareNoResults(false), 5000);
+      }
     }, remainingMs);
 
     // Cleanup: clears timer if effect re-runs or component unmounts
@@ -374,6 +385,14 @@ export default function SavedPlaces() {
           <View style={styles.processingBanner}>
             <ActivityIndicator size="small" color={Colors.PRIMARY} />
             <Text style={styles.processingText}>Saving places from Instagram...</Text>
+          </View>
+        )}
+
+        {/* No places found after Instagram share */}
+        {shareNoResults && (
+          <View style={styles.processingBanner}>
+            <Ionicons name="alert-circle-outline" size={18} color="#9A3412" />
+            <Text style={styles.processingText}>No places found. Try another post</Text>
           </View>
         )}
 
