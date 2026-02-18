@@ -178,8 +178,9 @@ export default function SavedPlaces() {
 
   useEffect(() => { totalCountRef.current = totalCount; }, [totalCount]);
 
-  // Handle Instagram share timer when navigating from Share Extension
-  // The Share Extension passes shareStartTime in the deep link query params
+  // Handle Instagram share polling when navigating from Share Extension
+  // The Share Extension passes shareStartTime in the deep link query params.
+  // Instead of a fixed timer, we poll DynamoDB until new places appear or timeout.
   useEffect(() => {
     const shareStartTime = searchParams.shareStartTime;
 
@@ -190,34 +191,61 @@ export default function SavedPlaces() {
     const startTime = parseInt(shareStartTime, 10);
     const now = Date.now();
 
-    // Ignore if timestamp is too old (> 60 seconds)
-    if (now - startTime > 60000) {
+    // Ignore if timestamp is too old (> 2 minutes)
+    if (now - startTime > 120000) {
       console.log('[SavedPlaces] Share timestamp too old, ignoring');
       return;
     }
 
     setIsShareProcessing(true);
+    const prevCount = totalCountRef.current;
+    let stopped = false;
+    let pollTimer;
 
-    // Calculate remaining wait time (14 seconds from start)
-    const elapsedMs = now - startTime;
-    const remainingMs = Math.max(14000 - elapsedMs, 1000); // At least 1 second
+    const POLL_INTERVAL = 2000; // Check every 3 seconds
+    const MAX_WAIT = 25000;     // Give up after 25 seconds from share start
 
-    console.log('[SavedPlaces] Instagram share detected, waiting', remainingMs, 'ms before refresh');
+    // Wait a few seconds before first poll to give Lambda a head start
+    const initialDelay = Math.max(8000 - (now - startTime), 1000);
 
-    // Set timer to refresh after remaining time
-    const timer = setTimeout(async () => {
-      console.log('[SavedPlaces] Share timer complete, refreshing saved places');
-      const prevCount = totalCountRef.current;
-      setIsShareProcessing(false);
+    console.log('[SavedPlaces] Instagram share detected, first poll in', initialDelay, 'ms');
+
+    const poll = async () => {
+      if (stopped) return;
+
+      const elapsed = Date.now() - startTime;
+      console.log('[SavedPlaces] Polling for new places, elapsed:', elapsed, 'ms');
+
       const newCount = await fetchSavedPlaces();
-      if (newCount !== null && newCount <= prevCount) {
+
+      if (stopped) return;
+
+      if (newCount !== null && newCount > prevCount) {
+        console.log('[SavedPlaces] New places found:', newCount - prevCount);
+        setIsShareProcessing(false);
+        return;
+      }
+
+      if (elapsed >= MAX_WAIT) {
+        console.log('[SavedPlaces] Polling timed out after', MAX_WAIT, 'ms');
+        setIsShareProcessing(false);
         setShareNoResults(true);
         setTimeout(() => setShareNoResults(false), 5000);
+        return;
       }
-    }, remainingMs);
 
-    // Cleanup: clears timer if effect re-runs or component unmounts
-    return () => clearTimeout(timer);
+      // Schedule next poll
+      pollTimer = setTimeout(poll, POLL_INTERVAL);
+    };
+
+    const initialTimer = setTimeout(poll, initialDelay);
+
+    // Cleanup: stop polling if effect re-runs or component unmounts
+    return () => {
+      stopped = true;
+      clearTimeout(initialTimer);
+      clearTimeout(pollTimer);
+    };
   }, [searchParams.shareStartTime, fetchSavedPlaces]);
 
   const onRefresh = useCallback(() => {
