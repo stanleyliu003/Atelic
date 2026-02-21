@@ -70,7 +70,9 @@
       "Bash(grep:*)",
       "Bash(aws lambda get-function-url-config:*)",
       "Bash(aws lambda create-function-url-config:*)",
-      "Bash(aws lambda add-permission:*)"
+      "Bash(aws lambda add-permission:*)",
+      "Bash(git -C /Users/sanjanatata/Documents/Atelic_Stable log --name-status -20 --oneline)",
+      "Bash(/usr/local/bin/node /Users/sanjanatata/Documents/Atelic_Stable/node_modules/.bin/tsc:*)"
     ],
     "deny": [],
     "ask": [],

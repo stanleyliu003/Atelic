@@ -11,16 +11,28 @@
   "lambdaLayers": [],
   "environmentVariableList": [
     {
-      "cloudFormationParameterName": "photoS3BucketName",
-      "environmentVariableName": "PHOTO_S3BUCKET_NAME"
-    },
-    {
       "cloudFormationParameterName": "googlePlacesApiKey",
       "environmentVariableName": "GOOGLE_PLACES_API_KEY"
     },
     {
+      "cloudFormationParameterName": "photoS3BucketName",
+      "environmentVariableName": "PHOTO_S3BUCKET_NAME"
+    },
+    {
       "cloudFormationParameterName": "cloudfrontDomain",
       "environmentVariableName": "CLOUDFRONT_DOMAIN"
+    },
+    {
+      "cloudFormationParameterName": "cloudfrontDomain",
+      "environmentVariableName": "cloudfrontDomain"
+    },
+    {
+      "cloudFormationParameterName": "photoS3BucketName",
+      "environmentVariableName": "photoS3BucketName"
+    },
+    {
+      "cloudFormationParameterName": "googlePlacesApiKey",
+      "environmentVariableName": "GOOGLE_PLACES_API_KEY"
     }
   ]
 }

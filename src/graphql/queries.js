@@ -327,6 +327,7 @@ export const getUserTrips = /* GraphQL */ `
       tripTitle
       days {
         dayNumber
+        cityId
         encodedPolyline
         travelModes
         __typename
@@ -400,6 +401,21 @@ export const getUserTrips = /* GraphQL */ `
         __typename
       }
       deletedSavedPlaceIds
+      cities {
+        cityId
+        name
+        lat
+        lng
+        placeId
+        order
+        startDate
+        endDate
+        photoReference
+        travelToNextMode
+        travelToNextDuration
+        travelToNextNotes
+        __typename
+      }
       __typename
     }
   }

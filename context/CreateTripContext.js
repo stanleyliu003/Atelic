@@ -4,6 +4,7 @@ import { randomUUID } from 'expo-crypto';
 import { retrieveTripFromCloud, listUserTripsFromCloud } from '../src/services/lambdaService';
 import { generateCategoryActivities as generateCategoryActivitiesGraphQL } from '../src/services/generateCategoryActivities';
 import { ensureActivitiesHaveInstanceIds } from '../src/utils/activityInstanceId';
+import { TripCity, Location, TravelSegment } from '../src/types/city.types';
 
 // Define the shape of our context data
 const CreateTripContext = createContext();
@@ -80,6 +81,12 @@ export const CreateTripProvider = ({ children }) => {
     // Stores savedPlaceIds that user has explicitly deleted from this trip
     const [deletedSavedPlaceIds, setDeletedSavedPlaceIds] = useState(new Set());
 
+    // Multi-city state
+    const [cities, setCities] = useState([]); // Array of TripCity objects
+    const [activeCityId, setActiveCityId] = useState(null); // Currently viewing city
+    const [dayCity, setDayCity] = useState({}); // { [dayNumber]: cityId } — maps each day to its city
+
+
     // Permission helpers
     const canEdit = () => ['owner','editor'].includes(currentUserRole);
     const canInviteEditors = () => currentUserRole === 'owner';
@@ -98,6 +105,7 @@ export const CreateTripProvider = ({ children }) => {
     const setTripLengthWithLog = (length) => {
         setTripLength(length);
     };
+
 
     // Add logging when tripLength changes
     useEffect(() => {
@@ -132,11 +140,17 @@ export const CreateTripProvider = ({ children }) => {
     // Setter for all day activities at once
     const setAllDayActivities = (days) => {
         const activitiesByDay = {};
+        const citiesMap = {};
         days.forEach(day => {
             // Keep activities in their original order when restoring from cloud
             activitiesByDay[day.dayNumber] = { activities: day.activities || [] };
+            // Build dayCity map from days that have a cityId (multi-city trips)
+            if (day.cityId) {
+                citiesMap[day.dayNumber] = day.cityId;
+            }
         });
         setDayActivities(activitiesByDay);
+        setDayCity(citiesMap);
     };
 
     // Direct setter for dayActivities (if used elsewhere)
@@ -402,6 +416,38 @@ export const CreateTripProvider = ({ children }) => {
                 // Don't call setDeletedSavedPlaceIds - keep current state
             }
 
+            // Restore multi-city state
+            if (trip.cities && trip.cities.length > 0) {
+                console.log('[CreateTripContext] Restoring', trip.cities.length, 'cities from cloud');
+                // Backfill: if the first city has no dates but the trip does, inherit them
+                const citiesWithDates = trip.cities.map((c, idx) => ({
+                    ...c,
+                    startDate: c.startDate || (idx === 0 ? trip.startDate || null : null),
+                    endDate: c.endDate || (idx === 0 ? trip.endDate || null : null),
+                }));
+                setCities(citiesWithDates);
+                setActiveCityId(citiesWithDates[0].cityId);
+            } else if (trip.selectedCity) {
+                // Backfill: legacy single-city trip — synthesize a TripCity so the UI stays consistent
+                const legacyCityId = randomUUID();
+                const legacyCity = {
+                    cityId: legacyCityId,
+                    name: trip.selectedCity,
+                    location: { lat: null, lng: null, placeId: null },
+                    order: 0,
+                    startDate: trip.startDate || null,
+                    endDate: trip.endDate || null,
+                    photoReference: Array.isArray(trip.tripPhotoReference) ? trip.tripPhotoReference[0] || null : null,
+                    travelToNext: null,
+                };
+                setCities([legacyCity]);
+                setActiveCityId(legacyCityId);
+                console.log('[CreateTripContext] Backfilled legacy city:', trip.selectedCity, 'id:', legacyCityId);
+            } else {
+                setCities([]);
+                setActiveCityId(null);
+            }
+
             console.log('[CreateTripContext] Restored trip - createdAt:', trip.createdAt, 'version:', trip.version || 1);
         });
     };
@@ -456,9 +502,10 @@ export const CreateTripProvider = ({ children }) => {
 
     // Helper to generate and set a new tripId (UUID)
     const generateTripId = () => {
-        const newId = randomUUID();
-        setTripId(newId);
-        return newId;
+        const newTripId = randomUUID();
+        setTripId(newTripId);
+        console.log('[CreateTripContext] Generated new trip ID:', newTripId);
+        return newTripId;
     };
 
     // Reset all trip state for a new trip
@@ -494,13 +541,6 @@ export const CreateTripProvider = ({ children }) => {
     // Complete reset for starting a brand new trip
     const completeReset = async () => {
         
-        // Always clear essential cached data for create_trip steps 1-4
-        try {
-            await AsyncStorage.multiRemove([CACHE_KEYS.SELECTED_CITY, CACHE_KEYS.CITY_PHOTO_REF, CACHE_KEYS.CITY_CATEGORIES]);
-        } catch (error) {
-            console.error('Error clearing essential trip creation cache:', error);
-        }
-
         // Reset ALL context state
         setTripId('');
         setActivities([]);
@@ -535,6 +575,18 @@ export const CreateTripProvider = ({ children }) => {
         setSavedActivities(null);
         setRecentSearches([]);
         setDeletedSavedPlaceIds(new Set());
+
+        // Clear cached city selection data
+        try {
+            await AsyncStorage.multiRemove([
+                'create_trip_selected_city',
+                'create_trip_city_photo_ref',
+                'create_trip_city_categories'
+            ]);
+        } catch (error) {
+            console.error('[CreateTripContext] Error clearing cache:', error);
+        }
+
     };
 
     // Load trip from cloud storage
@@ -596,8 +648,12 @@ export const CreateTripProvider = ({ children }) => {
 
     // Category Management Functions
     const generateActivitiesForCategory = async (category, count = 4) => {
-        if (!selectedCity) {
-            console.error('[CreateTripContext] Cannot generate activities: selectedCity is required');
+        // In multi-city trips use the active city's name; fall back to selectedCity for single-city trips
+        const activeCity = activeCityId ? cities.find(c => c.cityId === activeCityId) : null;
+        const cityForGeneration = activeCity?.name || selectedCity;
+
+        if (!cityForGeneration) {
+            console.error('[CreateTripContext] Cannot generate activities: no city selected');
             return;
         }
 
@@ -615,12 +671,12 @@ export const CreateTripProvider = ({ children }) => {
             const existingWishlistActivities = categoryActivities[category] || [];
             const existingActivityNames = existingWishlistActivities.map(activity => activity.name);
 
-            console.log(`[CreateTripContext] Generating ${count} activities for category: ${category} in ${selectedCity}`);
+            console.log(`[CreateTripContext] Generating ${count} activities for category: ${category} in ${cityForGeneration}`);
             console.log(`[CreateTripContext] Existing wishlist activities (${existingWishlistActivities.length}/${ACTIVITY_GENERATION_LIMIT}):`, existingActivityNames);
 
             // Call GraphQL mutation to generateCategoryActivities Lambda function
             const response = await generateCategoryActivitiesGraphQL(
-                selectedCity,
+                cityForGeneration,
                 category,
                 existingActivityNames
             );
@@ -833,7 +889,7 @@ export const CreateTripProvider = ({ children }) => {
     };
 
     /**
-     * Get lodging for a specific day
+     * Get lodging for specific day
      * @param {number} dayNumber - The day number to get lodging for
      * @returns {{ checkIn: Activity | null, checkOut: Activity | null } | null}
      */
@@ -850,6 +906,98 @@ export const CreateTripProvider = ({ children }) => {
         const dayCount = tripLength || Object.keys(dayActivities).length || 0;
         const cityName = selectedCity || 'Trip';
         return `${dayCount} Day ${cityName} Trip`;
+    };
+
+    // Add a new city to the trip — returns the new cityId for callers
+    const addCity = (cityData) => {
+        const cityId = randomUUID();
+        const newCity = {
+            cityId,
+            name: cityData.name,
+            location: {
+                lat: cityData.lat,
+                lng: cityData.lng,
+                placeId: cityData.place_id
+            },
+            order: cities.length,
+            startDate: cityData.startDate || null,
+            endDate: cityData.endDate || null,
+            photoReference: cityData.photo_reference || null,
+            travelToNext: null
+        };
+
+        setCities(prev => [...prev, newCity]);
+        console.log('[CreateTripContext] Added city:', newCity.name, 'id:', cityId);
+        return cityId;
+    };
+
+
+    // Remove a city from the trip
+    const removeCity = (cityId) => {
+        setCities(cities.filter(c => c.cityId !== cityId));
+        // Reorder remaining cities
+        updateCityOrders();
+        console.log('[CreateTripContext] Removed city:', cityId);
+    };
+
+    // Update city orders after reordering/removing
+    const updateCityOrders = () => {
+        setCities(prevCities => 
+            prevCities.map((city, index) => ({
+                ...city,
+                order: index
+            }))
+        );
+    };
+
+    // Update dates for a specific city — also syncs trip-level startDate/endDate/tripLength
+    const updateCityDates = (cityId, newStart, newEnd) => {
+        // Use a functional updater so this chains correctly after addCity's own functional
+        // setCities call — a direct assignment would overwrite it and drop the new city.
+        setCities(prevCities => {
+            const updatedCities = prevCities.map(c =>
+                c.cityId === cityId ? { ...c, startDate: newStart, endDate: newEnd } : c
+            );
+
+            // Sync trip-level dates: earliest city start → trip start, latest city end → trip end
+            const allStarts = updatedCities.map(c => c.startDate).filter(Boolean);
+            const allEnds   = updatedCities.map(c => c.endDate).filter(Boolean);
+
+            if (allStarts.length > 0) {
+                const earliest = [...allStarts].sort()[0];
+                const latest   = allEnds.length > 0 ? [...allEnds].sort().reverse()[0] : earliest;
+                setStartDate(earliest);
+                setEndDate(latest);
+                const diffMs = new Date(latest).getTime() - new Date(earliest).getTime();
+                setTripLength(Math.round(diffMs / 86400000) + 1);
+            }
+
+            return updatedCities;
+        });
+        console.log('[CreateTripContext] Updated dates for city:', cityId);
+    };
+
+    // Assign a specific day number to a city
+    const assignDayToCity = (dayNumber, cityId) => {
+        setDayCity(prev => ({ ...prev, [dayNumber]: cityId }));
+        console.log('[CreateTripContext] Assigned day', dayNumber, 'to city:', cityId);
+    };
+
+    // Get all day numbers that belong to a given city
+    const getDaysForCity = (cityId) => {
+        return Object.keys(dayCity)
+            .filter(d => dayCity[d] === cityId)
+            .map(Number);
+    };
+
+    // Update the travelToNext segment on a city (how to reach the next city)
+    const updateTravelToNext = (cityId, travelData) => {
+        setCities(prev => prev.map(c =>
+            c.cityId === cityId
+            ? { ...c, travelToNext: { ...(c.travelToNext || {}), ...travelData } }
+            : c
+        ));
+        console.log('[CreateTripContext] Updated travelToNext for city:', cityId);
     };
 
     const value = {
@@ -920,6 +1068,7 @@ export const CreateTripProvider = ({ children }) => {
         setTripPhotoReference,
         getDefaultTripTitle,
         CACHE_KEYS,
+        
         // Collaboration state and functions
         currentUserRole,
         setCurrentUserRole,
@@ -970,11 +1119,25 @@ export const CreateTripProvider = ({ children }) => {
         removeFromDeletedSavedPlaces,
         clearDeletedSavedPlaces,
         isDeletedSavedPlace,
+        // Multi-city support
+        cities,
+        setCities,
+        activeCityId,
+        setActiveCityId,
+        addCity,
+        removeCity,
+        updateCityDates,
+        updateCityOrders,
+        updateTravelToNext,
+        dayCity,
+        setDayCity,
+        assignDayToCity,
+        getDaysForCity,
     };
 
     return (
-        <CreateTripContext.Provider value={value}>
-            {children}
-        </CreateTripContext.Provider>
-    );
+    <CreateTripContext.Provider value={value}>
+        {children}
+    </CreateTripContext.Provider>
+);
 };

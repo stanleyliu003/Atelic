@@ -28,10 +28,10 @@
       "Type": "String",
       "Default": "storagePlacesAPIActivityStorageStreamArn"
     },
-    "photoS3BucketName": {
+    "googlePlacesApiKey": {
       "Type": "String"
     },
-    "googlePlacesApiKey": {
+    "photoS3BucketName": {
       "Type": "String"
     },
     "cloudfrontDomain": {
@@ -100,14 +100,20 @@
             "STORAGE_PLACESAPIACTIVITYSTORAGE_STREAMARN": {
               "Ref": "storagePlacesAPIActivityStorageStreamArn"
             },
-            "PHOTO_S3BUCKET_NAME": {
-              "Ref": "photoS3BucketName"
-            },
             "GOOGLE_PLACES_API_KEY": {
               "Ref": "googlePlacesApiKey"
             },
+            "PHOTO_S3BUCKET_NAME": {
+              "Ref": "photoS3BucketName"
+            },
             "CLOUDFRONT_DOMAIN": {
               "Ref": "cloudfrontDomain"
+            },
+            "cloudfrontDomain": {
+              "Ref": "cloudfrontDomain"
+            },
+            "photoS3BucketName": {
+              "Ref": "photoS3BucketName"
             }
           }
         },

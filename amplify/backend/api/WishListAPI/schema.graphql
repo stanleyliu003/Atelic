@@ -449,6 +449,7 @@ type AppVersionConfig {
     savedActivities: String
     recentSearches: [RecentSearch]
     deletedSavedPlaceIds: [String]  # SavedPlaceIds that user has explicitly deleted from this trip
+    cities: [TripCity]              # Multi-city trip support
   }
 
    type TripSummary {
@@ -465,10 +466,27 @@ type AppVersionConfig {
 
    type Day {
      dayNumber: Int!
+     cityId: String          # Which city this day belongs to (multi-city trips)
      activities: [Activity!]!
      encodedPolyline: String
      travelModes: AWSJSON
    }
+
+  # Multi-city support
+  type TripCity {
+    cityId: String!
+    name: String!
+    lat: Float
+    lng: Float
+    placeId: String
+    order: Int!
+    startDate: String
+    endDate: String
+    photoReference: String
+    travelToNextMode: String      # 'FLIGHT'|'TRAIN'|'CAR'|'BUS'|'FERRY'
+    travelToNextDuration: Int     # Travel time in minutes
+    travelToNextNotes: String
+  }
 
  type Mutation {
    optimizeRoute(activities: [ActivityInput!]!): [Activity] @function(name: "OptimizeRoute-${env}") @auth(rules: [{ allow: public }])
@@ -528,9 +546,25 @@ type AppVersionConfig {
 
    input DayInput {
      dayNumber: Int!
+     cityId: String          # Which city this day belongs to (multi-city trips)
      activities: [ActivityInput!]!
      encodedPolyline: String
      travelModes: AWSJSON
+   }
+
+   input TripCityInput {
+     cityId: String!
+     name: String!
+     lat: Float
+     lng: Float
+     placeId: String
+     order: Int
+     startDate: String
+     endDate: String
+     photoReference: String
+     travelToNextMode: String
+     travelToNextDuration: Int
+     travelToNextNotes: String
    }
 
    input CollaboratorInput {
@@ -581,6 +615,7 @@ type AppVersionConfig {
     savedActivities: String
     recentSearches: [RecentSearchInput]
     deletedSavedPlaceIds: [String]  # SavedPlaceIds that user has explicitly deleted from this trip
+    cities: [TripCityInput]         # Multi-city trip support
   }
 
 

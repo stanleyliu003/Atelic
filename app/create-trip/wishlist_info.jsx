@@ -11,7 +11,21 @@ import { Colors } from './../../constants/Colors';
 
 export default function WishlistInfo() {
     const router = useRouter();
-    const { activities, updateActivities, removeActivities, selectedCity, searchActivities } = useCreateTrip();
+    const {
+        activities,
+        updateActivities,
+        removeActivities,
+        selectedCity,
+        searchActivities,
+        cities,
+        addCity,
+        updateCityDates,
+        setActiveCityId,
+        selectedCityLocation,
+        startDate,
+        endDate,
+        tripPhotoReference,
+    } = useCreateTrip();
 
     // State for selected activities - initialize with all activities selected
     const [selectedActivities, setSelectedActivities] = useState([]);
@@ -149,6 +163,21 @@ export default function WishlistInfo() {
 
         // Update the context with only selected activities
         updateActivities(selectedActivitiesList);
+
+        // Initialize the first TripCity from the selected city if not already set
+        if (cities.length === 0 && selectedCity) {
+            const newCityId = addCity({
+                name: selectedCity,
+                lat: selectedCityLocation?.lat || null,
+                lng: selectedCityLocation?.lng || null,
+                place_id: selectedCityLocation?.placeId || null,
+                photo_reference: Array.isArray(tripPhotoReference) ? tripPhotoReference[0] || null : null,
+            });
+            if (newCityId) {
+                updateCityDates(newCityId, startDate, endDate);
+                setActiveCityId(newCityId);
+            }
+        }
 
         // Simulate async navigation for better UX (remove if not needed)
         setTimeout(() => {

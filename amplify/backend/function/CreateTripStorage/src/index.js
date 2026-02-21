@@ -86,7 +86,9 @@ exports.handler = async (event) => {
     // Deleted saved places tracking
     deletedSavedPlaceIds: Array.isArray(input.deletedSavedPlaceIds) ? input.deletedSavedPlaceIds : [],
     // Recent searches
-    recentSearches: Array.isArray(input.recentSearches) ? input.recentSearches : []
+    recentSearches: Array.isArray(input.recentSearches) ? input.recentSearches : [],
+    // Multi-city support
+    cities: Array.isArray(input.cities) ? input.cities : []
   };
 
   console.log('[CreateTripStorage] 💾 Item to save - tripTitle:', item.tripTitle);
@@ -206,8 +208,8 @@ exports.handler = async (event) => {
       flight: item.flight,
       savedActivities: item.savedActivities,
       recentSearches: item.recentSearches || [],
-      deletedSavedPlaceIds: item.deletedSavedPlaceIds || []
-
+      deletedSavedPlaceIds: item.deletedSavedPlaceIds || [],
+      cities: item.cities || []
     };
   } catch (error) {
     console.error('DynamoDB put error:', error);

@@ -24,11 +24,15 @@ import { fetchRoutePolyline, fetchRoutePolylineWithMode, RouteData as BasicRoute
 import { optimizeRouteWithHaversine } from '../../src/components/trip-view/logic/optimize_route';
 import { Activity, TabType, TravelMode, EnhancedRouteLeg, RouteLegModeData, RouteData } from '../../src/types/activity.types';
 import type { FlightReservation } from '../../src/types/flight.types';
+import { CitySelector } from '../../src/components/trip-view/CitySelector';
+import { AddCityModal } from '../../src/components/trip-view/AddCityModal';
+import { EditCityDatesModal } from '../../src/components/trip-view/EditCityDatesModal';
 import TransportationSettingsModal from '../../src/components/trip-view/transportation_settings_modal';
 import { decodePolyline } from '../../src/utils/polyline';
 import { API, Auth, graphqlOperation } from 'aws-amplify';
 import { createTrip } from '../../src/graphql/mutations';
 import { onCreateTripOperation } from '../../src/graphql/subscriptions';
+import { getCityCategories } from '../../src/graphql/queries';
 import { retrieveTripFromCloud } from '../../src/services/lambdaService';
 import Entypo from '@expo/vector-icons/Entypo';
 import { duplicateActivity, ensureActivitiesHaveInstanceIds } from '../../src/utils/activityInstanceId';
@@ -103,8 +107,10 @@ export default function TripViewMain() {
         lastUpdatedBy,
         setLastUpdatedBy,
         cityCategories,
+        setCityCategories,
         generateActivitiesForCategory,
         categoryActivities,
+        setCategoryActivities,
         recentSearches,
         selectedCityLocation,
         tripTitle,
@@ -112,12 +118,16 @@ export default function TripViewMain() {
         addToDeletedSavedPlaces,
         deletedSavedPlaceIds,
         isDeletedSavedPlace,
+        cities,
+        activeCityId,
+        setActiveCityId,
+        removeCity,
+        updateCityDates,
+        dayCity,
+        setDayCity,
+        assignDayToCity,
     } = useCreateTrip();
-    // Primary tab state for Overview/Itinerary toggle
-    type PrimaryTab = 'overview' | 'itinerary';
-    const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('overview');
-
-    const [activeTab, setActiveTab] = useState<TabType>('wishlist');
+    const [activeTab, setActiveTab] = useState<TabType>('overview');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
 
     // Date picker modal state
@@ -143,6 +153,8 @@ export default function TripViewMain() {
     const [showAutocomplete, setShowAutocomplete] = useState(false);
     const [isAutocompleteAddingPlace, setIsAutocompleteAddingPlace] = useState(false);
     const [isShareModalVisible, setIsShareModalVisible] = useState(false);
+    const [showAddCityModal, setShowAddCityModal] = useState(false);
+    const [editingCity, setEditingCity] = useState<import('../../src/types/city.types').TripCity | null>(null);
     const [currentUserID, setCurrentUserID] = useState<string>('');
 
     // State for CategoryModal
@@ -407,6 +419,8 @@ export default function TripViewMain() {
         startDate,
         endDate,
         tripTitle,
+        cities,
+        dayCity,
     });
 
     // Keep latestTripDataRef in sync with the latest values
@@ -425,24 +439,38 @@ export default function TripViewMain() {
             startDate,
             endDate,
             tripTitle,
+            cities,
+            dayCity,
         };
-    }, [activities, dayActivities, dayPolylines, dayTravelModes, tripLength, selectedCity, tripPhotoReference, createdAt, recentSearches, deletedSavedPlaceIds, tripTitle, startDate, endDate]);
+    }, [activities, dayActivities, dayPolylines, dayTravelModes, tripLength, selectedCity, tripPhotoReference, createdAt, recentSearches, deletedSavedPlaceIds, tripTitle, startDate, endDate, cities, dayCity]);
 
-    // Initialize days based on tripLength (only for new trips, not existing ones)
+    // Auto-populate empty day slots for every day in the trip whenever dates/length change.
+    // Only adds missing days — never removes days that already have activities.
+    useEffect(() => {
+        if (!tripLength || tripLength <= 0) return;
+        setDayActivities((prev: any) => {
+            let hasChanges = false;
+            const updated = { ...prev };
+            for (let d = 1; d <= tripLength; d++) {
+                if (!updated[d]) {
+                    updated[d] = { activities: [] };
+                    hasChanges = true;
+                }
+            }
+            return hasChanges ? updated : prev;
+        });
+    }, [tripLength, startDate]);
+
+    // Fallback for trips with no dates: ensure at least day 1 exists
     const [hasInitialized, setHasInitialized] = useState(false);
     useEffect(() => {
-        // Only initialize days once when the component first mounts
         if (!hasInitialized) {
-            if (tripLength && tripLength > 0 && getDayCount() === 0) {
-                // Create all days at once based on tripLength
-                addMultipleDays(tripLength);
-            } else if (!tripLength && getDayCount() === 0) {
-                // Fallback: create day 1 if tripLength is not set
+            if (!tripLength && getDayCount() === 0) {
                 addNewDay();
             }
             setHasInitialized(true);
         }
-    }, [tripLength, getDayCount, addNewDay, addMultipleDays, hasInitialized]);
+    }, [tripLength, getDayCount, addNewDay, hasInitialized]);
 
     // Define handleTabChange before using it in the hook
     const handleTabChange = (tab: TabType) => {
@@ -508,11 +536,6 @@ export default function TripViewMain() {
             clearSelection();
         }
 
-        // If clicking Overview tab in TabBar, switch back to primary Overview mode
-        if (tab === 'overview' && primaryTab === 'itinerary') {
-            setPrimaryTab('overview');
-        }
-
         setActiveTab(tab);
         // Don't auto-scroll for manual tab selection
         setShouldScrollToActive(false);
@@ -538,7 +561,6 @@ export default function TripViewMain() {
 
     // Handler for when a day card is pressed in Overview mode
     const handleOverviewDayPress = (dayNumber: number) => {
-        setPrimaryTab('itinerary');
         setActiveTab(`day${dayNumber}` as TabType);
         setShouldScrollToActive(true);
     };
@@ -657,6 +679,7 @@ export default function TripViewMain() {
                 const dayData = dayActivities[dayNum];
                 return {
                     dayNumber: dayNum,
+                    cityId: dayCity[dayNum] || (cities[0]?.cityId ?? null),
                     activities: (dayData?.activities || []).map(formatActivityForInput),
                     encodedPolyline: dayPolylines[dayNum] || null,
                     travelModes: dayTravelModes[dayNum] ? JSON.stringify(dayTravelModes[dayNum]) : null
@@ -692,7 +715,21 @@ export default function TripViewMain() {
                 updatedAt: new Date().toISOString(),
                 lastUpdatedBy: currentUserID,
                 cityCategories: (cityCategories || []).map(formatCategoryItemForInput),
-                recentSearches: (recentSearches || []).map(formatRecentSearchForInput)
+                recentSearches: (recentSearches || []).map(formatRecentSearchForInput),
+                cities: (cities || []).map(c => ({
+                    cityId: c.cityId,
+                    name: c.name,
+                    lat: c.location?.lat ?? null,
+                    lng: c.location?.lng ?? null,
+                    placeId: c.location?.placeId ?? null,
+                    order: c.order,
+                    startDate: c.startDate ?? null,
+                    endDate: c.endDate ?? null,
+                    photoReference: c.photoReference ?? null,
+                    travelToNextMode: c.travelToNext?.mode ?? null,
+                    travelToNextDuration: c.travelToNext?.duration ?? null,
+                    travelToNextNotes: c.travelToNext?.notes ?? null,
+                })),
             };
 
             // Log the trip input for debugging
@@ -1989,10 +2026,42 @@ export default function TripViewMain() {
     // Get all available days as an array, and add 'wishlist' (trip saved places) as the last option
     const dayCount = getDayCount();
 
-    // Prepare tab order: trip saved places first, then all days
+    // Cities sorted chronologically by startDate; cities without dates fall to the end (preserving their order)
+    const sortedCities = [...cities].sort((a, b) => {
+        if (a.startDate && b.startDate) return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+        if (a.startDate) return -1;
+        if (b.startDate) return 1;
+        return (a.order ?? 0) - (b.order ?? 0);
+    });
+
+    // Prepare tab order: trip saved places first, then all days.
+    // In multi-city mode, only show days belonging to the active city.
+    const allDayNumbers = daysArray.filter((d): d is number => typeof d === 'number');
+
+    const visibleDayNumbers = (() => {
+        if (cities.length <= 1 || !activeCityId) return allDayNumbers;
+
+        const activeCity = sortedCities.find(c => c.cityId === activeCityId);
+
+        // Primary: filter by the city's date range when both the city and trip have dates set
+        if (activeCity?.startDate && startDate) {
+            const toDateStr = (iso: string) => iso.slice(0, 10); // "YYYY-MM-DD" UTC portion
+            const cityStartStr = toDateStr(activeCity.startDate);
+            const cityEndStr = toDateStr(activeCity.endDate ?? activeCity.startDate);
+            return allDayNumbers.filter(d => {
+                const dayDate = new Date(startDate);
+                dayDate.setUTCDate(dayDate.getUTCDate() + (d - 1));
+                const dayStr = dayDate.toISOString().slice(0, 10);
+                return dayStr >= cityStartStr && dayStr <= cityEndStr;
+            });
+        }
+
+        // Fallback: use explicit dayCity assignment
+        return allDayNumbers.filter(d => dayCity[d] === activeCityId || !dayCity[d]);
+    })();
     const tabLabels: TabType[] = [
         'wishlist',
-        ...daysArray.filter((d): d is number => typeof d === 'number').map(d => `day${d}` as TabType)
+        ...visibleDayNumbers.map(d => `day${d}` as TabType)
     ];
 
     // Placeholder: implement this to call your backend or Google Places API
@@ -2092,6 +2161,10 @@ export default function TripViewMain() {
 
     const handleAddDay = () => {
         const newDayNumber = addNewDay();
+        // Assign the new day to the currently active city (multi-city support)
+        if (activeCityId) {
+            assignDayToCity(newDayNumber, activeCityId);
+        }
         // The new day number IS the new day count (e.g., if we had 3 days, newDayNumber is 4)
         const newDayCount = newDayNumber;
         setTripLength(newDayCount);
@@ -2179,6 +2252,13 @@ export default function TripViewMain() {
             });
             queueSave(op);
         }, 0);
+    };
+
+    // Reassign a day to a different city (used from overview drag-to-city)
+    const handleMoveDayToCity = (dayNumber: number, cityId: string) => {
+        setDayCity((prev: any) => ({ ...prev, [dayNumber]: cityId }));
+        const op = createOperation('modify', 'day', { action: 'moveDayToCity', dayNumber, cityId });
+        queueSave(op);
     };
 
     const handleDeleteDay = () => {
@@ -2963,14 +3043,37 @@ export default function TripViewMain() {
 
     // ===== CATEGORY FLOW HANDLERS =====
 
-    // Debug log: city categories and UI conditions (REMOVED - causing excessive re-renders)
-    // useEffect(() => {
-    //     console.log('[trip-view_main] cityCategories updated:', Array.isArray(cityCategories) ? cityCategories.length : cityCategories);
-    //     if (Array.isArray(cityCategories)) {
-    //         console.log('[trip-view_main] cityCategories sample:', cityCategories[0]);
-    //     }
-    //     console.log('[trip-view_main] selectedCity:', selectedCity);
-    // }, [cityCategories, selectedCity]);
+    // Refresh city categories and clear cached activities when the active city changes
+    const prevActiveCityIdRef = useRef<string | null>(null);
+    useEffect(() => {
+        // Skip on first mount (categories already loaded from cloud restore or creation flow)
+        if (prevActiveCityIdRef.current === null) {
+            prevActiveCityIdRef.current = activeCityId;
+            return;
+        }
+        // Only act when the city actually changes
+        if (activeCityId === prevActiveCityIdRef.current) return;
+        prevActiveCityIdRef.current = activeCityId;
+
+        if (!activeCityId) return;
+        const activeCity = cities.find(c => c.cityId === activeCityId);
+        if (!activeCity?.name) return;
+
+        // Clear the per-category activities cache so new city's activities are fetched fresh
+        setCategoryActivities({});
+
+        // Fetch categories for the newly active city
+        setCityCategories(null); // show loading state immediately
+        API.graphql(graphqlOperation(getCityCategories, { selectedCity: activeCity.name }))
+            .then((result: any) => {
+                const cats = result?.data?.getCityCategories?.categories;
+                if (cats) setCityCategories(cats);
+            })
+            .catch((err: any) => {
+                console.error('[trip-view_main] Failed to fetch categories for city:', activeCity.name, err);
+                setCityCategories(null);
+            });
+    }, [activeCityId]);
 
     // Handler for category card press
     const handleCategoryPress = async (category: any) => {
@@ -3173,11 +3276,14 @@ export default function TripViewMain() {
                 endDate: latestEndDate,
                 tripTitle: latestTripTitle,
                 tripLength: latestTripLength,
+                cities: latestCities,
+                dayCity: latestDayCity,
             } = latestTripDataRef.current;
 
             // Gather days and their activities (sanitize activities for GraphQL input)
             const days = Object.keys(latestDayActivities).map(dayNumber => ({
                 dayNumber: Number(dayNumber),
+                cityId: latestDayCity?.[Number(dayNumber)] || (latestCities?.[0]?.cityId ?? null),
                 activities: latestDayActivities[dayNumber].activities.map(sanitizeActivity),
                 encodedPolyline: latestDayPolylines[dayNumber] || null,
                 travelModes: latestDayTravelModes[dayNumber] ? JSON.stringify(latestDayTravelModes[dayNumber]) : null,
@@ -3242,6 +3348,20 @@ export default function TripViewMain() {
                 cityCategories: cleanCityCategories || null, // Save city categories for restoration
                 recentSearches: cleanRecentSearches,
                 deletedSavedPlaceIds: Array.from(latestDeletedSavedPlaceIds), // Convert Set to Array for GraphQL
+                cities: (latestCities || []).map((c: any) => ({
+                    cityId: c.cityId,
+                    name: c.name,
+                    lat: c.location?.lat ?? null,
+                    lng: c.location?.lng ?? null,
+                    placeId: c.location?.placeId ?? null,
+                    order: c.order,
+                    startDate: c.startDate ?? null,
+                    endDate: c.endDate ?? null,
+                    photoReference: c.photoReference ?? null,
+                    travelToNextMode: c.travelToNext?.mode ?? null,
+                    travelToNextDuration: c.travelToNext?.duration ?? null,
+                    travelToNextNotes: c.travelToNext?.notes ?? null,
+                })),
             };
 
             // Get current user information
@@ -3871,36 +3991,9 @@ export default function TripViewMain() {
         }
     }, [dayActivities]);
 
-    // Render primary tab toggle (Overview/Itinerary)
-    const renderPrimaryTabs = () => (
-        <View style={styles.primaryTabContainer}>
-            <TouchableOpacity
-                style={[styles.primaryTab, primaryTab === 'overview' && styles.primaryTabActive]}
-                onPress={() => setPrimaryTab('overview')}
-                activeOpacity={0.7}
-            >
-                <Text style={[styles.primaryTabText, primaryTab === 'overview' && styles.primaryTabTextActive]}>
-                    Overview
-                </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={[styles.primaryTab, primaryTab === 'itinerary' && styles.primaryTabActive]}
-                onPress={() => {
-                    setPrimaryTab('itinerary');
-                    setActiveTab('wishlist');
-                }}
-                activeOpacity={0.7}
-            >
-                <Text style={[styles.primaryTabText, primaryTab === 'itinerary' && styles.primaryTabTextActive]}>
-                    Itinerary
-                </Text>
-            </TouchableOpacity>
-        </View>
-    );
-
     // Prepare day polylines for overview mode with color coding
     const overviewDayPolylines = useMemo(() => {
-        if (primaryTab !== 'overview') return [];
+        if (activeTab !== 'overview') return [];
 
         const sortedDayNumbers = Object.keys(dayActivities)
             .map(Number)
@@ -3929,7 +4022,7 @@ export default function TripViewMain() {
                 }
             })
             .filter((item): item is { dayNumber: number; coordinates: { latitude: number; longitude: number }[]; color: string } => item !== null);
-    }, [primaryTab, dayPolylines, dayActivities]);
+    }, [activeTab, dayPolylines, dayActivities]);
 
     // Extract route legs for each day from the routeCache for Overview display
     const dayRouteLegs = useMemo(() => {
@@ -3950,7 +4043,7 @@ export default function TripViewMain() {
 
     // Create a map of activity instanceId to day number for marker coloring in overview mode
     const activityDayMap = useMemo(() => {
-        if (primaryTab !== 'overview') return undefined;
+        if (activeTab !== 'overview') return undefined;
 
         const map = new Map<string, number>();
         Object.keys(dayActivities).forEach((dayKey) => {
@@ -3965,12 +4058,12 @@ export default function TripViewMain() {
             }
         });
         return map;
-    }, [primaryTab, dayActivities]);
+    }, [activeTab, dayActivities]);
 
     return (
         <>
             <TripMapView
-                activities={primaryTab === 'overview' ? getAllDayActivities() : getActivitiesForTab(activeTab)}
+                activities={activeTab === 'overview' ? getAllDayActivities() : getActivitiesForTab(activeTab)}
                 activeTab={activeTab}
                 routeCoordinates={
                   activeTab.startsWith('day') && getActivitiesForTab(activeTab).length > 0
@@ -3985,7 +4078,7 @@ export default function TripViewMain() {
                 heightStates={heightStates}
                 allActivities={getAllActivitiesFromTrip()}
                 selectedCityLocation={selectedCityLocation || undefined}
-                dayPolylines={primaryTab === 'overview' ? overviewDayPolylines : undefined}
+                dayPolylines={activeTab === 'overview' ? overviewDayPolylines : undefined}
                 activityDayMap={activityDayMap}
                 routeData={activeTab.startsWith('day') ? {
                     legs: routeData.legs.map(leg => ({
@@ -4023,29 +4116,52 @@ export default function TripViewMain() {
                     <View style={styles.dragIndicator} />
                 </View>
 
-                {/* Navigation - show either primary toggle or TabBar */}
+                {/* City selector — shown in itinerary mode when there are cities */}
+                {!showActivityDetail && activeTab !== 'overview' && cities.length > 0 && (
+                    <CitySelector
+                        cities={sortedCities}
+                        activeCityId={activeCityId}
+                        onCitySelect={(id) => {
+                            setActiveCityId(id);
+                            // Reset to wishlist tab when switching cities so
+                            // the user doesn't land on a day belonging to another city
+                            if (activeTab !== 'wishlist') {
+                                setActiveTab('wishlist');
+                            }
+                        }}
+                        onAddCity={() => setShowAddCityModal(true)}
+                        onRemoveCity={(cityId) => {
+                            removeCity(cityId);
+                            // If the active city was removed, switch to first remaining
+                            if (activeCityId === cityId) {
+                                const remaining = cities.filter(c => c.cityId !== cityId);
+                                if (remaining.length > 0) {
+                                    setActiveCityId(remaining[0].cityId);
+                                }
+                                setActiveTab('wishlist');
+                            }
+                        }}
+                        canEdit={currentUserRole !== 'viewer'}
+                    />
+                )}
+
+                {/* Navigation - unified tab bar */}
                 {!showActivityDetail && (
-                    primaryTab === 'overview' ? (
-                        // Show Overview/Itinerary toggle
-                        renderPrimaryTabs()
-                    ) : (
-                        // Show TabBar with Overview, Wishlist, Day tabs in primary style
-                        <TabBar
-                            activeTab={activeTab}
-                            onTabChange={handleTabChange}
-                            dayCount={getDayCount()}
-                            onAddDay={handleAddDay}
-                            onDeleteDay={handleDeleteDay}
-                            onReorderDays={handleReorderDays}
-                            shouldScrollToActive={shouldScrollToActive}
-                            tabLabels={tabLabels}
-                            currentUserRole={currentUserRole}
-                            startDate={startDate}
-                            showOverviewTab={true}
-                            showDayButtons={true}
-                            usePrimaryStyle={true}
-                        />
-                    )
+                    <TabBar
+                        activeTab={activeTab}
+                        onTabChange={handleTabChange}
+                        dayCount={visibleDayNumbers.length}
+                        onAddDay={handleAddDay}
+                        onDeleteDay={handleDeleteDay}
+                        onReorderDays={handleReorderDays}
+                        shouldScrollToActive={shouldScrollToActive}
+                        tabLabels={tabLabels}
+                        currentUserRole={currentUserRole}
+                        startDate={startDate}
+                        showOverviewTab={true}
+                        showDayButtons={true}
+                        usePrimaryStyle={true}
+                    />
                 )}
 
                 {/* Tab Content */}
@@ -4063,8 +4179,8 @@ export default function TripViewMain() {
                     />
                 ) : (
                     <>
-                        {/* Overview Content - shown when primaryTab is 'overview' */}
-                        {primaryTab === 'overview' && (
+                        {/* Overview Content */}
+                        {activeTab === 'overview' && (
                             <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
                             <View style={styles.overviewWrapper}>
                                 <OverviewContent
@@ -4081,16 +4197,31 @@ export default function TripViewMain() {
                                     currentUserRole={currentUserRole}
                                     collaborators={collaborators}
                                     dayRouteLegs={dayRouteLegs}
+                                    cities={sortedCities}
+                                    dayCity={dayCity}
+                                    onAddCity={() => setShowAddCityModal(true)}
+                                    onEditCityDates={(city) => setEditingCity(city)}
+                                    onSwapDays={handleReorderDays}
+                                    onMoveDayToCity={handleMoveDayToCity}
                                 />
                             </View>
                             </Pressable>
                         )}
 
-                        {/* Wishlist/Saved Places Content - shown when in itinerary mode */}
-                        {primaryTab === 'itinerary' && activeTab === 'wishlist' && (() => {
-                            const wishlistActivities = getActivitiesForTab('wishlist');
+                        {/* Wishlist/Saved Places Content */}
+                        {activeTab === 'wishlist' && (() => {
+                            const allWishlistActivities = getActivitiesForTab('wishlist');
+
+                            // In multi-city mode, show only the active city's saved places
+                            const activeCityName = cities.length > 1 && activeCityId
+                                ? (cities.find(c => c.cityId === activeCityId)?.name ?? null)
+                                : null;
+                            const wishlistActivities = activeCityName
+                                ? allWishlistActivities.filter((a: Activity) => !a.city || a.city === activeCityName)
+                                : allWishlistActivities;
+
                             const activitiesByCity = wishlistActivities.reduce((acc: { [key: string]: Activity[] }, activity) => {
-                                const city = activity.city || 'Unknown City';
+                                const city = activity.city || activeCityName || 'Unknown City';
                                 if (!acc[city]) acc[city] = [];
                                 acc[city].push(activity);
                                 return acc;
@@ -4106,8 +4237,8 @@ export default function TripViewMain() {
                                     {wishlistActivities.length === 0 ? (
                                         <View>
                                             {/* City Title */}
-                                            {(displayCityName || selectedCity) && (
-                                                <Text style={styles.cityTitle}>{displayCityName || selectedCity}</Text>
+                                            {(activeCityName || displayCityName || selectedCity) && (
+                                                <Text style={styles.cityTitle}>{activeCityName || displayCityName || selectedCity}</Text>
                                             )}
 
                                             {/* SearchBar - right below city title, scrolls with content */}
@@ -4246,8 +4377,8 @@ export default function TripViewMain() {
                             );
                         })()}
 
-                        {/* Day Schedule Content - shown when in itinerary mode */}
-                        {primaryTab === 'itinerary' && activeTab.startsWith('day') && (() => {
+                        {/* Day Schedule Content */}
+                        {activeTab.startsWith('day') && (() => {
                             const currentDayNumber = parseInt(activeTab.replace('day', ''));
                             return (
                                 <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
@@ -4340,6 +4471,40 @@ export default function TripViewMain() {
                 dayActivities={Object.values(dayActivities || {}).flatMap(dayObj =>
                     Array.isArray((dayObj as any).activities) ? (dayObj as any).activities : []
                 )}
+            />
+
+            {/* Edit City Dates Modal */}
+            <EditCityDatesModal
+                visible={editingCity !== null}
+                city={editingCity}
+                otherCities={sortedCities.filter(c => c.cityId !== editingCity?.cityId)}
+                onClose={() => setEditingCity(null)}
+                onSave={(cityId, isoStart, isoEnd) => {
+                    updateCityDates(cityId, isoStart, isoEnd);
+                }}
+            />
+
+            {/* Add City Modal */}
+            <AddCityModal
+                visible={showAddCityModal}
+                onClose={() => setShowAddCityModal(false)}
+                onCityAdded={(cityId) => {
+                    // Switch to the newly added city immediately
+                    setActiveCityId(cityId);
+                    if (activeTab !== 'wishlist') {
+                        setActiveTab('wishlist');
+                    }
+                    // Defer save until React flushes the addCity/updateCityDates state updates
+                    // and the latestTripDataRef useEffect has synced the new cities array.
+                    setTimeout(async () => {
+                        try {
+                            await saveTrip();
+                            lastSaveTimeRef.current = Date.now();
+                        } catch (error) {
+                            console.error('[trip-view_main] Failed to save after adding city:', error);
+                        }
+                    }, 0);
+                }}
             />
 
             {/* Share Trip Modal */}

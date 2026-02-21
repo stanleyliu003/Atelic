@@ -61,6 +61,7 @@ export const createTrip = /* GraphQL */ `
       tripTitle
       days {
         dayNumber
+        cityId
         encodedPolyline
         travelModes
         __typename
@@ -134,6 +135,21 @@ export const createTrip = /* GraphQL */ `
         __typename
       }
       deletedSavedPlaceIds
+      cities {
+        cityId
+        name
+        lat
+        lng
+        placeId
+        order
+        startDate
+        endDate
+        photoReference
+        travelToNextMode
+        travelToNextDuration
+        travelToNextNotes
+        __typename
+      }
       __typename
     }
   }
@@ -186,6 +202,7 @@ export const addCollaborator = /* GraphQL */ `
       tripTitle
       days {
         dayNumber
+        cityId
         encodedPolyline
         travelModes
         __typename
@@ -259,6 +276,21 @@ export const addCollaborator = /* GraphQL */ `
         __typename
       }
       deletedSavedPlaceIds
+      cities {
+        cityId
+        name
+        lat
+        lng
+        placeId
+        order
+        startDate
+        endDate
+        photoReference
+        travelToNextMode
+        travelToNextDuration
+        travelToNextNotes
+        __typename
+      }
       __typename
     }
   }
@@ -270,6 +302,7 @@ export const removeCollaborator = /* GraphQL */ `
       tripTitle
       days {
         dayNumber
+        cityId
         encodedPolyline
         travelModes
         __typename
@@ -343,6 +376,21 @@ export const removeCollaborator = /* GraphQL */ `
         __typename
       }
       deletedSavedPlaceIds
+      cities {
+        cityId
+        name
+        lat
+        lng
+        placeId
+        order
+        startDate
+        endDate
+        photoReference
+        travelToNextMode
+        travelToNextDuration
+        travelToNextNotes
+        __typename
+      }
       __typename
     }
   }
@@ -358,6 +406,7 @@ export const updateCollaboratorRole = /* GraphQL */ `
       tripTitle
       days {
         dayNumber
+        cityId
         encodedPolyline
         travelModes
         __typename
@@ -431,6 +480,21 @@ export const updateCollaboratorRole = /* GraphQL */ `
         __typename
       }
       deletedSavedPlaceIds
+      cities {
+        cityId
+        name
+        lat
+        lng
+        placeId
+        order
+        startDate
+        endDate
+        photoReference
+        travelToNextMode
+        travelToNextDuration
+        travelToNextNotes
+        __typename
+      }
       __typename
     }
   }

@@ -7,6 +7,7 @@ export const getUserTripsDetailed = /* GraphQL */ `
       tripId
       days {
         dayNumber
+        cityId
         activities {
           instanceId
           savedPlaceId
@@ -156,6 +157,22 @@ export const getUserTripsDetailed = /* GraphQL */ `
         name
         address_info
         timestamp
+        __typename
+      }
+      deletedSavedPlaceIds
+      cities {
+        cityId
+        name
+        lat
+        lng
+        placeId
+        order
+        startDate
+        endDate
+        photoReference
+        travelToNextMode
+        travelToNextDuration
+        travelToNextNotes
         __typename
       }
       __typename
