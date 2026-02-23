@@ -272,6 +272,8 @@ export default function create_trip_explore() {
         onQueryChange={handleSearchQueryChange}
         onSaveActivities={handleSaveSearchResults}
         showAddingPlaceLoading={false}
+        dayNumber={selectedDayNumber}
+
       />
 
       <CategoryModal

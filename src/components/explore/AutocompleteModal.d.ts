@@ -18,6 +18,7 @@ interface AutocompleteModalProps {
     flightData?: FlightReservation
   ) => void;
   wishlistActivities?: Activity[];
+  dayNumber?: number;
   activeTab?: string;
   /**
    * Callback fired when a place selection begins/ends.

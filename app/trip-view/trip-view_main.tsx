@@ -4446,6 +4446,7 @@ export default function TripViewMain() {
                 showAddingPlaceLoading={false}
                 onAddingPlaceChange={setIsAutocompleteAddingPlace}
                 wishlistActivities={getActivitiesForTab('wishlist')}
+                dayNumber={parseInt(activeTab.replace('day', ''))}
                 activeTab={activeTab}
             />
 

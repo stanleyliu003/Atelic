@@ -276,6 +276,7 @@ export default function WishlistInfo() {
           onSearchActivities={handleSearchActivities}
           onSaveActivities={handleSaveSearchResults}
           wishlistActivities={activities || []}
+          dayNumber={selectedDayNumber}
           activeTab="wishlist"
         />
       </View>

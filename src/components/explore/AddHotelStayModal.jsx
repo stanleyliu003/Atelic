@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -23,6 +23,7 @@ import { ActivityCard } from '../trip-view/activity/activity_card';
 import { ActivityDetailView } from '../trip-view/description_card';
 import AddHotelTimeModal from './add_hotel_time_modal';
 
+
 /**
  * AddHotelStayModal Component
  * Modal for adding hotel/stay accommodations with search autocomplete
@@ -31,7 +32,7 @@ import AddHotelTimeModal from './add_hotel_time_modal';
  * @param {function} onClose - Callback to close modal
  * @param {function} onAddLodging - Callback when adding lodging to trip (receives hotel data)
  */
-export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
+export const AddHotelStayModal = ({ visible, onClose, onAddLodging, initialDayNumber}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -41,6 +42,7 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
   const [checkInDate, setCheckInDate] = useState(null);
   const [checkOutDate, setCheckOutDate] = useState(null);
   const [stayLength, setStayLength] = useState(null);
+  const { startDate: tripStartDate } = useCreateTrip();
   const [checkInTime, setCheckInTime] = useState('15:00'); // Default 3:00 PM
   const [checkOutTime, setCheckOutTime] = useState('11:00'); // Default 11:00 AM
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -58,6 +60,19 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
 
   // Get selected city and trip dates from context
   const { selectedCity, startDate, endDate } = useCreateTrip();
+
+  //initial check in day to set default to when user opens calender
+  useEffect(() => {
+    if (!initialDayNumber || !tripStartDate) return;
+  
+    const date = new Date(tripStartDate);
+    date.setDate(date.getDate() + (initialDayNumber - 1));
+    date.setHours(0, 0, 0, 0);
+  
+    checkInDateRef.current = date;
+    setCheckInDate(date);
+  }, [initialDayNumber, tripStartDate]);
+  
 
   // Pan responder for swipe-down gesture to close calendar
   const calendarPanResponder = useRef(
@@ -122,15 +137,6 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
     setError(null);
     onClose();
   };
-
-  // Focus search input when modal opens
-  useEffect(() => {
-    if (visible && searchInputRef.current) {
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 100);
-    }
-  }, [visible]);
 
   // Debounced fetch autocomplete suggestions
   useEffect(() => {
@@ -299,7 +305,7 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
             {/* Date Selection Button */}
             <TouchableOpacity
               style={styles.dateButton}
-              onPress={() => setIsCalendarOpen(true)}
+              onPress={() => {setIsCalendarOpen(true)}}
             >
               <View style={styles.dateButtonContent}>
                 <MaterialCommunityIcons name="calendar-clock-outline" size={24} color="black" />
@@ -317,18 +323,13 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
           {/* Stay Type Selector - Only show after dates are selected */}
           {stayLength && (
             <View style={styles.stayTypeSection}>
-              <Text style={styles.stayTypeTitle}>What type of place are you staying at?</Text>
+              <Text style={styles.stayTypeTitle}>Select your lodging</Text>
               <View style={styles.stayTypeOptionsRow}>
                 <TouchableOpacity
                   style={[styles.stayTypeOption, stayType === 'hotel' && styles.stayTypeOptionSelected]}
                   onPress={() => setStayType('hotel')}
                   activeOpacity={0.7}
                 >
-                  <MaterialIcons
-                    name="hotel"
-                    size={22}
-                    color={stayType === 'hotel' ? Colors.WHITE : '#666'}
-                  />
                   <Text style={[styles.stayTypeOptionText, stayType === 'hotel' && styles.stayTypeOptionTextSelected]}>
                     Hotel
                   </Text>
@@ -342,13 +343,8 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
                   }}
                   activeOpacity={0.7}
                 >
-                  <MaterialCommunityIcons
-                    name="home-city-outline"
-                    size={22}
-                    color={stayType === 'airbnb' ? Colors.WHITE : '#666'}
-                  />
                   <Text style={[styles.stayTypeOptionText, stayType === 'airbnb' && styles.stayTypeOptionTextSelected]}>
-                    AirBnB
+                    Airbnb
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -360,13 +356,8 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
                   }}
                   activeOpacity={0.7}
                 >
-                  <MaterialCommunityIcons
-                    name="map-marker-plus-outline"
-                    size={22}
-                    color={stayType === 'custom_address' ? Colors.WHITE : '#666'}
-                  />
                   <Text style={[styles.stayTypeOptionText, stayType === 'custom_address' && styles.stayTypeOptionTextSelected]}>
-                    Custom Address
+                    Address
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -621,7 +612,7 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
                     // Use the ref to get the latest check-in date value
                     const currentCheckInDate = checkInDateRef.current;
 
-                    if (currentCheckInDate) {
+                    if (currentCheckInDate && type !== 'START_DATE') {
                       // Calculate time difference in milliseconds
                       const timeDiff = date.getTime() - currentCheckInDate.getTime();
 
@@ -877,7 +868,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 12,
+    paddingVertical: 3,
     paddingHorizontal: 12,
     borderRadius: 16,
     backgroundColor: '#f3f4f6',

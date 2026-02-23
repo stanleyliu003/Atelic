@@ -61,6 +61,7 @@ export const AutocompleteModal = ({
   onAddingPlaceChange,
   showAddingPlaceLoading = true,
   wishlistActivities = [],
+  dayNumber,
   activeTab = 'wishlist',
 }) => {
   const [suggestions, setSuggestions] = useState([]);
@@ -97,6 +98,17 @@ export const AutocompleteModal = ({
   useEffect(() => {
     setLocalQuery(query);
   }, [query]);
+
+  //automatically puts the keyboard up when opening modal
+  useEffect(() => {
+    if (visible) {
+      const timeout = setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100); // small delay lets Modal mount
+  
+      return () => clearTimeout(timeout);
+    }
+  }, [visible]);
 
 
   // Debounced fetch autocomplete suggestions
@@ -243,7 +255,8 @@ export const AutocompleteModal = ({
   // Handle activity card press to show description
   const handleActivityCardPress = (activity) => {
     setSelectedActivityForDetail(activity);
-    setShowActivityDetail(true);
+    setShowActivityDetail(true
+    );
   };
 
   // Handle close activity detail
@@ -355,14 +368,15 @@ export const AutocompleteModal = ({
                 <Text style={styles.hotelButtonText}>Add Hotel/Stay</Text>
               </TouchableOpacity>
               {/* Temporarily disabled - Add Flight button */}
-              { <TouchableOpacity
+              { /*<TouchableOpacity
                 style={styles.hotelButton}
                 onPress={() => setShowFlightModal(true)}
                 activeOpacity={0.7}
               >
                 <Ionicons name="airplane" size={24} color="black" />
                 <Text style={styles.hotelButtonText}>Add Flight</Text>
-              </TouchableOpacity>}
+              </TouchableOpacity> */}
+              
             </View>
           )}
 
@@ -529,6 +543,7 @@ export const AutocompleteModal = ({
         visible={showHotelModal}
         onClose={() => setShowHotelModal(false)}
         onAddLodging={handleAddLodging}
+        initialDayNumber={dayNumber}
       />
 
       {/* Add Flight Modal */}

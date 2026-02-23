@@ -234,7 +234,7 @@ export function ActivityCard({
                       numberOfLines={1}
                       ellipsizeMode="tail"
                     >
-                      {activity.primary_type_display_name}
+                      {activity.isLodging ? 'Lodging' : activity.primary_type_display_name}
                     </Text>
                   </View>
                 )}
