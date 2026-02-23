@@ -1,5 +1,4 @@
 import 'react-native-get-random-values';
-import 'react-native-url-polyfill/auto';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter } from "expo-router";
 import { CreateTripProvider } from '../context/CreateTripContext';
