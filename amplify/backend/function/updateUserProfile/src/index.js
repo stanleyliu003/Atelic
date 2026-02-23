@@ -123,8 +123,12 @@ exports.handler = async (event) => {
         result = await linkAttribution(username, tripData);
         break;
 
-      case 'UPDATE_ADMIN_PERMISSION':
-        result = await updateAdminPermission(username, tripData);
+      case 'UPDATE_PRIVACY':
+        result = await updatePrivacy(username, tripData);
+        break;
+
+      case 'UPDATE_STATISTICS':
+        result = await updateStatistics(username, tripData);
         break;
 
       default:
@@ -1775,25 +1779,64 @@ async function linkAttribution(username, data) {
 }
 
 /**
- * UPDATE_ADMIN_PERMISSION
- * Sets admin_permission on the user profile.
+ * Update user privacy setting (isPrivateAccount)
  */
-async function updateAdminPermission(username, tripData) {
-  const { admin_permission } = tripData || {};
-  const now = new Date().toISOString();
+async function updatePrivacy(username, data) {
+  const { isPrivateAccount } = data;
 
-  console.log('[UPDATE_ADMIN_PERMISSION] Setting admin_permission for', username, ':', admin_permission);
+  if (typeof isPrivateAccount !== 'boolean') {
+    throw new Error('isPrivateAccount must be a boolean');
+  }
 
   const result = await docClient.send(new UpdateCommand({
     TableName: USER_PROFILES_TABLE,
     Key: { username },
-    UpdateExpression: 'SET admin_permission = :ap, lastActiveAt = :now',
+    UpdateExpression: 'SET isPrivateAccount = :isPrivate, lastActiveAt = :now',
     ExpressionAttributeValues: {
-      ':ap': admin_permission === true,
-      ':now': now
+      ':isPrivate': isPrivateAccount,
+      ':now': new Date().toISOString()
     },
     ReturnValues: 'ALL_NEW'
   }));
 
+  console.log(`Updated privacy setting for ${username} to ${isPrivateAccount ? 'private' : 'public'}`);
+  return result.Attributes;
+}
+
+/**
+ * Update user travel statistics (countries/cities visited with 24-hour cache)
+ */
+async function updateStatistics(username, data) {
+  const {
+    countriesVisited,
+    citiesVisited,
+    countriesVisitedList,
+    citiesVisitedList,
+    statsLastUpdated
+  } = data;
+
+  const result = await docClient.send(new UpdateCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username },
+    UpdateExpression: `
+      SET countriesVisited = :countries,
+          citiesVisited = :cities,
+          countriesVisitedList = :countryList,
+          citiesVisitedList = :cityList,
+          statsLastUpdated = :updated,
+          lastActiveAt = :now
+    `,
+    ExpressionAttributeValues: {
+      ':countries': countriesVisited,
+      ':cities': citiesVisited,
+      ':countryList': countriesVisitedList,
+      ':cityList': citiesVisitedList,
+      ':updated': statsLastUpdated,
+      ':now': new Date().toISOString()
+    },
+    ReturnValues: 'ALL_NEW'
+  }));
+
+  console.log(`Updated statistics for ${username}: ${countriesVisited} countries, ${citiesVisited} cities`);
   return result.Attributes;
 }

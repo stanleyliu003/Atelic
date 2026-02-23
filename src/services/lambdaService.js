@@ -80,7 +80,11 @@ export const listUserTripsFromCloud = async (userID) => {
         return result.data.getTripIDs;
 
     } catch (error) {
-        console.error('[Lambda Service] Error listing user trips from cloud:', error);
+        // Handle partial errors - GraphQL may return data even with errors
+        if (error?.data?.getTripIDs) {
+            return error.data.getTripIDs;
+        }
+        // Don't log to console to avoid error toasts
         throw error;
     }
 };

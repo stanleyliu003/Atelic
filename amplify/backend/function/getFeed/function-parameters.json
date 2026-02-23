@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "storage": {
+      "TripStorage": [
+        "read"
+      ],
+      "UserFollowsStorage": [
+        "read"
+      ],
+      "UserProfilesStorage": [
+        "read"
+      ]
+    }
+  },
+  "lambdaLayers": []
+}

@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "storage": {
+      "FollowRequestsStorage": [
+        "read",
+        "update",
+        "delete"
+      ],
+      "UserFollowsStorage": [
+        "create",
+        "read"
+      ],
+      "UserProfilesStorage": [
+        "read",
+        "update"
+      ]
+    }
+  },
+  "lambdaLayers": []
+}

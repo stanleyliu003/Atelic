@@ -1,16 +1,21 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { API } from 'aws-amplify';
 import { Colors } from '../../../constants/Colors';
 import { Activity, EnhancedRouteLeg } from '../../types/activity.types';
 import EditableTripTitle from './EditableTripTitle';
 import DaySummaryCard from './DaySummaryCard';
+import { getUserProfile } from '../../graphql/queries';
 
 interface Collaborator {
   userID: string;
   email: string;
   role: string;
   userName?: string;
+  username?: string;
+  fullName?: string;
+  profilePhotoUrl?: string;
 }
 
 interface OverviewContentProps {
@@ -27,6 +32,7 @@ interface OverviewContentProps {
   currentUserRole: string;
   collaborators?: Collaborator[];
   dayRouteLegs?: { [dayNumber: number]: EnhancedRouteLeg[] };
+  onCollaboratorsPress?: () => void;
 }
 
 export default function OverviewContent({
@@ -43,8 +49,47 @@ export default function OverviewContent({
   currentUserRole,
   collaborators,
   dayRouteLegs,
+  onCollaboratorsPress,
 }: OverviewContentProps) {
   const isViewer = currentUserRole === 'viewer';
+  const [collaboratorPhotos, setCollaboratorPhotos] = useState<{ [username: string]: string | null }>({});
+
+  // Fetch profile photos for collaborators
+  useEffect(() => {
+    const fetchCollaboratorPhotos = async () => {
+      if (!collaborators || collaborators.length === 0) return;
+
+      const photos: { [username: string]: string | null } = {};
+
+      for (const collab of collaborators) {
+        const username = collab.username || collab.userName;
+        if (!username) continue;
+
+        // Check if already have photo URL in collaborator object
+        if (collab.profilePhotoUrl) {
+          photos[username] = collab.profilePhotoUrl;
+          continue;
+        }
+
+        try {
+          const response = await API.graphql({
+            query: getUserProfile,
+            variables: { username },
+          });
+          const profile = (response as any).data?.getUserProfile;
+          photos[username] = profile?.profilePhotoUrl || null;
+        } catch (error) {
+          // Try to extract from partial error
+          const profile = (error as any)?.data?.getUserProfile;
+          photos[username] = profile?.profilePhotoUrl || null;
+        }
+      }
+
+      setCollaboratorPhotos(photos);
+    };
+
+    fetchCollaboratorPhotos();
+  }, [collaborators]);
 
   const calculateDayDate = (startDate: string | null, dayNumber: number): Date | null => {
     if (!startDate) return null;
@@ -127,15 +172,51 @@ export default function OverviewContent({
           </Pressable>
 
           <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Ionicons name="location" size={12} color="#9CA3AF" />
-              <Text style={styles.statText}>{totalLocations}</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Ionicons name="people" size={12} color="#9CA3AF" />
-              <Text style={styles.statText}>{totalCollaborators + 1}</Text>
-            </View>
+            <Pressable
+              style={styles.collaboratorsContainer}
+              onPress={onCollaboratorsPress}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              {(collaborators || []).slice(0, 3).map((collab, index) => {
+                const username = collab.username || collab.userName || '';
+                const fullName = collab.fullName || collab.email || '';
+                const initials = fullName
+                  .split(' ')
+                  .map(n => n[0])
+                  .join('')
+                  .toUpperCase()
+                  .slice(0, 2) || username.slice(0, 2).toUpperCase();
+                const photoUrl = collaboratorPhotos[username];
+
+                return (
+                  <View
+                    key={collab.userID || index}
+                    style={[
+                      styles.collaboratorAvatar,
+                      { marginLeft: index === 0 ? 0 : -8, zIndex: 10 - index },
+                    ]}
+                  >
+                    {photoUrl ? (
+                      <Image
+                        source={{ uri: photoUrl }}
+                        style={styles.collaboratorPhoto}
+                      />
+                    ) : (
+                      <View style={styles.collaboratorInitials}>
+                        <Text style={styles.initialsText}>{initials}</Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+              {(collaborators?.length || 0) > 3 && (
+                <View style={[styles.collaboratorAvatar, { marginLeft: -8, zIndex: 6 }]}>
+                  <View style={styles.moreCollaborators}>
+                    <Text style={styles.moreText}>+{(collaborators?.length || 0) - 3}</Text>
+                  </View>
+                </View>
+              )}
+            </Pressable>
           </View>
         </View>
       </View>
@@ -229,6 +310,47 @@ const styles = StyleSheet.create({
     width: 1,
     height: 12,
     backgroundColor: '#E5E7EB',
+  },
+  collaboratorsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  collaboratorAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  collaboratorPhoto: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+  },
+  collaboratorInitials: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: Colors.ORANGE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  initialsText: {
+    fontSize: 11,
+    fontFamily: 'outfit-bold',
+    color: '#FFFFFF',
+  },
+  moreCollaborators: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moreText: {
+    fontSize: 10,
+    fontFamily: 'outfit-bold',
+    color: '#6B7280',
   },
   daysSection: {
     marginTop: 0,

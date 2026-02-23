@@ -239,7 +239,7 @@ export default function Login() {
 
       // User is authenticated and has username, redirect to main app
       isNavigatingRef.current = true;
-      router.replace('(tabs)/profile');
+      router.replace('(tabs)/feed');
 
       // Update device info in the background (do not block navigation/spinner)
       (async () => {
@@ -280,7 +280,7 @@ export default function Login() {
 
           if (!isNavigatingRef.current) {
             isNavigatingRef.current = true;
-            router.replace('(tabs)/profile');
+            router.replace('(tabs)/feed');
           }
           return;
         } catch (refreshError) {

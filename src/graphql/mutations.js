@@ -826,3 +826,57 @@ export const sendPushNotification = /* GraphQL */ `
     }
   }
 `;
+export const followUser = /* GraphQL */ `
+  mutation FollowUser($followerUsername: String!, $targetUsername: String!) {
+    followUser(
+      followerUsername: $followerUsername
+      targetUsername: $targetUsername
+    ) {
+      success
+      status
+      message
+      __typename
+    }
+  }
+`;
+export const unfollowUser = /* GraphQL */ `
+  mutation UnfollowUser($followerUsername: String!, $targetUsername: String!) {
+    unfollowUser(
+      followerUsername: $followerUsername
+      targetUsername: $targetUsername
+    ) {
+      success
+      status
+      message
+      __typename
+    }
+  }
+`;
+export const approveFollowRequest = /* GraphQL */ `
+  mutation ApproveFollowRequest(
+    $targetUsername: String!
+    $requesterUsername: String!
+    $action: String!
+  ) {
+    approveFollowRequest(
+      targetUsername: $targetUsername
+      requesterUsername: $requesterUsername
+      action: $action
+    ) {
+      success
+      status
+      message
+      __typename
+    }
+  }
+`;
+export const updateUserPrivacy = /* GraphQL */ `
+  mutation UpdateUserPrivacy($username: String!, $isPrivate: Boolean!) {
+    updateUserPrivacy(username: $username, isPrivate: $isPrivate) {
+      success
+      status
+      message
+      __typename
+    }
+  }
+`;

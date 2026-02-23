@@ -181,6 +181,40 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "approveFollowRequest": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "FollowRequestsStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserFollowsStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "deleteAccount": {
       "build": true,
       "dependsOn": [
@@ -328,6 +362,47 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "followUser": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserFollowsStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "FollowRequestsStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        },
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "amplifybackend59ccdbf8"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "generateCategoryActivities": {
       "build": true,
       "dependsOn": [
@@ -351,6 +426,40 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "getFeed": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserFollowsStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "getFlightInfo": {
       "build": true,
       "dependsOn": [
@@ -361,6 +470,81 @@
           ],
           "category": "api",
           "resourceName": "WishlistRestAPI"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "getFollowRequests": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "FollowRequestsStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "getFollowers": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserFollowsStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "getFollowing": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserFollowsStorage"
         },
         {
           "attributes": [
@@ -448,6 +632,31 @@
           ],
           "category": "auth",
           "resourceName": "amplifybackend59ccdbf8"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "getUserStatistics": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
         },
         {
           "attributes": [
@@ -683,6 +892,40 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "searchUsersPublic": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserFollowsStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "FollowRequestsStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "sendPushNotification": {
       "build": true,
       "dependsOn": [
@@ -709,6 +952,65 @@
     "syncUserProfilesAmplitudeBI": {
       "build": true,
       "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "unfollowUser": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserFollowsStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "updateUserPrivacy": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "FollowRequestsStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserFollowsStorage"
+        },
         {
           "attributes": [
             "Name",
@@ -850,6 +1152,22 @@
         }
       ]
     },
+    "AMPLIFY_function_approveFollowRequest_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "approveFollowRequest"
+        }
+      ]
+    },
+    "AMPLIFY_function_approveFollowRequest_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "approveFollowRequest"
+        }
+      ]
+    },
     "AMPLIFY_function_deleteAccount_deploymentBucketName": {
       "usedBy": [
         {
@@ -930,6 +1248,22 @@
         }
       ]
     },
+    "AMPLIFY_function_followUser_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "followUser"
+        }
+      ]
+    },
+    "AMPLIFY_function_followUser_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "followUser"
+        }
+      ]
+    },
     "AMPLIFY_function_generateCategoryActivities_deploymentBucketName": {
       "usedBy": [
         {
@@ -962,6 +1296,22 @@
         }
       ]
     },
+    "AMPLIFY_function_getFeed_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFeed"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFeed_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFeed"
+        }
+      ]
+    },
     "AMPLIFY_function_getFlightInfo_amadeusApiKey": {
       "usedBy": [
         {
@@ -991,6 +1341,54 @@
         {
           "category": "function",
           "resourceName": "getFlightInfo"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFollowRequests_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFollowRequests"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFollowRequests_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFollowRequests"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFollowers_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFollowers"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFollowers_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFollowers"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFollowing_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFollowing"
+        }
+      ]
+    },
+    "AMPLIFY_function_getFollowing_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getFollowing"
         }
       ]
     },
@@ -1111,6 +1509,22 @@
         {
           "category": "function",
           "resourceName": "getUserProfile"
+        }
+      ]
+    },
+    "AMPLIFY_function_getUserStatistics_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getUserStatistics"
+        }
+      ]
+    },
+    "AMPLIFY_function_getUserStatistics_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getUserStatistics"
         }
       ]
     },
@@ -1290,6 +1704,22 @@
         }
       ]
     },
+    "AMPLIFY_function_searchUsersPublic_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchUsersPublic"
+        }
+      ]
+    },
+    "AMPLIFY_function_searchUsersPublic_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "searchUsersPublic"
+        }
+      ]
+    },
     "AMPLIFY_function_searchUsers_deploymentBucketName": {
       "usedBy": [
         {
@@ -1343,6 +1773,38 @@
         {
           "category": "function",
           "resourceName": "syncUserProfilesAmplitudeBI"
+        }
+      ]
+    },
+    "AMPLIFY_function_unfollowUser_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "unfollowUser"
+        }
+      ]
+    },
+    "AMPLIFY_function_unfollowUser_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "unfollowUser"
+        }
+      ]
+    },
+    "AMPLIFY_function_updateUserPrivacy_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "updateUserPrivacy"
+        }
+      ]
+    },
+    "AMPLIFY_function_updateUserPrivacy_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "updateUserPrivacy"
         }
       ]
     },
@@ -1400,6 +1862,10 @@
       "providerPlugin": "awscloudformation",
       "service": "DynamoDB"
     },
+    "FollowRequestsStorage": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    },
     "PlacesAPIActivityStorage": {
       "providerPlugin": "awscloudformation",
       "service": "DynamoDB"
@@ -1413,6 +1879,10 @@
       "service": "DynamoDB"
     },
     "TripStorage": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    },
+    "UserFollowsStorage": {
       "providerPlugin": "awscloudformation",
       "service": "DynamoDB"
     },

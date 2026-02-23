@@ -4342,6 +4342,7 @@ export default function TripViewMain() {
                                     currentUserRole={currentUserRole}
                                     collaborators={collaborators}
                                     dayRouteLegs={dayRouteLegs}
+                                    onCollaboratorsPress={handleShareTrip}
                                 />
                             </View>
                             </Pressable>
@@ -4676,21 +4677,8 @@ export default function TripViewMain() {
                         const isExistingTrip = tripId;
 
                         if (isExistingTrip) {
-                            // This trip was loaded from cloud storage, go back to profile
-                            let lastActivityPhotoRef = '';
-                            const day1Activities = getDayActivities(1);
-                            if (day1Activities && day1Activities.length > 0) {
-                                lastActivityPhotoRef = day1Activities[0]?.photo_reference || '';
-                            } else if (activities && Array.isArray(activities) && activities.length > 0) {
-                                lastActivityPhotoRef = activities[0]?.photo_reference || '';
-                            }
-                            router.push({
-                                pathname: '/profile',
-                                params: {
-                                    photoReference: lastActivityPhotoRef,
-                                    dayCount: dayCountVal.toString(),
-                                }
-                            });
+                            // This trip was loaded from cloud storage, go back to home/feed
+                            router.push('/(tabs)/feed');
                         } else {
                             // This is a new trip, show publish success page
                             router.push({

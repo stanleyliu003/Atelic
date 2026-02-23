@@ -238,6 +238,13 @@ type SendNotificationResult {
    lastTripDate: String
    nextTripDate: String
 
+   # Cached statistics (24-hour TTL)
+   countriesVisited: Int
+   citiesVisited: Int
+   countriesVisitedList: [String]
+   citiesVisitedList: [String]
+   statsLastUpdated: String
+
    # Social features
    followersCount: Int!
    followingCount: Int!
@@ -246,6 +253,7 @@ type SendNotificationResult {
    # Profile information
    bio: String
    profilePhotoUrl: String
+   isPrivateAccount: Boolean
    socialLinks: AWSJSON
 
   # Usage stats
@@ -416,6 +424,14 @@ type AppVersionConfig {
    getSavedPlaces(userID: String!, city: String): SavedPlacesResult @function(name: "getSavedPlaces-${env}") @auth(rules: [{ allow: public }])
    getPlacePhoto(placeId: String!, photoReference: String!, maxWidth: Int, forceRefresh: Boolean): PhotoResult @function(name: "getPlacePhoto-${env}") @auth(rules: [{ allow: public }])
    fetchPlaceDetailsLazy(place_id: String!, lazyLoad: Boolean!): Activity @function(name: "getLocationCoordinates-${env}") @auth(rules: [{ allow: public }])
+
+   # Social queries
+   getFollowers(username: String!, nextToken: String, limit: Int): FollowersResult @function(name: "getFollowers-${env}") @auth(rules: [{ allow: public }])
+   getFollowing(username: String!, nextToken: String, limit: Int): FollowingResult @function(name: "getFollowing-${env}") @auth(rules: [{ allow: public }])
+   getFollowRequests(targetUsername: String!, nextToken: String, limit: Int): FollowRequestsResult @function(name: "getFollowRequests-${env}") @auth(rules: [{ allow: public }])
+   getFeed(username: String!, nextToken: String, limit: Int): FeedResult @function(name: "getFeed-${env}") @auth(rules: [{ allow: public }])
+   getUserStatistics(username: String!): UserStatistics @function(name: "getUserStatistics-${env}") @auth(rules: [{ allow: public }])
+   searchUsersPublic(searchTerm: String!, currentUsername: String!): [UserSearchResult] @function(name: "searchUsersPublic-${env}") @auth(rules: [{ allow: public }])
  }
 
    input WaypointInput {
@@ -500,13 +516,23 @@ type AppVersionConfig {
    updateUserProfile(username: String!, action: String!, tripData: AWSJSON): UserProfileStorage @function(name: "updateUserProfile-${env}") @auth(rules: [{ allow: public }])
    registerDeviceToken(username: String, userID: String): RegisterDeviceTokenResult @function(name: "registerDeviceToken-${env}") @auth(rules: [{ allow: private }])
    sendPushNotification(username: String, userID: String, title: String!, body: String!, data: AWSJSON): SendNotificationResult @function(name: "sendPushNotification-${env}") @auth(rules: [{ allow: private }])
+
+   # Social mutations
+   followUser(followerUsername: String!, targetUsername: String!): FollowActionResult @function(name: "followUser-${env}") @auth(rules: [{ allow: public }])
+   unfollowUser(followerUsername: String!, targetUsername: String!): FollowActionResult @function(name: "unfollowUser-${env}") @auth(rules: [{ allow: public }])
+   approveFollowRequest(targetUsername: String!, requesterUsername: String!, action: String!): FollowActionResult @function(name: "approveFollowRequest-${env}") @auth(rules: [{ allow: public }])
+   updateUserPrivacy(username: String!, isPrivate: Boolean!): FollowActionResult @function(name: "updateUserPrivacy-${env}") @auth(rules: [{ allow: public }])
  }
 
-   type Subscription {
-     onTripUpdated(tripId: String!): Trip
-       @aws_subscribe(mutations: ["createTrip", "addCollaborator", "removeCollaborator", "updateCollaboratorRole"])
-       @auth(rules: [{ allow: public }])
-   }
+   # type Subscription {
+   #   onTripUpdated(tripId: String!): Trip
+   #     @aws_subscribe(mutations: ["createTrip", "addCollaborator", "removeCollaborator", "updateCollaboratorRole"])
+   #     @auth(rules: [{ allow: public }])
+   # }
+
+   # NOTE: Subscription commented out because @aws_subscribe doesn't work with @function directive mutations.
+   # For real-time updates, we need to use TripOperation subscriptions from the @model directive instead.
+   # See TripOperation type above which uses DynamoDB and has built-in subscriptions.
 
    input ActivityInput {
      instanceId: String  # Unique identifier for each activity instance (allows duplicates of same place)
@@ -636,3 +662,96 @@ type AppVersionConfig {
      checkIn: String  # Format: "HH:mm" (e.g., "15:00")
      checkOut: String  # Format: "HH:mm" (e.g., "11:00")
    }
+
+# ===== SOCIAL FEATURES =====
+
+type FollowRelationship {
+  followerUsername: String!
+  followingUsername: String!
+  followedAt: String!
+  followerProfile: UserProfileSummary
+}
+
+type FollowRequest {
+  requesterUsername: String!
+  targetUsername: String!
+  createdAt: String!
+  status: String!
+  requesterProfile: UserProfileSummary
+}
+
+type UserProfileSummary {
+  username: String!
+  fullName: String!
+  profilePhotoUrl: String
+  bio: String
+  isPrivate: Boolean!
+  followersCount: Int!
+  followingCount: Int!
+}
+
+type FeedTrip {
+  tripId: String!
+  tripTitle: String
+  selectedCity: String
+  tripPhotoReference: [String]
+  startDate: String
+  endDate: String
+  tripLength: Int
+  createdAt: String!
+  updatedAt: String!
+  ownerUsername: String!
+  ownerFullName: String!
+  ownerProfilePhotoUrl: String
+  isOwnTrip: Boolean
+}
+
+type FeedResult {
+  trips: [FeedTrip!]!
+  nextToken: String
+}
+
+type FollowersResult {
+  followers: [UserProfileSummary!]!
+  nextToken: String
+}
+
+type FollowingResult {
+  following: [UserProfileSummary!]!
+  nextToken: String
+}
+
+type FollowRequestsResult {
+  requests: [FollowRequest!]!
+  nextToken: String
+}
+
+type FollowActionResult {
+  success: Boolean!
+  status: String
+  message: String
+  action: String
+  isPrivate: Boolean
+  autoApprovedRequests: Int
+}
+
+type UserStatistics {
+  countriesVisited: Int!
+  citiesVisited: Int!
+  totalTrips: Int!
+  tripsCompleted: Int!
+  tripsUpcoming: Int!
+}
+
+type UserSearchResult {
+  userID: String!
+  email: String!
+  fullName: String!
+  username: String!
+  isPrivate: Boolean!
+  isFollowing: Boolean!
+  isFollower: Boolean!
+  hasPendingRequest: Boolean!
+  profilePhotoUrl: String
+  bio: String
+}

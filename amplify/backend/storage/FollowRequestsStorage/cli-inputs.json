@@ -1,0 +1,26 @@
+{
+  "resourceName": "FollowRequestsStorage",
+  "tableName": "FollowRequests",
+  "partitionKey": {
+    "fieldName": "targetUsername",
+    "fieldType": "string"
+  },
+  "sortKey": {
+    "fieldName": "requesterUsername",
+    "fieldType": "string"
+  },
+  "gsi": [
+    {
+      "name": "requesterUsername-index",
+      "partitionKey": {
+        "fieldName": "requesterUsername",
+        "fieldType": "string"
+      },
+      "sortKey": {
+        "fieldName": "createdAt",
+        "fieldType": "string"
+      }
+    }
+  ],
+  "triggerFunctions": []
+}

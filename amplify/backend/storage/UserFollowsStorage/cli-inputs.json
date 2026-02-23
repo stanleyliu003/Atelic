@@ -1,0 +1,26 @@
+{
+  "resourceName": "UserFollowsStorage",
+  "tableName": "UserFollows",
+  "partitionKey": {
+    "fieldName": "followerUsername",
+    "fieldType": "string"
+  },
+  "sortKey": {
+    "fieldName": "followingUsername",
+    "fieldType": "string"
+  },
+  "gsi": [
+    {
+      "name": "followingUsername-index",
+      "partitionKey": {
+        "fieldName": "followingUsername",
+        "fieldType": "string"
+      },
+      "sortKey": {
+        "fieldName": "followerUsername",
+        "fieldType": "string"
+      }
+    }
+  ],
+  "triggerFunctions": []
+}

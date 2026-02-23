@@ -248,16 +248,21 @@ export default function RootLayout() {
 
   return (
     <CreateTripProvider>
-      <View style={{ flex: 1 }} onLayout={() => setAppReady(true)}>
-        <Stack screenOptions={{
+      <Stack screenOptions={{
+        headerShown: false
+      }}>
+        <Stack.Screen name="index" options={{
           headerShown: false
-        }}>
-          <Stack.Screen name="index" options={{
-            headerShown: false
-          }}/>
-          <Stack.Screen name="(tabs)"/>
-        </Stack>
-      </View>
+        }}/>
+        <Stack.Screen name="(tabs)"/>
+        <Stack.Screen
+          name="edit-profile"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }}
+        />
+      </Stack>
     </CreateTripProvider>
   );
 }
