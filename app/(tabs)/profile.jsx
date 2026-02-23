@@ -1359,7 +1359,7 @@ export default function Profile() {
             </View>
 
             {/* Settings Content */}
-            <View style={styles.modalContent}>
+            <ScrollView style={styles.modalContent}>
               {/* Account Privacy Toggle */}
               <View style={styles.settingsMenuItem}>
                 <Ionicons name="eye-off-outline" size={24} color={Colors.PRIMARY} />

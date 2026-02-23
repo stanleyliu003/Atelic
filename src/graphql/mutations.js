@@ -532,11 +532,17 @@ export const updateUserProfile = /* GraphQL */ `
       avgTripDuration
       lastTripDate
       nextTripDate
+      countriesVisited
+      citiesVisited
+      countriesVisitedList
+      citiesVisitedList
+      statsLastUpdated
       followersCount
       followingCount
       friends
       bio
       profilePhotoUrl
+      isPrivateAccount
       socialLinks
       accountCreatedAt
       appVersion
@@ -576,6 +582,72 @@ export const updateUserProfile = /* GraphQL */ `
         __typename
       }
       version
+      __typename
+    }
+  }
+`;
+export const followUser = /* GraphQL */ `
+  mutation FollowUser($followerUsername: String!, $targetUsername: String!) {
+    followUser(
+      followerUsername: $followerUsername
+      targetUsername: $targetUsername
+    ) {
+      success
+      status
+      message
+      action
+      isPrivate
+      autoApprovedRequests
+      __typename
+    }
+  }
+`;
+export const unfollowUser = /* GraphQL */ `
+  mutation UnfollowUser($followerUsername: String!, $targetUsername: String!) {
+    unfollowUser(
+      followerUsername: $followerUsername
+      targetUsername: $targetUsername
+    ) {
+      success
+      status
+      message
+      action
+      isPrivate
+      autoApprovedRequests
+      __typename
+    }
+  }
+`;
+export const approveFollowRequest = /* GraphQL */ `
+  mutation ApproveFollowRequest(
+    $targetUsername: String!
+    $requesterUsername: String!
+    $action: String!
+  ) {
+    approveFollowRequest(
+      targetUsername: $targetUsername
+      requesterUsername: $requesterUsername
+      action: $action
+    ) {
+      success
+      status
+      message
+      action
+      isPrivate
+      autoApprovedRequests
+      __typename
+    }
+  }
+`;
+export const updateUserPrivacy = /* GraphQL */ `
+  mutation UpdateUserPrivacy($username: String!, $isPrivate: Boolean!) {
+    updateUserPrivacy(username: $username, isPrivate: $isPrivate) {
+      success
+      status
+      message
+      action
+      isPrivate
+      autoApprovedRequests
       __typename
     }
   }
@@ -822,60 +894,6 @@ export const sendPushNotification = /* GraphQL */ `
       message
       messageId
       error
-      __typename
-    }
-  }
-`;
-export const followUser = /* GraphQL */ `
-  mutation FollowUser($followerUsername: String!, $targetUsername: String!) {
-    followUser(
-      followerUsername: $followerUsername
-      targetUsername: $targetUsername
-    ) {
-      success
-      status
-      message
-      __typename
-    }
-  }
-`;
-export const unfollowUser = /* GraphQL */ `
-  mutation UnfollowUser($followerUsername: String!, $targetUsername: String!) {
-    unfollowUser(
-      followerUsername: $followerUsername
-      targetUsername: $targetUsername
-    ) {
-      success
-      status
-      message
-      __typename
-    }
-  }
-`;
-export const approveFollowRequest = /* GraphQL */ `
-  mutation ApproveFollowRequest(
-    $targetUsername: String!
-    $requesterUsername: String!
-    $action: String!
-  ) {
-    approveFollowRequest(
-      targetUsername: $targetUsername
-      requesterUsername: $requesterUsername
-      action: $action
-    ) {
-      success
-      status
-      message
-      __typename
-    }
-  }
-`;
-export const updateUserPrivacy = /* GraphQL */ `
-  mutation UpdateUserPrivacy($username: String!, $isPrivate: Boolean!) {
-    updateUserPrivacy(username: $username, isPrivate: $isPrivate) {
-      success
-      status
-      message
       __typename
     }
   }
