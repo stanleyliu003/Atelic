@@ -221,12 +221,21 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
 
     // Helper function to sanitize activity objects for GraphQL input
     const sanitizeActivity = (activity) => {
+        if (!activity) return null;
         const {
             __typename,
             regular_opening_hours,
             reviews,
+            lastModified,
+            modifiedBy,
+            lastReordered,
+            category,
             ...sanitized
         } = activity;
+
+        // Ensure required String! fields have values
+        sanitized.place_id = typeof sanitized.place_id === 'string' && sanitized.place_id.trim() !== '' ? sanitized.place_id : 'unknown_place';
+        sanitized.name = typeof sanitized.name === 'string' && sanitized.name.trim() !== '' ? sanitized.name : 'Unknown Place';
 
         // Clean regular_opening_hours if it exists
         let cleanOpeningHours = null;
@@ -315,48 +324,54 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                 setCollaborators(collaboratorsToSave);
             } else {
                 collaboratorsToSave = collaborators.map(collaborator => ({
-                    email: collaborator.email,
-                    fullName: collaborator.fullName,
-                    username: collaborator.username || collaborator.email.split('@')[0],
-                    userID: collaborator.userID,
-                    role: collaborator.role,
-                    addedBy: collaborator.addedBy
+                    email: typeof collaborator.email === 'string' && collaborator.email.trim() !== '' ? collaborator.email : 'unknown@email.com',
+                    fullName: typeof collaborator.fullName === 'string' && collaborator.fullName.trim() !== '' ? collaborator.fullName : 'Unknown User',
+                    username: typeof collaborator.username === 'string' && collaborator.username.trim() !== '' ? collaborator.username : (collaborator.email?.split('@')[0] || 'unknown'),
+                    userID: typeof collaborator.userID === 'string' && collaborator.userID.trim() !== '' ? collaborator.userID : 'unknown_user',
+                    role: collaborator.role || 'viewer',
+                    // addedBy is String! - use fullName as fallback
+                    addedBy: typeof collaborator.addedBy === 'string' && collaborator.addedBy.trim() !== '' ? collaborator.addedBy : (collaborator.fullName || 'system')
                 }));
             }
 
             // Gather days and their activities (will be empty at this point)
             const days = Object.keys(dayActivities || {}).map(dayNumber => ({
                 dayNumber: Number(dayNumber),
-                activities: (dayActivities[dayNumber]?.activities || []).map(sanitizeActivity),
+                activities: (dayActivities[dayNumber]?.activities || []).map(sanitizeActivity).filter(Boolean),
                 encodedPolyline: (dayPolylines || {})[dayNumber] || null,
             }));
 
             // Gather wishlist activities (sanitize them)
-            const dayActivityInstanceIds = days.flatMap(day => day.activities.map(a => a.instanceId)).filter(Boolean);
+            const dayActivityInstanceIds = days.flatMap(day => day.activities.map(a => a?.instanceId)).filter(Boolean);
             const wishlist = (activities || [])
-                .filter((activity) => !activity.instanceId || !dayActivityInstanceIds.includes(activity.instanceId))
-                .map(sanitizeActivity);
+                .filter((activity) => !activity?.instanceId || !dayActivityInstanceIds.includes(activity.instanceId))
+                .map(sanitizeActivity)
+                .filter(Boolean);
 
-            // Sanitize cityCategories
+            // Sanitize cityCategories - filter out items with empty/invalid category (String!)
             const cleanCityCategories = Array.isArray(cityCategories)
-                ? cityCategories.map((c) => ({
-                    category: c?.category,
-                    category_items: Array.isArray(c?.category_items) ? c.category_items : [],
-                    ...(typeof c?.emoji === 'string' ? { emoji: c.emoji } : {})
-                }))
+                ? cityCategories
+                    .filter((c) => c && typeof c?.category === 'string' && c.category.trim() !== '')
+                    .map((c) => ({
+                        category: c.category,
+                        category_items: Array.isArray(c?.category_items) ? c.category_items.filter(i => typeof i === 'string' && i.trim() !== '') : [],
+                        ...(typeof c?.emoji === 'string' ? { emoji: c.emoji } : {})
+                    }))
                 : null;
 
-            // Sanitize recentSearches
+            // Sanitize recentSearches - filter out items with empty/invalid required String! fields
             const cleanRecentSearches = Array.isArray(recentSearches)
-                ? recentSearches.map((rs) => {
-                    const { __typename, ...rest } = rs || {};
-                    return {
-                        place_id: rest.place_id,
-                        name: rest.name,
-                        address_info: rest.address_info,
-                        timestamp: rest.timestamp,
-                    };
-                })
+                ? recentSearches
+                    .filter((rs) => rs && typeof rs?.place_id === 'string' && rs.place_id.trim() !== '' && typeof rs?.name === 'string' && rs.name.trim() !== '')
+                    .map((rs) => {
+                        const { __typename, ...rest } = rs || {};
+                        return {
+                            place_id: rest.place_id,
+                            name: rest.name,
+                            address_info: rest.address_info || null,
+                            timestamp: typeof rest.timestamp === 'string' && rest.timestamp.trim() !== '' ? rest.timestamp : new Date().toISOString(),
+                        };
+                    })
                 : [];
 
             // Prepare trip data
@@ -379,6 +394,7 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                 version: 1,
                 updatedAt: new Date().toISOString(),
                 lastUpdatedBy: currentUserEmail,
+                deletedSavedPlaceIds: [], // Empty for new trips
                 isPublic: isPublic === true ? true : false
             };
 

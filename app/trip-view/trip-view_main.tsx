@@ -608,6 +608,7 @@ export default function TripViewMain() {
         const activityName = typeof activity.name === 'string' && activity.name.trim() !== '' ? activity.name : 'Unknown Place';
         const activityInput = {
             instanceId: activity.instanceId || null,
+            savedPlaceId: activity.savedPlaceId || null,
             place_id: placeId,
             name: activityName,
             city: activity.city || null,
@@ -634,6 +635,9 @@ export default function TripViewMain() {
             lodgingCheckIn: activity.lodgingCheckIn || null,
             lodgingCheckOut: activity.lodgingCheckOut || null,
             lodgingTime: activity.lodgingTime || null,
+            source: activity.source || null,
+            sourceUrl: activity.sourceUrl || null,
+            detailsLoaded: activity.detailsLoaded || null,
         };
         // Recursively remove all __typename fields
         return removeTypename(activityInput);
@@ -664,22 +668,27 @@ export default function TripViewMain() {
 
     // Helper function to convert CategoryItem to CategoryItemInput format for GraphQL
     const formatCategoryItemForInput = (item: any): any => {
+        console.log('[formatCategoryItemForInput] Processing item:', JSON.stringify(item));
         // Skip if item is null/undefined or has no valid category
         if (!item) {
             console.warn('[formatCategoryItemForInput] Skipping null/undefined item');
             return null;
         }
+        console.log('[formatCategoryItemForInput] item.category:', item.category, '| type:', typeof item.category);
         // category is String! - must have a valid value
         const category = typeof item.category === 'string' && item.category.trim() !== '' ? item.category : null;
+        console.log('[formatCategoryItemForInput] Computed category:', category);
         if (!category) {
-            console.warn('[formatCategoryItemForInput] Skipping item with empty/invalid category');
+            console.warn('[formatCategoryItemForInput] Skipping item with empty/invalid category. Original:', item.category);
             return null;
         }
-        return {
+        const result = {
             category: category,
             category_items: Array.isArray(item.category_items) ? item.category_items.filter((i: any) => typeof i === 'string' && i.trim() !== '') : [],
             emoji: item.emoji || null,
         };
+        console.log('[formatCategoryItemForInput] Returning:', JSON.stringify(result));
+        return result;
     };
 
     // Helper function to convert RecentSearch to RecentSearchInput format for GraphQL
@@ -760,8 +769,25 @@ export default function TripViewMain() {
                 version: (version || 0) + 1,
                 updatedAt: new Date().toISOString(),
                 lastUpdatedBy: currentUserID,
-                cityCategories: (cityCategories || []).map(formatCategoryItemForInput).filter(Boolean),
+                cityCategories: (() => {
+                    console.log('[trip-view_main] 🔍 RAW cityCategories:', JSON.stringify(cityCategories, null, 2));
+                    console.log('[trip-view_main] 🔍 cityCategories type:', typeof cityCategories);
+                    console.log('[trip-view_main] 🔍 cityCategories isArray:', Array.isArray(cityCategories));
+                    if (cityCategories && cityCategories[0]) {
+                        console.log('[trip-view_main] 🔍 First category item:', JSON.stringify(cityCategories[0], null, 2));
+                        console.log('[trip-view_main] 🔍 First item keys:', Object.keys(cityCategories[0]));
+                    }
+                    const mapped = (cityCategories || []).map(formatCategoryItemForInput);
+                    console.log('[trip-view_main] 🔍 After map (before filter):', JSON.stringify(mapped, null, 2));
+                    const filtered = mapped.filter(Boolean);
+                    console.log('[trip-view_main] 🔍 After filter:', JSON.stringify(filtered, null, 2));
+                    return filtered;
+                })(),
                 recentSearches: (recentSearches || []).map(formatRecentSearchForInput).filter(Boolean),
+                // Convert deletedSavedPlaceIds Set to Array, filtering out any null/empty values
+                deletedSavedPlaceIds: deletedSavedPlaceIds
+                    ? Array.from(deletedSavedPlaceIds).filter((id): id is string => typeof id === 'string' && id.trim() !== '')
+                    : [],
                 // Only include isPublic if it was loaded from backend (to avoid overwriting with default false)
                 ...(isPublicLoaded ? { isPublic: isPublic === true } : {})
             };
@@ -833,6 +859,26 @@ export default function TripViewMain() {
                     if (!c.fullName || c.fullName === '') issues.push(`collaborators[${i}].fullName is null/empty`);
                     if (!c.username || c.username === '') issues.push(`collaborators[${i}].username is null/empty`);
                     if (!c.userID || c.userID === '') issues.push(`collaborators[${i}].userID is null/empty`);
+                    if (!c.addedBy || c.addedBy === '') issues.push(`collaborators[${i}].addedBy is null/empty`);
+                });
+
+                // Check cityCategories
+                (input.cityCategories || []).forEach((cat: any, i: number) => {
+                    if (!cat) { issues.push(`cityCategories[${i}] is null`); return; }
+                    if (!cat.category || cat.category === '') issues.push(`cityCategories[${i}].category is null/empty`);
+                });
+
+                // Check recentSearches
+                (input.recentSearches || []).forEach((rs: any, i: number) => {
+                    if (!rs) { issues.push(`recentSearches[${i}] is null`); return; }
+                    if (!rs.place_id || rs.place_id === '') issues.push(`recentSearches[${i}].place_id is null/empty`);
+                    if (!rs.name || rs.name === '') issues.push(`recentSearches[${i}].name is null/empty`);
+                    if (!rs.timestamp || rs.timestamp === '') issues.push(`recentSearches[${i}].timestamp is null/empty`);
+                });
+
+                // Check deletedSavedPlaceIds
+                (input.deletedSavedPlaceIds || []).forEach((id: any, i: number) => {
+                    if (!id || id === '') issues.push(`deletedSavedPlaceIds[${i}] is null/empty`);
                 });
 
                 return issues;
@@ -848,6 +894,27 @@ export default function TripViewMain() {
                 console.error('[trip-view_main] ⚠️ VALIDATION ISSUES:', validationIssues);
                 console.error('[trip-view_main] Full cleanedTripInput:', JSON.stringify(cleanedTripInput, null, 2));
             }
+
+            // DETAILED DEBUG LOGGING - Log all String! fields before GraphQL call
+            console.log('[trip-view_main] 🔍 DEBUG - All String! fields before GraphQL call:');
+            console.log('[trip-view_main] tripId:', cleanedTripInput.tripId, '| type:', typeof cleanedTripInput.tripId);
+            console.log('[trip-view_main] userID:', cleanedTripInput.userID, '| type:', typeof cleanedTripInput.userID);
+            console.log('[trip-view_main] collaborators count:', cleanedTripInput.collaborators?.length);
+            cleanedTripInput.collaborators?.forEach((c: any, i: number) => {
+                console.log(`[trip-view_main] collaborators[${i}]:`, {
+                    email: c?.email, fullName: c?.fullName, username: c?.username,
+                    userID: c?.userID, addedBy: c?.addedBy, role: c?.role
+                });
+            });
+            console.log('[trip-view_main] cityCategories count:', cleanedTripInput.cityCategories?.length);
+            cleanedTripInput.cityCategories?.forEach((cat: any, i: number) => {
+                console.log(`[trip-view_main] cityCategories[${i}]:`, { category: cat?.category, items: cat?.category_items?.length });
+            });
+            console.log('[trip-view_main] recentSearches count:', cleanedTripInput.recentSearches?.length);
+            cleanedTripInput.recentSearches?.forEach((rs: any, i: number) => {
+                console.log(`[trip-view_main] recentSearches[${i}]:`, { place_id: rs?.place_id, name: rs?.name, timestamp: rs?.timestamp });
+            });
+            console.log('[trip-view_main] deletedSavedPlaceIds:', cleanedTripInput.deletedSavedPlaceIds);
 
             const result: any = await API.graphql(graphqlOperation(createTrip, { input: cleanedTripInput }));
 

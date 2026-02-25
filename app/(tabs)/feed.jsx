@@ -808,6 +808,10 @@ export default function FeedScreen() {
         version: (fullTripData.version || 0) + 1,
         updatedAt: new Date().toISOString(),
         lastUpdatedBy: username || 'unknown',
+        // Include deletedSavedPlaceIds, filtering out any null/empty values
+        deletedSavedPlaceIds: Array.isArray(fullTripData.deletedSavedPlaceIds)
+          ? fullTripData.deletedSavedPlaceIds.filter(id => typeof id === 'string' && id.trim() !== '')
+          : [],
         isPublic: newIsPublic
       };
 
