@@ -15,7 +15,7 @@ import {
   ActionSheetIOS,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Auth, API } from 'aws-amplify';
+import { Auth, API, Storage } from 'aws-amplify';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 import * as customQueries from '../src/graphql/customQueries';
@@ -35,7 +35,8 @@ export default function EditProfileScreen() {
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const [bio, setBio] = useState('');
-  const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);  // For display (resolved URL)
+  const [profilePhotoS3Key, setProfilePhotoS3Key] = useState(null);  // For saving (s3:// key)
 
   useEffect(() => {
     loadUserProfile();
@@ -63,7 +64,11 @@ export default function EditProfileScreen() {
       const profile = response.data.getUserProfile;
       if (profile) {
         setBio(profile.bio || '');
-        setProfilePhotoUrl(profile.profilePhotoUrl || null);
+        // Store the original S3 key for saving
+        setProfilePhotoS3Key(profile.profilePhotoUrl || null);
+        // Resolve S3 key to signed URL for display
+        const resolvedPhotoUrl = await resolveProfilePhotoUrl(profile.profilePhotoUrl);
+        setProfilePhotoUrl(resolvedPhotoUrl);
         console.log('[EditProfile] Profile loaded successfully');
       }
     } catch (error) {
@@ -72,7 +77,11 @@ export default function EditProfileScreen() {
       if (error?.data?.getUserProfile) {
         const profile = error.data.getUserProfile;
         setBio(profile.bio || '');
-        setProfilePhotoUrl(profile.profilePhotoUrl || null);
+        // Store the original S3 key for saving
+        setProfilePhotoS3Key(profile.profilePhotoUrl || null);
+        // Resolve S3 key to signed URL for display
+        const resolvedPhotoUrl = await resolveProfilePhotoUrl(profile.profilePhotoUrl);
+        setProfilePhotoUrl(resolvedPhotoUrl);
         console.log('[EditProfile] Profile loaded from partial error response');
       }
     } finally {
@@ -97,6 +106,7 @@ export default function EditProfileScreen() {
       });
 
       // Update bio and profile photo in UserProfilesStorage
+      // Save the S3 key (not the resolved URL) so we can resolve it again when loading
       await API.graphql({
         query: customMutations.updateUserProfile,
         variables: {
@@ -104,7 +114,7 @@ export default function EditProfileScreen() {
           action: 'UPDATE_PROFILE_INFO',
           tripData: JSON.stringify({
             bio: bio.trim() || null,
-            profilePhotoUrl: profilePhotoUrl || null,
+            profilePhotoUrl: profilePhotoS3Key || null,
           }),
         },
       });
@@ -133,32 +143,60 @@ export default function EditProfileScreen() {
     }
   };
 
+  // Helper function to resolve S3 keys to signed URLs
+  const resolveProfilePhotoUrl = async (url) => {
+    if (!url) return null;
+
+    // If it's already a valid HTTP URL, return as-is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+
+    // Otherwise, treat it as an S3 key (with or without 's3://' prefix)
+    const s3Key = url.startsWith('s3://') ? url.replace('s3://', '') : url;
+
+    try {
+      console.log('[EditProfile] Resolving S3 key:', s3Key);
+      // Get a signed URL that's valid for 1 hour (3600 seconds)
+      const signedUrl = await Storage.get(s3Key, {
+        level: 'public',
+        expires: 3600
+      });
+      // Verify we got a valid HTTP URL back
+      if (signedUrl && (signedUrl.startsWith('http://') || signedUrl.startsWith('https://'))) {
+        return signedUrl;
+      }
+      console.error('[EditProfile] Storage.get returned invalid URL');
+      return null;
+    } catch (error) {
+      console.error('[EditProfile] Error getting signed URL:', error);
+      return null;
+    }
+  };
+
   const uploadImageToHost = async (imageUri) => {
     try {
-      // Upload to free image host (0x0.st)
-      const formData = new FormData();
-      const filename = imageUri.split('/').pop() || 'photo.jpg';
+      const user = await Auth.currentAuthenticatedUser();
+      const userId = user.username;
+      const timestamp = Date.now();
+      const filename = `profile-photos/${userId}/profile-${timestamp}.jpg`;
 
-      formData.append('file', {
-        uri: imageUri,
-        name: filename,
-        type: 'image/jpeg',
+      // Read the image file
+      const imageResponse = await fetch(imageUri);
+      const blob = await imageResponse.blob();
+
+      console.log('[EditProfile] Uploading to S3:', filename);
+
+      // Upload to S3 using Amplify Storage
+      const result = await Storage.put(filename, blob, {
+        contentType: 'image/jpeg',
+        level: 'public',
       });
 
-      const response = await fetch('https://0x0.st', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      console.log('[EditProfile] Upload successful:', result.key);
 
-      if (!response.ok) {
-        throw new Error(`Upload failed with status ${response.status}`);
-      }
-
-      const imageUrl = await response.text();
-      return imageUrl.trim();
+      // Return just the S3 key - the resolveProfilePhotoUrl function will convert it to a signed URL
+      return result.key;
     } catch (error) {
       console.error('Image upload error:', error);
       throw error;
@@ -193,9 +231,13 @@ export default function EditProfileScreen() {
       if (!result.canceled && result.assets[0]) {
         setIsUploadingPhoto(true);
         try {
-          // Upload image to hosting service
-          const imageUrl = await uploadImageToHost(result.assets[0].uri);
-          setProfilePhotoUrl(imageUrl);
+          // Upload image to S3 - returns S3 key prefixed with 's3://'
+          const s3Key = await uploadImageToHost(result.assets[0].uri);
+          // Store the S3 key for saving
+          setProfilePhotoS3Key(s3Key);
+          // Resolve the S3 key to a signed URL for immediate display
+          const resolvedUrl = await resolveProfilePhotoUrl(s3Key);
+          setProfilePhotoUrl(resolvedUrl);
         } catch (error) {
           console.error('Image upload error:', error);
           Alert.alert('Upload Failed', 'Failed to upload photo. Please try again.');
@@ -224,6 +266,7 @@ export default function EditProfileScreen() {
             pickImage('library');
           } else if (buttonIndex === 3) {
             setProfilePhotoUrl(null);
+            setProfilePhotoS3Key(null);
           }
         }
       );
@@ -234,7 +277,7 @@ export default function EditProfileScreen() {
         [
           { text: 'Take Photo', onPress: () => pickImage('camera') },
           { text: 'Choose from Library', onPress: () => pickImage('library') },
-          { text: 'Remove Photo', onPress: () => setProfilePhotoUrl(null), style: 'destructive' },
+          { text: 'Remove Photo', onPress: () => { setProfilePhotoUrl(null); setProfilePhotoS3Key(null); }, style: 'destructive' },
           { text: 'Cancel', style: 'cancel' },
         ]
       );
@@ -281,7 +324,7 @@ export default function EditProfileScreen() {
             <TouchableOpacity onPress={handleChangePhoto} disabled={isUploadingPhoto}>
               <View style={styles.photoWrapper}>
                 <Image
-                  source={profilePhotoUrl ? { uri: profilePhotoUrl } : DEFAULT_AVATAR}
+                  source={profilePhotoUrl && (profilePhotoUrl.startsWith('http://') || profilePhotoUrl.startsWith('https://')) ? { uri: profilePhotoUrl } : DEFAULT_AVATAR}
                   style={styles.profilePhoto}
                   defaultSource={DEFAULT_AVATAR}
                 />

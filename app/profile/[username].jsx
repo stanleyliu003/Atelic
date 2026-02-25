@@ -12,7 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { Auth, API } from 'aws-amplify';
+import { Auth, API, Storage } from 'aws-amplify';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import * as customQueries from '../../src/graphql/customQueries';
@@ -145,6 +145,37 @@ export default function UserProfileScreen() {
     return { calculatedCountries: countries.size, calculatedCities: cities.size };
   }, [userTrips]);
 
+  // Helper function to resolve S3 keys to signed URLs
+  const resolveProfilePhotoUrl = async (url) => {
+    if (!url) return null;
+
+    // If it's already a valid HTTP URL, return as-is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+
+    // Otherwise, treat it as an S3 key (with or without 's3://' prefix)
+    const s3Key = url.startsWith('s3://') ? url.replace('s3://', '') : url;
+
+    try {
+      console.log('[UserProfile] Resolving S3 key:', s3Key);
+      // Get a signed URL that's valid for 1 hour (3600 seconds)
+      const signedUrl = await Storage.get(s3Key, {
+        level: 'public',
+        expires: 3600
+      });
+      // Verify we got a valid HTTP URL back
+      if (signedUrl && (signedUrl.startsWith('http://') || signedUrl.startsWith('https://'))) {
+        return signedUrl;
+      }
+      console.error('[UserProfile] Storage.get returned invalid URL');
+      return null;
+    } catch (error) {
+      console.error('[UserProfile] Error getting signed URL:', error);
+      return null;
+    }
+  };
+
   const loadProfile = useCallback(async () => {
     try {
       // Get current user
@@ -183,7 +214,12 @@ export default function UserProfileScreen() {
         followingCount: profile.followingCount
       });
 
-      setUserProfile(profile);
+      // Resolve S3 key to signed URL if needed
+      const resolvedPhotoUrl = await resolveProfilePhotoUrl(profile.profilePhotoUrl);
+      setUserProfile({
+        ...profile,
+        profilePhotoUrl: resolvedPhotoUrl
+      });
 
       // Load statistics
       let travelStats = {

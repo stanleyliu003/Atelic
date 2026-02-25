@@ -56,8 +56,9 @@ export function InitialsAvatar({
   const backgroundColor = useMemo(() => getColorForName(name), [name]);
   const calculatedFontSize = fontSize || size * 0.4;
 
-  // If there's a profile photo URL, show the image
-  if (profilePhotoUrl) {
+  // If there's a valid profile photo URL (must be http/https), show the image
+  const isValidUrl = profilePhotoUrl && (profilePhotoUrl.startsWith('http://') || profilePhotoUrl.startsWith('https://'));
+  if (isValidUrl) {
     return (
       <Image
         source={{ uri: profilePhotoUrl }}

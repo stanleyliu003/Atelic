@@ -1,12 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { API } from 'aws-amplify';
+import { API, Storage } from 'aws-amplify';
 import { Colors } from '../../../constants/Colors';
 import { Activity, EnhancedRouteLeg } from '../../types/activity.types';
 import EditableTripTitle from './EditableTripTitle';
 import DaySummaryCard from './DaySummaryCard';
 import { getUserProfile } from '../../graphql/queries';
+
+// Helper function to resolve S3 keys to signed URLs
+const resolveProfilePhotoUrl = async (url: string | null | undefined): Promise<string | null> => {
+  if (!url) return null;
+
+  // If it's already a valid HTTP URL, return as-is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+
+  // Otherwise, treat it as an S3 key (with or without 's3://' prefix)
+  const s3Key = url.startsWith('s3://') ? url.replace('s3://', '') : url;
+
+  try {
+    const signedUrl = await Storage.get(s3Key, {
+      level: 'public',
+      expires: 3600
+    });
+    if (signedUrl && (signedUrl.startsWith('http://') || signedUrl.startsWith('https://'))) {
+      return signedUrl;
+    }
+    return null;
+  } catch (error) {
+    console.error('[OverviewContent] Error getting signed URL:', error);
+    return null;
+  }
+};
 
 interface Collaborator {
   userID: string;
@@ -65,24 +92,28 @@ export default function OverviewContent({
         const username = collab.username || collab.userName;
         if (!username) continue;
 
+        let photoUrl: string | null = null;
+
         // Check if already have photo URL in collaborator object
         if (collab.profilePhotoUrl) {
-          photos[username] = collab.profilePhotoUrl;
-          continue;
+          photoUrl = collab.profilePhotoUrl;
+        } else {
+          try {
+            const response = await API.graphql({
+              query: getUserProfile,
+              variables: { username },
+            });
+            const profile = (response as any).data?.getUserProfile;
+            photoUrl = profile?.profilePhotoUrl || null;
+          } catch (error) {
+            // Try to extract from partial error
+            const profile = (error as any)?.data?.getUserProfile;
+            photoUrl = profile?.profilePhotoUrl || null;
+          }
         }
 
-        try {
-          const response = await API.graphql({
-            query: getUserProfile,
-            variables: { username },
-          });
-          const profile = (response as any).data?.getUserProfile;
-          photos[username] = profile?.profilePhotoUrl || null;
-        } catch (error) {
-          // Try to extract from partial error
-          const profile = (error as any)?.data?.getUserProfile;
-          photos[username] = profile?.profilePhotoUrl || null;
-        }
+        // Resolve S3 key to signed URL
+        photos[username] = await resolveProfilePhotoUrl(photoUrl);
       }
 
       setCollaboratorPhotos(photos);
@@ -188,6 +219,8 @@ export default function OverviewContent({
                   .slice(0, 2) || username.slice(0, 2).toUpperCase();
                 const photoUrl = collaboratorPhotos[username];
 
+                const isValidPhotoUrl = photoUrl && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'));
+
                 return (
                   <View
                     key={collab.userID || index}
@@ -196,7 +229,7 @@ export default function OverviewContent({
                       { marginLeft: index === 0 ? 0 : -8, zIndex: 10 - index },
                     ]}
                   >
-                    {photoUrl ? (
+                    {isValidPhotoUrl ? (
                       <Image
                         source={{ uri: photoUrl }}
                         style={styles.collaboratorPhoto}

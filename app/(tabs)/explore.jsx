@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { API, Auth } from 'aws-amplify';
+import { API, Auth, Storage } from 'aws-amplify';
 import { UserSearchBar } from '../../src/components/explore/UserSearchBar';
 import { UserCard } from '../../src/components/explore/UserCard';
 import { Colors } from '../../constants/Colors';
@@ -35,6 +35,33 @@ export default function ExploreScreen() {
     };
     loadCurrentUser();
   }, []);
+
+  // Helper function to resolve S3 keys to signed URLs
+  const resolveProfilePhotoUrl = async (url) => {
+    if (!url) return null;
+
+    // If it's already a valid HTTP URL, return as-is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+
+    // Otherwise, treat it as an S3 key (with or without 's3://' prefix)
+    const s3Key = url.startsWith('s3://') ? url.replace('s3://', '') : url;
+
+    try {
+      const signedUrl = await Storage.get(s3Key, {
+        level: 'public',
+        expires: 3600
+      });
+      if (signedUrl && (signedUrl.startsWith('http://') || signedUrl.startsWith('https://'))) {
+        return signedUrl;
+      }
+      return null;
+    } catch (error) {
+      console.error('[Explore] Error getting signed URL:', error);
+      return null;
+    }
+  };
 
   // Refresh search results when returning to this screen
   useFocusEffect(
@@ -92,7 +119,16 @@ export default function ExploreScreen() {
 
         // Filter out any null items from results
         const results = (response.data.searchUsersPublic || []).filter(item => item != null);
-        setSearchResults(results);
+
+        // Resolve S3 keys to signed URLs for profile photos
+        const resultsWithResolvedPhotos = await Promise.all(
+          results.map(async (user) => ({
+            ...user,
+            profilePhotoUrl: await resolveProfilePhotoUrl(user.profilePhotoUrl)
+          }))
+        );
+
+        setSearchResults(resultsWithResolvedPhotos);
         setIsSearching(false);
         return; // Success, exit the function
       } catch (error) {
@@ -106,7 +142,16 @@ export default function ExploreScreen() {
         // GraphQL may throw with partial errors but still have valid data
         if (error?.data?.searchUsersPublic) {
           const results = error.data.searchUsersPublic.filter(item => item != null);
-          setSearchResults(results);
+
+          // Resolve S3 keys to signed URLs for profile photos
+          const resultsWithResolvedPhotos = await Promise.all(
+            results.map(async (user) => ({
+              ...user,
+              profilePhotoUrl: await resolveProfilePhotoUrl(user.profilePhotoUrl)
+            }))
+          );
+
+          setSearchResults(resultsWithResolvedPhotos);
           setIsSearching(false);
           return; // Got partial data, exit
         }

@@ -34,6 +34,7 @@ import { listUserTripsFromCloud, retrieveTripFromCloud, deleteUserAccountFromClo
 import { deleteTrip } from '../../src/graphql/customMutations';
 import { removeCollaborator, createTrip } from '../../src/graphql/mutations';
 import { clearAuthData } from '../../src/services/appGroupsService';
+import awsmobile from '../../src/aws-exports';
 import Carousel from 'react-native-reanimated-carousel';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -225,9 +226,9 @@ export default function FeedScreen() {
 
       console.log('[uploadImageToHost] Upload successful:', result.key);
 
-      // Get the public URL for the uploaded image
-      const imageUrl = await Storage.get(result.key, { level: 'public' });
-      return imageUrl;
+      // Return just the S3 key - the resolveProfilePhotoUrl function will convert it to a signed URL
+      console.log('[uploadImageToHost] S3 Key:', result.key);
+      return result.key;
     } catch (error) {
       console.error('Image upload error:', error);
       throw error;
@@ -286,10 +287,12 @@ export default function FeedScreen() {
       if (!result.canceled && result.assets[0]) {
         setIsUploadingPhoto(true);
         try {
-          // Upload image to hosting service
-          const imageUrl = await uploadImageToHost(result.assets[0].uri);
-          await updateProfilePhotoInBackend(imageUrl);
-          setProfilePhotoUrl(imageUrl);
+          // Upload image to hosting service - returns S3 key prefixed with 's3://'
+          const s3Key = await uploadImageToHost(result.assets[0].uri);
+          await updateProfilePhotoInBackend(s3Key);
+          // Resolve the S3 key to a signed URL for immediate display
+          const resolvedUrl = await resolveProfilePhotoUrl(s3Key);
+          setProfilePhotoUrl(resolvedUrl);
         } catch (error) {
           console.error('Profile photo update error:', error);
         } finally {
@@ -311,6 +314,38 @@ export default function FeedScreen() {
       console.error('Error removing profile photo:', error);
     } finally {
       setIsUploadingPhoto(false);
+    }
+  };
+
+  // Helper function to resolve S3 keys to signed URLs
+  const resolveProfilePhotoUrl = async (url) => {
+    if (!url) return null;
+
+    // If it's already a valid HTTP URL, return as-is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+
+    // Otherwise, treat it as an S3 key (with or without 's3://' prefix)
+    const s3Key = url.startsWith('s3://') ? url.replace('s3://', '') : url;
+
+    try {
+      console.log('[resolveProfilePhotoUrl] Resolving S3 key:', s3Key);
+      // Get a signed URL that's valid for 1 hour (3600 seconds)
+      const signedUrl = await Storage.get(s3Key, {
+        level: 'public',
+        expires: 3600
+      });
+      console.log('[resolveProfilePhotoUrl] Got signed URL:', signedUrl?.substring(0, 100));
+      // Verify we got a valid HTTP URL back
+      if (signedUrl && (signedUrl.startsWith('http://') || signedUrl.startsWith('https://'))) {
+        return signedUrl;
+      }
+      console.error('[resolveProfilePhotoUrl] Storage.get returned invalid URL:', signedUrl);
+      return null;
+    } catch (error) {
+      console.error('[resolveProfilePhotoUrl] Error getting signed URL:', error);
+      return null;
     }
   };
 
@@ -387,7 +422,9 @@ export default function FeedScreen() {
 
       const profile = response.data.getUserProfile;
       if (profile) {
-        setProfilePhotoUrl(profile.profilePhotoUrl);
+        // Resolve S3 key to signed URL if needed
+        const resolvedPhotoUrl = await resolveProfilePhotoUrl(profile.profilePhotoUrl);
+        setProfilePhotoUrl(resolvedPhotoUrl);
         setBio(profile.bio);
         setIsPrivate(profile.isPrivateAccount || false);
         setFollowersCount(profile.followersCount || 0);
@@ -402,7 +439,9 @@ export default function FeedScreen() {
       // GraphQL may throw with partial errors but still have valid data
       if (error?.data?.getUserProfile) {
         const profile = error.data.getUserProfile;
-        setProfilePhotoUrl(profile.profilePhotoUrl);
+        // Resolve S3 key to signed URL if needed
+        const resolvedPhotoUrl = await resolveProfilePhotoUrl(profile.profilePhotoUrl);
+        setProfilePhotoUrl(resolvedPhotoUrl);
         setBio(profile.bio);
         setIsPrivate(profile.isPrivateAccount || false);
         setFollowersCount(profile.followersCount || 0);
@@ -970,13 +1009,27 @@ export default function FeedScreen() {
       const uniqueFollowers = followers.filter((user, index, self) =>
         index === self.findIndex((u) => u.username === user.username)
       );
-      setFollowersList(uniqueFollowers);
+      // Resolve S3 keys to signed URLs for profile photos
+      const followersWithResolvedPhotos = await Promise.all(
+        uniqueFollowers.map(async (user) => ({
+          ...user,
+          profilePhotoUrl: await resolveProfilePhotoUrl(user.profilePhotoUrl)
+        }))
+      );
+      setFollowersList(followersWithResolvedPhotos);
     } catch (error) {
       if (error?.data?.getFollowers?.followers) {
         const followers = error.data.getFollowers.followers.filter((user, index, self) =>
           index === self.findIndex((u) => u.username === user.username)
         );
-        setFollowersList(followers);
+        // Resolve S3 keys to signed URLs for profile photos
+        const followersWithResolvedPhotos = await Promise.all(
+          followers.map(async (user) => ({
+            ...user,
+            profilePhotoUrl: await resolveProfilePhotoUrl(user.profilePhotoUrl)
+          }))
+        );
+        setFollowersList(followersWithResolvedPhotos);
       } else {
         console.warn('[Feed] Error loading followers:', error);
       }
@@ -998,9 +1051,16 @@ export default function FeedScreen() {
       const uniqueFollowing = following.filter((user, index, self) =>
         index === self.findIndex((u) => u.username === user.username)
       );
-      setFollowingList(uniqueFollowing);
+      // Resolve S3 keys to signed URLs for profile photos
+      const followingWithResolvedPhotos = await Promise.all(
+        uniqueFollowing.map(async (user) => ({
+          ...user,
+          profilePhotoUrl: await resolveProfilePhotoUrl(user.profilePhotoUrl)
+        }))
+      );
+      setFollowingList(followingWithResolvedPhotos);
       // Clear pending requests for users that are now following
-      const followingUsernames = new Set(uniqueFollowing.map(u => u.username));
+      const followingUsernames = new Set(followingWithResolvedPhotos.map(u => u.username));
       setPendingFollowRequests(prev => {
         const newSet = new Set(prev);
         followingUsernames.forEach(u => newSet.delete(u));
@@ -1011,7 +1071,14 @@ export default function FeedScreen() {
         const following = error.data.getFollowing.following.filter((user, index, self) =>
           index === self.findIndex((u) => u.username === user.username)
         );
-        setFollowingList(following);
+        // Resolve S3 keys to signed URLs for profile photos
+        const followingWithResolvedPhotos = await Promise.all(
+          following.map(async (user) => ({
+            ...user,
+            profilePhotoUrl: await resolveProfilePhotoUrl(user.profilePhotoUrl)
+          }))
+        );
+        setFollowingList(followingWithResolvedPhotos);
       } else {
         console.warn('[Feed] Error loading following:', error);
       }

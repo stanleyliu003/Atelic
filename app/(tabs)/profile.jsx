@@ -3,7 +3,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking, PanResponder, Image, Switch } from 'react-native';
-import { Auth, API } from 'aws-amplify';
+import { Auth, API, Storage } from 'aws-amplify';
 import { useEffect, useState, useRef } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
@@ -110,6 +110,37 @@ export default function Profile() {
     }
   }, [loadPendingRequestsCount]);
 
+  // Helper function to resolve S3 keys to signed URLs
+  const resolveProfilePhotoUrl = async (url) => {
+    if (!url) return null;
+
+    // If it's already a valid HTTP URL, return as-is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+
+    // Otherwise, treat it as an S3 key (with or without 's3://' prefix)
+    const s3Key = url.startsWith('s3://') ? url.replace('s3://', '') : url;
+
+    try {
+      console.log('[Profile] Resolving S3 key:', s3Key);
+      // Get a signed URL that's valid for 1 hour (3600 seconds)
+      const signedUrl = await Storage.get(s3Key, {
+        level: 'public',
+        expires: 3600
+      });
+      // Verify we got a valid HTTP URL back
+      if (signedUrl && (signedUrl.startsWith('http://') || signedUrl.startsWith('https://'))) {
+        return signedUrl;
+      }
+      console.error('[Profile] Storage.get returned invalid URL');
+      return null;
+    } catch (error) {
+      console.error('[Profile] Error getting signed URL:', error);
+      return null;
+    }
+  };
+
   const loadUserProfile = useCallback(async (userName) => {
     if (!userName) return;
 
@@ -121,7 +152,9 @@ export default function Profile() {
 
       const profile = response.data.getUserProfile;
       if (profile) {
-        setProfilePhotoUrl(profile.profilePhotoUrl);
+        // Resolve S3 key to signed URL if needed
+        const resolvedPhotoUrl = await resolveProfilePhotoUrl(profile.profilePhotoUrl);
+        setProfilePhotoUrl(resolvedPhotoUrl);
         setBio(profile.bio);
         setIsPrivate(profile.isPrivateAccount || false);
         setFollowersCount(profile.followersCount || 0);

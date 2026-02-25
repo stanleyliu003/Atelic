@@ -52,12 +52,15 @@ export function ProfileHeader({
     return styles.followButton;
   };
 
+  // Only use profilePhotoUrl if it's a valid HTTP URL
+  const isValidPhotoUrl = profilePhotoUrl && (profilePhotoUrl.startsWith('http://') || profilePhotoUrl.startsWith('https://'));
+
   return (
     <View style={styles.container}>
       {/* Profile Photo */}
       <View style={styles.photoContainer}>
         <Image
-          source={profilePhotoUrl ? { uri: profilePhotoUrl } : DEFAULT_AVATAR}
+          source={isValidPhotoUrl ? { uri: profilePhotoUrl } : DEFAULT_AVATAR}
           style={styles.profilePhoto}
           defaultSource={DEFAULT_AVATAR}
         />
