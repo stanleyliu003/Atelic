@@ -45,7 +45,9 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
         dayPolylines,
         tripPhotoReference,
         createdAt,
-        recentSearches
+        recentSearches,
+        isPublic,
+        setIsPublic
     } = useCreateTrip();
     const googlePlacesRef = useRef(null);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -375,7 +377,8 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                 collaborators: collaboratorsToSave,
                 version: 1,
                 updatedAt: new Date().toISOString(),
-                lastUpdatedBy: currentUserEmail
+                lastUpdatedBy: currentUserEmail,
+                isPublic: isPublic === true ? true : false
             };
 
             // Save to database
@@ -832,6 +835,41 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                             </View>
                         </Modal>
 
+                        {/* Trip Visibility Question - shown after trip length is selected */}
+                        {tripLength && (
+                            <View style={styles.visibilitySection}>
+                                <Text style={styles.visibilityQuestion}>
+                                    Make this trip viewable to friends?
+                                </Text>
+                                <View style={styles.visibilityOptions}>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.visibilityOption,
+                                            !isPublic && styles.visibilityOptionSelected
+                                        ]}
+                                        onPress={() => setIsPublic(false)}
+                                    >
+                                        <Text style={[
+                                            styles.visibilityOptionText,
+                                            !isPublic && styles.visibilityOptionTextSelected
+                                        ]}>No</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.visibilityOption,
+                                            isPublic && styles.visibilityOptionSelected
+                                        ]}
+                                        onPress={() => setIsPublic(true)}
+                                    >
+                                        <Text style={[
+                                            styles.visibilityOptionText,
+                                            isPublic && styles.visibilityOptionTextSelected
+                                        ]}>Yes</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+
                         {/* Invite Tripmate Button - shown after trip length is selected */}
                         {tripLength && (
                             <View style={{ marginTop: 15 }}>
@@ -1264,5 +1302,43 @@ const styles = StyleSheet.create({
     },
     tripmateRemoveButton: {
         padding: 2,
+    },
+    // Trip Visibility Styles
+    visibilitySection: {
+        marginTop: 25,
+        marginBottom: 5,
+    },
+    visibilityQuestion: {
+        fontFamily: 'outfit-medium',
+        fontSize: 16,
+        color: '#1a1a1a',
+        marginBottom: 12,
+    },
+    visibilityOptions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    visibilityOption: {
+        flex: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 15,
+        backgroundColor: '#f5f5f5',
+        borderWidth: 2,
+        borderColor: '#f5f5f5',
+        alignItems: 'center',
+    },
+    visibilityOptionSelected: {
+        backgroundColor: '#FFF5ED',
+        borderColor: '#F36406',
+    },
+    visibilityOptionText: {
+        fontFamily: 'outfit-medium',
+        fontSize: 16,
+        color: '#666',
+    },
+    visibilityOptionTextSelected: {
+        color: '#F36406',
+        fontFamily: 'outfit-bold',
     },
 })

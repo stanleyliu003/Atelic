@@ -321,6 +321,7 @@ export const getTripIDs = /* GraphQL */ `
       endDate
       tripLength
       userRole
+      isPublic
       __typename
     }
   }

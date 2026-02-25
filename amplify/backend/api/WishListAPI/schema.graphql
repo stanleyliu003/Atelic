@@ -481,6 +481,7 @@ type AppVersionConfig {
     savedActivities: String
     recentSearches: [RecentSearch]
     deletedSavedPlaceIds: [String]  # SavedPlaceIds that user has explicitly deleted from this trip
+    isPublic: Boolean  # Whether the trip is visible on the user's profile to others
   }
 
    type TripSummary {
@@ -493,6 +494,7 @@ type AppVersionConfig {
      endDate: String
      tripLength: Int
      userRole: CollaboratorRole
+     isPublic: Boolean  # Whether the trip is visible on the user's profile to others
    }
 
    type Day {
@@ -628,6 +630,7 @@ type AppVersionConfig {
     savedActivities: String
     recentSearches: [RecentSearchInput]
     deletedSavedPlaceIds: [String]  # SavedPlaceIds that user has explicitly deleted from this trip
+    isPublic: Boolean  # Whether the trip is visible on the user's profile to others (defaults to false)
   }
 
 

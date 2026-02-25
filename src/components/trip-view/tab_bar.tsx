@@ -11,7 +11,7 @@ interface TabBarProps {
   onTabChange: (tab: TabType) => void;
   dayCount: number;
   onAddDay: () => void;
-  onDeleteDay: () => void;
+  onDeleteDay: (dayNumber?: number) => void;
   onReorderDays?: (fromDay: number, toDay: number) => void;
   shouldScrollToActive?: boolean;
   tabLabels?: TabType[];
@@ -81,7 +81,10 @@ export function TabBar({
         {/* Render tabs in the provided order */}
         {tabs.map((tab, idx) => {
           const isDayTab = tab.startsWith('day');
-          const showDeleteIcon = isDeleteMode && isDayTab && dayCount > 1;
+          const dayNumber = isDayTab ? parseInt(tab.replace('day', '')) : 0;
+          // Only show delete icon on first day (day 1) or last day
+          const isFirstOrLastDay = dayNumber === 1 || dayNumber === dayCount;
+          const showDeleteIcon = isDeleteMode && isDayTab && dayCount > 1 && isFirstOrLastDay;
           const isSelectedForReorder = selectedDayForReorder === tab;
           const showReorderIcon = reorderMode && isDayTab;
 
@@ -106,10 +109,13 @@ export function TabBar({
             //     setReorderMode(false);
             //   }
             // } else
-            if (isDeleteMode && isDayTab) {
-              onTabChange(tab);
-              onDeleteDay();
+            if (isDeleteMode && isDayTab && isFirstOrLastDay) {
+              // Only allow deletion of first or last day - pass the day number directly
+              onDeleteDay(dayNumber);
               setIsDeleteMode(false);
+            } else if (isDeleteMode && isDayTab && !isFirstOrLastDay) {
+              // Middle days cannot be deleted - just switch to the tab
+              onTabChange(tab);
             } else {
               onTabChange(tab);
             }

@@ -271,9 +271,16 @@ export default function UserProfileScreen() {
 
       setCanViewTrips(canView);
 
-      // Load trips if allowed
-      if (canView && profile.userID) {
-        await loadUserTrips(profile.userID);
+      // Check if viewing own profile
+      const isOwnProfile = currentUserName && username &&
+        currentUserName.toLowerCase() === username.toLowerCase();
+
+      // Load trips if allowed (followers can see) OR if it's own profile
+      if ((canView || isOwnProfile) && profile.userID) {
+        await loadUserTrips(profile.userID, isOwnProfile);
+        if (isOwnProfile) {
+          setCanViewTrips(true); // Always can view own trips
+        }
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -283,18 +290,40 @@ export default function UserProfileScreen() {
     }
   }, [username]);
 
-  const loadUserTrips = async (userID) => {
+  const loadUserTrips = async (userID, isOwnProfile = false) => {
     setIsLoadingTrips(true);
     try {
       const tripSummaries = await listUserTripsFromCloud(userID);
       const allTrips = tripSummaries || [];
 
-      // Separate owned and shared trips
-      const owned = allTrips.filter(trip => trip.userRole === 'owner');
-      const shared = allTrips.filter(trip => trip.userRole !== 'owner');
+      // Debug: Log all trips and their isPublic values
+      console.log('[UserProfile] All trips received:', allTrips.map(t => ({
+        tripId: t.tripId,
+        selectedCity: t.selectedCity,
+        isPublic: t.isPublic,
+        isPublicType: typeof t.isPublic,
+        userRole: t.userRole
+      })));
+      console.log('[UserProfile] isOwnProfile:', isOwnProfile);
 
-      setUserTrips(allTrips);
-      console.log(`[UserProfile] Loaded ${owned.length} owned trips and ${shared.length} shared trips`);
+      let tripsToShow;
+      if (isOwnProfile) {
+        // When viewing own profile, show ALL trips
+        tripsToShow = allTrips;
+        console.log('[UserProfile] Showing all trips (own profile):', allTrips.length);
+      } else {
+        // Filter to only show PUBLIC trips when viewing another user's profile
+        // Handle both boolean true and string 'true' in case of type mismatch
+        tripsToShow = allTrips.filter(trip => trip.isPublic === true || trip.isPublic === 'true');
+        console.log('[UserProfile] Public trips after filter:', tripsToShow.length);
+      }
+
+      // Separate owned and shared trips
+      const owned = tripsToShow.filter(trip => trip.userRole === 'owner');
+      const shared = tripsToShow.filter(trip => trip.userRole !== 'owner');
+
+      setUserTrips(tripsToShow);
+      console.log(`[UserProfile] Loaded ${owned.length} owned trips and ${shared.length} shared trips (from ${allTrips.length} total)`);
     } catch (error) {
       // Silently handle error - backend issue with user's trips
     } finally {

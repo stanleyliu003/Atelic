@@ -32,7 +32,7 @@ import { getUserProfile, getUserStatistics } from '../../src/graphql/queries';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { listUserTripsFromCloud, retrieveTripFromCloud, deleteUserAccountFromCloud } from '../../src/services/lambdaService';
 import { deleteTrip } from '../../src/graphql/customMutations';
-import { removeCollaborator } from '../../src/graphql/mutations';
+import { removeCollaborator, createTrip } from '../../src/graphql/mutations';
 import { clearAuthData } from '../../src/services/appGroupsService';
 import Carousel from 'react-native-reanimated-carousel';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -84,6 +84,7 @@ export default function FeedScreen() {
   const [isLoadingTrip, setIsLoadingTrip] = useState(false);
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [leavingTripId, setLeavingTripId] = useState(null);
+  const [togglingVisibilityTripId, setTogglingVisibilityTripId] = useState(null);
   const [carouselIndices, setCarouselIndices] = useState({});
   const [tripPhotoCounts, setTripPhotoCounts] = useState({});
 
@@ -702,6 +703,114 @@ export default function FeedScreen() {
     } catch (error) {
       console.error('[Feed] Error getting user info:', error);
       Alert.alert('Error', 'Failed to get user information');
+    }
+  };
+
+  // Toggle trip visibility on profile
+  const handleToggleVisibility = async (tripId) => {
+    try {
+      const currentTrip = userTrips.find(trip => trip.tripId === tripId);
+      if (!currentTrip) {
+        console.error('[Feed] Trip not found:', tripId);
+        return;
+      }
+
+      const newIsPublic = !currentTrip.isPublic;
+      setTogglingVisibilityTripId(tripId);
+      console.log('[Feed] Toggling trip visibility:', { tripId, from: currentTrip.isPublic, to: newIsPublic });
+
+      // Fetch full trip data
+      const fullTripData = await retrieveTripFromCloud(currentUserID, tripId);
+      if (!fullTripData) {
+        throw new Error('Could not retrieve trip data');
+      }
+
+      // Helper function to sanitize activity objects for GraphQL
+      const sanitizeActivity = (activity) => {
+        if (!activity) return null;
+        const { __typename, ...rest } = activity;
+        if (rest.regular_opening_hours) {
+          const { __typename: ohTypename, ...ohRest } = rest.regular_opening_hours;
+          rest.regular_opening_hours = ohRest;
+          if (rest.regular_opening_hours.periods) {
+            rest.regular_opening_hours.periods = rest.regular_opening_hours.periods.map(p => {
+              const { __typename: pTypename, ...pRest } = p || {};
+              if (pRest.open) {
+                const { __typename: openTypename, ...openRest } = pRest.open;
+                pRest.open = openRest;
+              }
+              if (pRest.close) {
+                const { __typename: closeTypename, ...closeRest } = pRest.close;
+                pRest.close = closeRest;
+              }
+              return pRest;
+            });
+          }
+        }
+        if (rest.reviews) {
+          rest.reviews = rest.reviews.map(r => {
+            const { __typename: rTypename, ...rRest } = r || {};
+            return rRest;
+          });
+        }
+        return rest;
+      };
+
+      // Prepare trip data with updated isPublic
+      const tripData = {
+        tripId: fullTripData.tripId,
+        userID: currentUserID,
+        tripTitle: fullTripData.tripTitle || null,
+        days: (fullTripData.days || []).map(day => ({
+          dayNumber: day.dayNumber,
+          activities: (day.activities || []).map(sanitizeActivity).filter(Boolean),
+          encodedPolyline: day.encodedPolyline || null,
+        })),
+        wishlist: (fullTripData.wishlist || []).map(sanitizeActivity).filter(Boolean),
+        tripLength: fullTripData.tripLength,
+        selectedCity: fullTripData.selectedCity,
+        tripPhotoReference: fullTripData.tripPhotoReference || [],
+        createdAt: fullTripData.createdAt,
+        startDate: fullTripData.startDate || null,
+        endDate: fullTripData.endDate || null,
+        cityCategories: (fullTripData.cityCategories || []).map(c => {
+          const { __typename, ...rest } = c || {};
+          return rest;
+        }),
+        recentSearches: (fullTripData.recentSearches || []).map(rs => {
+          const { __typename, ...rest } = rs || {};
+          return rest;
+        }),
+        collaborators: (fullTripData.collaborators || []).map(c => {
+          const { __typename, ...rest } = c || {};
+          return rest;
+        }),
+        version: (fullTripData.version || 0) + 1,
+        updatedAt: new Date().toISOString(),
+        lastUpdatedBy: username || 'unknown',
+        isPublic: newIsPublic
+      };
+
+      // Save updated trip
+      await API.graphql({
+        query: createTrip,
+        variables: { input: tripData }
+      });
+
+      console.log('[Feed] Trip visibility updated successfully');
+
+      // Update local state immediately for responsive UI
+      setUserTrips(prevTrips =>
+        prevTrips.map(trip =>
+          trip.tripId === tripId ? { ...trip, isPublic: newIsPublic } : trip
+        )
+      );
+
+    } catch (error) {
+      console.error('[Feed] Error toggling trip visibility:', error);
+      Alert.alert('Error', 'Failed to update trip visibility. Please try again.');
+    } finally {
+      setTogglingVisibilityTripId(null);
     }
   };
 
@@ -1514,6 +1623,39 @@ export default function FeedScreen() {
                 )}
               </TouchableOpacity>
 
+              {/* Visible on Profile Toggle - only for owners */}
+              {(() => {
+                const currentTrip = userTrips.find(trip => trip.tripId === menuVisible);
+                if (currentTrip?.userRole !== 'owner') return null;
+
+                const isToggling = togglingVisibilityTripId === menuVisible;
+                const isCurrentlyPublic = currentTrip.isPublic === true;
+
+                return (
+                  <View style={styles.menuItemWithToggle}>
+                    <View style={styles.menuItemToggleContent}>
+                      <Ionicons
+                        name={isCurrentlyPublic ? "eye-outline" : "eye-off-outline"}
+                        size={30}
+                        color={Colors.PRIMARY}
+                      />
+                      <Text style={styles.menuItemText}>Visible on Profile</Text>
+                    </View>
+                    {isToggling ? (
+                      <ActivityIndicator size="small" color={Colors.PRIMARY} />
+                    ) : (
+                      <Switch
+                        value={isCurrentlyPublic}
+                        onValueChange={() => handleToggleVisibility(menuVisible)}
+                        trackColor={{ false: '#D1D5DB', true: '#FFA53F' }}
+                        thumbColor={isCurrentlyPublic ? '#FFFFFF' : '#f4f3f4'}
+                        ios_backgroundColor="#D1D5DB"
+                      />
+                    )}
+                  </View>
+                );
+              })()}
+
               {(() => {
                 const currentTrip = userTrips.find(trip => trip.tripId === menuVisible);
                 const canLeave = currentTrip && currentTrip.userRole && currentTrip.userRole !== 'owner';
@@ -1630,7 +1772,7 @@ export default function FeedScreen() {
               <View style={styles.settingsMenuItem}>
                 <Ionicons name="eye-off-outline" size={24} color={Colors.PRIMARY} />
                 <View style={styles.settingsMenuItemTextContainer}>
-                  <Text style={styles.settingsMenuItemText}>Private Account</Text>
+                  <Text style={styles.settingsMenuItemTextTitle}>Private Account</Text>
                   <Text style={styles.settingsMenuItemSubtext}>
                     Require approval for new followers
                   </Text>
@@ -2543,6 +2685,20 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginLeft: 12,
   },
+  menuItemWithToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    marginVertical: 4,
+  },
+  menuItemToggleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   settingsModal: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopLeftRadius: 20,
@@ -2587,6 +2743,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     flex: 1,
     marginLeft: 12,
+    color: Colors.PRIMARY,
+  },
+  settingsMenuItemTextTitle: {
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
     color: Colors.PRIMARY,
   },
   settingsMenuItemTextContainer: {

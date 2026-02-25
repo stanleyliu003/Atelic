@@ -32,7 +32,7 @@ exports.handler = async (event) => {
       ExpressionAttributeValues: {
         ':userID': userID
       },
-      ProjectionExpression: 'tripID, tripTitle, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators'
+      ProjectionExpression: 'tripID, tripTitle, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators, isPublic'
     };
 
     console.log('Querying owned trips:', JSON.stringify(ownedTripsParams));
@@ -48,7 +48,7 @@ exports.handler = async (event) => {
       ExpressionAttributeValues: {
         ':userID': userID
       },
-      ProjectionExpression: 'tripID, tripTitle, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators, userID'
+      ProjectionExpression: 'tripID, tripTitle, selectedCity, tripPhotoReference, createdAt, startDate, endDate, tripLength, collaborators, userID, isPublic'
     };
 
     console.log('Scanning for collaborated trips with pagination...');
@@ -125,7 +125,8 @@ exports.handler = async (event) => {
       startDate: item.startDate || null,
       endDate: item.endDate || null,
       tripLength: item.tripLength,
-      userRole: getUserRole(item, userID)
+      userRole: getUserRole(item, userID),
+      isPublic: item.isPublic === true ? true : false
     }));
 
     // Process collaborated trips - filter to only include trips where user is actually a collaborator
@@ -146,7 +147,8 @@ exports.handler = async (event) => {
         startDate: item.startDate || null,
         endDate: item.endDate || null,
         tripLength: item.tripLength,
-        userRole: getUserRole(item, userID)
+        userRole: getUserRole(item, userID),
+        isPublic: item.isPublic === true ? true : false
       }));
 
     console.log(`[Processing] Found ${collaboratedTripSummaries.length} collaborated trips`);

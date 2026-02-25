@@ -2263,11 +2263,12 @@ export default function TripViewMain() {
         }, 0);
     };
 
-    const handleDeleteDay = () => {
-        // Only allow deletion if activeTab is a day (not wishlist)
-        if (!activeTab.startsWith('day')) return;
+    const handleDeleteDay = (dayNumber?: number) => {
+        // Determine which day to delete - use passed dayNumber or parse from activeTab
+        const dayToDelete = dayNumber ?? (activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : null);
 
-        const dayToDelete = parseInt(activeTab.replace('day', ''));
+        // Only allow deletion of valid day
+        if (!dayToDelete) return;
 
         // Check if the day has any activities
         const dayActivitiesForDelete = getDayActivities(dayToDelete);
@@ -2361,19 +2362,22 @@ export default function TripViewMain() {
             latestTripDataRef.current.tripLength = remainingDayCount;
 
             // Update dates to reflect the new trip length
-            let newStartDate = startDate;
-            let newEndDate = endDate;
-            if (startDate && remainingDayCount > 0) {
+            // Use ref for most up-to-date dates (state updates are async)
+            const currentStartDate = latestTripDataRef.current.startDate || startDate;
+            const currentEndDate = latestTripDataRef.current.endDate || endDate;
+            let newStartDate = currentStartDate;
+            let newEndDate = currentEndDate;
+            if (currentStartDate && remainingDayCount > 0) {
                 if (dayToDelete === 1) {
                     // Deleting day 1: advance startDate by 1, keep endDate
-                    const start = new Date(startDate);
+                    const start = new Date(currentStartDate);
                     start.setDate(start.getDate() + 1);
                     newStartDate = start.toISOString();
                     setStartDate(newStartDate);
                     latestTripDataRef.current.startDate = newStartDate;
                 } else {
                     // Deleting any other day: keep startDate, move endDate back by 1
-                    const end = new Date(endDate!);
+                    const end = new Date(currentEndDate!);
                     end.setDate(end.getDate() - 1);
                     newEndDate = end.toISOString();
                     setEndDate(newEndDate);

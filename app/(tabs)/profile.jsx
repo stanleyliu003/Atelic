@@ -10,7 +10,7 @@ import { useCallback } from 'react';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { listUserTripsFromCloud, retrieveTripFromCloud, deleteUserAccountFromCloud } from '../../src/services/lambdaService';
 import { deleteTrip } from '../../src/graphql/customMutations';
-import { removeCollaborator, updateUserProfile } from '../../src/graphql/mutations';
+import { removeCollaborator, updateUserProfile, createTrip } from '../../src/graphql/mutations';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import { TripCarouselImage } from '../../src/components/profile/TripCarouselImage';
 import { clearAuthData } from '../../src/services/appGroupsService';
@@ -51,6 +51,7 @@ export default function Profile() {
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
   const [deleteAccountChecked, setDeleteAccountChecked] = useState(false);
   const [leavingTripId, setLeavingTripId] = useState(null);
+  const [togglingVisibilityTripId, setTogglingVisibilityTripId] = useState(null);
 
   // Social features state
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);
@@ -417,6 +418,115 @@ export default function Profile() {
     } catch (error) {
       console.error('[Profile] Error getting user info:', error);
       Alert.alert('Error', 'Failed to get user information');
+    }
+  };
+
+  // Toggle trip visibility on profile
+  const handleToggleVisibility = async (tripId) => {
+    try {
+      const currentTrip = userTrips.find(trip => trip.tripId === tripId);
+      if (!currentTrip) {
+        console.error('[Profile] Trip not found:', tripId);
+        return;
+      }
+
+      const newIsPublic = !currentTrip.isPublic;
+      setTogglingVisibilityTripId(tripId);
+      console.log('[Profile] Toggling trip visibility:', { tripId, from: currentTrip.isPublic, to: newIsPublic });
+
+      // Fetch full trip data
+      const fullTripData = await retrieveTripFromCloud(currentUserID, tripId);
+      if (!fullTripData) {
+        throw new Error('Could not retrieve trip data');
+      }
+
+      // Helper function to sanitize activity objects for GraphQL
+      const sanitizeActivity = (activity) => {
+        if (!activity) return null;
+        const { __typename, ...rest } = activity;
+        // Remove __typename from nested objects too
+        if (rest.regular_opening_hours) {
+          const { __typename: ohTypename, ...ohRest } = rest.regular_opening_hours;
+          rest.regular_opening_hours = ohRest;
+          if (rest.regular_opening_hours.periods) {
+            rest.regular_opening_hours.periods = rest.regular_opening_hours.periods.map(p => {
+              const { __typename: pTypename, ...pRest } = p || {};
+              if (pRest.open) {
+                const { __typename: openTypename, ...openRest } = pRest.open;
+                pRest.open = openRest;
+              }
+              if (pRest.close) {
+                const { __typename: closeTypename, ...closeRest } = pRest.close;
+                pRest.close = closeRest;
+              }
+              return pRest;
+            });
+          }
+        }
+        if (rest.reviews) {
+          rest.reviews = rest.reviews.map(r => {
+            const { __typename: rTypename, ...rRest } = r || {};
+            return rRest;
+          });
+        }
+        return rest;
+      };
+
+      // Prepare trip data with updated isPublic
+      const tripData = {
+        tripId: fullTripData.tripId,
+        userID: currentUserID,
+        tripTitle: fullTripData.tripTitle || null,
+        days: (fullTripData.days || []).map(day => ({
+          dayNumber: day.dayNumber,
+          activities: (day.activities || []).map(sanitizeActivity).filter(Boolean),
+          encodedPolyline: day.encodedPolyline || null,
+        })),
+        wishlist: (fullTripData.wishlist || []).map(sanitizeActivity).filter(Boolean),
+        tripLength: fullTripData.tripLength,
+        selectedCity: fullTripData.selectedCity,
+        tripPhotoReference: fullTripData.tripPhotoReference || [],
+        createdAt: fullTripData.createdAt,
+        startDate: fullTripData.startDate || null,
+        endDate: fullTripData.endDate || null,
+        cityCategories: (fullTripData.cityCategories || []).map(c => {
+          const { __typename, ...rest } = c || {};
+          return rest;
+        }),
+        recentSearches: (fullTripData.recentSearches || []).map(rs => {
+          const { __typename, ...rest } = rs || {};
+          return rest;
+        }),
+        collaborators: (fullTripData.collaborators || []).map(c => {
+          const { __typename, ...rest } = c || {};
+          return rest;
+        }),
+        version: (fullTripData.version || 0) + 1,
+        updatedAt: new Date().toISOString(),
+        lastUpdatedBy: username || 'unknown',
+        isPublic: newIsPublic
+      };
+
+      // Save updated trip
+      await API.graphql({
+        query: createTrip,
+        variables: { input: tripData }
+      });
+
+      console.log('[Profile] Trip visibility updated successfully');
+
+      // Update local state immediately for responsive UI
+      setUserTrips(prevTrips =>
+        prevTrips.map(trip =>
+          trip.tripId === tripId ? { ...trip, isPublic: newIsPublic } : trip
+        )
+      );
+
+    } catch (error) {
+      console.error('[Profile] Error toggling trip visibility:', error);
+      Alert.alert('Error', 'Failed to update trip visibility. Please try again.');
+    } finally {
+      setTogglingVisibilityTripId(null);
     }
   };
 
@@ -1247,6 +1357,39 @@ export default function Profile() {
                 )}
               </TouchableOpacity>
 
+              {/* Visible on Profile Toggle - only for owners */}
+              {(() => {
+                const currentTrip = userTrips.find(trip => trip.tripId === menuVisible);
+                if (currentTrip?.userRole !== 'owner') return null;
+
+                const isToggling = togglingVisibilityTripId === menuVisible;
+                const isCurrentlyPublic = currentTrip.isPublic === true;
+
+                return (
+                  <View style={styles.menuItemWithToggle}>
+                    <View style={styles.menuItemToggleContent}>
+                      <Ionicons
+                        name={isCurrentlyPublic ? "eye-outline" : "eye-off-outline"}
+                        size={30}
+                        color={Colors.PRIMARY}
+                      />
+                      <Text style={styles.menuItemText}>Visible on Profile</Text>
+                    </View>
+                    {isToggling ? (
+                      <ActivityIndicator size="small" color={Colors.PRIMARY} />
+                    ) : (
+                      <Switch
+                        value={isCurrentlyPublic}
+                        onValueChange={() => handleToggleVisibility(menuVisible)}
+                        trackColor={{ false: '#D1D5DB', true: '#FFA53F' }}
+                        thumbColor={isCurrentlyPublic ? '#FFFFFF' : '#f4f3f4'}
+                        ios_backgroundColor="#D1D5DB"
+                      />
+                    )}
+                  </View>
+                );
+              })()}
+
               {/* Leave Trip - only for editors and viewers */}
               {(() => {
                 const currentTrip = userTrips.find(trip => trip.tripId === menuVisible);
@@ -1363,12 +1506,10 @@ export default function Profile() {
             <ScrollView style={styles.modalContent}>
               {/* Account Privacy Toggle */}
               <View style={styles.settingsMenuItem}>
-                <Ionicons name="eye-off-outline" size={24} color={Colors.PRIMARY} />
+                <Ionicons name="eye-off-outline" size={24} color={Colors.PRIMARY} style={styles.settingsIcon} />
                 <View style={styles.settingsMenuItemTextContainer}>
-                  <Text style={styles.settingsMenuItemText}>Private Account</Text>
-                  <Text style={styles.settingsMenuItemSubtext}>
-                    Require approval for new followers
-                  </Text>
+                  <Text style={styles.settingsMenuItemTextTitle}>Private Account</Text>
+                  <Text style={styles.settingsMenuItemSubtext}>Require approval for new followers</Text>
                 </View>
                 <Switch
                   value={isPrivate}
@@ -1387,8 +1528,10 @@ export default function Profile() {
                   handleOpenLink('https://atelictravel.com/privacy-policy/');
                 }}
               >
-                <Ionicons name="shield-outline" size={24} color={Colors.PRIMARY} />
-                <Text style={styles.settingsMenuItemText}>Privacy Policy</Text>
+                <Ionicons name="shield-outline" size={24} color={Colors.PRIMARY} style={styles.settingsIcon} />
+                <View style={styles.settingsMenuItemTextContainer}>
+                  <Text style={styles.settingsMenuItemTextTitle}>Privacy Policy</Text>
+                </View>
                 <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
               </TouchableOpacity>
 
@@ -1400,8 +1543,10 @@ export default function Profile() {
                   handleOpenLink('https://atelictravel.com/terms-of-service/');
                 }}
               >
-                <Ionicons name="document-text-outline" size={24} color={Colors.PRIMARY} />
-                <Text style={styles.settingsMenuItemText}>Terms of Service</Text>
+                <Ionicons name="document-text-outline" size={24} color={Colors.PRIMARY} style={styles.settingsIcon} />
+                <View style={styles.settingsMenuItemTextContainer}>
+                  <Text style={styles.settingsMenuItemTextTitle}>Terms of Service</Text>
+                </View>
                 <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
               </TouchableOpacity>
 
@@ -1413,8 +1558,10 @@ export default function Profile() {
                   handleOpenLink('https://atelictravel.com/contact-us/');
                 }}
               >
-                <Ionicons name="help-circle-outline" size={24} color={Colors.PRIMARY} />
-                <Text style={styles.settingsMenuItemText}>Help & Support</Text>
+                <Ionicons name="help-circle-outline" size={24} color={Colors.PRIMARY} style={styles.settingsIcon} />
+                <View style={styles.settingsMenuItemTextContainer}>
+                  <Text style={styles.settingsMenuItemTextTitle}>Help & Support</Text>
+                </View>
                 <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
               </TouchableOpacity>
 
@@ -1454,8 +1601,10 @@ export default function Profile() {
                   }, 500);
                 }}
               >
-                <Ionicons name="key-outline" size={24} color={Colors.PRIMARY} />
-                <Text style={styles.settingsMenuItemText}>Apply as Admin</Text>
+                <Ionicons name="key-outline" size={24} color={Colors.PRIMARY} style={styles.settingsIcon} />
+                <View style={styles.settingsMenuItemTextContainer}>
+                  <Text style={styles.settingsMenuItemTextTitle}>Apply as Admin</Text>
+                </View>
                 <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
               </TouchableOpacity>
 
@@ -1467,8 +1616,10 @@ export default function Profile() {
                   handleLogout();
                 }}
               >
-                <Ionicons name="log-out-outline" size={24} color="#FF4444" />
-                <Text style={[styles.settingsMenuItemText, { color: '#FF4444' }]}>Logout</Text>
+                <Ionicons name="log-out-outline" size={24} color="#FF4444" style={styles.settingsIcon} />
+                <View style={styles.settingsMenuItemTextContainer}>
+                  <Text style={[styles.settingsMenuItemTextTitle, { color: '#FF4444' }]}>Logout</Text>
+                </View>
                 <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
               </TouchableOpacity>
 
@@ -1480,8 +1631,10 @@ export default function Profile() {
                   setIsDeleteAccountModalVisible(true);
                 }}
               >
-                <Ionicons name="trash-outline" size={24} color="#FF4444" />
-                <Text style={[styles.settingsMenuItemText, { color: '#FF4444' }]}>Delete Account</Text>
+                <Ionicons name="trash-outline" size={24} color="#FF4444" style={styles.settingsIcon} />
+                <View style={styles.settingsMenuItemTextContainer}>
+                  <Text style={[styles.settingsMenuItemTextTitle, { color: '#FF4444' }]}>Delete Account</Text>
+                </View>
                 <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
               </TouchableOpacity>
             </ScrollView>
@@ -1856,6 +2009,20 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginLeft: 12,
   },
+  menuItemWithToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    marginVertical: 4,
+  },
+  menuItemToggleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   carouselContainer: {
     position: 'relative',
     overflow: 'hidden',
@@ -1924,13 +2091,25 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     marginVertical: 4,
-    justifyContent: 'space-between',
+  },
+  settingsIconContainer: {
+    width: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsIcon: {
+    width: 24,
   },
   settingsMenuItemText: {
     fontFamily: 'outfit-medium',
     fontSize: 18,
     flex: 1,
     marginLeft: 12,
+    color: Colors.PRIMARY,
+  },
+  settingsMenuItemTextTitle: {
+    fontFamily: 'outfit-medium',
+    fontSize: 18,
     color: Colors.PRIMARY,
   },
   settingsMenuItemTextContainer: {
