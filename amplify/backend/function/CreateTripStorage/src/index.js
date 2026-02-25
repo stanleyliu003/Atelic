@@ -45,6 +45,7 @@ exports.handler = async (event) => {
   // Compose the item to store
   const nowIso = new Date().toISOString();
   let existingCreatedAt = null;
+  let existingIsPublic = false; // Default to false for new trips
   try {
     const existing = await docClient.send(new GetCommand({
       TableName: process.env.STORAGE_TRIPSTORAGE_NAME,
@@ -52,11 +53,14 @@ exports.handler = async (event) => {
     }));
     if (existing?.Item) {
       existingCreatedAt = existing.Item.createdAt || existing.Item.updatedAt || null;
+      existingIsPublic = existing.Item.isPublic === true; // Preserve existing visibility
     }
   } catch (e) {
     console.warn('Warning: failed to fetch existing trip for createdAt preservation:', e?.message || e);
   }
   const computedCreatedAt = existingCreatedAt || input.createdAt || nowIso;
+  // Only use input.isPublic if explicitly provided (true or false), otherwise preserve existing value
+  const computedIsPublic = input.isPublic !== undefined ? (input.isPublic === true) : existingIsPublic;
   const item = {
     userID: userId,
     tripID: input.tripId,
@@ -87,8 +91,8 @@ exports.handler = async (event) => {
     deletedSavedPlaceIds: Array.isArray(input.deletedSavedPlaceIds) ? input.deletedSavedPlaceIds : [],
     // Recent searches
     recentSearches: Array.isArray(input.recentSearches) ? input.recentSearches : [],
-    // Trip visibility - whether the trip is visible on the user's profile to others (defaults to false)
-    isPublic: input.isPublic === true ? true : false
+    // Trip visibility - whether the trip is visible on the user's profile to others (preserves existing value if not provided)
+    isPublic: computedIsPublic
   };
 
   console.log('[CreateTripStorage] 💾 Item to save - tripTitle:', item.tripTitle);

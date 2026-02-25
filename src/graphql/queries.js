@@ -407,6 +407,7 @@ export const getUserTrips = /* GraphQL */ `
         __typename
       }
       deletedSavedPlaceIds
+      isPublic
       __typename
     }
   }

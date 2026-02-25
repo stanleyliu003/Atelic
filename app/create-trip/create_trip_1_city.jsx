@@ -47,7 +47,8 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
         createdAt,
         recentSearches,
         isPublic,
-        setIsPublic
+        setIsPublic,
+        setIsPublicLoaded
     } = useCreateTrip();
     const googlePlacesRef = useRef(null);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -843,7 +844,7 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                                         styles.visibilityToggleRow,
                                         isPublic && styles.visibilityToggleRowActive
                                     ]}
-                                    onPress={() => setIsPublic(!isPublic)}
+                                    onPress={() => { setIsPublic(!isPublic); setIsPublicLoaded(true); }}
                                     activeOpacity={0.7}
                                 >
                                     <View style={styles.visibilityToggleContent}>
@@ -871,7 +872,7 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                                     </View>
                                     <Switch
                                         value={isPublic}
-                                        onValueChange={setIsPublic}
+                                        onValueChange={(value) => { setIsPublic(value); setIsPublicLoaded(true); }}
                                         trackColor={{ false: '#E5E5E5', true: Colors.PRIMARY }}
                                         thumbColor={'#FFFFFF'}
                                         ios_backgroundColor="#E5E5E5"

@@ -82,6 +82,8 @@ export const CreateTripProvider = ({ children }) => {
 
     // Trip visibility - whether the trip is visible on the user's profile to others (defaults to false)
     const [isPublic, setIsPublic] = useState(false);
+    // Track whether isPublic was loaded from backend (to avoid overwriting with default value)
+    const [isPublicLoaded, setIsPublicLoaded] = useState(false);
 
     // Permission helpers
     const canEdit = () => ['owner','editor'].includes(currentUserRole);
@@ -405,9 +407,16 @@ export const CreateTripProvider = ({ children }) => {
                 // Don't call setDeletedSavedPlaceIds - keep current state
             }
 
-            // Restore trip visibility setting
-            setIsPublic(trip.isPublic === true ? true : false);
-            console.log('[CreateTripContext] Restored isPublic:', trip.isPublic === true ? true : false);
+            // Restore trip visibility setting - only if explicitly provided in trip data
+            if (trip.isPublic !== undefined && trip.isPublic !== null) {
+                setIsPublic(trip.isPublic === true);
+                setIsPublicLoaded(true);
+                console.log('[CreateTripContext] Restored isPublic:', trip.isPublic === true);
+            } else {
+                // isPublic not returned from backend - don't change current value and mark as not loaded
+                setIsPublicLoaded(false);
+                console.log('[CreateTripContext] isPublic not provided in trip data, marking as not loaded');
+            }
 
             console.log('[CreateTripContext] Restored trip - createdAt:', trip.createdAt, 'version:', trip.version || 1);
         });
@@ -493,6 +502,7 @@ export const CreateTripProvider = ({ children }) => {
         setRecentSearches([]);
         setDeletedSavedPlaceIds(new Set());
         setIsPublic(false); // Reset trip visibility
+        setIsPublicLoaded(false); // Reset loaded flag
         // Note: Don't reset selectedCity and tripLength during create trip flow
         // setSelectedCity('');
         // setTripLength(null);
@@ -982,6 +992,8 @@ export const CreateTripProvider = ({ children }) => {
         // Trip visibility
         isPublic,
         setIsPublic,
+        isPublicLoaded,
+        setIsPublicLoaded,
     };
 
     return (

@@ -601,6 +601,7 @@ exports.handler = async (event) => {
         savedActivities: finalTrip.savedActivities || null,
         recentSearches: finalTrip.recentSearches || [],
         deletedSavedPlaceIds: finalTrip.deletedSavedPlaceIds || [],
+        isPublic: finalTrip.isPublic === true,
         _loadedFrom: newOperations.length > 0 ? 'snapshot+operations' : 'snapshot', // Debug flag
         _operationCount: newOperations.length // Debug info
       };
@@ -714,6 +715,7 @@ exports.handler = async (event) => {
               savedActivities: finalTrip.savedActivities || null,
               recentSearches: finalTrip.recentSearches || [],
               deletedSavedPlaceIds: finalTrip.deletedSavedPlaceIds || [],
+              isPublic: finalTrip.isPublic === true,
               _loadedFrom: newOperations.length > 0 ? 'snapshot+operations' : 'snapshot', // Debug flag
               _operationCount: newOperations.length // Debug info
             };

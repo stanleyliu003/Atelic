@@ -728,7 +728,10 @@ export default function FeedScreen() {
       // Helper function to sanitize activity objects for GraphQL
       const sanitizeActivity = (activity) => {
         if (!activity) return null;
-        const { __typename, ...rest } = activity;
+        const { __typename, lastModified, modifiedBy, lastReordered, category, ...rest } = activity;
+        // Ensure required String! fields have values (with type checking)
+        rest.place_id = typeof rest.place_id === 'string' && rest.place_id.trim() !== '' ? rest.place_id : 'unknown_place';
+        rest.name = typeof rest.name === 'string' && rest.name.trim() !== '' ? rest.name : 'Unknown Place';
         if (rest.regular_opening_hours) {
           const { __typename: ohTypename, ...ohRest } = rest.regular_opening_hours;
           rest.regular_opening_hours = ohRest;
@@ -774,17 +777,34 @@ export default function FeedScreen() {
         startDate: fullTripData.startDate || null,
         endDate: fullTripData.endDate || null,
         cityCategories: (fullTripData.cityCategories || []).map(c => {
-          const { __typename, ...rest } = c || {};
+          if (!c) return null;
+          const { __typename, ...rest } = c;
+          // category is String! - must have valid value
+          if (typeof rest.category !== 'string' || rest.category.trim() === '') return null;
+          rest.category_items = Array.isArray(rest.category_items) ? rest.category_items.filter(i => typeof i === 'string' && i.trim() !== '') : [];
           return rest;
-        }),
+        }).filter(Boolean),
         recentSearches: (fullTripData.recentSearches || []).map(rs => {
-          const { __typename, ...rest } = rs || {};
+          if (!rs) return null;
+          const { __typename, ...rest } = rs;
+          // place_id, name, timestamp are String! - must have valid values
+          if (typeof rest.place_id !== 'string' || rest.place_id.trim() === '') return null;
+          if (typeof rest.name !== 'string' || rest.name.trim() === '') return null;
+          rest.timestamp = typeof rest.timestamp === 'string' && rest.timestamp.trim() !== '' ? rest.timestamp : new Date().toISOString();
           return rest;
-        }),
+        }).filter(Boolean),
         collaborators: (fullTripData.collaborators || []).map(c => {
-          const { __typename, ...rest } = c || {};
+          if (!c) return null;
+          const { __typename, ...rest } = c;
+          // Ensure required String! fields have values (with type checking)
+          rest.email = typeof rest.email === 'string' && rest.email.trim() !== '' ? rest.email : 'unknown@email.com';
+          rest.fullName = typeof rest.fullName === 'string' && rest.fullName.trim() !== '' ? rest.fullName : 'Unknown User';
+          rest.username = typeof rest.username === 'string' && rest.username.trim() !== '' ? rest.username : 'unknown';
+          rest.userID = typeof rest.userID === 'string' && rest.userID.trim() !== '' ? rest.userID : 'unknown_user';
+          // addedBy is String! - use fullName as fallback
+          rest.addedBy = typeof rest.addedBy === 'string' && rest.addedBy.trim() !== '' ? rest.addedBy : (rest.fullName || 'system');
           return rest;
-        }),
+        }).filter(Boolean),
         version: (fullTripData.version || 0) + 1,
         updatedAt: new Date().toISOString(),
         lastUpdatedBy: username || 'unknown',

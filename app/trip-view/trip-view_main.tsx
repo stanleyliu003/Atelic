@@ -114,6 +114,7 @@ export default function TripViewMain() {
         deletedSavedPlaceIds,
         isDeletedSavedPlace,
         isPublic,
+        isPublicLoaded,
     } = useCreateTrip();
     // Primary tab state for Overview/Itinerary toggle
     type PrimaryTab = 'overview' | 'itinerary';
@@ -597,10 +598,18 @@ export default function TripViewMain() {
     };
 
     const formatActivityForInput = (activity: Activity): any => {
+        // Skip null/undefined activities
+        if (!activity) {
+            console.warn('[formatActivityForInput] Skipping null/undefined activity');
+            return null;
+        }
+        // Ensure required String! fields are never null or empty (GraphQL requires non-null strings)
+        const placeId = typeof activity.place_id === 'string' && activity.place_id.trim() !== '' ? activity.place_id : 'unknown_place';
+        const activityName = typeof activity.name === 'string' && activity.name.trim() !== '' ? activity.name : 'Unknown Place';
         const activityInput = {
             instanceId: activity.instanceId || null,
-            place_id: activity.place_id || '',
-            name: activity.name || '',
+            place_id: placeId,
+            name: activityName,
             city: activity.city || null,
             lat: activity.lat || 0,
             lng: activity.lng || 0,
@@ -632,13 +641,22 @@ export default function TripViewMain() {
 
     // Helper function to convert Collaborator to CollaboratorInput format for GraphQL
     const formatCollaboratorForInput = (collaborator: any): any => {
+        // Skip null/undefined collaborators
+        if (!collaborator) {
+            console.warn('[formatCollaboratorForInput] Skipping null/undefined collaborator');
+            return null;
+        }
+        // Ensure required String! fields are never null or empty (with type checking)
         const collaboratorInput = {
-            email: collaborator.email || '',
-            fullName: collaborator.fullName || '',
-            username: collaborator.username || '',
-            userID: collaborator.userID || '',
+            email: typeof collaborator.email === 'string' && collaborator.email.trim() !== '' ? collaborator.email : 'unknown@email.com',
+            fullName: typeof collaborator.fullName === 'string' && collaborator.fullName.trim() !== '' ? collaborator.fullName : 'Unknown User',
+            username: typeof collaborator.username === 'string' && collaborator.username.trim() !== '' ? collaborator.username : 'unknown',
+            userID: typeof collaborator.userID === 'string' && collaborator.userID.trim() !== '' ? collaborator.userID : 'unknown_user',
             role: collaborator.role || 'viewer',
-            addedBy: collaborator.addedBy || '',
+            // addedBy is required String! - use fullName as fallback, or 'system' as last resort
+            addedBy: typeof collaborator.addedBy === 'string' && collaborator.addedBy.trim() !== ''
+                ? collaborator.addedBy
+                : (typeof collaborator.fullName === 'string' && collaborator.fullName.trim() !== '' ? collaborator.fullName : 'system'),
         };
         // Recursively remove all __typename fields
         return removeTypename(collaboratorInput);
@@ -646,20 +664,46 @@ export default function TripViewMain() {
 
     // Helper function to convert CategoryItem to CategoryItemInput format for GraphQL
     const formatCategoryItemForInput = (item: any): any => {
+        // Skip if item is null/undefined or has no valid category
+        if (!item) {
+            console.warn('[formatCategoryItemForInput] Skipping null/undefined item');
+            return null;
+        }
+        // category is String! - must have a valid value
+        const category = typeof item.category === 'string' && item.category.trim() !== '' ? item.category : null;
+        if (!category) {
+            console.warn('[formatCategoryItemForInput] Skipping item with empty/invalid category');
+            return null;
+        }
         return {
-            category: item.category || '',
-            category_items: item.category_items || [],
+            category: category,
+            category_items: Array.isArray(item.category_items) ? item.category_items.filter((i: any) => typeof i === 'string' && i.trim() !== '') : [],
             emoji: item.emoji || null,
         };
     };
 
     // Helper function to convert RecentSearch to RecentSearchInput format for GraphQL
     const formatRecentSearchForInput = (search: any): any => {
+        // Skip if search is null/undefined
+        if (!search) {
+            console.warn('[formatRecentSearchForInput] Skipping null/undefined search');
+            return null;
+        }
+        // All these are String! - must have valid values
+        const placeId = typeof search.place_id === 'string' && search.place_id.trim() !== '' ? search.place_id : null;
+        const name = typeof search.name === 'string' && search.name.trim() !== '' ? search.name : null;
+        const timestamp = typeof search.timestamp === 'string' && search.timestamp.trim() !== '' ? search.timestamp : new Date().toISOString();
+
+        // Skip if required fields are missing
+        if (!placeId || !name) {
+            console.warn('[formatRecentSearchForInput] Skipping search with missing place_id or name:', { place_id: search.place_id, name: search.name });
+            return null;
+        }
         return {
-            place_id: search.place_id || '',
-            name: search.name || '',
+            place_id: placeId,
+            name: name,
             address_info: search.address_info || null,
-            timestamp: search.timestamp || '',
+            timestamp: timestamp,
         };
     };
 
@@ -682,7 +726,7 @@ export default function TripViewMain() {
                 const dayData = dayActivities[dayNum];
                 return {
                     dayNumber: dayNum,
-                    activities: (dayData?.activities || []).map(formatActivityForInput),
+                    activities: (dayData?.activities || []).map(formatActivityForInput).filter(Boolean),
                     encodedPolyline: dayPolylines[dayNum] || null,
                     travelModes: dayTravelModes[dayNum] ? JSON.stringify(dayTravelModes[dayNum]) : null
                 };
@@ -705,20 +749,21 @@ export default function TripViewMain() {
                 tripTitle: finalTripTitle,
                 userID: currentUserID,
                 days: daysArray,
-                wishlist: (activities || []).map(formatActivityForInput),
+                wishlist: (activities || []).map(formatActivityForInput).filter(Boolean),
                 tripLength: tripLength,
                 selectedCity: selectedCity,
                 tripPhotoReference: tripPhotoReference || [],
                 createdAt: createdAt,
                 startDate: startDate,
                 endDate: endDate,
-                collaborators: (collaborators || []).map(formatCollaboratorForInput),
+                collaborators: (collaborators || []).map(formatCollaboratorForInput).filter(Boolean),
                 version: (version || 0) + 1,
                 updatedAt: new Date().toISOString(),
                 lastUpdatedBy: currentUserID,
-                cityCategories: (cityCategories || []).map(formatCategoryItemForInput),
-                recentSearches: (recentSearches || []).map(formatRecentSearchForInput),
-                isPublic: isPublic === true
+                cityCategories: (cityCategories || []).map(formatCategoryItemForInput).filter(Boolean),
+                recentSearches: (recentSearches || []).map(formatRecentSearchForInput).filter(Boolean),
+                // Only include isPublic if it was loaded from backend (to avoid overwriting with default false)
+                ...(isPublicLoaded ? { isPublic: isPublic === true } : {})
             };
 
             // Log the trip input for debugging
@@ -757,9 +802,53 @@ export default function TripViewMain() {
                 console.log('[trip-view_main] First collaborator:', JSON.stringify(tripInput.collaborators[0], null, 2));
             }
 
+            // Validate required String! fields before GraphQL call
+            const validateInput = (input: any) => {
+                const issues: string[] = [];
+
+                // Check top-level required fields
+                if (!input.tripId || input.tripId === '') issues.push('tripId is null/empty');
+                if (!input.userID || input.userID === '') issues.push('userID is null/empty');
+
+                // Check activities (wishlist)
+                (input.wishlist || []).forEach((act: any, i: number) => {
+                    if (!act) { issues.push(`wishlist[${i}] is null`); return; }
+                    if (!act.place_id || act.place_id === '') issues.push(`wishlist[${i}].place_id is null/empty`);
+                    if (!act.name || act.name === '') issues.push(`wishlist[${i}].name is null/empty`);
+                });
+
+                // Check day activities
+                (input.days || []).forEach((day: any, di: number) => {
+                    (day.activities || []).forEach((act: any, ai: number) => {
+                        if (!act) { issues.push(`days[${di}].activities[${ai}] is null`); return; }
+                        if (!act.place_id || act.place_id === '') issues.push(`days[${di}].activities[${ai}].place_id is null/empty`);
+                        if (!act.name || act.name === '') issues.push(`days[${di}].activities[${ai}].name is null/empty`);
+                    });
+                });
+
+                // Check collaborators
+                (input.collaborators || []).forEach((c: any, i: number) => {
+                    if (!c) { issues.push(`collaborators[${i}] is null`); return; }
+                    if (!c.email || c.email === '') issues.push(`collaborators[${i}].email is null/empty`);
+                    if (!c.fullName || c.fullName === '') issues.push(`collaborators[${i}].fullName is null/empty`);
+                    if (!c.username || c.username === '') issues.push(`collaborators[${i}].username is null/empty`);
+                    if (!c.userID || c.userID === '') issues.push(`collaborators[${i}].userID is null/empty`);
+                });
+
+                return issues;
+            };
+
             // Call createTrip mutation via GraphQL
             // Remove all __typename fields to prevent GraphQL validation errors
             const cleanedTripInput = removeTypename(tripInput);
+
+            // Log validation issues
+            const validationIssues = validateInput(cleanedTripInput);
+            if (validationIssues.length > 0) {
+                console.error('[trip-view_main] ⚠️ VALIDATION ISSUES:', validationIssues);
+                console.error('[trip-view_main] Full cleanedTripInput:', JSON.stringify(cleanedTripInput, null, 2));
+            }
+
             const result: any = await API.graphql(graphqlOperation(createTrip, { input: cleanedTripInput }));
 
             console.log('[trip-view_main] createTrip mutation result:', {
@@ -3480,7 +3569,8 @@ export default function TripViewMain() {
                 cityCategories: cleanCityCategories || null, // Save city categories for restoration
                 recentSearches: cleanRecentSearches,
                 deletedSavedPlaceIds: Array.from(latestDeletedSavedPlaceIds), // Convert Set to Array for GraphQL
-                isPublic: isPublic === true, // Preserve trip visibility setting
+                // Only include isPublic if it was loaded from backend (to avoid overwriting with default false)
+                ...(isPublicLoaded ? { isPublic: isPublic === true } : {}),
             };
 
             // Get current user information
