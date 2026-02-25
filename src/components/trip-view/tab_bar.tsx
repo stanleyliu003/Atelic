@@ -20,6 +20,8 @@ interface TabBarProps {
   showOverviewTab?: boolean;
   showDayButtons?: boolean;
   usePrimaryStyle?: boolean; // Use primary toggle styling
+  isDeleteMode?: boolean; // Controlled delete mode state
+  onDeleteModeChange?: (isDeleteMode: boolean) => void; // Callback when delete mode changes
 }
 
 export function TabBar({
@@ -35,10 +37,22 @@ export function TabBar({
   startDate,
   showOverviewTab = false,
   showDayButtons = true,
-  usePrimaryStyle = false
+  usePrimaryStyle = false,
+  isDeleteMode: controlledDeleteMode,
+  onDeleteModeChange
 }: TabBarProps) {
   const scrollViewRef = useRef<ScrollView>(null);
-  const [isDeleteMode, setIsDeleteMode] = React.useState(false);
+  const [internalDeleteMode, setInternalDeleteMode] = React.useState(false);
+
+  // Use controlled mode if props are provided, otherwise use internal state
+  const isDeleteMode = controlledDeleteMode !== undefined ? controlledDeleteMode : internalDeleteMode;
+  const setIsDeleteMode = (value: boolean) => {
+    if (onDeleteModeChange) {
+      onDeleteModeChange(value);
+    } else {
+      setInternalDeleteMode(value);
+    }
+  };
   // Reorder mode disabled
   const reorderMode = false;
   const selectedDayForReorder = null;

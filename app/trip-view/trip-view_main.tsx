@@ -219,6 +219,9 @@ export default function TripViewMain() {
     const [isSaving, setIsSaving] = useState(false);
     const isSavingRef = useRef(false);
 
+    // Delete mode state for TabBar (lifted up to allow dismissal on background tap)
+    const [isTabBarDeleteMode, setIsTabBarDeleteMode] = useState(false);
+
     // Ref for immediate tripID access (avoids async state update issues)
     const tripIdRef = useRef(tripId);
 
@@ -569,10 +572,14 @@ export default function TripViewMain() {
         setShouldScrollToActive(true);
     };
 
-    // Handler for background tap to deselect activities
+    // Handler for background tap to deselect activities and dismiss delete mode
     const handleBackgroundTap = () => {
         if (isSelectionMode && selectedActivities.length > 0) {
             clearSelection();
+        }
+        // Dismiss delete mode when tapping on background
+        if (isTabBarDeleteMode) {
+            setIsTabBarDeleteMode(false);
         }
     };
 
@@ -4458,6 +4465,8 @@ export default function TripViewMain() {
                             currentUserRole={currentUserRole}
                             startDate={startDate}
                             showOverviewTab={true}
+                            isDeleteMode={isTabBarDeleteMode}
+                            onDeleteModeChange={setIsTabBarDeleteMode}
                             showDayButtons={true}
                             usePrimaryStyle={true}
                         />
