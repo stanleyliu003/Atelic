@@ -668,27 +668,16 @@ export default function TripViewMain() {
 
     // Helper function to convert CategoryItem to CategoryItemInput format for GraphQL
     const formatCategoryItemForInput = (item: any): any => {
-        console.log('[formatCategoryItemForInput] Processing item:', JSON.stringify(item));
         // Skip if item is null/undefined or has no valid category
-        if (!item) {
-            console.warn('[formatCategoryItemForInput] Skipping null/undefined item');
-            return null;
-        }
-        console.log('[formatCategoryItemForInput] item.category:', item.category, '| type:', typeof item.category);
+        if (!item) return null;
         // category is String! - must have a valid value
         const category = typeof item.category === 'string' && item.category.trim() !== '' ? item.category : null;
-        console.log('[formatCategoryItemForInput] Computed category:', category);
-        if (!category) {
-            console.warn('[formatCategoryItemForInput] Skipping item with empty/invalid category. Original:', item.category);
-            return null;
-        }
-        const result = {
+        if (!category) return null;
+        return {
             category: category,
             category_items: Array.isArray(item.category_items) ? item.category_items.filter((i: any) => typeof i === 'string' && i.trim() !== '') : [],
             emoji: item.emoji || null,
         };
-        console.log('[formatCategoryItemForInput] Returning:', JSON.stringify(result));
-        return result;
     };
 
     // Helper function to convert RecentSearch to RecentSearchInput format for GraphQL
@@ -769,20 +758,7 @@ export default function TripViewMain() {
                 version: (version || 0) + 1,
                 updatedAt: new Date().toISOString(),
                 lastUpdatedBy: currentUserID,
-                cityCategories: (() => {
-                    console.log('[trip-view_main] 🔍 RAW cityCategories:', JSON.stringify(cityCategories, null, 2));
-                    console.log('[trip-view_main] 🔍 cityCategories type:', typeof cityCategories);
-                    console.log('[trip-view_main] 🔍 cityCategories isArray:', Array.isArray(cityCategories));
-                    if (cityCategories && cityCategories[0]) {
-                        console.log('[trip-view_main] 🔍 First category item:', JSON.stringify(cityCategories[0], null, 2));
-                        console.log('[trip-view_main] 🔍 First item keys:', Object.keys(cityCategories[0]));
-                    }
-                    const mapped = (cityCategories || []).map(formatCategoryItemForInput);
-                    console.log('[trip-view_main] 🔍 After map (before filter):', JSON.stringify(mapped, null, 2));
-                    const filtered = mapped.filter(Boolean);
-                    console.log('[trip-view_main] 🔍 After filter:', JSON.stringify(filtered, null, 2));
-                    return filtered;
-                })(),
+                cityCategories: (cityCategories || []).map(formatCategoryItemForInput).filter(Boolean),
                 recentSearches: (recentSearches || []).map(formatRecentSearchForInput).filter(Boolean),
                 // Convert deletedSavedPlaceIds Set to Array, filtering out any null/empty values
                 deletedSavedPlaceIds: deletedSavedPlaceIds
@@ -888,33 +864,43 @@ export default function TripViewMain() {
             // Remove all __typename fields to prevent GraphQL validation errors
             const cleanedTripInput = removeTypename(tripInput);
 
-            // Log validation issues
-            const validationIssues = validateInput(cleanedTripInput);
-            if (validationIssues.length > 0) {
-                console.error('[trip-view_main] ⚠️ VALIDATION ISSUES:', validationIssues);
-                console.error('[trip-view_main] Full cleanedTripInput:', JSON.stringify(cleanedTripInput, null, 2));
+            // DEFENSIVE FILTERS - Run BEFORE validation to fix any invalid data
+            // Filter cityCategories with invalid category
+            if (cleanedTripInput.cityCategories) {
+                const originalCatCount = cleanedTripInput.cityCategories.length;
+                cleanedTripInput.cityCategories = cleanedTripInput.cityCategories.filter(
+                    (cat: any) => cat && typeof cat.category === 'string' && cat.category.trim() !== ''
+                );
+                if (originalCatCount !== cleanedTripInput.cityCategories.length) {
+                    console.log(`[trip-view_main] 🛡️ Filtered cityCategories: ${originalCatCount} -> ${cleanedTripInput.cityCategories.length}`);
+                }
             }
 
-            // DETAILED DEBUG LOGGING - Log all String! fields before GraphQL call
-            console.log('[trip-view_main] 🔍 DEBUG - All String! fields before GraphQL call:');
-            console.log('[trip-view_main] tripId:', cleanedTripInput.tripId, '| type:', typeof cleanedTripInput.tripId);
-            console.log('[trip-view_main] userID:', cleanedTripInput.userID, '| type:', typeof cleanedTripInput.userID);
-            console.log('[trip-view_main] collaborators count:', cleanedTripInput.collaborators?.length);
-            cleanedTripInput.collaborators?.forEach((c: any, i: number) => {
-                console.log(`[trip-view_main] collaborators[${i}]:`, {
-                    email: c?.email, fullName: c?.fullName, username: c?.username,
-                    userID: c?.userID, addedBy: c?.addedBy, role: c?.role
-                });
-            });
-            console.log('[trip-view_main] cityCategories count:', cleanedTripInput.cityCategories?.length);
-            cleanedTripInput.cityCategories?.forEach((cat: any, i: number) => {
-                console.log(`[trip-view_main] cityCategories[${i}]:`, { category: cat?.category, items: cat?.category_items?.length });
-            });
-            console.log('[trip-view_main] recentSearches count:', cleanedTripInput.recentSearches?.length);
-            cleanedTripInput.recentSearches?.forEach((rs: any, i: number) => {
-                console.log(`[trip-view_main] recentSearches[${i}]:`, { place_id: rs?.place_id, name: rs?.name, timestamp: rs?.timestamp });
-            });
-            console.log('[trip-view_main] deletedSavedPlaceIds:', cleanedTripInput.deletedSavedPlaceIds);
+            // Filter recentSearches with invalid required fields
+            if (cleanedTripInput.recentSearches) {
+                const originalRsCount = cleanedTripInput.recentSearches.length;
+                cleanedTripInput.recentSearches = cleanedTripInput.recentSearches.filter(
+                    (rs: any) => rs && typeof rs.place_id === 'string' && rs.place_id.trim() !== '' &&
+                                 typeof rs.name === 'string' && rs.name.trim() !== ''
+                );
+                if (originalRsCount !== cleanedTripInput.recentSearches.length) {
+                    console.log(`[trip-view_main] 🛡️ Filtered recentSearches: ${originalRsCount} -> ${cleanedTripInput.recentSearches.length}`);
+                }
+            }
+
+            // Ensure all collaborators have valid addedBy
+            if (cleanedTripInput.collaborators) {
+                cleanedTripInput.collaborators = cleanedTripInput.collaborators.map((c: any) => ({
+                    ...c,
+                    addedBy: (typeof c.addedBy === 'string' && c.addedBy.trim() !== '') ? c.addedBy : (c.fullName || 'system')
+                }));
+            }
+
+            // Validate AFTER defensive filters
+            const validationIssues = validateInput(cleanedTripInput);
+            if (validationIssues.length > 0) {
+                console.error('[trip-view_main] ⚠️ VALIDATION ISSUES AFTER FILTERS:', validationIssues);
+            }
 
             const result: any = await API.graphql(graphqlOperation(createTrip, { input: cleanedTripInput }));
 
