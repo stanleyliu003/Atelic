@@ -72,7 +72,8 @@
       "Bash(aws lambda create-function-url-config:*)",
       "Bash(aws lambda add-permission:*)",
       "WebFetch(domain:developers.google.com)",
-      "Bash(aws dynamodb list-tables:*)"
+      "Bash(aws dynamodb list-tables:*)",
+      "Bash(du -sh:*)"
     ],
     "deny": [],
     "ask": [],
