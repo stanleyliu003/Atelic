@@ -36,8 +36,8 @@ export function UserCard({
 }: UserCardProps) {
   const getFollowButtonText = () => {
     if (isCurrentUser) return 'View Profile';
-    if (hasPendingRequest) return 'Requested';
     if (isFollowing) return 'Following';
+    if (hasPendingRequest) return 'Requested';
     return 'Follow';
   };
 
@@ -45,11 +45,11 @@ export function UserCard({
     if (isCurrentUser) {
       return [styles.followButton, styles.viewProfileButton];
     }
-    if (hasPendingRequest) {
-      return [styles.followButton, styles.requestedButton];
-    }
     if (isFollowing) {
       return [styles.followButton, styles.followingButton];
+    }
+    if (hasPendingRequest) {
+      return [styles.followButton, styles.requestedButton];
     }
     return styles.followButton;
   };
@@ -58,11 +58,11 @@ export function UserCard({
     if (isCurrentUser) {
       return [styles.followButtonText, styles.viewProfileButtonText];
     }
-    if (hasPendingRequest) {
-      return [styles.followButtonText, styles.requestedButtonText];
-    }
     if (isFollowing) {
       return [styles.followButtonText, styles.followingButtonText];
+    }
+    if (hasPendingRequest) {
+      return [styles.followButtonText, styles.requestedButtonText];
     }
     return styles.followButtonText;
   };

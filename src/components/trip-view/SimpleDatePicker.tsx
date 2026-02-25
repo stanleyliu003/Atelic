@@ -98,13 +98,28 @@ export default function SimpleDatePicker({
 
   const handleSave = () => {
     if (isFlexibleDays) {
+      console.log('[SimpleDatePicker] Saving flexible days:', flexibleDays);
       onSave(null, null, flexibleDays);
     } else {
       if (selectedStartDate && selectedEndDate) {
+        // Normalize dates to midnight to avoid timezone issues
         const start = new Date(selectedStartDate);
+        start.setHours(0, 0, 0, 0);
         const end = new Date(selectedEndDate);
+        end.setHours(0, 0, 0, 0);
+
         const timeDiff = end.getTime() - start.getTime();
-        const tripLength = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+        const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
+        const tripLength = Math.round(daysDiff) + 1;
+
+        console.log('[SimpleDatePicker] Start date:', selectedStartDate.toISOString());
+        console.log('[SimpleDatePicker] End date:', selectedEndDate.toISOString());
+        console.log('[SimpleDatePicker] Normalized start:', start.toISOString());
+        console.log('[SimpleDatePicker] Normalized end:', end.toISOString());
+        console.log('[SimpleDatePicker] Time diff (ms):', timeDiff);
+        console.log('[SimpleDatePicker] Days diff:', daysDiff);
+        console.log('[SimpleDatePicker] Trip length:', tripLength);
+
         onSave(selectedStartDate.toISOString(), selectedEndDate.toISOString(), tripLength);
       }
     }

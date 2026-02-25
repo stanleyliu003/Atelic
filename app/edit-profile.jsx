@@ -26,6 +26,7 @@ import * as ImagePicker from 'expo-image-picker';
 const DEFAULT_AVATAR = require('../assets/images/default-avatar.png');
 
 export default function EditProfileScreen() {
+  console.log('[EditProfile] Screen rendering');
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -41,29 +42,41 @@ export default function EditProfileScreen() {
   }, []);
 
   const loadUserProfile = async () => {
+    console.log('[EditProfile] loadUserProfile started');
     try {
       const user = await Auth.currentAuthenticatedUser();
+      console.log('[EditProfile] Got authenticated user');
       const userName = user.attributes?.preferred_username || '';
       const name = user.attributes?.name || '';
 
       setUsername(userName);
       setFullName(name);
+      console.log('[EditProfile] Set username:', userName, 'fullName:', name);
 
       // Load bio and profile photo from UserProfilesStorage
       const response = await API.graphql({
         query: getUserProfile,
         variables: { username: userName },
       });
+      console.log('[EditProfile] Got profile response');
 
       const profile = response.data.getUserProfile;
       if (profile) {
         setBio(profile.bio || '');
         setProfilePhotoUrl(profile.profilePhotoUrl || null);
+        console.log('[EditProfile] Profile loaded successfully');
       }
     } catch (error) {
-      console.error('Error loading profile:', error);
-      Alert.alert('Error', 'Failed to load profile. Please try again.');
+      console.error('[EditProfile] Error loading profile:', error);
+      // Don't show alert for partial errors - GraphQL may return data with errors
+      if (error?.data?.getUserProfile) {
+        const profile = error.data.getUserProfile;
+        setBio(profile.bio || '');
+        setProfilePhotoUrl(profile.profilePhotoUrl || null);
+        console.log('[EditProfile] Profile loaded from partial error response');
+      }
     } finally {
+      console.log('[EditProfile] Setting isLoading to false');
       setIsLoading(false);
     }
   };

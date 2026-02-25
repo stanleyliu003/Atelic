@@ -19,6 +19,7 @@ import { ProfileHeader } from '../../src/components/profile/ProfileHeader';
 import { ProfileStats } from '../../src/components/profile/ProfileStats';
 import * as customQueries from '../../src/graphql/customQueries';
 import * as customMutations from '../../src/graphql/customMutations';
+import { getUserProfile } from '../../src/graphql/queries';
 
 const { width: screenWidth } = Dimensions.get('window');
 const CAROUSEL_WIDTH = screenWidth - 52; // 25px padding each side + 1px border each side
@@ -113,7 +114,7 @@ export default function Profile() {
 
     try {
       const response = await API.graphql({
-        query: customQueries.getUserProfile,
+        query: getUserProfile,
         variables: { username: userName },
       });
 

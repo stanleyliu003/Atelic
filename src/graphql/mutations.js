@@ -560,7 +560,6 @@ export const updateUserProfile = /* GraphQL */ `
       notificationsEnabled
       devicePushToken
       snsEndpointArn
-      admin_permission
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate

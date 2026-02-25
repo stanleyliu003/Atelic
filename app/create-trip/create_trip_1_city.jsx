@@ -677,8 +677,14 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                                                     const currentStartDate = startDateRef.current;
 
                                                     if (currentStartDate) {
+                                                        // Normalize dates to midnight to avoid timezone issues
+                                                        const normalizedStart = new Date(currentStartDate);
+                                                        normalizedStart.setHours(0, 0, 0, 0);
+                                                        const normalizedEnd = new Date(date);
+                                                        normalizedEnd.setHours(0, 0, 0, 0);
+
                                                         // Calculate time difference in milliseconds
-                                                        const timeDiff = date.getTime() - currentStartDate.getTime();
+                                                        const timeDiff = normalizedEnd.getTime() - normalizedStart.getTime();
 
                                                         // Check if the selected end date is before the start date
                                                         if (timeDiff < 0) {
@@ -687,8 +693,8 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                                                             const newEndDate = currentStartDate;
 
                                                             // Recalculate trip length with swapped dates (inclusive of both start and end dates)
-                                                            const swappedTimeDiff = newEndDate.getTime() - newStartDate.getTime();
-                                                            const swappedDays = Math.floor(swappedTimeDiff / (1000 * 60 * 60 * 24)) + 1;
+                                                            const swappedTimeDiff = normalizedStart.getTime() - normalizedEnd.getTime();
+                                                            const swappedDays = Math.round(swappedTimeDiff / (1000 * 60 * 60 * 24)) + 1;
 
                                                             // Update ref, local state, and context together
                                                             startDateRef.current = newStartDate;
@@ -699,7 +705,7 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                                                             setTripLength(swappedDays);
                                                         } else {
                                                             // Normal forward selection - end date is after start date
-                                                            const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+                                                            const days = Math.round(timeDiff / (1000 * 60 * 60 * 24)) + 1;
 
                                                             setEndDate(date);
                                                             setContextEndDate(date.toISOString());

@@ -28,8 +28,9 @@ interface FollowersListProps {
   onLoadMore: () => void;
   onRefresh?: () => void;
   onUserPress: (username: string) => void;
-  onFollowPress: (username: string) => void;
+  onFollowPress: (username: string, isCurrentlyFollowing: boolean, hasPendingRequest: boolean) => void;
   currentUserFollowing: Set<string>;
+  pendingRequests?: Set<string>;
   currentUsername?: string;
 }
 
@@ -43,22 +44,27 @@ export function FollowersList({
   onUserPress,
   onFollowPress,
   currentUserFollowing,
+  pendingRequests = new Set(),
   currentUsername,
 }: FollowersListProps) {
-  const renderItem = ({ item }: { item: Follower }) => (
-    <UserCard
-      username={item.username}
-      fullName={item.fullName}
-      profilePhotoUrl={item.profilePhotoUrl}
-      bio={item.bio}
-      isPrivate={item.isPrivate}
-      isFollowing={currentUserFollowing.has(item.username)}
-      hasPendingRequest={false}
-      isCurrentUser={currentUsername === item.username}
-      onPress={() => onUserPress(item.username)}
-      onFollowPress={() => onFollowPress(item.username)}
-    />
-  );
+  const renderItem = ({ item }: { item: Follower }) => {
+    const isFollowing = currentUserFollowing.has(item.username);
+    const hasPendingRequest = pendingRequests.has(item.username);
+    return (
+      <UserCard
+        username={item.username}
+        fullName={item.fullName}
+        profilePhotoUrl={item.profilePhotoUrl}
+        bio={item.bio}
+        isPrivate={item.isPrivate}
+        isFollowing={isFollowing}
+        hasPendingRequest={hasPendingRequest}
+        isCurrentUser={currentUsername === item.username}
+        onPress={() => onUserPress(item.username)}
+        onFollowPress={() => onFollowPress(item.username, isFollowing, hasPendingRequest)}
+      />
+    );
+  };
 
   const renderFooter = () => {
     // Don't show footer loading when list is empty (initial load shows in empty component)

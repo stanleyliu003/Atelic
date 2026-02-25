@@ -90,3 +90,6 @@ export const updateUserProfilePhoto = /* GraphQL */ `
     }
   }
 `;
+
+// Alias for edit-profile.jsx compatibility
+export const updateUserProfile = updateUserProfilePhoto;

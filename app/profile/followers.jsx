@@ -5,6 +5,7 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { API, Auth } from 'aws-amplify';
@@ -116,24 +117,45 @@ export default function FollowersScreen() {
   const handleFollowPress = useCallback(async (followUsername) => {
     const isFollowing = currentUserFollowing.has(followUsername);
 
-    try {
-      if (isFollowing) {
-        // Unfollow
-        await API.graphql({
-          query: customMutations.unfollowUser,
-          variables: {
-            followerUsername: currentUsername,
-            targetUsername: followUsername,
+    if (isFollowing) {
+      // Show confirmation before unfollowing
+      Alert.alert(
+        'Unfollow',
+        `Are you sure you want to unfollow @${followUsername}?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
           },
-        });
+          {
+            text: 'Unfollow',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await API.graphql({
+                  query: customMutations.unfollowUser,
+                  variables: {
+                    followerUsername: currentUsername,
+                    targetUsername: followUsername,
+                  },
+                });
 
-        setCurrentUserFollowing((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(followUsername);
-          return newSet;
-        });
-      } else {
-        // Follow
+                setCurrentUserFollowing((prev) => {
+                  const newSet = new Set(prev);
+                  newSet.delete(followUsername);
+                  return newSet;
+                });
+              } catch (error) {
+                console.error('Error unfollowing user:', error);
+                Alert.alert('Error', 'Failed to unfollow user. Please try again.');
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      // Follow - no confirmation needed
+      try {
         await API.graphql({
           query: customMutations.followUser,
           variables: {
@@ -143,11 +165,12 @@ export default function FollowersScreen() {
         });
 
         setCurrentUserFollowing((prev) => new Set(prev).add(followUsername));
+      } catch (error) {
+        console.error('Error following user:', error);
+        Alert.alert('Error', 'Failed to follow user. Please try again.');
       }
-    } catch (error) {
-      console.error('Error following/unfollowing user:', error);
     }
-  }, [currentUserFollowing]);
+  }, [currentUserFollowing, currentUsername]);
 
   return (
     <SafeAreaView style={styles.container}>

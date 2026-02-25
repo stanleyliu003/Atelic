@@ -6,6 +6,7 @@ import {
   StyleSheet,
   SafeAreaView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { API, Auth } from 'aws-amplify';
@@ -60,45 +61,75 @@ export default function ExploreScreen() {
     setIsSearching(true);
     setHasSearched(true);
 
-    try {
-      const response = await API.graphql({
-        query: `
-          query SearchUsersPublic($searchTerm: String!, $currentUsername: String!) {
-            searchUsersPublic(searchTerm: $searchTerm, currentUsername: $currentUsername) {
-              userID
-              email
-              fullName
-              username
-              isPrivate
-              isFollowing
-              isFollower
-              hasPendingRequest
-              profilePhotoUrl
-              bio
-            }
-          }
-        `,
-        variables: {
-          searchTerm: query,
-          currentUsername: currentUsername,
-        },
-      });
+    // Retry logic for DynamoDB throughput errors
+    const maxRetries = 3;
+    let lastError = null;
 
-      // Filter out any null items from results
-      const results = (response.data.searchUsersPublic || []).filter(item => item != null);
-      setSearchResults(results);
-    } catch (error) {
-      // GraphQL may throw with partial errors but still have valid data
-      if (error?.data?.searchUsersPublic) {
-        const results = error.data.searchUsersPublic.filter(item => item != null);
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await API.graphql({
+          query: `
+            query SearchUsersPublic($searchTerm: String!, $currentUsername: String!) {
+              searchUsersPublic(searchTerm: $searchTerm, currentUsername: $currentUsername) {
+                userID
+                email
+                fullName
+                username
+                isPrivate
+                isFollowing
+                isFollower
+                hasPendingRequest
+                profilePhotoUrl
+                bio
+              }
+            }
+          `,
+          variables: {
+            searchTerm: query,
+            currentUsername: currentUsername,
+          },
+        });
+
+        // Filter out any null items from results
+        const results = (response.data.searchUsersPublic || []).filter(item => item != null);
         setSearchResults(results);
-      } else {
-        console.error('Error searching users:', error);
-        setSearchResults([]);
+        setIsSearching(false);
+        return; // Success, exit the function
+      } catch (error) {
+        lastError = error;
+
+        // Check if it's a throughput error
+        const errorMessage = JSON.stringify(error);
+        const isThroughputError = errorMessage.includes('throughput') ||
+                                   errorMessage.includes('ProvisionedThroughputExceededException');
+
+        // GraphQL may throw with partial errors but still have valid data
+        if (error?.data?.searchUsersPublic) {
+          const results = error.data.searchUsersPublic.filter(item => item != null);
+          setSearchResults(results);
+          setIsSearching(false);
+          return; // Got partial data, exit
+        }
+
+        if (isThroughputError && attempt < maxRetries) {
+          // Exponential backoff: 200ms, 400ms, 800ms
+          const delay = Math.pow(2, attempt) * 200;
+          console.log(`[Explore] Throughput error, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else if (!isThroughputError) {
+          // Non-throughput error, don't retry
+          console.log('[Explore] Error searching users:', error);
+          setSearchResults([]);
+          setIsSearching(false);
+          return;
+        }
       }
-    } finally {
-      setIsSearching(false);
     }
+
+    // All retries exhausted - use console.log to avoid red error screen
+    console.log('[Explore] Search temporarily unavailable, please try again');
+    setSearchResults([]);
+    setIsSearching(false);
   }, [currentUsername]);
 
   // Auto-search with debouncing
@@ -117,9 +148,48 @@ export default function ExploreScreen() {
   }, [searchQuery, handleSearch]);
 
   const handleFollowPress = useCallback(async (username, isFollowing, hasPendingRequest) => {
-    try {
-      if (isFollowing || hasPendingRequest) {
-        // Unfollow or cancel pending request
+    if (isFollowing) {
+      // Show confirmation before unfollowing
+      Alert.alert(
+        'Unfollow',
+        `Are you sure you want to unfollow @${username}?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Unfollow',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await API.graphql({
+                  query: customMutations.unfollowUser,
+                  variables: {
+                    followerUsername: currentUsername,
+                    targetUsername: username,
+                  },
+                });
+
+                // Update local state
+                setSearchResults((prev) =>
+                  prev.map((user) =>
+                    user.username === username
+                      ? { ...user, isFollowing: false, hasPendingRequest: false }
+                      : user
+                  )
+                );
+              } catch (error) {
+                console.error('Error unfollowing user:', error);
+                Alert.alert('Error', 'Failed to unfollow user. Please try again.');
+              }
+            },
+          },
+        ]
+      );
+    } else if (hasPendingRequest) {
+      // Cancel pending request - no confirmation needed
+      try {
         await API.graphql({
           query: customMutations.unfollowUser,
           variables: {
@@ -136,8 +206,14 @@ export default function ExploreScreen() {
               : user
           )
         );
-      } else {
-        // Follow or send request
+      } catch (error) {
+        console.error('Error canceling request:', error);
+        Alert.alert('Error', 'Failed to cancel request. Please try again.');
+      }
+    } else {
+      // Follow or send request - no confirmation needed
+      try {
+        console.log('[Explore] Following user:', username, 'by:', currentUsername);
         const response = await API.graphql({
           query: customMutations.followUser,
           variables: {
@@ -146,23 +222,29 @@ export default function ExploreScreen() {
           },
         });
 
+        console.log('[Explore] Follow response:', JSON.stringify(response.data.followUser, null, 2));
         const { status } = response.data.followUser;
+        console.log('[Explore] Status:', status);
 
         // Update local state based on response
+        // Handle all possible "pending" statuses: pending, requested, already_requested
+        const isPending = status === 'pending' || status === 'requested' || status === 'already_requested';
         setSearchResults((prev) =>
           prev.map((user) =>
             user.username === username
               ? {
                   ...user,
                   isFollowing: status === 'following',
-                  hasPendingRequest: status === 'pending',
+                  hasPendingRequest: isPending,
                 }
               : user
           )
         );
+        console.log('[Explore] State updated for user:', username);
+      } catch (error) {
+        console.error('[Explore] Error following user:', error);
+        Alert.alert('Error', 'Failed to follow user. Please try again.');
       }
-    } catch (error) {
-      console.error('Error following/unfollowing user:', error);
     }
   }, [currentUsername]);
 

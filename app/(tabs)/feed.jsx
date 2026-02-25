@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   SafeAreaView,
   ScrollView,
@@ -63,6 +64,11 @@ export default function FeedScreen() {
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);
   const [bio, setBio] = useState(null);
   const [isPrivate, setIsPrivate] = useState(false);
+
+  // Edit profile state
+  const [editFullName, setEditFullName] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [countriesVisited, setCountriesVisited] = useState(0);
   const [citiesVisited, setCitiesVisited] = useState(0);
   const [followersCount, setFollowersCount] = useState(0);
@@ -97,12 +103,13 @@ export default function FeedScreen() {
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
   const [deleteAccountChecked, setDeleteAccountChecked] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
-  const [profileModalView, setProfileModalView] = useState('profile'); // 'profile', 'followers', 'following'
+  const [profileModalView, setProfileModalView] = useState('profile'); // 'profile', 'followers', 'following', 'edit'
   const [profileActiveTab, setProfileActiveTab] = useState('upcoming');
 
   // Followers/Following state for embedded views
   const [followersList, setFollowersList] = useState([]);
   const [followingList, setFollowingList] = useState([]);
+  const [pendingFollowRequests, setPendingFollowRequests] = useState(new Set()); // Track pending requests
   const [isLoadingFollowers, setIsLoadingFollowers] = useState(false);
   const [isLoadingFollowing, setIsLoadingFollowing] = useState(false);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
@@ -239,7 +246,6 @@ export default function FeedScreen() {
             profilePhotoUrl: newPhotoUrl,
           }),
         },
-        authMode: 'AMAZON_COGNITO_USER_POOLS',
       });
     } catch (error) {
       // GraphQL may throw with partial errors but mutation still succeeds
@@ -862,6 +868,13 @@ export default function FeedScreen() {
         index === self.findIndex((u) => u.username === user.username)
       );
       setFollowingList(uniqueFollowing);
+      // Clear pending requests for users that are now following
+      const followingUsernames = new Set(uniqueFollowing.map(u => u.username));
+      setPendingFollowRequests(prev => {
+        const newSet = new Set(prev);
+        followingUsernames.forEach(u => newSet.delete(u));
+        return newSet;
+      });
     } catch (error) {
       if (error?.data?.getFollowing?.following) {
         const following = error.data.getFollowing.following.filter((user, index, self) =>
@@ -879,10 +892,8 @@ export default function FeedScreen() {
   const handleFollowersPress = () => {
     setProfileModalView('followers');
     loadFollowersList();
-    // Also load following list to know who we're following
-    if (followingList.length === 0) {
-      loadFollowingList();
-    }
+    // Always load following list to know who we're following (in case requests were accepted)
+    loadFollowingList();
   };
 
   const handleFollowingPress = () => {
@@ -907,28 +918,77 @@ export default function FeedScreen() {
   };
 
   const handleUnfollowFromList = async (targetUsername) => {
-    try {
-      await API.graphql({
-        query: customMutations.unfollowUser,
-        variables: {
-          followerUsername: username,
-          targetUsername: targetUsername,
+    Alert.alert(
+      'Unfollow',
+      `Are you sure you want to unfollow @${targetUsername}?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
         },
-      });
-      // Remove from following list
-      setFollowingList(prev => prev.filter(u => u.username !== targetUsername));
-      // Update following count
-      setFollowingCount(prev => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error('[Feed] Error unfollowing:', error);
-      Alert.alert('Error', 'Failed to unfollow user');
-    }
+        {
+          text: 'Unfollow',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await API.graphql({
+                query: customMutations.unfollowUser,
+                variables: {
+                  followerUsername: username,
+                  targetUsername: targetUsername,
+                },
+              });
+              // Remove from following list
+              setFollowingList(prev => prev.filter(u => u.username !== targetUsername));
+              // Update following count
+              setFollowingCount(prev => Math.max(0, prev - 1));
+            } catch (error) {
+              console.error('[Feed] Error unfollowing:', error);
+              Alert.alert('Error', 'Failed to unfollow user');
+            }
+          },
+        },
+      ]
+    );
   };
 
-  const handleFollowFromFollowersList = async (targetUsername, isCurrentlyFollowing) => {
-    try {
-      if (isCurrentlyFollowing) {
-        // Unfollow
+  const handleFollowFromFollowersList = async (targetUsername, isCurrentlyFollowing, hasPendingRequest) => {
+    if (isCurrentlyFollowing) {
+      // Show confirmation before unfollowing
+      Alert.alert(
+        'Unfollow',
+        `Are you sure you want to unfollow @${targetUsername}?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Unfollow',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await API.graphql({
+                  query: customMutations.unfollowUser,
+                  variables: {
+                    followerUsername: username,
+                    targetUsername: targetUsername,
+                  },
+                });
+                // Remove from following list
+                setFollowingList(prev => prev.filter(u => u.username !== targetUsername));
+                setFollowingCount(prev => Math.max(0, prev - 1));
+              } catch (error) {
+                console.error('[Feed] Error unfollowing:', error);
+                Alert.alert('Error', 'Failed to unfollow user');
+              }
+            },
+          },
+        ]
+      );
+    } else if (hasPendingRequest) {
+      // Cancel pending request - no confirmation needed
+      try {
         await API.graphql({
           query: customMutations.unfollowUser,
           variables: {
@@ -936,34 +996,105 @@ export default function FeedScreen() {
             targetUsername: targetUsername,
           },
         });
-        // Remove from following list
-        setFollowingList(prev => prev.filter(u => u.username !== targetUsername));
-        setFollowingCount(prev => Math.max(0, prev - 1));
-      } else {
-        // Follow
-        await API.graphql({
+        // Remove from pending requests
+        setPendingFollowRequests(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(targetUsername);
+          return newSet;
+        });
+      } catch (error) {
+        console.error('[Feed] Error canceling request:', error);
+        Alert.alert('Error', 'Failed to cancel request');
+      }
+    } else {
+      // Follow - no confirmation needed
+      try {
+        const response = await API.graphql({
           query: customMutations.followUser,
           variables: {
             followerUsername: username,
             targetUsername: targetUsername,
           },
         });
-        // Find the user in followers list and add to following list
-        const userToFollow = followersList.find(u => u.username === targetUsername);
-        if (userToFollow) {
-          setFollowingList(prev => [...prev, userToFollow]);
+
+        const { status } = response.data.followUser;
+        console.log('[Feed] Follow response status:', status);
+
+        // Check if actually following (public account) or just requested (private account)
+        if (status === 'following') {
+          // Only add to following list if actually following
+          const userToFollow = followersList.find(u => u.username === targetUsername);
+          if (userToFollow) {
+            setFollowingList(prev => {
+              if (prev.some(u => u.username === targetUsername)) {
+                return prev;
+              }
+              return [...prev, userToFollow];
+            });
+          }
+          setFollowingCount(prev => prev + 1);
+          // Remove from pending if it was there
+          setPendingFollowRequests(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(targetUsername);
+            return newSet;
+          });
+        } else if (status === 'pending' || status === 'requested' || status === 'already_requested') {
+          // Add to pending requests set
+          setPendingFollowRequests(prev => new Set(prev).add(targetUsername));
         }
-        setFollowingCount(prev => prev + 1);
+      } catch (error) {
+        console.error('[Feed] Error following:', error);
+        Alert.alert('Error', 'Failed to follow user');
       }
-    } catch (error) {
-      console.error('[Feed] Error following/unfollowing:', error);
-      Alert.alert('Error', 'Failed to update follow status');
     }
   };
 
   const handleEditProfile = () => {
-    setIsProfileModalVisible(false);
-    router.push('/edit-profile');
+    console.log('[Feed] handleEditProfile called');
+    setEditFullName(fullName);
+    setEditBio(bio || '');
+    setProfileModalView('edit');
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editFullName.trim()) {
+      Alert.alert('Error', 'Full name is required');
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      // Update Cognito user attributes
+      const user = await Auth.currentAuthenticatedUser();
+      await Auth.updateUserAttributes(user, {
+        name: editFullName.trim(),
+      });
+
+      // Update bio in UserProfilesStorage
+      await API.graphql({
+        query: customMutations.updateUserProfile,
+        variables: {
+          username: username,
+          action: 'UPDATE_PROFILE_INFO',
+          tripData: JSON.stringify({
+            bio: editBio.trim() || null,
+            profilePhotoUrl: profilePhotoUrl || null,
+          }),
+        },
+      });
+
+      // Update local state
+      setFullName(editFullName.trim());
+      setBio(editBio.trim() || null);
+
+      setProfileModalView('profile');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const handlePrivacyToggle = async (newPrivacyValue) => {
@@ -1696,9 +1827,22 @@ export default function FeedScreen() {
             </TouchableOpacity>
             <Text style={styles.profileModalTitle}>
               {profileModalView === 'followers' ? 'Followers' :
-               profileModalView === 'following' ? 'Following' : 'Profile'}
+               profileModalView === 'following' ? 'Following' :
+               profileModalView === 'edit' ? 'Edit Profile' : 'Profile'}
             </Text>
-            {profileModalView === 'profile' ? (
+            {profileModalView === 'edit' ? (
+              <TouchableOpacity
+                style={styles.settingsButton}
+                onPress={handleSaveProfile}
+                disabled={isSavingProfile}
+              >
+                {isSavingProfile ? (
+                  <ActivityIndicator size="small" color={Colors.ORANGE} />
+                ) : (
+                  <Text style={{ color: Colors.ORANGE, fontSize: 16, fontFamily: 'outfit-medium' }}>Save</Text>
+                )}
+              </TouchableOpacity>
+            ) : profileModalView === 'profile' ? (
               <TouchableOpacity
                 style={styles.settingsButton}
                 onPress={() => {
@@ -2015,6 +2159,7 @@ export default function FeedScreen() {
               onUserPress={handleFollowerUserPress}
               onFollowPress={handleFollowFromFollowersList}
               currentUserFollowing={new Set(followingList.map(u => u.username))}
+              pendingRequests={pendingFollowRequests}
               currentUsername={username}
             />
           )}
@@ -2032,6 +2177,76 @@ export default function FeedScreen() {
               onUnfollowPress={handleUnfollowFromList}
               currentUsername={username}
             />
+          )}
+
+          {/* Edit Profile View */}
+          {profileModalView === 'edit' && (
+            <ScrollView style={styles.editProfileContainer} showsVerticalScrollIndicator={false}>
+              {/* Profile Photo */}
+              <View style={styles.editProfilePhotoSection}>
+                <TouchableOpacity onPress={handleChangeProfilePhoto} disabled={isUploadingPhoto}>
+                  <View style={styles.editProfilePhotoWrapper}>
+                    <InitialsAvatar
+                      name={fullName || username}
+                      profilePhotoUrl={profilePhotoUrl}
+                      size={100}
+                    />
+                    {isUploadingPhoto ? (
+                      <View style={styles.editProfilePhotoOverlay}>
+                        <ActivityIndicator size="large" color={Colors.WHITE} />
+                      </View>
+                    ) : (
+                      <View style={styles.editProfileCameraIcon}>
+                        <Ionicons name="camera" size={20} color={Colors.WHITE} />
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleChangeProfilePhoto} disabled={isUploadingPhoto}>
+                  <Text style={styles.editProfileChangePhotoText}>
+                    {isUploadingPhoto ? 'Uploading...' : 'Change Photo'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Form Fields */}
+              <View style={styles.editProfileForm}>
+                {/* Username (Read-only) */}
+                <View style={styles.editProfileField}>
+                  <Text style={styles.editProfileLabel}>Username</Text>
+                  <View style={styles.editProfileReadOnly}>
+                    <Text style={styles.editProfileReadOnlyText}>@{username}</Text>
+                  </View>
+                </View>
+
+                {/* Full Name */}
+                <View style={styles.editProfileField}>
+                  <Text style={styles.editProfileLabel}>Full Name</Text>
+                  <TextInput
+                    style={styles.editProfileInput}
+                    value={editFullName}
+                    onChangeText={setEditFullName}
+                    placeholder="Enter your full name"
+                    placeholderTextColor="#999"
+                  />
+                </View>
+
+                {/* Bio */}
+                <View style={styles.editProfileField}>
+                  <Text style={styles.editProfileLabel}>Bio</Text>
+                  <TextInput
+                    style={[styles.editProfileInput, styles.editProfileBioInput]}
+                    value={editBio}
+                    onChangeText={setEditBio}
+                    placeholder="Write something about yourself..."
+                    placeholderTextColor="#999"
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+                </View>
+              </View>
+            </ScrollView>
           )}
         </View>
       </Modal>
@@ -2795,5 +3010,85 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit',
     color: '#9CA3AF',
     marginLeft: 4,
+  },
+  // Edit Profile Styles
+  editProfileContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  editProfilePhotoSection: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  editProfilePhotoWrapper: {
+    position: 'relative',
+  },
+  editProfilePhotoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 50,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editProfileCameraIcon: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: Colors.ORANGE,
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.WHITE,
+  },
+  editProfileChangePhotoText: {
+    color: Colors.ORANGE,
+    fontSize: 16,
+    fontFamily: 'outfit-medium',
+    marginTop: 12,
+  },
+  editProfileForm: {
+    paddingTop: 8,
+  },
+  editProfileField: {
+    marginBottom: 20,
+  },
+  editProfileLabel: {
+    fontSize: 14,
+    fontFamily: 'outfit-medium',
+    color: Colors.GRAY,
+    marginBottom: 8,
+  },
+  editProfileInput: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    fontFamily: 'outfit',
+    color: Colors.BLACK,
+    backgroundColor: '#F9FAFB',
+  },
+  editProfileBioInput: {
+    height: 100,
+    paddingTop: 12,
+  },
+  editProfileReadOnly: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  editProfileReadOnlyText: {
+    fontSize: 16,
+    fontFamily: 'outfit',
+    color: '#6B7280',
   },
 });

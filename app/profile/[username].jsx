@@ -333,53 +333,70 @@ export default function UserProfileScreen() {
       isPrivate: userProfile?.isPrivateAccount
     });
 
-    try {
-      if (isFollowing) {
-        // Unfollow
-        console.log('[UserProfile] Unfollowing user...', {
-          followerUsername: currentUsername,
-          targetUsername: username
-        });
-
-        const unfollowResponse = await API.graphql({
-          query: customMutations.unfollowUser,
-          variables: {
-            followerUsername: currentUsername,
-            targetUsername: username,
+    if (isFollowing) {
+      // Show confirmation before unfollowing
+      Alert.alert(
+        'Unfollow',
+        `Are you sure you want to unfollow @${username}?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
           },
-        });
+          {
+            text: 'Unfollow',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                console.log('[UserProfile] Unfollowing user...', {
+                  followerUsername: currentUsername,
+                  targetUsername: username
+                });
 
-        const result = unfollowResponse.data.unfollowUser;
-        console.log('[UserProfile] Unfollow response:', JSON.stringify(result, null, 2));
-        console.log('[UserProfile] Unfollow params used:', {
-          followerUsername: currentUsername,
-          targetUsername: username
-        });
+                const unfollowResponse = await API.graphql({
+                  query: customMutations.unfollowUser,
+                  variables: {
+                    followerUsername: currentUsername,
+                    targetUsername: username,
+                  },
+                });
 
-        if (!result.success) {
-          console.error('[UserProfile] Unfollow failed:', result.message);
-          Alert.alert('Error', result.message || 'Failed to unfollow user');
-          return;
-        }
+                const result = unfollowResponse.data.unfollowUser;
+                console.log('[UserProfile] Unfollow response:', JSON.stringify(result, null, 2));
 
-        // Check if we were actually following (status could be 'not_following')
-        if (result.status === 'not_following') {
-          console.warn('[UserProfile] Was not following this user');
-          return;
-        }
+                if (!result.success) {
+                  console.error('[UserProfile] Unfollow failed:', result.message);
+                  Alert.alert('Error', result.message || 'Failed to unfollow user');
+                  return;
+                }
 
-        // Update local state immediately (optimistic update)
-        setIsFollowing(false);
-        setCanViewTrips(false);
-        setUserTrips([]);
+                if (result.status === 'not_following') {
+                  console.warn('[UserProfile] Was not following this user');
+                  return;
+                }
 
-        // Update follower count locally (decrement by 1)
-        setStats(prevStats => ({
-          ...prevStats,
-          followersCount: Math.max(0, (prevStats.followersCount || 0) - 1)
-        }));
-      } else if (hasPendingRequest) {
-        // Cancel the pending follow request
+                setIsFollowing(false);
+                setCanViewTrips(false);
+                setUserTrips([]);
+
+                setStats(prevStats => ({
+                  ...prevStats,
+                  followersCount: Math.max(0, (prevStats.followersCount || 0) - 1)
+                }));
+              } catch (error) {
+                console.error('[UserProfile] Error unfollowing user:', error);
+                Alert.alert('Error', 'Failed to unfollow user. Please try again.');
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    if (hasPendingRequest) {
+      // Cancel pending request - no confirmation needed
+      try {
         console.log('[UserProfile] Canceling pending follow request');
         await API.graphql({
           query: customMutations.unfollowUser,
@@ -391,44 +408,49 @@ export default function UserProfileScreen() {
 
         console.log('[UserProfile] Follow request canceled');
         setHasPendingRequest(false);
-        return;
-      } else {
-        // Follow or send request
-        console.log('[UserProfile] Sending follow/request to:', username);
-        const response = await API.graphql({
-          query: customMutations.followUser,
-          variables: {
-            followerUsername: currentUsername,
-            targetUsername: username,
-          },
-        });
+      } catch (error) {
+        console.error('[UserProfile] Error canceling request:', error);
+        Alert.alert('Error', 'Failed to cancel request. Please try again.');
+      }
+      return;
+    }
 
-        console.log('[UserProfile] Follow response:', response.data.followUser);
-        const { status } = response.data.followUser;
+    // Follow or send request - no confirmation needed
+    try {
+      console.log('[UserProfile] Sending follow/request to:', username);
+      const response = await API.graphql({
+        query: customMutations.followUser,
+        variables: {
+          followerUsername: currentUsername,
+          targetUsername: username,
+        },
+      });
 
-        if (status === 'following') {
-          console.log('[UserProfile] Now following user');
-          setIsFollowing(true);
-          setCanViewTrips(true);
+      console.log('[UserProfile] Follow response:', response.data.followUser);
+      const { status } = response.data.followUser;
 
-          // Update follower count locally (increment by 1)
-          setStats(prevStats => ({
-            ...prevStats,
-            followersCount: (prevStats.followersCount || 0) + 1
-          }));
+      if (status === 'following') {
+        console.log('[UserProfile] Now following user');
+        setIsFollowing(true);
+        setCanViewTrips(true);
 
-          // Load trips now that we're following
-          if (userProfile?.userID) {
-            await loadUserTrips(userProfile.userID);
-          }
-        } else if (status === 'requested' || status === 'pending') {
-          console.log('[UserProfile] Follow request sent');
-          setHasPendingRequest(true);
+        // Update follower count locally (increment by 1)
+        setStats(prevStats => ({
+          ...prevStats,
+          followersCount: (prevStats.followersCount || 0) + 1
+        }));
+
+        // Load trips now that we're following
+        if (userProfile?.userID) {
+          await loadUserTrips(userProfile.userID);
         }
+      } else if (status === 'requested' || status === 'pending' || status === 'already_requested') {
+        console.log('[UserProfile] Follow request sent or already pending');
+        setHasPendingRequest(true);
       }
     } catch (error) {
-      console.error('[UserProfile] Error following/unfollowing user:', error);
-      Alert.alert('Error', `Failed to update follow status: ${error.message || JSON.stringify(error)}`);
+      console.error('[UserProfile] Error following user:', error);
+      Alert.alert('Error', 'Failed to follow user. Please try again.');
     }
   };
 
