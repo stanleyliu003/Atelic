@@ -835,38 +835,48 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                             </View>
                         </Modal>
 
-                        {/* Trip Visibility Question - shown after trip length is selected */}
+                        {/* Trip Visibility Toggle - shown after trip length is selected */}
                         {tripLength && (
                             <View style={styles.visibilitySection}>
-                                <Text style={styles.visibilityQuestion}>
-                                    Make this trip viewable to friends?
-                                </Text>
-                                <View style={styles.visibilityOptions}>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.visibilityOption,
-                                            !isPublic && styles.visibilityOptionSelected
-                                        ]}
-                                        onPress={() => setIsPublic(false)}
-                                    >
-                                        <Text style={[
-                                            styles.visibilityOptionText,
-                                            !isPublic && styles.visibilityOptionTextSelected
-                                        ]}>No</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.visibilityOption,
-                                            isPublic && styles.visibilityOptionSelected
-                                        ]}
-                                        onPress={() => setIsPublic(true)}
-                                    >
-                                        <Text style={[
-                                            styles.visibilityOptionText,
-                                            isPublic && styles.visibilityOptionTextSelected
-                                        ]}>Yes</Text>
-                                    </TouchableOpacity>
-                                </View>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.visibilityToggleRow,
+                                        isPublic && styles.visibilityToggleRowActive
+                                    ]}
+                                    onPress={() => setIsPublic(!isPublic)}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={styles.visibilityToggleContent}>
+                                        <View style={[
+                                            styles.visibilityIconContainer,
+                                            isPublic && styles.visibilityIconContainerActive
+                                        ]}>
+                                            <Ionicons
+                                                name={isPublic ? "eye" : "eye-off-outline"}
+                                                size={20}
+                                                color={isPublic ? Colors.PRIMARY : '#888'}
+                                            />
+                                        </View>
+                                        <View style={styles.visibilityTextContainer}>
+                                            <Text style={[
+                                                styles.visibilityToggleText,
+                                                isPublic && styles.visibilityToggleTextActive
+                                            ]}>
+                                                Show on Profile
+                                            </Text>
+                                            <Text style={styles.visibilitySubtext}>
+                                                {isPublic ? 'Friends can see this trip' : 'Only you can see this trip'}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Switch
+                                        value={isPublic}
+                                        onValueChange={setIsPublic}
+                                        trackColor={{ false: '#E5E5E5', true: Colors.PRIMARY }}
+                                        thumbColor={'#FFFFFF'}
+                                        ios_backgroundColor="#E5E5E5"
+                                    />
+                                </TouchableOpacity>
                             </View>
                         )}
 
@@ -1305,40 +1315,61 @@ const styles = StyleSheet.create({
     },
     // Trip Visibility Styles
     visibilitySection: {
-        marginTop: 25,
+        marginTop: 20,
         marginBottom: 5,
     },
-    visibilityQuestion: {
-        fontFamily: 'outfit-medium',
-        fontSize: 16,
-        color: '#1a1a1a',
-        marginBottom: 12,
-    },
-    visibilityOptions: {
+    visibilityToggleRow: {
         flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: 'white',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        borderWidth: 2,
+        borderColor: '#E8E8E8',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    visibilityToggleRowActive: {
+        borderColor: Colors.PRIMARY,
+        backgroundColor: '#FFF8F4',
+    },
+    visibilityToggleContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
         gap: 12,
     },
-    visibilityOption: {
-        flex: 1,
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 15,
-        backgroundColor: '#f5f5f5',
-        borderWidth: 2,
-        borderColor: '#f5f5f5',
+    visibilityIconContainer: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        backgroundColor: '#F5F5F5',
         alignItems: 'center',
+        justifyContent: 'center',
     },
-    visibilityOptionSelected: {
-        backgroundColor: '#FFF5ED',
-        borderColor: '#F36406',
+    visibilityIconContainerActive: {
+        backgroundColor: '#FFEDE3',
     },
-    visibilityOptionText: {
+    visibilityTextContainer: {
+        flex: 1,
+    },
+    visibilityToggleText: {
         fontFamily: 'outfit-medium',
-        fontSize: 16,
-        color: '#666',
+        fontSize: 15,
+        color: '#1a1a1a',
     },
-    visibilityOptionTextSelected: {
-        color: '#F36406',
-        fontFamily: 'outfit-bold',
+    visibilityToggleTextActive: {
+        color: Colors.PRIMARY,
+    },
+    visibilitySubtext: {
+        fontFamily: 'outfit',
+        fontSize: 12,
+        color: '#888',
+        marginTop: 2,
     },
 })

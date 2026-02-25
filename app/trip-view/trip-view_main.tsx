@@ -3320,6 +3320,11 @@ export default function TripViewMain() {
             __typename,
             regular_opening_hours,
             reviews,
+            // Remove fields that are NOT in ActivityInput GraphQL schema
+            lastModified,
+            modifiedBy,
+            lastReordered,
+            category,
             ...sanitized
         } = activity;
 
