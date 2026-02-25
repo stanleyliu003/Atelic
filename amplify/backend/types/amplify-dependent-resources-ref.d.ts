@@ -16,6 +16,8 @@ export type AmplifyDependentResourcesAttributes = {
       "AppClientID": "string",
       "AppClientIDWeb": "string",
       "HostedUIDomain": "string",
+      "IdentityPoolId": "string",
+      "IdentityPoolName": "string",
       "OAuthMetadata": "string",
       "UserPoolArn": "string",
       "UserPoolId": "string",
@@ -378,6 +380,10 @@ export type AmplifyDependentResourcesAttributes = {
       "PartitionKeyType": "string",
       "Region": "string",
       "StreamArn": "string"
+    },
+    "profilePhotos": {
+      "BucketName": "string",
+      "Region": "string"
     },
     "regionImageStorage": {
       "Arn": "string",

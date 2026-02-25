@@ -59,6 +59,7 @@ export default function UserProfileScreen() {
     followersCount: 0,
     followingCount: 0,
   });
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
 
   // Trips data
   const [userTrips, setUserTrips] = useState([]);
@@ -272,13 +273,14 @@ export default function UserProfileScreen() {
       setCanViewTrips(canView);
 
       // Check if viewing own profile
-      const isOwnProfile = currentUserName && username &&
+      const ownProfile = currentUserName && username &&
         currentUserName.toLowerCase() === username.toLowerCase();
+      setIsOwnProfile(ownProfile);
 
       // Load trips if allowed (followers can see) OR if it's own profile
-      if ((canView || isOwnProfile) && profile.userID) {
-        await loadUserTrips(profile.userID, isOwnProfile);
-        if (isOwnProfile) {
+      if ((canView || ownProfile) && profile.userID) {
+        await loadUserTrips(profile.userID, ownProfile);
+        if (ownProfile) {
           setCanViewTrips(true); // Always can view own trips
         }
       }
@@ -614,7 +616,7 @@ export default function UserProfileScreen() {
             {/* Stats Row */}
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{userTrips.length > 0 ? userTrips.length : stats.totalTrips}</Text>
+                <Text style={styles.statNumber}>{isOwnProfile ? (userTrips.length > 0 ? userTrips.length : stats.totalTrips) : userTrips.length}</Text>
                 <Text style={styles.statLabel}>Trips</Text>
               </View>
               <TouchableOpacity
@@ -657,12 +659,12 @@ export default function UserProfileScreen() {
           <View style={styles.travelStatsRow}>
             <View style={styles.travelStatItem}>
               <Ionicons name="earth-outline" size={16} color={Colors.ORANGE} />
-              <Text style={styles.travelStatText}>{userTrips.length > 0 ? calculatedCountries : stats.countriesVisited} Countries</Text>
+              <Text style={styles.travelStatText}>{isOwnProfile ? (userTrips.length > 0 ? calculatedCountries : stats.countriesVisited) : calculatedCountries} Countries</Text>
             </View>
             <View style={styles.travelStatDot} />
             <View style={styles.travelStatItem}>
               <Ionicons name="location-outline" size={16} color={Colors.ORANGE} />
-              <Text style={styles.travelStatText}>{userTrips.length > 0 ? calculatedCities : stats.citiesVisited} Cities</Text>
+              <Text style={styles.travelStatText}>{isOwnProfile ? (userTrips.length > 0 ? calculatedCities : stats.citiesVisited) : calculatedCities} Cities</Text>
             </View>
           </View>
 

@@ -20,7 +20,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { API, Auth } from 'aws-amplify';
+import { API, Auth, Storage } from 'aws-amplify';
 import { TripCarouselImage } from '../../src/components/profile/TripCarouselImage';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import { FollowersList } from '../../src/components/social/FollowersList';
@@ -206,30 +206,28 @@ export default function FeedScreen() {
 
   const uploadImageToHost = async (imageUri) => {
     try {
-      // Upload to free image host (0x0.st)
-      const formData = new FormData();
-      const filename = imageUri.split('/').pop() || 'photo.jpg';
+      const user = await Auth.currentAuthenticatedUser();
+      const userId = user.username;
+      const timestamp = Date.now();
+      const filename = `profile-photos/${userId}/profile-${timestamp}.jpg`;
 
-      formData.append('file', {
-        uri: imageUri,
-        name: filename,
-        type: 'image/jpeg',
+      // Read the image file
+      const imageResponse = await fetch(imageUri);
+      const blob = await imageResponse.blob();
+
+      console.log('[uploadImageToHost] Uploading to S3:', filename);
+
+      // Upload to S3 using Amplify Storage
+      const result = await Storage.put(filename, blob, {
+        contentType: 'image/jpeg',
+        level: 'public',
       });
 
-      const response = await fetch('https://0x0.st', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      console.log('[uploadImageToHost] Upload successful:', result.key);
 
-      if (!response.ok) {
-        throw new Error(`Upload failed with status ${response.status}`);
-      }
-
-      const imageUrl = await response.text();
-      return imageUrl.trim();
+      // Get the public URL for the uploaded image
+      const imageUrl = await Storage.get(result.key, { level: 'public' });
+      return imageUrl;
     } catch (error) {
       console.error('Image upload error:', error);
       throw error;

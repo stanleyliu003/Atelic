@@ -1,6 +1,8 @@
 {
   "version": "1",
   "cognitoConfig": {
+    "identityPoolName": "amplifybackend59ccdbf8_identitypool_5c71caef",
+    "allowUnauthenticatedIdentities": false,
     "resourceNameTruncated": "amplif59ccdbf8",
     "userPoolName": "amplifybackend59ccdbf8_userpool_59ccdbf8",
     "autoVerifiedAttributes": [
@@ -52,7 +54,7 @@
     "userpoolClientSetAttributes": true,
     "sharedId": "59ccdbf8",
     "resourceName": "amplifybackend59ccdbf8",
-    "authSelections": "userPoolOnly",
+    "authSelections": "identityPoolAndUserPool",
     "useDefault": "manual",
     "usernameAttributes": [
       "email"

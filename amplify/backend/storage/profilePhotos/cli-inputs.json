@@ -1,0 +1,14 @@
+{
+  "resourceName": "profilePhotos",
+  "policyUUID": "ade510b9",
+  "bucketName": "amplifybackendd3e6cd8b095945dba7bea44fd55f4b97",
+  "storageAccess": "auth",
+  "guestAccess": [],
+  "authAccess": [
+    "CREATE_AND_UPDATE",
+    "READ",
+    "DELETE"
+  ],
+  "triggerFunction": "NONE",
+  "groupAccess": {}
+}
