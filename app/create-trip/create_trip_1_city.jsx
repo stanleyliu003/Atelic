@@ -882,7 +882,7 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
 
                         {/* Invite Tripmate Button - shown after trip length is selected */}
                         {tripLength && (
-                            <View style={{ marginTop: 15 }}>
+                            <View style={{ marginTop: 18 }}>
                                 <TouchableOpacity
                                     style={[
                                         styles.inviteTripmateButton,
@@ -1251,7 +1251,6 @@ const styles = StyleSheet.create({
     inviteTripmateButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 20,
         padding: 15,
         borderWidth: 0,
         borderRadius: 20,
@@ -1315,8 +1314,8 @@ const styles = StyleSheet.create({
     },
     // Trip Visibility Styles
     visibilitySection: {
-        marginTop: 20,
-        marginBottom: 5,
+        marginTop: 18,
+        marginBottom: 0,
     },
     visibilityToggleRow: {
         flexDirection: 'row',

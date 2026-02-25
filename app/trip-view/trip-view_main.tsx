@@ -113,6 +113,7 @@ export default function TripViewMain() {
         addToDeletedSavedPlaces,
         deletedSavedPlaceIds,
         isDeletedSavedPlace,
+        isPublic,
     } = useCreateTrip();
     // Primary tab state for Overview/Itinerary toggle
     type PrimaryTab = 'overview' | 'itinerary';
@@ -716,7 +717,8 @@ export default function TripViewMain() {
                 updatedAt: new Date().toISOString(),
                 lastUpdatedBy: currentUserID,
                 cityCategories: (cityCategories || []).map(formatCategoryItemForInput),
-                recentSearches: (recentSearches || []).map(formatRecentSearchForInput)
+                recentSearches: (recentSearches || []).map(formatRecentSearchForInput),
+                isPublic: isPublic === true
             };
 
             // Log the trip input for debugging
@@ -3478,6 +3480,7 @@ export default function TripViewMain() {
                 cityCategories: cleanCityCategories || null, // Save city categories for restoration
                 recentSearches: cleanRecentSearches,
                 deletedSavedPlaceIds: Array.from(latestDeletedSavedPlaceIds), // Convert Set to Array for GraphQL
+                isPublic: isPublic === true, // Preserve trip visibility setting
             };
 
             // Get current user information
