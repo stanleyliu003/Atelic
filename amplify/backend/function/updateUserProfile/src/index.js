@@ -131,6 +131,10 @@ exports.handler = async (event) => {
         result = await updateStatistics(username, tripData);
         break;
 
+      case 'UPDATE_ADMIN_PERMISSION':
+        result = await updateAdminPermission(username, tripData);
+        break;
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }
@@ -1800,6 +1804,31 @@ async function updatePrivacy(username, data) {
   }));
 
   console.log(`Updated privacy setting for ${username} to ${isPrivateAccount ? 'private' : 'public'}`);
+  return result.Attributes;
+}
+
+/**
+ * Grant or revoke admin permission for a user
+ */
+async function updateAdminPermission(username, data) {
+  const { admin_permission } = data;
+
+  if (typeof admin_permission !== 'boolean') {
+    throw new Error('admin_permission must be a boolean');
+  }
+
+  const result = await docClient.send(new UpdateCommand({
+    TableName: USER_PROFILES_TABLE,
+    Key: { username },
+    UpdateExpression: 'SET admin_permission = :adminPermission, lastActiveAt = :now',
+    ExpressionAttributeValues: {
+      ':adminPermission': admin_permission,
+      ':now': new Date().toISOString()
+    },
+    ReturnValues: 'ALL_NEW'
+  }));
+
+  console.log(`Updated admin_permission for ${username} to ${admin_permission}`);
   return result.Attributes;
 }
 

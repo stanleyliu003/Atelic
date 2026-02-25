@@ -1912,6 +1912,46 @@ export default function FeedScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
+                style={styles.settingsMenuItem}
+                onPress={() => {
+                  setIsSettingsModalVisible(false);
+                  setTimeout(() => {
+                    Alert.prompt(
+                      'Apply as Admin',
+                      'Enter the 4-digit admin passcode:',
+                      async (passcode) => {
+                        if (passcode === '2000') {
+                          try {
+                            const user = await Auth.currentAuthenticatedUser();
+                            const prefUsername = user.attributes?.preferred_username || user.username;
+                            await API.graphql({
+                              query: customMutations.updateUserProfile,
+                              variables: {
+                                username: prefUsername,
+                                action: 'UPDATE_ADMIN_PERMISSION',
+                                tripData: JSON.stringify({ admin_permission: true }),
+                              },
+                            });
+                            Alert.alert('Success', 'Admin permission granted.');
+                          } catch (error) {
+                            console.error('[Feed] Error setting admin permission:', error);
+                            Alert.alert('Error', 'Failed to update admin permission.');
+                          }
+                        } else {
+                          Alert.alert('Invalid Code', 'The passcode you entered is incorrect.');
+                        }
+                      },
+                      'secure-text'
+                    );
+                  }, 500);
+                }}
+              >
+                <Ionicons name="key-outline" size={24} color={Colors.PRIMARY} />
+                <Text style={styles.settingsMenuItemText}>Apply as Admin</Text>
+                <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 style={[styles.settingsMenuItem, styles.logoutMenuItem]}
                 onPress={() => {
                   setIsSettingsModalVisible(false);
