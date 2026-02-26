@@ -30,6 +30,7 @@ import { API, Auth, graphqlOperation } from 'aws-amplify';
 import { createTrip } from '../../src/graphql/mutations';
 import { onCreateTripOperation } from '../../src/graphql/subscriptions';
 import { retrieveTripFromCloud } from '../../src/services/lambdaService';
+import { setCachedTrip } from '../../src/services/tripCacheService';
 import Entypo from '@expo/vector-icons/Entypo';
 import { duplicateActivity, ensureActivitiesHaveInstanceIds } from '../../src/utils/activityInstanceId';
 import { Operation } from '../../src/types/operation.types';
@@ -3726,6 +3727,9 @@ export default function TripViewMain() {
                 setLastUpdatedBy(result.data.createTrip.lastUpdatedBy);
                 // Note: No version tracking needed with operation-based architecture
             }
+
+            // Keep cache in sync so the next trip open is instant (fire-and-forget)
+            setCachedTrip(currentTripId, tripDataWithUser);
 
             // ALWAYS update tripId if it wasn't set (prevents duplicate generation on next save)
             if (!tripId) {

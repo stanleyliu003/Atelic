@@ -3,6 +3,7 @@ import { getTripIDs as getTripIDsQuery } from '../graphql/queries';
 import { getUserTripsDetailed as getUserTripsQuery } from '../graphql/customQueries';
 import { deleteUserAccount as deleteUserAccountMutation } from '../graphql/customMutations';
 import { randomUUID } from 'expo-crypto';
+import { getCachedTrip, setCachedTrip } from './tripCacheService';
 
 /**
  * Use API.post to invoke Lambda function with higher timeout than GraphQL
@@ -90,9 +91,17 @@ export const listUserTripsFromCloud = async (userID) => {
 };
 
 /**
- * Retrieve detailed trip data from cloud storage using getUserTrips Lambda function
+ * Retrieve detailed trip data from cloud storage using getUserTrips Lambda function.
+ * Checks AsyncStorage cache first; falls back to network on miss or expiry.
  */
 export const retrieveTripFromCloud = async (userID, tripID) => {
+    // Check local cache first for instant loads on repeat opens
+    const cached = await getCachedTrip(tripID);
+    if (cached) {
+        console.log('[Lambda Service] Cache hit for trip:', tripID);
+        return cached;
+    }
+
     try {
         console.log('[Lambda Service] Retrieving trip details from cloud storage...');
         console.log('[Lambda Service] UserID:', userID, 'TripID:', tripID);
@@ -105,8 +114,13 @@ export const retrieveTripFromCloud = async (userID, tripID) => {
             }
         });
 
+        const trip = result.data.getUserTrips;
         console.log('[Lambda Service] Retrieved trip details:');
-        return result.data.getUserTrips;
+
+        // Persist to cache for subsequent opens (fire-and-forget)
+        setCachedTrip(tripID, trip);
+
+        return trip;
 
     } catch (error) {
         console.error('[Lambda Service] Error retrieving trip details from cloud:', error);

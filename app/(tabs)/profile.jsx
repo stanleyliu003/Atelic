@@ -9,6 +9,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { listUserTripsFromCloud, retrieveTripFromCloud, deleteUserAccountFromCloud } from '../../src/services/lambdaService';
+import { getCachedTrip } from '../../src/services/tripCacheService';
 import { deleteTrip } from '../../src/graphql/customMutations';
 import { removeCollaborator, updateUserProfile, createTrip } from '../../src/graphql/mutations';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
@@ -374,6 +375,16 @@ export default function Profile() {
   };
 
   const handleLoadTrip = async (tripId) => {
+    // Fast path: if trip is cached, navigate immediately with no spinner
+    const cached = await getCachedTrip(tripId);
+    if (cached && currentUserID) {
+      restoreTripFromObject(cached, currentUserID);
+      setSelectedCity(cached.selectedCity);
+      router.push('/trip-view/trip-view_main');
+      return;
+    }
+
+    // Slow path: fetch from network
     try {
       setIsLoadingTrip(true);
       const user = await Auth.currentAuthenticatedUser();
@@ -381,18 +392,9 @@ export default function Profile() {
 
       const tripDetails = await retrieveTripFromCloud(userID, tripId);
 
-      console.log('[Profile] 📥 Retrieved trip details:');
-      console.log('[Profile] Trip ID:', tripDetails?.tripId);
-      console.log('[Profile] Trip Title:', tripDetails?.tripTitle);
-      console.log('[Profile] Selected City:', tripDetails?.selectedCity);
-      console.log('[Profile] Trip Title type:', typeof tripDetails?.tripTitle);
-
       if (tripDetails) {
-        // Load trip data into context with currentUserID
         restoreTripFromObject(tripDetails, userID);
         setSelectedCity(tripDetails.selectedCity);
-
-        // Navigate directly to trip view
         router.push('/trip-view/trip-view_main');
       }
     } catch (error) {

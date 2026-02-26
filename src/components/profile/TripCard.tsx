@@ -6,6 +6,7 @@ import {
   Image,
   ActivityIndicator,
   StyleSheet,
+  Dimensions,
 } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
@@ -43,6 +44,11 @@ interface TripCardProps {
 
 // Default image for trips without photos
 const DEFAULT_TRIP_IMAGE = require('../../../assets/images/default_trip.jpg');
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+// Matches the horizontal padding used around cards in the add-to-trip list
+const CARD_HORIZONTAL_PADDING = 40;
+const CAROUSEL_WIDTH = SCREEN_WIDTH - CARD_HORIZONTAL_PADDING;
 
 export function TripCard({
   trip,
@@ -158,7 +164,7 @@ export function TripCard({
             <View style={styles.carouselContainer}>
               <Carousel
                 loop={false}
-                width={350}
+                width={CAROUSEL_WIDTH}
                 height={170}
                 data={carouselData}
                 scrollAnimationDuration={300}

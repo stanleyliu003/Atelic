@@ -16,12 +16,17 @@ import { useRouter } from 'expo-router';
 import { API, Auth } from 'aws-amplify';
 import { deleteSavedPlace } from '../../graphql/mutations';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const ADD_TO_TRIP_STORAGE_KEY = '@atelic/add_to_trip_activities';
 
 export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPlaceDeleted, isCountry }) {
   const router = useRouter();
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [descriptionCardVisible, setDescriptionCardVisible] = useState(false);
   const [localPlaces, setLocalPlaces] = useState(places);
+  // Map of savedPlaceId -> activityWithDetails for selected activities
+  const [selectedActivitiesMap, setSelectedActivitiesMap] = useState(new Map());
 
   useEffect(() => {
     // This effect syncs the local state when the places prop changes.
@@ -30,17 +35,50 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
     setLocalPlaces(places);
   }, [places]);
 
+  // Reset selection when modal closes or city changes
+  useEffect(() => {
+    if (!visible) {
+      setSelectedActivitiesMap(new Map());
+    }
+  }, [visible]);
+
+  useEffect(() => {
+    setSelectedActivitiesMap(new Map());
+  }, [cityName]);
+
+  const handleToggleSelection = (activity) => {
+    setSelectedActivitiesMap(prev => {
+      const newMap = new Map(prev);
+      if (newMap.has(activity.savedPlaceId)) {
+        newMap.delete(activity.savedPlaceId);
+      } else {
+        newMap.set(activity.savedPlaceId, activity);
+      }
+      return newMap;
+    });
+  };
+
+  const handleAddToTrip = async () => {
+    if (selectedActivitiesMap.size === 0) return;
+    const activities = Array.from(selectedActivitiesMap.values());
+    await AsyncStorage.setItem(ADD_TO_TRIP_STORAGE_KEY, JSON.stringify(activities));
+    onClose();
+    router.push('/add-to-trip');
+  };
+
+  /*
   const handleCreateTrip = () => {
     console.log('[CitySavedPlacesModal] handleCreateTrip called with cityName:', cityName);
     onClose(); // Close the modal first
     router.push({
       pathname: '/(tabs)/create_new_trip',
-      params: { 
+      params: {
         prefilledCity: cityName,
         fromSavedPlaces: 'true'
       }
     });
   };
+  */
 
   const handleActivityPress = (activity) => {
     setSelectedActivity(activity);
@@ -112,8 +150,12 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
     return (
       <ActivityCard
         activity={activityWithDetails}
+        onPress={() => handleToggleSelection(activityWithDetails)}
         onDescriptionCardPress={() => handleActivityPress(activityWithDetails)}
         onSwipeDelete={handleDeleteActivity}
+        showSelectionIndicator={true}
+        useInlineSelectionLayout={true}
+        isSelected={selectedActivitiesMap.has(activityWithDetails.savedPlaceId)}
         hideNotesButton={true}
         hideRouteInfo={true}
         deleteSavedPlace={true}
@@ -158,13 +200,29 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
           </View>
         )}
 
-        {/* Create Trip Button */}
+        {/* Add to Trip Button */}
         <View style={styles.createTripButtonContainer}>
+          {/*
           <TouchableOpacity
             style={styles.createTripButton}
             onPress={handleCreateTrip}
           >
             <Text style={styles.createTripButtonText}>Create Trip</Text>
+          </TouchableOpacity>
+          */}
+          <TouchableOpacity
+            style={[
+              styles.createTripButton,
+              selectedActivitiesMap.size === 0 && styles.createTripButtonDisabled,
+            ]}
+            onPress={handleAddToTrip}
+            disabled={selectedActivitiesMap.size === 0}
+          >
+            <Text style={styles.createTripButtonText}>
+              {selectedActivitiesMap.size > 0
+                ? `Add to Trip (${selectedActivitiesMap.size})`
+                : 'Add to Trip'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -258,6 +316,9 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  createTripButtonDisabled: {
+    backgroundColor: '#D1D5DB',
   },
   createTripButtonText: {
     color: Colors.WHITE,
