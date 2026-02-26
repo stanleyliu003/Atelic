@@ -5,6 +5,7 @@ import { getMarkerColor } from '../../constants/mapColors';
 import { Activity, TabType } from '../../types/activity.types';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../../constants/Colors';
+import { getRegionForCoordinates } from '../../utils/mapRegionUtils';
 
 // Map category names to consistent icons
 const getCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap | null => {
@@ -414,76 +415,24 @@ export function TripMapView({
       };
     }
 
+    const coords = dynamicMarkers.map(m => ({
+      lat: m.coordinate.latitude,
+      lng: m.coordinate.longitude,
+    }));
+
     if (currentHeightState === 1 || currentHeightState === 2) {
-      // Use the previous working logic for currentHeightState === 1
-      if (dynamicMarkers.length === 1) {
-        return {
-          latitude: dynamicMarkers[0].coordinate.latitude,
-          longitude: dynamicMarkers[0].coordinate.longitude,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
-        };
-      }
-
-      // Calculate bounds for multiple markers
-      const latitudes = dynamicMarkers.map(marker => marker.coordinate.latitude);
-      const longitudes = dynamicMarkers.map(marker => marker.coordinate.longitude);
-     
-      const minLat = Math.min(...latitudes);
-      const maxLat = Math.max(...latitudes);
-      const minLng = Math.min(...longitudes);
-      const maxLng = Math.max(...longitudes);
-
-      const latDelta = (maxLat - minLat) * 1.7; // Add 58% padding (10% more zoom out)
-      const lngDelta = (maxLng - minLng) * 1.7; // Add 58% padding (10% more zoom out)
-
-      // Ensure minimum delta values for zoom
-      const minDelta = 0.01;
-      const finalLatDelta = Math.max(latDelta, minDelta);
-      const finalLngDelta = Math.max(lngDelta, minDelta);
-
-      return {
-        latitude: (minLat + maxLat) / 2 - finalLatDelta * 0.1, // Shift center slightly down
-        longitude: (minLng + maxLng) / 2,
-        latitudeDelta: finalLatDelta,
-        longitudeDelta: finalLngDelta,
-      };
+      return getRegionForCoordinates(coords, {
+        paddingMultiplier: 1.7,
+        singleDelta: 0.05,
+        minDelta: 0.01,
+        yOffsetFraction: 0.1,
+      })!;
     } else {
-      // Use the current logic for currentHeightState === 0
-      // Extract all coordinates
-      const coordinates = dynamicMarkers.map(marker => marker.coordinate);
-      
-      // Calculate bounding box
-      const latitudes = coordinates.map(coord => coord.latitude);
-      const longitudes = coordinates.map(coord => coord.longitude);
-      
-      const minLat = Math.min(...latitudes);
-      const maxLat = Math.max(...latitudes);
-      const minLng = Math.min(...longitudes);
-      const maxLng = Math.max(...longitudes);
-      
-      // Calculate the center point of activities
-      const activitiesCenterLat = (minLat + maxLat) / 2;
-      const activitiesCenterLng = (minLng + maxLng) / 2;
-      
-      // Calculate the span of coordinates
-      const latSpan = maxLat - minLat;
-      const lngSpan = maxLng - minLng;
-      
-      // Add padding - use percentage-based padding for better scaling
-      const paddingFactor = 0.3; // 30% padding around the bounds
-      const minDelta = 0.005; // Minimum zoom level for very close markers
-      
-      // Calculate base deltas with padding, ensuring minimum zoom
-      const baseLatitudeDelta = Math.max(latSpan * (1 + paddingFactor), minDelta);
-      const baseLongitudeDelta = Math.max(lngSpan * (1 + paddingFactor), minDelta);
-      
-      return {
-        latitude: activitiesCenterLat,
-        longitude: activitiesCenterLng,
-        latitudeDelta: baseLatitudeDelta,
-        longitudeDelta: baseLongitudeDelta,
-      };
+      return getRegionForCoordinates(coords, {
+        paddingMultiplier: 1.3,
+        singleDelta: 0.05,
+        minDelta: 0.005,
+      })!;
     }
   };
 

@@ -20,6 +20,7 @@ import {
 import { getSavedPlacesDetailed } from '../../src/graphql/customQueries';
 import { deleteSavedCity, deleteSavedCountry } from '../../src/graphql/mutations';
 import { CitySavedPlacesModal } from '../../src/components/saved-places/CitySavedPlacesModal';
+import { CountrySavedPlacesModal } from '../../src/components/saved-places/CountrySavedPlacesModal';
 import { CityCard } from '../../src/components/saved-places/CityCard';
 import { SavedPlacesSearchBar } from '../../src/components/saved-places/SavedPlacesSearchBar';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -36,6 +37,7 @@ export default function SavedPlaces() {
   const [error, setError] = useState(null);
   const [selectedCity, setSelectedCity] = useState(null);
   const [cityModalVisible, setCityModalVisible] = useState(false);
+  const [countryModalVisible, setCountryModalVisible] = useState(false);
   const [allSavedPlaces, setAllSavedPlaces] = useState([]);
   const [carouselIndices, setCarouselIndices] = useState({}); // Track current index per city
   const [cityPhotoCounts, setCityPhotoCounts] = useState({}); // Track photo count per city
@@ -69,11 +71,17 @@ export default function SavedPlaces() {
       const country = place.country?.trim();
       if (!country) continue;
       if (!countryMap[country]) {
-        countryMap[country] = { city: country, country, count: 0, isCountry: true };
+        countryMap[country] = { city: country, country, count: 0, isCountry: true, citySet: new Set() };
       }
       countryMap[country].count++;
+      if (place.city) {
+        countryMap[country].citySet.add(place.city);
+      }
     }
-    return Object.values(countryMap).sort((a, b) => b.count - a.count);
+    return Object.values(countryMap).map(({ citySet, ...rest }) => ({
+      ...rest,
+      cityCount: citySet.size,
+    })).sort((a, b) => b.count - a.count);
   }, [allSavedPlaces]);
 
   // Combine city cards and country cards for display (city cards first, then country)
@@ -257,12 +265,36 @@ export default function SavedPlaces() {
 
   const handleCardPress = (cardData) => {
     setSelectedCity(cardData);
-    setCityModalVisible(true);
+    if (cardData.isCountry) {
+      setCountryModalVisible(true);
+    } else {
+      setCityModalVisible(true);
+    }
   };
 
   const handleCloseCityModal = () => {
     setCityModalVisible(false);
     setSelectedCity(null);
+  };
+
+  const handleCloseCountryModal = () => {
+    setCountryModalVisible(false);
+    setSelectedCity(null);
+  };
+
+  const handlePlaceDeletedFromCountry = (deletedPlaceId, cityName) => {
+    setAllSavedPlaces(prevPlaces => {
+      const updatedPlaces = prevPlaces.filter(p => p.savedPlaceId !== deletedPlaceId);
+      setTotalCount(updatedPlaces.length);
+      return updatedPlaces;
+    });
+    if (cityName) {
+      setCities(prevCities =>
+        prevCities
+          .map(c => c.city === cityName ? { ...c, count: c.count - 1 } : c)
+          .filter(c => c.count > 0)
+      );
+    }
   };
 
   const handlePlaceDeleted = (deletedPlaceId) => {
@@ -542,6 +574,7 @@ export default function SavedPlaces() {
                     setCarouselIndices(prev => ({ ...prev, [city]: idx }))
                   }
                   onDelete={() => handleCardDeleted(cardData)}
+                  cityCount={cardData.cityCount}
                 />
               );
             })}
@@ -561,15 +594,26 @@ export default function SavedPlaces() {
         </View>
       )}
 
-      {/* City/Country Saved Places Modal */}
-      {selectedCity && (
+      {/* City Saved Places Modal */}
+      {selectedCity && !selectedCity.isCountry && (
         <CitySavedPlacesModal
           visible={cityModalVisible}
           onClose={handleCloseCityModal}
           cityName={selectedCity.city}
           places={getPlacesForCard(selectedCity)}
           onPlaceDeleted={handlePlaceDeleted}
-          isCountry={selectedCity.isCountry}
+          isCountry={false}
+        />
+      )}
+
+      {/* Country Saved Places Modal */}
+      {selectedCity?.isCountry && (
+        <CountrySavedPlacesModal
+          visible={countryModalVisible}
+          onClose={handleCloseCountryModal}
+          countryName={selectedCity.city}
+          places={getPlacesForCard(selectedCity)}
+          onPlaceDeleted={handlePlaceDeletedFromCountry}
         />
       )}
     </View>
