@@ -16,7 +16,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "AtelicStable",
       "deploymentTarget": "15.0",
-      "buildNumber": "57",
+      "buildNumber": "58",
       "infoPlist": {
         "CFBundleDisplayName": "Atelic",
         "CFBundleName": "Atelic",
