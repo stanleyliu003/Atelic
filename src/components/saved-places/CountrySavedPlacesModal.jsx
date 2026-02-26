@@ -100,45 +100,31 @@ export function CountrySavedPlacesModal({ visible, onClose, countryName, places,
       .sort((a, b) => b.count - a.count);
   }, [localPlaces]);
 
-  // Compute map region to fit all city markers
-  const mapRegion = useMemo(() => {
+  const hasMapCoords = useMemo(
+    () => citiesData.some(c => c.lat != null && c.lng != null),
+    [citiesData]
+  );
+
+  const handleMapReady = () => {
     const withCoords = citiesData.filter(c => c.lat != null && c.lng != null);
-    if (withCoords.length === 0) return null;
+    if (withCoords.length === 0 || !mapRef.current) return;
 
-    // The bottom card covers CARD_HEIGHT of the screen, so the visible map
-    // area is only the top (screenHeight - CARD_HEIGHT) portion. The map's
-    // `latitude` centers the full viewport (including the hidden area under
-    // the card). To center the markers within the *visible* portion, shift
-    // the center latitude south by (cardFraction / 3.5) * latDelta.
-    const cardFraction = CARD_HEIGHT / screenHeight;
+    // For a single city, fitToCoordinates on one point zooms in maximally.
+    // Create a minimum bounding box (~0.5° span) around the city so the zoom
+    // level stays reasonable, then let fitToCoordinates handle the card offset.
+    const SINGLE_CITY_SPAN = 0.25;
+    const coords = withCoords.length === 1
+      ? [
+          { latitude: withCoords[0].lat + SINGLE_CITY_SPAN, longitude: withCoords[0].lng + SINGLE_CITY_SPAN },
+          { latitude: withCoords[0].lat - SINGLE_CITY_SPAN, longitude: withCoords[0].lng - SINGLE_CITY_SPAN },
+        ]
+      : withCoords.map(c => ({ latitude: c.lat, longitude: c.lng }));
 
-    if (withCoords.length === 1) {
-      const latDelta = 0.5;
-      return {
-        latitude: withCoords[0].lat - (cardFraction / 2) * latDelta,
-        longitude: withCoords[0].lng,
-        latitudeDelta: latDelta,
-        longitudeDelta: 0.5,
-      };
-    }
-
-    const lats = withCoords.map(c => c.lat);
-    const lngs = withCoords.map(c => c.lng);
-    const minLat = Math.min(...lats);
-    const maxLat = Math.max(...lats);
-    const minLng = Math.min(...lngs);
-    const maxLng = Math.max(...lngs);
-
-    const latDelta = Math.max((maxLat - minLat) * 1.8, 0.5);
-    const lngDelta = Math.max((maxLng - minLng) * 1.8, 0.5);
-
-    return {
-      latitude: (minLat + maxLat) / 2 - (cardFraction / 3.5) * latDelta,
-      longitude: (minLng + maxLng) / 2,
-      latitudeDelta: latDelta,
-      longitudeDelta: lngDelta,
-    };
-  }, [citiesData]);
+    mapRef.current.fitToCoordinates(coords, {
+      edgePadding: { top: 80, right: 60, bottom: CARD_HEIGHT + 40, left: 60 },
+      animated: false,
+    });
+  };
 
   const handleCityPress = (cityData) => {
     setSelectedCityData(cityData);
@@ -191,11 +177,11 @@ export function CountrySavedPlacesModal({ visible, onClose, countryName, places,
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.root}>
           {/* Map fills entire background */}
-          {mapRegion ? (
+          {hasMapCoords ? (
             <MapView
               ref={mapRef}
               style={StyleSheet.absoluteFill}
-              initialRegion={mapRegion}
+              onMapReady={handleMapReady}
               showsUserLocation={false}
               showsMyLocationButton={false}
             >
