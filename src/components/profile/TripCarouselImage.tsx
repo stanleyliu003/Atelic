@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { UNSPLASH_ACCESS_KEY } from '../../constants/api';
@@ -65,7 +65,7 @@ const googlePhotosCache: { [key: string]: GooglePhotosCacheEntry } = {};
  * @param style - Image style
  * @param onPhotoRefUpdate - Optional callback when photo_reference is updated
  */
-export function TripCarouselImage({
+function TripCarouselImageComponent({
   photo_reference,
   place_id,
   cityName,
@@ -103,61 +103,26 @@ export function TripCarouselImage({
     setImageError(false);
     setIsLoading(true);
     fetchImage();
-  }, [cityName, photo_reference, place_id, photoIndex, shouldLoad, isUnsplashImage]);
+  // isUnsplashImage is derived from cityName and photo_reference — no need to list it separately
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cityName, photo_reference, place_id, photoIndex, shouldLoad]);
 
-  // Check if image is in expo-image disk cache and log for verification
-  // This hook must be at the top level, not inside conditional returns
-  useEffect(() => {
-    const checkCacheStatus = async () => {
-      if (imageUrl && imageUrl.includes('googleapis.com')) {
-        try {
-          const cachePath = await Image.getCachePathAsync(imageUrl);
-          if (cachePath) {
-            console.log(`[TripCarouselImage] ✅ CACHE HIT - Google image loaded from disk cache: ${cachePath}`);
-          } else {
-            console.log(`[TripCarouselImage] ❌ CACHE MISS - Google image will be fetched from network: ${imageUrl.substring(0, 80)}...`);
-          }
-        } catch (error) {
-          console.log(`[TripCarouselImage] Cache check error:`, error);
-        }
-      }
-    };
-    checkCacheStatus();
-  }, [imageUrl]);
 
   const fetchImage = async () => {
-    // Note: hasAttemptedFetch guard removed - useEffect controls when to fetch
-    // The guard was causing a race condition with async state updates
-
-    console.log('[TripCarouselImage] 🔍 fetchImage called with:', {
-      cityName,
-      photoIndex,
-      photo_reference,
-      isUnsplashImage,
-      hasUNSPLASH_KEY: !!UNSPLASH_ACCESS_KEY,
-      UNSPLASH_KEY_LENGTH: UNSPLASH_ACCESS_KEY?.length
-    });
-
     try {
       setIsLoading(true);
       setHasAttemptedFetch(true);
 
       // Try Unsplash first if we have a city name
       if (cityName) {
-        console.log('[TripCarouselImage] 🌄 Attempting Unsplash fetch for:', cityName);
         const unsplashData = await fetchUnsplashImages(cityName, photoIndex);
         if (unsplashData) {
-          console.log('[TripCarouselImage] ✅ Unsplash fetch successful:', unsplashData.imageUrl);
           setImageUrl(unsplashData.imageUrl);
           setUnsplashAttribution(unsplashData);
           setImageError(false);
           setIsLoading(false);
           return;
-        } else {
-          console.log('[TripCarouselImage] ⚠️ Unsplash fetch returned null, falling back to Google Places');
         }
-      } else {
-        console.log('[TripCarouselImage] ℹ️ No cityName provided, skipping Unsplash');
       }
 
       // Fallback to Google Places
@@ -172,15 +137,10 @@ export function TripCarouselImage({
 
   const fetchUnsplashImages = async (query: string, index: number): Promise<UnsplashImageWithAttribution | null> => {
     try {
-      console.log('[TripCarouselImage] 🔎 fetchUnsplashImages called:', { query, index });
-
       // Check cache first
       if (unsplashCache[query] && unsplashCache[query].length > 0) {
-        // Return the photo at the given index (with wrapping)
         const photos = unsplashCache[query];
-        const photoUrl = photos[index % photos.length];
         const photoData = photos[index % photos.length];
-        console.log(`[TripCarouselImage] ✅ Using cached Unsplash image ${index} for: ${query}`);
 
         // Notify parent of the total photo count (only on first image)
         if (index === 0 && onPhotoCountUpdate) {
@@ -190,14 +150,7 @@ export function TripCarouselImage({
         return photoData;
       }
 
-      console.log('[TripCarouselImage] 🔑 Checking UNSPLASH_ACCESS_KEY:', {
-        hasKey: !!UNSPLASH_ACCESS_KEY,
-        keyLength: UNSPLASH_ACCESS_KEY?.length,
-        keyPreview: UNSPLASH_ACCESS_KEY ? `${UNSPLASH_ACCESS_KEY.substring(0, 10)}...` : 'undefined'
-      });
-
       if (!UNSPLASH_ACCESS_KEY) {
-        console.warn('[TripCarouselImage] ⚠️ UNSPLASH_ACCESS_KEY is not configured, skipping Unsplash');
         return null;
       }
 
@@ -222,32 +175,17 @@ export function TripCarouselImage({
 
         const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchQuery)}&per_page=10&orientation=landscape&client_id=${UNSPLASH_ACCESS_KEY}`;
 
-        console.log(`[TripCarouselImage] 🌐 Fetching from Unsplash with query: "${searchQuery}"`);
-
         try {
           const response = await fetch(url);
 
-          console.log(`[TripCarouselImage] 📡 Unsplash API response:`, {
-            status: response.status,
-            statusText: response.statusText,
-            ok: response.ok
-          });
-
           if (!response.ok) {
-            // 403 usually means rate limit or invalid API key - fail silently
             if (response.status === 403) {
-              console.warn('[TripCarouselImage] ⚠️ Unsplash API rate limit or invalid key, falling back to Google Places');
-              break; // Stop trying Unsplash, fall back to Google Places
+              break; // Rate limit or invalid key - stop trying Unsplash
             }
-            console.warn('[TripCarouselImage] ⚠️ Unsplash API error:', response.status, response.statusText);
             continue; // Try next strategy
           }
 
           const data = await response.json();
-          console.log(`[TripCarouselImage] 📦 Unsplash API data:`, {
-            resultsCount: data.results?.length || 0,
-            total: data.total
-          });
 
           if (data.results && data.results.length > 0) {
             // Extract photo data with attribution, avoiding duplicates
@@ -268,7 +206,6 @@ export function TripCarouselImage({
             }
           }
         } catch (error) {
-          console.warn(`[TripCarouselImage] Error with search "${searchQuery}":`, error);
           continue; // Try next strategy
         }
       }
@@ -276,8 +213,6 @@ export function TripCarouselImage({
       // If we found any photos, cache and return them
       if (allPhotos.length > 0) {
         unsplashCache[query] = allPhotos;
-
-        console.log(`[TripCarouselImage] Successfully fetched ${allPhotos.length} Unsplash images for: ${query}`);
 
         // Notify parent of the total photo count (only on first image)
         if (index === 0 && onPhotoCountUpdate) {
@@ -290,23 +225,19 @@ export function TripCarouselImage({
 
       return null;
     } catch (error) {
-      console.warn('[TripCarouselImage] Error fetching Unsplash images:', error);
       return null;
     }
   };
 
   const fetchGooglePlacesPhoto = async () => {
-    // Generate cache key - prefer photo_reference, fallback to place_id
     const cacheKey = photo_reference || place_id || '';
 
     // Check session cache first
     if (cacheKey && googlePhotosCache[cacheKey]) {
       const cached = googlePhotosCache[cacheKey];
-      console.log(`[TripCarouselImage] Using cached Google Places photo for: ${cacheKey}`);
       setImageUrl(cached.url);
       setImageError(false);
 
-      // Trigger onPhotoRefUpdate callback if we have a cached photo reference
       if (cached.photoReference && onPhotoRefUpdate) {
         onPhotoRefUpdate(cached.photoReference);
       }
@@ -316,7 +247,6 @@ export function TripCarouselImage({
     // If we already have a photo_reference and place_id, use the S3/CloudFront cached service
     if (photo_reference && place_id) {
       try {
-        console.log(`[TripCarouselImage] Using cached photo service for: ${place_id}`);
         const photoUrl = await getCachedPhotoUrl(place_id, photo_reference, 800);
         setImageUrl(photoUrl);
         setImageError(false);
@@ -334,7 +264,6 @@ export function TripCarouselImage({
 
     // Fallback: If we have photo_reference but no place_id, use direct Google URL
     if (photo_reference) {
-      console.log(`[TripCarouselImage] Using direct Google URL (no place_id for caching)`);
       const photoUrl = buildDirectPhotoUrl(photo_reference, 800);
       setImageUrl(photoUrl);
       setImageError(false);
@@ -347,21 +276,16 @@ export function TripCarouselImage({
     }
 
     // Only fetch from API if we don't have a photo_reference but have a place_id
-    // This is useful for city carousels or when we need to refresh expired photos
     if (place_id) {
       try {
-        console.log(`[TripCarouselImage] Fetching Google Places photo for place_id: ${place_id}`);
-
         // Fetch photo refs using New Places API (IDs Only = $0)
         const photoRefs = await fetchPhotoRefs(place_id);
 
         if (photoRefs.length > 0) {
           const photoRef = photoRefs[0];
 
-          // Use S3/CloudFront cached service
           const photoUrl = await getCachedPhotoUrl(place_id, photoRef, 800);
 
-          console.log(`[TripCarouselImage] Successfully fetched Google Places photo`);
           setImageUrl(photoUrl);
           setImageError(false);
 
@@ -380,8 +304,6 @@ export function TripCarouselImage({
       }
     }
 
-    // No photo available
-    console.log('[TripCarouselImage] No photo available');
     setImageError(true);
     if (onPhotoRefUpdate) {
       onPhotoRefUpdate(null);
@@ -409,20 +331,12 @@ export function TripCarouselImage({
 
   // If image is invalid and cannot be loaded, show a placeholder
   if (imageError || !imageUrl) {
-    console.log('[TripCarouselImage] ⚠️ Image error or no URL:', { imageError, hasImageUrl: !!imageUrl, cityName, photo_reference });
     return (
       <View style={[styles.placeholderContainer, style]}>
         <FontAwesome name="image" size={40} color={Colors.GRAY} />
       </View>
     );
   }
-
-  console.log('[TripCarouselImage] ✅ Rendering image:', {
-    imageUrl: imageUrl.substring(0, 60) + '...',
-    hasUnsplashAttribution: !!unsplashAttribution,
-    isUnsplashImage,
-    cityName
-  });
 
   return (
     <View style={style}>
@@ -435,14 +349,10 @@ export function TripCarouselImage({
         cachePolicy="disk"
         resizeMode="cover"
         onError={() => {
-          console.log('[TripCarouselImage] ❌ Image failed to load:', imageUrl);
           setImageError(true);
           if (onPhotoRefUpdate) {
             onPhotoRefUpdate(null);
           }
-        }}
-        onLoad={() => {
-          console.log('[TripCarouselImage] ✅ Image successfully loaded:', imageUrl.substring(0, 60) + '...');
         }}
       />
       {unsplashAttribution && (
@@ -451,6 +361,8 @@ export function TripCarouselImage({
     </View>
   );
 }
+
+export const TripCarouselImage = memo(TripCarouselImageComponent);
 
 const styles = StyleSheet.create({
   placeholderContainer: {
