@@ -108,7 +108,7 @@ export default function EditProfileScreen() {
         name: fullName.trim(),
       });
 
-      // Update bio and profile photo in UserProfilesStorage
+      // Update bio, fullName, and profile photo in UserProfilesStorage
       // Save the S3 key (not the resolved URL) so we can resolve it again when loading
       await API.graphql({
         query: customMutations.updateUserProfile,
@@ -116,6 +116,7 @@ export default function EditProfileScreen() {
           username: username,
           action: 'UPDATE_PROFILE_INFO',
           tripData: JSON.stringify({
+            fullName: fullName.trim() || null,
             bio: bio.trim() || null,
             profilePhotoUrl: profilePhotoS3Key || null,
           }),

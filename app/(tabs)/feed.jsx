@@ -1269,13 +1269,14 @@ export default function FeedScreen() {
         name: editFullName.trim(),
       });
 
-      // Update bio in UserProfilesStorage
+      // Update fullName, bio, and profile photo in UserProfilesStorage
       await API.graphql({
         query: customMutations.updateUserProfile,
         variables: {
           username: username,
           action: 'UPDATE_PROFILE_INFO',
           tripData: JSON.stringify({
+            fullName: editFullName.trim() || null,
             bio: editBio.trim() || null,
             profilePhotoUrl: profilePhotoUrl || null,
           }),
