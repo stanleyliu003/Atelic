@@ -13,6 +13,7 @@ interface ProfileHeaderProps {
   username: string;
   fullName: string;
   profilePhotoUrl?: string | null;
+  profilePhotoKey?: number; // Cache-busting key to force image reload
   bio?: string | null;
   isOwnProfile: boolean;
   isPrivate: boolean;
@@ -28,6 +29,7 @@ export function ProfileHeader({
   username,
   fullName,
   profilePhotoUrl,
+  profilePhotoKey,
   bio,
   isOwnProfile,
   isPrivate,
@@ -55,12 +57,21 @@ export function ProfileHeader({
   // Only use profilePhotoUrl if it's a valid HTTP URL
   const isValidPhotoUrl = profilePhotoUrl && (profilePhotoUrl.startsWith('http://') || profilePhotoUrl.startsWith('https://'));
 
+  // Create image source with cache control
+  const imageSource = isValidPhotoUrl
+    ? {
+        uri: profilePhotoUrl,
+        cache: 'reload' as const, // Force reload to bypass cache
+      }
+    : DEFAULT_AVATAR;
+
   return (
     <View style={styles.container}>
       {/* Profile Photo */}
       <View style={styles.photoContainer}>
         <Image
-          source={isValidPhotoUrl ? { uri: profilePhotoUrl } : DEFAULT_AVATAR}
+          key={profilePhotoKey || 'profile-photo'} // Force re-render when key changes
+          source={imageSource}
           style={styles.profilePhoto}
           defaultSource={DEFAULT_AVATAR}
         />

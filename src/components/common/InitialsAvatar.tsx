@@ -7,6 +7,7 @@ interface InitialsAvatarProps {
   profilePhotoUrl?: string | null;
   size?: number;
   fontSize?: number;
+  cacheKey?: number; // Cache-busting key to force image reload
 }
 
 // Color palette for avatar backgrounds
@@ -51,6 +52,7 @@ export function InitialsAvatar({
   profilePhotoUrl,
   size = 50,
   fontSize,
+  cacheKey,
 }: InitialsAvatarProps) {
   const initials = useMemo(() => getInitials(name), [name]);
   const backgroundColor = useMemo(() => getColorForName(name), [name]);
@@ -61,7 +63,11 @@ export function InitialsAvatar({
   if (isValidUrl) {
     return (
       <Image
-        source={{ uri: profilePhotoUrl }}
+        key={cacheKey || 'avatar'} // Force re-render when key changes
+        source={{
+          uri: profilePhotoUrl,
+          cache: 'reload' as const, // Force reload to bypass cache
+        }}
         style={[
           styles.image,
           {

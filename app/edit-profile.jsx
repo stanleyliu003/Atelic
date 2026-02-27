@@ -37,6 +37,7 @@ export default function EditProfileScreen() {
   const [bio, setBio] = useState('');
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);  // For display (resolved URL)
   const [profilePhotoS3Key, setProfilePhotoS3Key] = useState(null);  // For saving (s3:// key)
+  const [profilePhotoKey, setProfilePhotoKey] = useState(Date.now());  // Cache-busting key
 
   useEffect(() => {
     loadUserProfile();
@@ -69,6 +70,7 @@ export default function EditProfileScreen() {
         // Resolve S3 key to signed URL for display
         const resolvedPhotoUrl = await resolveProfilePhotoUrl(profile.profilePhotoUrl);
         setProfilePhotoUrl(resolvedPhotoUrl);
+        setProfilePhotoKey(Date.now()); // Update cache key
         console.log('[EditProfile] Profile loaded successfully');
       }
     } catch (error) {
@@ -82,6 +84,7 @@ export default function EditProfileScreen() {
         // Resolve S3 key to signed URL for display
         const resolvedPhotoUrl = await resolveProfilePhotoUrl(profile.profilePhotoUrl);
         setProfilePhotoUrl(resolvedPhotoUrl);
+        setProfilePhotoKey(Date.now()); // Update cache key
         console.log('[EditProfile] Profile loaded from partial error response');
       }
     } finally {
@@ -238,6 +241,7 @@ export default function EditProfileScreen() {
           // Resolve the S3 key to a signed URL for immediate display
           const resolvedUrl = await resolveProfilePhotoUrl(s3Key);
           setProfilePhotoUrl(resolvedUrl);
+          setProfilePhotoKey(Date.now()); // Update cache key to force image refresh
         } catch (error) {
           console.error('Image upload error:', error);
           Alert.alert('Upload Failed', 'Failed to upload photo. Please try again.');
@@ -267,6 +271,7 @@ export default function EditProfileScreen() {
           } else if (buttonIndex === 3) {
             setProfilePhotoUrl(null);
             setProfilePhotoS3Key(null);
+            setProfilePhotoKey(Date.now()); // Update cache key
           }
         }
       );
@@ -277,7 +282,7 @@ export default function EditProfileScreen() {
         [
           { text: 'Take Photo', onPress: () => pickImage('camera') },
           { text: 'Choose from Library', onPress: () => pickImage('library') },
-          { text: 'Remove Photo', onPress: () => { setProfilePhotoUrl(null); setProfilePhotoS3Key(null); }, style: 'destructive' },
+          { text: 'Remove Photo', onPress: () => { setProfilePhotoUrl(null); setProfilePhotoS3Key(null); setProfilePhotoKey(Date.now()); }, style: 'destructive' },
           { text: 'Cancel', style: 'cancel' },
         ]
       );
@@ -324,7 +329,10 @@ export default function EditProfileScreen() {
             <TouchableOpacity onPress={handleChangePhoto} disabled={isUploadingPhoto}>
               <View style={styles.photoWrapper}>
                 <Image
-                  source={profilePhotoUrl && (profilePhotoUrl.startsWith('http://') || profilePhotoUrl.startsWith('https://')) ? { uri: profilePhotoUrl } : DEFAULT_AVATAR}
+                  key={`edit-profile-photo-${profilePhotoKey}`}
+                  source={profilePhotoUrl && (profilePhotoUrl.startsWith('http://') || profilePhotoUrl.startsWith('https://'))
+                    ? { uri: profilePhotoUrl, cache: 'reload' }
+                    : DEFAULT_AVATAR}
                   style={styles.profilePhoto}
                   defaultSource={DEFAULT_AVATAR}
                 />
