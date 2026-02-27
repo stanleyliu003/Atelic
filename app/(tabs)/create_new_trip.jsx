@@ -14,7 +14,7 @@ export default function Create_New_Trip() {
       await completeReset();
     };
     performReset();
-  }, []); // Empty dependency array - only run on mount
+  }, [params.ts]); // Empty dependency array - only run on mount
 
   // Render the city selection component directly within this tab
   // Pass prefilledCity and fromSavedPlaces props if they exist in params
