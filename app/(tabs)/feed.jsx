@@ -1420,30 +1420,78 @@ export default function FeedScreen() {
     }
   }, [hasMore, isLoadingFeed, loadFeed]);
 
-  const renderTripCard = (trip, keyPrefix = '') => (
-    <View
-      key={`${keyPrefix}${trip.tripId}`}
-      style={[
-        styles.tripCard,
-        selectedTripId === trip.tripId && isLoadingTrip && styles.tripCardLoading
-      ]}
-    >
-      <TouchableOpacity
-        style={styles.tripCardMainArea}
-        onPress={() => {
-          setSelectedTripId(trip.tripId);
-          handleLoadTrip(trip.tripId);
-        }}
-        disabled={isLoadingTrip || deletingTripId === trip.tripId}
-        activeOpacity={1}
+  const renderTripCard = (trip, keyPrefix = '') => {
+    // Calculate trip duration for badge
+    const getTripDuration = () => {
+      if (trip.tripLength != null && trip.tripLength > 0) {
+        return `${trip.tripLength} ${trip.tripLength === 1 ? 'day' : 'days'}`;
+      }
+      if (trip.startDate && trip.endDate) {
+        const start = new Date(trip.startDate);
+        const end = new Date(trip.endDate);
+        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        return `${days} ${days === 1 ? 'day' : 'days'}`;
+      }
+      return null;
+    };
+
+    // Get formatted date range
+    const getDateRange = () => {
+      const referenceDate = trip.startDate ? new Date(trip.startDate) : null;
+      if (referenceDate && trip.endDate) {
+        const endDate = new Date(trip.endDate);
+        const sameMonth = referenceDate.getMonth() === endDate.getMonth() &&
+                          referenceDate.getFullYear() === endDate.getFullYear();
+        if (sameMonth) {
+          return `${referenceDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${endDate.getDate()}`;
+        }
+        return `${referenceDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+      }
+      if (referenceDate) {
+        return referenceDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+      return null;
+    };
+
+    // Extract country/region from city (e.g., "Paris, France" -> "France")
+    const getLocationLabel = () => {
+      if (!trip.selectedCity) return null;
+      const parts = trip.selectedCity.split(',');
+      if (parts.length > 1) {
+        return parts[parts.length - 1].trim();
+      }
+      return trip.selectedCity;
+    };
+
+    const tripDuration = getTripDuration();
+    const dateRange = getDateRange();
+    const locationLabel = getLocationLabel();
+    const tripName = trip.tripTitle || trip.selectedCity?.split(',')[0] || 'Unknown Trip';
+
+    return (
+      <View
+        key={`${keyPrefix}${trip.tripId}`}
+        style={[
+          styles.tripCard,
+          selectedTripId === trip.tripId && isLoadingTrip && styles.tripCardLoading
+        ]}
       >
-        <View style={styles.tripCardContent}>
+        <TouchableOpacity
+          style={styles.tripCardMainArea}
+          onPress={() => {
+            setSelectedTripId(trip.tripId);
+            handleLoadTrip(trip.tripId);
+          }}
+          disabled={isLoadingTrip || deletingTripId === trip.tripId}
+          activeOpacity={0.95}
+        >
+          {/* Background Image */}
           {trip.selectedCity ? (
-            <View style={styles.carouselContainer}>
+            <View style={styles.tripCardImageContainer}>
               <Carousel
                 loop={false}
                 width={CAROUSEL_WIDTH}
-                height={180}
+                height={280}
                 data={trip.tripPhotoReference && trip.tripPhotoReference.length > 0
                   ? trip.tripPhotoReference
                   : [{}, {}, {}, {}, {}]}
@@ -1468,25 +1516,6 @@ export default function FeedScreen() {
                   />
                 )}
               />
-              {(() => {
-                const photoCount = tripPhotoCounts[`${keyPrefix}${trip.tripId}`] || 5;
-                if (trip.tripPhotoReference?.length === 1 || photoCount === 1) {
-                  return null;
-                }
-                return (
-                  <View style={styles.paginationDots}>
-                    {Array.from({ length: photoCount }, (_, index) => (
-                      <View
-                        key={index}
-                        style={[
-                          styles.dot,
-                          (carouselIndices[`${keyPrefix}${trip.tripId}`] || 0) === index && styles.activeDot
-                        ]}
-                      />
-                    ))}
-                  </View>
-                );
-              })()}
             </View>
           ) : (
             <Image
@@ -1495,91 +1524,76 @@ export default function FeedScreen() {
               resizeMode="cover"
             />
           )}
-          <View style={styles.tripCardInfo}>
-            <View style={styles.tripCardTitleRow}>
-              <Text style={styles.tripCardTitle}>
-                {trip.tripTitle || trip.selectedCity || 'Unknown Trip'}
-              </Text>
-              {selectedTripId === trip.tripId && isLoadingTrip ? (
-                <ActivityIndicator size="small" color={Colors.PRIMARY} style={styles.menuButton} />
-              ) : (
-                <TouchableOpacity
-                  style={styles.menuButton}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    setMenuVisible(trip.tripId);
-                  }}
-                  disabled={isLoadingTrip || deletingTripId === trip.tripId}
-                >
-                  <FontAwesome6 name="ellipsis" size={24} color={Colors.GRAY} />
-                </TouchableOpacity>
+
+
+          {/* Top Right Menu Button */}
+          <TouchableOpacity
+            style={styles.tripCardMenuButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              setMenuVisible(trip.tripId);
+            }}
+            disabled={isLoadingTrip || deletingTripId === trip.tripId}
+          >
+            {selectedTripId === trip.tripId && isLoadingTrip ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="ellipsis-horizontal" size={20} color="#fff" />
+            )}
+          </TouchableOpacity>
+
+          {/* Pagination Dots */}
+          {(() => {
+            const photoCount = tripPhotoCounts[`${keyPrefix}${trip.tripId}`] || 5;
+            if (trip.tripPhotoReference?.length === 1 || photoCount === 1) {
+              return null;
+            }
+            return (
+              <View style={styles.tripCardPaginationDots}>
+                {Array.from({ length: photoCount }, (_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.tripCardDot,
+                      (carouselIndices[`${keyPrefix}${trip.tripId}`] || 0) === index && styles.tripCardDotActive
+                    ]}
+                  />
+                ))}
+              </View>
+            );
+          })()}
+
+          {/* Content Overlay */}
+          <View style={styles.tripCardOverlay}>
+            {/* Location and Title */}
+            <View style={styles.tripCardTextContainer}>
+              {locationLabel && (
+                <View style={styles.tripCardLocationRow}>
+                  <Ionicons name="location" size={14} color="#fff" />
+                  <Text style={styles.tripCardLocation}>{locationLabel}</Text>
+                </View>
+              )}
+              <Text style={styles.tripCardTitle} numberOfLines={2}>{tripName}</Text>
+              {dateRange && (
+                <Text style={styles.tripCardDate}>{dateRange}</Text>
               )}
             </View>
-            {trip.tripTitle && trip.selectedCity && (
-              <Text style={styles.tripCardSubtitle}>{trip.selectedCity}</Text>
-            )}
-            <Text style={styles.tripCardLength}>
-              {(() => {
-                const referenceDate = trip.startDate ? new Date(trip.startDate) : (trip.createdAt ? new Date(trip.createdAt) : null);
 
-                if (referenceDate && trip.endDate) {
-                  const endDate = new Date(trip.endDate);
-                  const sameMonth = referenceDate.getMonth() === endDate.getMonth() && referenceDate.getFullYear() === endDate.getFullYear();
-
-                  if (sameMonth) {
-                    const startFormatted = referenceDate.toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric'
-                    });
-                    const endDay = endDate.getDate();
-                    const year = endDate.getFullYear();
-                    return `${startFormatted} - ${endDay}, ${year}`;
-                  } else if (referenceDate.getFullYear() === endDate.getFullYear()) {
-                    const startFormatted = referenceDate.toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric'
-                    });
-                    const endFormatted = endDate.toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric'
-                    });
-                    const year = endDate.getFullYear();
-                    return `${startFormatted} - ${endFormatted}, ${year}`;
-                  } else {
-                    const startFormatted = referenceDate.toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    });
-                    const endFormatted = endDate.toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    });
-                    return `${startFormatted} - ${endFormatted}`;
-                  }
-                } else if (referenceDate) {
-                  return referenceDate.toLocaleDateString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                  });
-                } else if (trip.endDate) {
-                  return new Date(trip.endDate).toLocaleDateString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                  });
-                } else {
-                  return trip.tripLength != null ? `${trip.tripLength} day trip` : 'Unknown length';
-                }
-              })()}
-            </Text>
+            {/* Action Button */}
+            <TouchableOpacity
+              style={styles.tripCardActionButton}
+              onPress={() => {
+                setSelectedTripId(trip.tripId);
+                handleLoadTrip(trip.tripId);
+              }}
+            >
+              <Ionicons name="arrow-forward" size={22} color="#1a1a1a" style={{ transform: [{ rotate: '-45deg' }] }} />
+            </TouchableOpacity>
           </View>
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -2669,56 +2683,144 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   tripCard: {
-    backgroundColor: Colors.WHITE,
-    borderRadius: 16,
-    marginBottom: 30,
+    borderRadius: 24,
+    marginBottom: 24,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    height: 280,
+    position: 'relative',
   },
   tripCardMainArea: {
     flex: 1,
+    position: 'relative',
   },
   tripCardLoading: {
     opacity: 0.7,
   },
-  tripCardContent: {
-    flexDirection: 'column',
+  tripCardImageContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   tripCardImage: {
     width: '100%',
-    height: 180,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    height: 280,
+    borderRadius: 24,
   },
-  tripCardInfo: {
-    padding: 16,
-    paddingTop: 14,
-  },
-  tripCardTitleRow: {
+  tripCardBadge: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    backgroundColor: '#FFD60A',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    width: '100%',
-    marginBottom: 2,
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tripCardBadgeText: {
+    fontFamily: 'outfit-semibold',
+    fontSize: 13,
+    color: '#1a1a1a',
+  },
+  tripCardMenuButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tripCardPaginationDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 16,
+    left: 0,
+    right: 0,
+    zIndex: 5,
+  },
+  tripCardDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginHorizontal: 3,
+  },
+  tripCardDotActive: {
+    backgroundColor: '#fff',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  tripCardOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 20,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  tripCardTextContainer: {
+    flex: 1,
+    marginRight: 16,
+  },
+  tripCardLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  tripCardLocation: {
+    fontFamily: 'outfit-medium',
+    fontSize: 14,
+    color: '#fff',
+    marginLeft: 4,
+    opacity: 0.9,
   },
   tripCardTitle: {
     fontFamily: 'outfit-bold',
-    fontSize: 20,
-    color: '#1a1a1a',
-    flex: 1,
+    fontSize: 26,
+    color: '#fff',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
-  tripCardSubtitle: {
+  tripCardDate: {
     fontFamily: 'outfit',
     fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 2,
+    color: '#fff',
+    opacity: 0.8,
+    marginTop: 4,
   },
-  tripCardLength: {
-    fontFamily: 'outfit',
-    fontSize: 14,
-    color: '#9CA3AF',
+  tripCardActionButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFD60A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
   },
+  // Keep old styles for compatibility with other components
   menuButton: {
     width: 32,
     height: 32,
