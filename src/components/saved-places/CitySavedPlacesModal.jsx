@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Colors } from '../../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Feather from '@expo/vector-icons/Feather';
 import { ActivityCard } from '../trip-view/activity/activity_card';
 import { ActivityDetailView } from '../trip-view/description_card';
 import { useRouter } from 'expo-router';
@@ -17,6 +18,7 @@ import { API, Auth } from 'aws-amplify';
 import { deleteSavedPlace } from '../../graphql/mutations';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WISHLIST_STORAGE_KEY } from '../../../app/saved-places-wishlist';
 
 const ADD_TO_TRIP_STORAGE_KEY = '@atelic/add_to_trip_activities';
 
@@ -27,6 +29,7 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
   const [localPlaces, setLocalPlaces] = useState(places);
   // Map of savedPlaceId -> activityWithDetails for selected activities
   const [selectedActivitiesMap, setSelectedActivitiesMap] = useState(new Map());
+  const [wishlistCount, setWishlistCount] = useState(0);
 
   useEffect(() => {
     // This effect syncs the local state when the places prop changes.
@@ -34,6 +37,17 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
     // or if the parent component refreshes the data.
     setLocalPlaces(places);
   }, [places]);
+
+  // Load wishlist count whenever the modal becomes visible
+  useEffect(() => {
+    if (!visible) return;
+    AsyncStorage.getItem(WISHLIST_STORAGE_KEY)
+      .then(stored => {
+        const items = stored ? JSON.parse(stored) : [];
+        setWishlistCount(items.length);
+      })
+      .catch(() => setWishlistCount(0));
+  }, [visible]);
 
   // Reset selection when modal closes or city changes
   useEffect(() => {
@@ -64,6 +78,29 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
     await AsyncStorage.setItem(ADD_TO_TRIP_STORAGE_KEY, JSON.stringify(activities));
     onClose();
     router.push('/add-to-trip');
+  };
+
+  const handleAddToWishlist = async () => {
+    if (selectedActivitiesMap.size === 0) return;
+    const activities = Array.from(selectedActivitiesMap.values());
+    try {
+      const stored = await AsyncStorage.getItem(WISHLIST_STORAGE_KEY);
+      const existing = stored ? JSON.parse(stored) : [];
+      const newItems = activities.map(activity => ({ activity, cityName }));
+      const merged = [...existing, ...newItems];
+      await AsyncStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(merged));
+      setWishlistCount(merged.length);
+      setSelectedActivitiesMap(new Map());
+      onClose();
+      router.push('/saved-places-wishlist');
+    } catch (e) {
+      console.error('[CitySavedPlacesModal] Error adding to wishlist:', e);
+    }
+  };
+
+  const handleWishlistButtonPress = () => {
+    onClose();
+    router.push('/saved-places-wishlist');
   };
 
   /*
@@ -181,7 +218,12 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
             <Ionicons name="arrow-back" size={28} color={Colors.PRIMARY} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{cityName}</Text>
-          <View style={styles.placeholder} />
+          <TouchableOpacity
+            onPress={handleWishlistButtonPress}
+            style={styles.wishlistHeaderButton}
+          >
+            <Feather name="list" size={24} color="black" />
+          </TouchableOpacity>
         </View>
 
         {/* Activity List */}
@@ -200,16 +242,23 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
           </View>
         )}
 
-        {/* Add to Trip Button */}
+        {/* Action Buttons */}
         <View style={styles.createTripButtonContainer}>
-          {/*
           <TouchableOpacity
-            style={styles.createTripButton}
-            onPress={handleCreateTrip}
+            style={[
+              styles.createTripButton,
+              styles.addToWishlistButton,
+              selectedActivitiesMap.size === 0 && styles.createTripButtonDisabled,
+            ]}
+            onPress={handleAddToWishlist}
+            disabled={selectedActivitiesMap.size === 0}
           >
-            <Text style={styles.createTripButtonText}>Create Trip</Text>
+            <Text style={styles.createTripButtonText}>
+              {selectedActivitiesMap.size > 0
+                ? `Add to Wishlist`
+                : 'Add to Wishlist'}
+            </Text>
           </TouchableOpacity>
-          */}
           <TouchableOpacity
             style={[
               styles.createTripButton,
@@ -220,8 +269,8 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
           >
             <Text style={styles.createTripButtonText}>
               {selectedActivitiesMap.size > 0
-                ? `Add to Trip (${selectedActivitiesMap.size})`
-                : 'Add to Trip'}
+                ? `Add Now to Trip (${selectedActivitiesMap.size})`
+                : 'Add Now to Trip'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -275,12 +324,21 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: Colors.PRIMARY,
   },
-  placeholder: {
-    width: 44, // Same width as close button to center title
+  wishlistHeaderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: Colors.WHITE,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2.84,
   },
   listContent: {
     padding: 16,
-    paddingBottom: 100, // Extra padding for the fixed button at bottom
+    paddingBottom: 160, // Extra padding for the two fixed buttons at bottom
   },
   emptyContainer: {
     flex: 1,
@@ -301,21 +359,22 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 16,
-    paddingBottom: 34, // Safe area padding
+    paddingBottom: 34,
     paddingTop: 12,
     backgroundColor: Colors.WHITE,
     borderTopWidth: 1,
     borderTopColor: '#e5e5e5',
-    flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   createTripButton: {
-    flex: 1,
     backgroundColor: '#F36406',
     borderRadius: 15,
     paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  addToWishlistButton: {
+    backgroundColor: '#FF9900',
   },
   createTripButtonDisabled: {
     backgroundColor: '#D1D5DB',

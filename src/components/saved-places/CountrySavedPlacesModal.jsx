@@ -11,8 +11,12 @@ import {
 import MapView, { Marker } from 'react-native-maps';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Feather from '@expo/vector-icons/Feather';
+import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../../constants/Colors';
 import { CitySavedPlacesModal } from './CitySavedPlacesModal';
+import { WISHLIST_STORAGE_KEY } from '../../../app/saved-places-wishlist';
 
 const { height: screenHeight } = Dimensions.get('window');
 const CARD_HEIGHT = screenHeight * 0.48;
@@ -62,14 +66,32 @@ const markerStyles = StyleSheet.create({
 });
 
 export function CountrySavedPlacesModal({ visible, onClose, countryName, places, onPlaceDeleted }) {
+  const router = useRouter();
   const mapRef = useRef(null);
   const [localPlaces, setLocalPlaces] = useState(places);
   const [selectedCityData, setSelectedCityData] = useState(null);
   const [cityModalVisible, setCityModalVisible] = useState(false);
+  const [wishlistCount, setWishlistCount] = useState(0);
 
   useEffect(() => {
     setLocalPlaces(places);
   }, [places]);
+
+  // Load wishlist count whenever the modal becomes visible
+  useEffect(() => {
+    if (!visible) return;
+    AsyncStorage.getItem(WISHLIST_STORAGE_KEY)
+      .then(stored => {
+        const items = stored ? JSON.parse(stored) : [];
+        setWishlistCount(items.length);
+      })
+      .catch(() => setWishlistCount(0));
+  }, [visible]);
+
+  const handleWishlistButtonPress = () => {
+    onClose();
+    router.push('/saved-places-wishlist');
+  };
 
   // Group localPlaces by city, compute centroid lat/lng from activity coordinates
   const citiesData = useMemo(() => {
@@ -209,6 +231,15 @@ export function CountrySavedPlacesModal({ visible, onClose, countryName, places,
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
 
+          {/* Floating wishlist count button (top right) */}
+          <TouchableOpacity
+            style={styles.wishlistFloatingButton}
+            onPress={handleWishlistButtonPress}
+            activeOpacity={0.8}
+          >
+            <Feather name="list" size={24} color="black" />
+          </TouchableOpacity>
+
           {/* Bottom card with rounded top corners overlapping the map */}
           <View style={styles.bottomCard}>
             {/* Drag indicator */}
@@ -285,6 +316,23 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    elevation: 3,
+  },
+  wishlistFloatingButton: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: Colors.WHITE,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2.84,
     elevation: 3,
   },
   // Bottom card that overlaps the map with rounded top corners

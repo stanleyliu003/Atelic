@@ -3,7 +3,7 @@ import { API } from 'aws-amplify';
 import { Auth } from 'aws-amplify';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import {
   ActivityIndicator,
   Dimensions,
@@ -24,6 +24,8 @@ import { CountrySavedPlacesModal } from '../../src/components/saved-places/Count
 import { CityCard } from '../../src/components/saved-places/CityCard';
 import { SavedPlacesSearchBar } from '../../src/components/saved-places/SavedPlacesSearchBar';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Feather from '@expo/vector-icons/Feather';
+import { WISHLIST_STORAGE_KEY } from '../saved-places-wishlist';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -42,6 +44,7 @@ export default function SavedPlaces() {
   const [carouselIndices, setCarouselIndices] = useState({}); // Track current index per city
   const [cityPhotoCounts, setCityPhotoCounts] = useState({}); // Track photo count per city
   const [searchQuery, setSearchQuery] = useState('');
+  const [wishlistCount, setWishlistCount] = useState(0);
   // Start at page 8 for onboarding flow, or skip to 14 if returning from IG_Demo
   const [emptyStatePage, setEmptyStatePage] = useState(
     searchParams.skipOnboarding === 'true' ? 14 : 8
@@ -183,6 +186,18 @@ export default function SavedPlaces() {
   useEffect(() => {
     fetchSavedPlaces();
   }, [fetchSavedPlaces]);
+
+  // Reload wishlist count whenever this tab gains focus
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.getItem(WISHLIST_STORAGE_KEY)
+        .then(stored => {
+          const items = stored ? JSON.parse(stored) : [];
+          setWishlistCount(items.length);
+        })
+        .catch(() => setWishlistCount(0));
+    }, [])
+  );
 
   useEffect(() => { totalCountRef.current = totalCount; }, [totalCount]);
 
@@ -443,6 +458,12 @@ export default function SavedPlaces() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Saved Places</Text>
+          <TouchableOpacity
+            style={styles.wishlistButton}
+            onPress={() => router.push('/saved-places-wishlist')}
+          >
+            <Feather name="list" size={24} color="black" />
+          </TouchableOpacity>
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.PRIMARY} />
@@ -457,6 +478,12 @@ export default function SavedPlaces() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Saved Places</Text>
+          <TouchableOpacity
+            style={styles.wishlistButton}
+            onPress={() => router.push('/saved-places-wishlist')}
+          >
+            <Feather name="list" size={24} color="black" />
+          </TouchableOpacity>
         </View>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={Colors.GRAY} />
@@ -473,6 +500,12 @@ export default function SavedPlaces() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Saved Places</Text>
+        <TouchableOpacity
+          style={styles.wishlistButton}
+          onPress={() => router.push('/saved-places-wishlist')}
+        >
+          <Feather name="list" size={24} color="black" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -636,6 +669,21 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit-bold',
     fontSize: 33,
     color: '#1F2937',
+  },
+  wishlistButton: {
+    position: 'absolute',
+    right: 25,
+    bottom: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: Colors.WHITE,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2.84,
   },
   headerSubtitle: {
     fontFamily: 'outfit',
