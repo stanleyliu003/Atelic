@@ -352,7 +352,7 @@ export default function ExploreScreen() {
         <TouchableOpacity onPress={() => router.push('/(tabs)/feed')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={28} color={Colors.BLACK} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Explore</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>Explore</Text>
       </View>
 
       <View style={styles.searchContainer}>
@@ -393,13 +393,17 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.LIGHT_GRAY,
   },
   backButton: {
-    marginRight: 12,
     padding: 2,
+    zIndex: 1,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 'bold',
     color: Colors.BLACK,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
   },
   searchContainer: {
     paddingHorizontal: 16,
