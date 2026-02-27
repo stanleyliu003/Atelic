@@ -3,6 +3,7 @@ import { useFonts } from 'expo-font';
 import { Stack, useRouter } from "expo-router";
 import { CreateTripProvider } from '../context/CreateTripContext';
 import { View, Text, Platform, Linking, InteractionManager } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef, useState } from 'react';
 import { Auth } from 'aws-amplify';
@@ -246,22 +247,24 @@ export default function RootLayout() {
   }
 
   return (
-    <CreateTripProvider>
-      <Stack screenOptions={{
-        headerShown: false
-      }}>
-        <Stack.Screen name="index" options={{
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <CreateTripProvider>
+        <Stack screenOptions={{
           headerShown: false
-        }}/>
-        <Stack.Screen name="(tabs)"/>
-        <Stack.Screen
-          name="edit-profile"
-          options={{
-            headerShown: false,
-            animation: 'fade',
-          }}
-        />
-      </Stack>
-    </CreateTripProvider>
+        }}>
+          <Stack.Screen name="index" options={{
+            headerShown: false
+          }}/>
+          <Stack.Screen name="(tabs)"/>
+          <Stack.Screen
+            name="edit-profile"
+            options={{
+              headerShown: false,
+              animation: 'fade',
+            }}
+          />
+        </Stack>
+      </CreateTripProvider>
+    </GestureHandlerRootView>
   );
 }

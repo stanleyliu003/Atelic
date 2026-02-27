@@ -68,6 +68,7 @@ export default function UsernameSetup() {
   // All users start at page 1, but returning users skip gender (page 3) and username (page 4)
   const [currentPage, setCurrentPage] = useState(1);
   const [username, setUsername] = useState('');
+  const [usernameCharError, setUsernameCharError] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date(new Date().setFullYear(new Date().getFullYear() - 25)));
@@ -365,9 +366,9 @@ export default function UsernameSetup() {
         return;
       }
 
-      const usernameRegex = /^[a-zA-Z0-9_]{5,20}$/;
+      const usernameRegex = /^[a-zA-Z0-9]{5,20}$/;
       if (!usernameRegex.test(username)) {
-        setError('Username must be 5-20 characters and contain only letters, numbers, and underscores.');
+        setError('Username must be 5-20 characters and contain only letters and numbers.');
         setIsLoading(false);
         return;
       }
@@ -627,9 +628,9 @@ export default function UsernameSetup() {
         setError('Username must be at least 5 characters long.');
         return;
       }
-      const usernameRegex = /^[a-zA-Z0-9_]{5,20}$/;
+      const usernameRegex = /^[a-zA-Z0-9]{5,20}$/;
       if (!usernameRegex.test(username)) {
-        setError('Username must be 5-20 characters and contain only letters, numbers, and underscores.');
+        setError('Username must be 5-20 characters and contain only letters and numbers.');
         return;
       }
 
@@ -667,9 +668,6 @@ export default function UsernameSetup() {
       }
     } else if (currentPage === 5) {
       // Page 5: Good company page - no validation required
-      setCurrentPage(7);
-    } else if (currentPage === 7) {
-      // Page 7: Use cases page - no validation required
       setCurrentPage(8);
     } else if (currentPage === 8) {
       // Page 8: Instagram capture image - go to first demo video
@@ -703,8 +701,8 @@ export default function UsernameSetup() {
     setError('');
 
     if (currentPage > 1) {
-      // Skip disabled Activity Preferences page (page 6)
-      if (currentPage === 7) {
+      // Skip disabled Activity Preferences page (page 6) and Use Cases page (page 7)
+      if (currentPage === 7 || currentPage === 8) {
         setCurrentPage(5);
         return;
       }
@@ -777,7 +775,7 @@ export default function UsernameSetup() {
       <ScrollView
         contentContainerStyle={{
           paddingTop: 60,
-          paddingBottom: currentPage === 7 ? 180 : (currentPage === 8 ? 120 : 40)
+          paddingBottom: currentPage === 8 ? 120 : 40
         }}
         keyboardShouldPersistTaps="handled"
         style={{ backgroundColor: Colors.WHITE }}
@@ -968,14 +966,23 @@ export default function UsernameSetup() {
                     style={styles.input}
                     placeholder="Enter Username (5-20 characters)"
                     value={username}
-                    onChangeText={(value) => setUsername(value)}
+                    onChangeText={(value) => {
+                      const cleaned = value.replace(/[^a-zA-Z0-9]/g, '');
+                      setUsernameCharError(cleaned.length < value.length);
+                      setUsername(cleaned);
+                    }}
                     autoCapitalize="none"
                     autoCorrect={false}
                     spellCheck={false}
                     autoFocus={true}
                     editable={!isLoading}
                   />
-                  {username.length > 0 && (username.length < 5 || username.length > 20) && (
+                  {usernameCharError && (
+                    <Text style={styles.validationText}>
+                      Username can only contain letters and numbers
+                    </Text>
+                  )}
+                  {!usernameCharError && username.length > 0 && (username.length < 5 || username.length > 20) && (
                     <Text style={styles.validationText}>
                       Username must be between 5-20 characters
                     </Text>
@@ -994,14 +1001,37 @@ export default function UsernameSetup() {
                   style={styles.imageBackground}
                   imageStyle={styles.backgroundImage}
                 />
+                <Text style={{
+                  fontFamily: 'outfit',
+                  fontSize: 12,
+                  color: Colors.GRAY,
+                  textAlign: 'center',
+                  lineHeight: 20,
+                  marginTop: 16,
+                }}>
+                  By continuing you agree to Atelic's{' '}
+                  <Text
+                    style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+                    onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
+                  >
+                    Terms of Service
+                  </Text>
+                  {' '}and acknowledge you've read our{' '}
+                  <Text
+                    style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
+                    onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
+                  >
+                    Privacy Policy
+                  </Text>
+                </Text>
               </>
             )}
 
             {/* Page 6: Activity Preferences (disabled) */}
             {currentPage === 6 && null}
 
-            {/* Page 7: Use Cases */}
-            {currentPage === 7 && (
+            {/* Page 7: Use Cases (disabled) */}
+            {/* {currentPage === 7 && (
               <>
                 <Text style={styles.title}>What do you plan to use Atelic for?</Text>
                 <Text style={styles.subtitle}>
@@ -1041,7 +1071,7 @@ export default function UsernameSetup() {
                   </View>
                 </View>
               </>
-            )}
+            )} */}
 
             {/* Page 8: Instagram Capture */}
             {currentPage === 8 && (
@@ -1119,7 +1149,7 @@ export default function UsernameSetup() {
             )}
 
             {/* Only show error and button for pages that DON'T have fixed bottom button */}
-            {![6, 7, 8, 9, 10, 11, 12, 13].includes(currentPage) && (
+            {![6, 8, 9, 10, 11, 12, 13].includes(currentPage) && (
               <>
                 {error ? (
                   <Text style={styles.errorText}>{error}</Text>
@@ -1151,36 +1181,9 @@ export default function UsernameSetup() {
         </View>
       </ScrollView>
 
-      {/* Fixed button at bottom for pages 6, 7, 8 */}
-      {[6, 7, 8].includes(currentPage) && (
+      {/* Fixed button at bottom for pages 6, 8 */}
+      {[6, 8].includes(currentPage) && (
         <View style={styles.fixedButtonContainer}>
-          {/* Terms and Privacy Policy - Only show on page 7 */}
-          {currentPage === 7 && (
-            <View style={{ marginBottom: 15, paddingHorizontal: 0 }}>
-              <Text style={{
-                fontFamily: 'outfit',
-                fontSize: 12,
-                color: Colors.GRAY,
-                textAlign: 'center',
-                lineHeight: 20
-              }}>
-                By continuing you agree to Atelic's{' '}
-                <Text
-                  style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-                  onPress={() => Linking.openURL('https://atelictravel.com/terms-of-service/')}
-                >
-                  Terms of Service
-                </Text>
-                {' '}and acknowledge you've read our{' '}
-                <Text
-                  style={{ fontFamily: 'outfit-bold', color: Colors.PRIMARY }}
-                  onPress={() => Linking.openURL('https://atelictravel.com/privacy-policy/')}
-                >
-                  Privacy Policy
-                </Text>
-              </Text>
-            </View>
-          )}
 
           {error ? (
             <Text style={[styles.errorText, { marginBottom: 10 }]}>{error}</Text>
