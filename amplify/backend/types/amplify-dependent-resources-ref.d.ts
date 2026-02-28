@@ -381,10 +381,6 @@ export type AmplifyDependentResourcesAttributes = {
       "Region": "string",
       "StreamArn": "string"
     },
-    "profilePhotos": {
-      "BucketName": "string",
-      "Region": "string"
-    },
     "regionImageStorage": {
       "Arn": "string",
       "Name": "string",

@@ -299,9 +299,9 @@ export default function UserProfileScreen() {
       }
 
       // Determine if viewer can see trips
-      // Trips are ONLY visible to confirmed followers (regardless of public/private status)
+      // Always load trips; non-followers will only see public trips (filtered in loadUserTrips)
       const isFollowingUser = userInSearch?.isFollowing || false;
-      const canView = isFollowingUser;
+      const canView = true;
 
       console.log('[UserProfile] Privacy check:', {
         isPrivateAccount: profile.isPrivateAccount,
