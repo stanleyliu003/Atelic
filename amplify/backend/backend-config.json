@@ -949,6 +949,39 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "nudgeScheduler": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "UserProfilesStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "TripStorage"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "sendPushNotification"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "syncUserProfilesAmplitudeBI": {
       "build": true,
       "dependsOn": [
@@ -1749,6 +1782,22 @@
         {
           "category": "function",
           "resourceName": "sendPushNotification"
+        }
+      ]
+    },
+    "AMPLIFY_function_nudgeScheduler_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "nudgeScheduler"
+        }
+      ]
+    },
+    "AMPLIFY_function_nudgeScheduler_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "nudgeScheduler"
         }
       ]
     },

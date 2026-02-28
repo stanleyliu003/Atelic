@@ -267,7 +267,7 @@ export default function Login() {
           });
           console.log('[Login] Updated device info for user:', preferredUsername, 'userID:', actualUsername);
         } catch (e) {
-          console.warn('[Login] Failed to update device info:', e?.errors || e?.message || e);
+          console.log('[Login] Failed to update device info:', e?.errors || e?.message || e);
         }
       })();
 

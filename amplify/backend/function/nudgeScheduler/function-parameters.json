@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "storage": {
+      "UserProfilesStorage": [
+        "read",
+        "update"
+      ],
+      "TripStorage": [
+        "read"
+      ]
+    },
+    "function": {
+      "sendPushNotification": [
+        "read"
+      ]
+    }
+  },
+  "lambdaLayers": []
+}

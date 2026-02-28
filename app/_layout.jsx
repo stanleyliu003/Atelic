@@ -34,6 +34,13 @@ export default function RootLayout() {
   const attRequestedRef = useRef(false);
   const [appReady, setAppReady] = useState(false);
 
+  // Mark app as ready once fonts have loaded so the ATT dialog can appear
+  useEffect(() => {
+    if (fontsLoaded) {
+      setAppReady(true);
+    }
+  }, [fontsLoaded]);
+
   // Request ATT permission after the app is fully visible on screen.
   // This is separated from AppsFlyer init to ensure the dialog appears
   // reliably on iPad (iPhone compatibility mode) and newer iPadOS versions.
@@ -200,8 +207,6 @@ export default function RootLayout() {
             const tripData = await retrieveTripFromCloud(userID, tripId);
 
             if (tripData) {
-              // Navigate to a special route that will handle loading the trip
-              // We pass the trip data as a stringified parameter
               router.push({
                 pathname: '/(tabs)/profile',
                 params: {
@@ -215,12 +220,26 @@ export default function RootLayout() {
             }
           } catch (error) {
             console.error('Error loading trip from notification:', error);
-            // Fallback to profile page
             router.push('/(tabs)/profile');
           }
         } else {
-          console.log('No tripId in notification, navigating to profile');
           router.push('/(tabs)/profile');
+        }
+      } else if (data && (data.type === 'open_day_warning' || data.type === 'planning_drift')) {
+        console.log('Nudge notification tapped, data:', data);
+
+        const tripId = data.tripId;
+
+        if (tripId) {
+          router.push({
+            pathname: '/(tabs)/feed',
+            params: {
+              autoLoadTripId: tripId,
+              fromNotification: 'true'
+            }
+          });
+        } else {
+          router.push('/(tabs)/feed');
         }
       } else {
         console.log('Notification tapped but no custom data available');

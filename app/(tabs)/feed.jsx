@@ -30,6 +30,7 @@ import * as customMutations from '../../src/graphql/customMutations';
 import { getUserProfile, getUserStatistics } from '../../src/graphql/queries';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { listUserTripsFromCloud, retrieveTripFromCloud, deleteUserAccountFromCloud } from '../../src/services/lambdaService';
+import { fireOpenDayWarningNudge, firePlanningDriftNudge } from '../../src/utils/nudgeTestUtils';
 import { deleteTrip } from '../../src/graphql/customMutations';
 import { removeCollaborator } from '../../src/graphql/mutations';
 import { clearAuthData } from '../../src/services/appGroupsService';
@@ -52,7 +53,7 @@ export default function FeedScreen() {
   const router = useRouter();
   const { restoreTripFromObject, setSelectedCity } = useCreateTrip();
   const params = useLocalSearchParams();
-  const hasAutoLoadedRef = useRef(false);
+  const lastNotificationTripIdRef = useRef(null);
 
   // User state
   const [fullName, setFullName] = useState('');
@@ -95,6 +96,7 @@ export default function FeedScreen() {
   const [isLoadingTripData, setIsLoadingTripData] = useState(false);
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
+  const [isNudgeTestModalVisible, setIsNudgeTestModalVisible] = useState(false);
   const [deleteAccountChecked, setDeleteAccountChecked] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
   const [profileModalView, setProfileModalView] = useState('profile'); // 'profile', 'followers', 'following'
@@ -603,26 +605,16 @@ export default function FeedScreen() {
     }
   }, [username, loadPendingRequestsCount]);
 
-  // Auto-load trip from notification
+  // Auto-load trip from notification tap
   useEffect(() => {
-    const autoLoadTripFromNotification = async () => {
-      if (hasAutoLoadedRef.current) return;
+    const { autoLoadTripId, fromNotification } = params;
 
-      const { autoLoadTripId, fromNotification } = params;
+    if (!autoLoadTripId || fromNotification !== 'true' || !currentUserID) return;
+    // Skip if this exact trip was already opened from a notification this session
+    if (autoLoadTripId === lastNotificationTripIdRef.current) return;
 
-      if (autoLoadTripId && fromNotification === 'true' && currentUserID) {
-        hasAutoLoadedRef.current = true;
-
-        try {
-          await handleLoadTrip(autoLoadTripId);
-        } catch (error) {
-          console.error('[Feed] Error auto-loading trip:', error);
-          Alert.alert('Error', 'Failed to load the trip you were invited to.');
-        }
-      }
-    };
-
-    autoLoadTripFromNotification();
+    lastNotificationTripIdRef.current = autoLoadTripId;
+    handleLoadTrip(autoLoadTripId);
   }, [params, currentUserID]);
 
   const onRefresh = useCallback(async () => {
@@ -1496,6 +1488,19 @@ export default function FeedScreen() {
               contentContainerStyle={styles.settingsScrollContent}
               showsVerticalScrollIndicator={false}
             >
+              {/* Test Nudges (Demo) */}
+              <TouchableOpacity
+                style={styles.settingsMenuItem}
+                onPress={() => {
+                  setIsSettingsModalVisible(false);
+                  setIsNudgeTestModalVisible(true);
+                }}
+              >
+                <Ionicons name="notifications-outline" size={24} color="#FF8C00" />
+                <Text style={[styles.settingsMenuItemText, { color: '#FF8C00' }]}>Test Nudges</Text>
+                <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
+              </TouchableOpacity>
+
               <View style={styles.settingsMenuItem}>
                 <Ionicons name="eye-off-outline" size={24} color={Colors.PRIMARY} />
                 <View style={styles.settingsMenuItemTextContainer}>
@@ -1575,6 +1580,52 @@ export default function FeedScreen() {
             </ScrollView>
           </TouchableOpacity>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Nudge Demo Modal */}
+      <Modal visible={isNudgeTestModalVisible} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '80%', gap: 12 }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 4 }}>Nudge Demo</Text>
+            <Text style={{ fontSize: 13, color: '#888', textAlign: 'center', marginBottom: 8 }}>Fires in ~1 second — background the app to see it</Text>
+            <TouchableOpacity
+              style={{ backgroundColor: '#FF8C00', borderRadius: 10, padding: 14, alignItems: 'center' }}
+              onPress={async () => {
+                const trip = ownedTrips[0];
+                const city = trip?.selectedCity || 'Tokyo';
+                const tripId = trip?.tripId || null;
+                setIsNudgeTestModalVisible(false);
+                await fireOpenDayWarningNudge(city, 2, tripId);
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '600' }}>Open Day Warning</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2 }}>
+                {ownedTrips[0]?.selectedCity || 'Tokyo'} — tap to open trip
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ backgroundColor: '#4A90D9', borderRadius: 10, padding: 14, alignItems: 'center' }}
+              onPress={async () => {
+                const trip = ownedTrips[0];
+                const city = trip?.selectedCity || 'Barcelona';
+                const tripId = trip?.tripId || null;
+                setIsNudgeTestModalVisible(false);
+                await firePlanningDriftNudge(city, tripId);
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '600' }}>Planning Drift</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2 }}>
+                {ownedTrips[0]?.selectedCity || 'Barcelona'} — tap to open trip
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ borderRadius: 10, padding: 12, alignItems: 'center' }}
+              onPress={() => setIsNudgeTestModalVisible(false)}
+            >
+              <Text style={{ color: '#888', fontWeight: '500' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
 
       {/* Delete Account Modal */}

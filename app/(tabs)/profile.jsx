@@ -2,7 +2,7 @@ import { Colors } from '../../constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking, PanResponder, Image, Switch } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Dimensions, RefreshControl, Linking, PanResponder, Image, Switch, Pressable } from 'react-native';
 import { Auth, API } from 'aws-amplify';
 import { useEffect, useState, useRef } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -19,6 +19,7 @@ import { ProfileHeader } from '../../src/components/profile/ProfileHeader';
 import { ProfileStats } from '../../src/components/profile/ProfileStats';
 import * as customQueries from '../../src/graphql/customQueries';
 import * as customMutations from '../../src/graphql/customMutations';
+import { fireOpenDayWarningNudge, firePlanningDriftNudge } from '../../src/utils/nudgeTestUtils';
 
 const { width: screenWidth } = Dimensions.get('window');
 const CAROUSEL_WIDTH = screenWidth - 52; // 25px padding each side + 1px border each side
@@ -50,6 +51,11 @@ export default function Profile() {
   const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false);
   const [deleteAccountChecked, setDeleteAccountChecked] = useState(false);
   const [leavingTripId, setLeavingTripId] = useState(null);
+
+  // Demo: nudge test modal (triple-tap "Profile" title)
+  const [isNudgeTestModalVisible, setIsNudgeTestModalVisible] = useState(false);
+  const nudgeTapCount = useRef(0);
+  const nudgeTapTimer = useRef(null);
 
   // Social features state
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);
@@ -737,11 +743,69 @@ export default function Profile() {
     setSharedTrips(prev => updatePhotos(prev));
   };
 
+  const handleProfileTitleTap = () => {
+    nudgeTapCount.current += 1;
+    if (nudgeTapTimer.current) clearTimeout(nudgeTapTimer.current);
+    nudgeTapTimer.current = setTimeout(() => { nudgeTapCount.current = 0; }, 800);
+    if (nudgeTapCount.current >= 3) {
+      nudgeTapCount.current = 0;
+      setIsNudgeTestModalVisible(true);
+    }
+  };
+
   return (
     <View style={styles.container}>
+      {/* Nudge Demo Modal */}
+      <Modal visible={isNudgeTestModalVisible} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '80%', gap: 12 }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 4 }}>Nudge Demo</Text>
+            <Text style={{ fontSize: 13, color: '#888', textAlign: 'center', marginBottom: 8 }}>Fires in ~1 second — background the app to see it</Text>
+            <TouchableOpacity
+              style={{ backgroundColor: '#FF8C00', borderRadius: 10, padding: 14, alignItems: 'center' }}
+              onPress={async () => {
+                const trip = ownedTrips[0];
+                const city = trip?.selectedCity || 'your trip';
+                const tripId = trip?.tripId || null;
+                setIsNudgeTestModalVisible(false);
+                await fireOpenDayWarningNudge(city, 2, tripId);
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '600' }}>Open Day Warning</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2 }}>
+                {ownedTrips[0]?.selectedCity || 'your trip'} — tap to open trip
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ backgroundColor: '#4A90D9', borderRadius: 10, padding: 14, alignItems: 'center' }}
+              onPress={async () => {
+                const trip = ownedTrips[0];
+                const city = trip?.selectedCity || 'your trip';
+                const tripId = trip?.tripId || null;
+                setIsNudgeTestModalVisible(false);
+                await firePlanningDriftNudge(city, tripId);
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '600' }}>Planning Drift</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2 }}>
+                {ownedTrips[0]?.selectedCity || 'your trip'} — tap to open trip
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ borderRadius: 10, padding: 12, alignItems: 'center' }}
+              onPress={() => setIsNudgeTestModalVisible(false)}
+            >
+              <Text style={{ color: '#888', fontWeight: '500' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Profile Header */}
       <View style={styles.header}>
-        <Text style={styles.headerText}>Profile</Text>
+        <Pressable onPress={handleProfileTitleTap} hitSlop={16}>
+          <Text style={styles.headerText}>Profile</Text>
+        </Pressable>
         <View style={styles.headerRight}>
           {/* Follow Requests Button - Always visible */}
           <TouchableOpacity
@@ -1360,6 +1424,19 @@ export default function Profile() {
 
             {/* Settings Content */}
             <ScrollView style={styles.modalContent}>
+              {/* Test Nudges (Demo) */}
+              <TouchableOpacity
+                style={styles.settingsMenuItem}
+                onPress={() => {
+                  setIsSettingsModalVisible(false);
+                  setIsNudgeTestModalVisible(true);
+                }}
+              >
+                <Ionicons name="notifications-outline" size={24} color="#FF8C00" />
+                <Text style={[styles.settingsMenuItemText, { color: '#FF8C00' }]}>Test Nudges</Text>
+                <Ionicons name="chevron-forward" size={20} color={Colors.GRAY} />
+              </TouchableOpacity>
+
               {/* Account Privacy Toggle */}
               <View style={styles.settingsMenuItem}>
                 <Ionicons name="eye-off-outline" size={24} color={Colors.PRIMARY} />
