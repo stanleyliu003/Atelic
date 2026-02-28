@@ -1823,6 +1823,7 @@ export default function FeedScreen() {
                   </TouchableOpacity>
                 ) : null;
               })()}
+              <View style={{ height: 40 }} />
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -2476,7 +2477,12 @@ export default function FeedScreen() {
 
           {/* Edit Profile View */}
           {profileModalView === 'edit' && (
-            <ScrollView style={styles.editProfileContainer} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={styles.editProfileContainer}
+              contentContainerStyle={styles.editProfileScrollContent}
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets={true}
+            >
               {/* Profile Photo */}
               <View style={styles.editProfilePhotoSection}>
                 <TouchableOpacity onPress={handleChangeProfilePhoto} disabled={isUploadingPhoto}>
@@ -2785,13 +2791,13 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalSpacer: {
-    flex: 0.67,
+    flex: 0.6,
   },
   menuModal: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    flex: 0.33,
+    flex: 0.4,
     paddingTop: 8,
     elevation: 5,
     shadowColor: '#000',
@@ -3330,6 +3336,9 @@ const styles = StyleSheet.create({
   editProfileContainer: {
     flex: 1,
     paddingHorizontal: 20,
+  },
+  editProfileScrollContent: {
+    paddingBottom: 150,
   },
   editProfilePhotoSection: {
     alignItems: 'center',
