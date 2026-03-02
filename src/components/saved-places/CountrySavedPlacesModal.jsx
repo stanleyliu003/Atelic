@@ -316,6 +316,7 @@ export function CountrySavedPlacesModal({ onClose, countryName, places, onPlaceD
                     hideRouteInfo={true}
                     deleteSavedPlace={true}
                     showFavoritesButton={true}
+                    initialIsFavorite={place.isFavorite === true}
                   />
                 );
               })}

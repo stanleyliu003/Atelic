@@ -142,6 +142,7 @@ export function CitySavedPlacesModal({ onClose, cityName, places, onPlaceDeleted
         hideRouteInfo={true}
         deleteSavedPlace={true}
         showFavoritesButton={true}
+        initialIsFavorite={item.isFavorite === true}
       />
     );
   };

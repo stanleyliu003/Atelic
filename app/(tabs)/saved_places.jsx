@@ -23,7 +23,6 @@ import { CityCard } from '../../src/components/saved-places/CityCard';
 import { SavedPlacesSearchBar } from '../../src/components/saved-places/SavedPlacesSearchBar';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
-import { FAVORITES_STORAGE_KEY } from '../saved-places-favorites';
 import { CITY_PLACES_TEMP_KEY } from '../saved-places-city';
 import { COUNTRY_PLACES_TEMP_KEY } from '../saved-places-country';
 
@@ -41,7 +40,6 @@ export default function SavedPlaces() {
   const [carouselIndices, setCarouselIndices] = useState({}); // Track current index per city
   const [cityPhotoCounts, setCityPhotoCounts] = useState({}); // Track photo count per city
   const [searchQuery, setSearchQuery] = useState('');
-  const [favoritesCount, setFavoritesCount] = useState(0);
   const hasInitiallyLoaded = useRef(false);
   // Start at page 8 for onboarding flow, or skip to 14 if returning from IG_Demo
   const [emptyStatePage, setEmptyStatePage] = useState(
@@ -188,13 +186,6 @@ export default function SavedPlaces() {
   // Reload data whenever this tab gains focus (skips initial mount since useEffect handles that)
   useFocusEffect(
     useCallback(() => {
-      AsyncStorage.getItem(FAVORITES_STORAGE_KEY)
-        .then(stored => {
-          const items = stored ? JSON.parse(stored) : [];
-          setFavoritesCount(items.length);
-        })
-        .catch(() => setFavoritesCount(0));
-
       if (!hasInitiallyLoaded.current) {
         hasInitiallyLoaded.current = true;
         return;

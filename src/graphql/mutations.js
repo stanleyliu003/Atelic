@@ -168,6 +168,24 @@ export const deleteSavedPlace = /* GraphQL */ `
     }
   }
 `;
+export const toggleFavorite = /* GraphQL */ `
+  mutation ToggleFavorite(
+    $userID: String!
+    $savedPlaceId: String!
+    $isFavorite: Boolean!
+  ) {
+    toggleFavorite(
+      userID: $userID
+      savedPlaceId: $savedPlaceId
+      isFavorite: $isFavorite
+    ) {
+      userID
+      savedPlaceId
+      isFavorite
+      __typename
+    }
+  }
+`;
 export const deleteSavedCity = /* GraphQL */ `
   mutation DeleteSavedCity($userID: String!, $city: String!) {
     deleteSavedCity(userID: $userID, city: $city) {
@@ -298,6 +316,7 @@ export const addCollaborator = /* GraphQL */ `
         __typename
       }
       deletedSavedPlaceIds
+      isPublic
       __typename
     }
   }
@@ -383,6 +402,7 @@ export const removeCollaborator = /* GraphQL */ `
         __typename
       }
       deletedSavedPlaceIds
+      isPublic
       __typename
     }
   }
@@ -472,6 +492,7 @@ export const updateCollaboratorRole = /* GraphQL */ `
         __typename
       }
       deletedSavedPlaceIds
+      isPublic
       __typename
     }
   }
@@ -561,6 +582,7 @@ export const updateUserProfile = /* GraphQL */ `
       notificationsEnabled
       devicePushToken
       snsEndpointArn
+      admin_permission
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate

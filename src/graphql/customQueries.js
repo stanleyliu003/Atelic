@@ -304,6 +304,7 @@ export const getSavedPlacesDetailed = /* GraphQL */ `
         city
         country
         savedAt
+        isFavorite
         __typename
       }
       cities {

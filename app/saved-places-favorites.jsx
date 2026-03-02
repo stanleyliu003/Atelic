@@ -17,11 +17,13 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { API, Auth } from 'aws-amplify';
 import { Colors } from '../constants/Colors';
 import { ActivityCard } from '../src/components/trip-view/activity/activity_card';
 import { ActivityDetailView } from '../src/components/trip-view/description_card';
+import { getSavedPlacesDetailed } from '../src/graphql/customQueries';
+import { toggleFavorite as toggleFavoriteMutation } from '../src/graphql/mutations';
 
-export const FAVORITES_STORAGE_KEY = '@atelic/saved_places_favorites';
 const ADD_TO_TRIP_STORAGE_KEY = '@atelic/add_to_trip_activities';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -128,8 +130,13 @@ export default function SavedPlacesFavorites() {
 
   const loadFavorites = async () => {
     try {
-      const stored = await AsyncStorage.getItem(FAVORITES_STORAGE_KEY);
-      setFavoritesItems(stored ? JSON.parse(stored) : []);
+      const user = await Auth.currentAuthenticatedUser();
+      const result = await API.graphql({
+        query: getSavedPlacesDetailed,
+        variables: { userID: user.username },
+      });
+      const allPlaces = result.data?.getSavedPlaces?.savedPlaces ?? [];
+      setFavoritesItems(allPlaces.filter(p => p.isFavorite === true));
     } catch (e) {
       console.error('[SavedPlacesFavorites] Error loading favorites:', e);
     }
@@ -138,7 +145,7 @@ export default function SavedPlacesFavorites() {
   const sections = useMemo(() => {
     const cityMap = new Map();
     favoritesItems.forEach((item, index) => {
-      const city = item.cityName || 'Unknown';
+      const city = item.city || item.country || 'Unknown';
       if (!cityMap.has(city)) cityMap.set(city, []);
       cityMap.get(city).push({ ...item, globalIndex: index });
     });
@@ -222,33 +229,43 @@ export default function SavedPlacesFavorites() {
 
   const handleRemoveFavorite = async (globalIndex) => {
     const removedItem = favoritesItems[globalIndex];
-    const removedId = removedItem ? getActivityId(removedItem) : null;
-    const newItems = favoritesItems.filter((_, i) => i !== globalIndex);
-    setFavoritesItems(newItems);
-    if (removedId) {
-      setSelectedIds(prev => {
-        const next = new Set(prev);
-        next.delete(removedId);
-        return next;
-      });
-    }
+    if (!removedItem) return;
+    const removedId = getActivityId(removedItem);
+    // Optimistic UI update
+    setFavoritesItems(prev => prev.filter((_, i) => i !== globalIndex));
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.delete(removedId);
+      return next;
+    });
     try {
-      await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newItems));
+      const user = await Auth.currentAuthenticatedUser();
+      await API.graphql({
+        query: toggleFavoriteMutation,
+        variables: { userID: user.username, savedPlaceId: removedItem.savedPlaceId, isFavorite: false },
+      });
     } catch (e) {
       console.error('[SavedPlacesFavorites] Error removing favorite:', e);
+      loadFavorites(); // revert on failure
     }
   };
 
   const handleAddToTrip = async () => {
     if (selectedIds.size === 0) return;
-    const activities = favoritesItems
-      .filter(item => selectedIds.has(getActivityId(item)))
-      .map(item => item.activity)
-      .filter(Boolean);
+    const selectedItems = favoritesItems.filter(item => selectedIds.has(getActivityId(item)));
+    const activities = selectedItems.map(item => item.activity).filter(Boolean);
     try {
       await AsyncStorage.setItem(ADD_TO_TRIP_STORAGE_KEY, JSON.stringify(activities));
-      const newItems = favoritesItems.filter(item => !selectedIds.has(getActivityId(item)));
-      await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newItems));
+      // Un-favorite each selected item in the cloud
+      const user = await Auth.currentAuthenticatedUser();
+      await Promise.all(
+        selectedItems.map(item =>
+          API.graphql({
+            query: toggleFavoriteMutation,
+            variables: { userID: user.username, savedPlaceId: item.savedPlaceId, isFavorite: false },
+          })
+        )
+      );
       router.push('/add-to-trip');
     } catch (e) {
       console.error('[SavedPlacesFavorites] Error adding to trip:', e);
@@ -276,9 +293,11 @@ export default function SavedPlacesFavorites() {
     if (!activity) return null;
     const id = getActivityId(item);
     const isSelected = selectedIds.has(id);
+    // Attach savedPlaceId to activity so ActivityCard can call toggleFavorite
+    const activityWithPlaceId = { ...activity, savedPlaceId: item.savedPlaceId };
     return (
       <ActivityCard
-        activity={activity}
+        activity={activityWithPlaceId}
         isSelected={isSelected}
         onPress={() => handleItemPress(item)}
         onDescriptionCardPress={() => handleDescriptionCardPress(activity)}
@@ -290,7 +309,15 @@ export default function SavedPlacesFavorites() {
         useInlineSelectionLayout={true}
         index={item.globalIndex}
         showFavoritesButton={true}
-        onFavoritesToggle={loadFavorites}
+        initialIsFavorite={true}
+        onFavoritesToggle={() => {
+          setFavoritesItems(prev => prev.filter(f => f.savedPlaceId !== item.savedPlaceId));
+          setSelectedIds(prev => {
+            const next = new Set(prev);
+            next.delete(getActivityId(item));
+            return next;
+          });
+        }}
       />
     );
   };
@@ -352,7 +379,7 @@ export default function SavedPlacesFavorites() {
             keyExtractor={(item, index) => `favorites-item-${item.globalIndex ?? index}`}
             renderItem={renderItem}
             renderSectionHeader={renderSectionHeader}
-            contentContainerStyle={{ paddingBottom: insets.bottom + BUTTON_AREA_HEIGHT }}
+            contentContainerStyle={{ paddingBottom: 16 }}
             showsVerticalScrollIndicator={false}
             stickySectionHeadersEnabled={false}
             style={styles.sectionList}
@@ -369,21 +396,21 @@ export default function SavedPlacesFavorites() {
             </View>
           </View>
         )}
-      </Animated.View>
 
-      {/* Add Now to Trip — floats at the very bottom, above the panel */}
-      {selectedIds.size > 0 && (
-        <View style={[styles.bottomButtonContainer, { bottom: insets.bottom + 16 }]}>
-          <TouchableOpacity
-            style={styles.addToTripButton}
-            onPress={handleAddToTrip}
-          >
-            <Text style={styles.addToTripButtonText}>
-              {`Add Now to Trip (${selectedIds.size})`}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
+        {/* Add Now to Trip — visible at the bottom of the panel only when items are selected */}
+        {selectedIds.size > 0 && (
+          <View style={[styles.bottomButtonContainer, { paddingBottom: insets.bottom + 12 }]}>
+            <TouchableOpacity
+              style={styles.addToTripButton}
+              onPress={handleAddToTrip}
+            >
+              <Text style={styles.addToTripButtonText}>
+                {`Add Now to Trip (${selectedIds.size})`}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </Animated.View>
 
       {/* Description Card Modal */}
       <Modal
@@ -503,7 +530,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: BUTTON_AREA_HEIGHT,
   },
   emptyText: {
     fontFamily: 'outfit-medium',
@@ -518,10 +544,11 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   bottomButtonContainer: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    zIndex: 20,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#e5e5e5',
   },
   addToTripButton: {
     backgroundColor: '#F36406',
@@ -529,11 +556,6 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 5,
   },
   addToTripButtonText: {
     color: 'white',

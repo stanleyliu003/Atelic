@@ -965,6 +965,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "toggleFavorite": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "SavedPlacesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "unfollowUser": {
       "build": true,
       "dependsOn": [
@@ -1773,6 +1789,22 @@
         {
           "category": "function",
           "resourceName": "syncUserProfilesAmplitudeBI"
+        }
+      ]
+    },
+    "AMPLIFY_function_toggleFavorite_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "toggleFavorite"
+        }
+      ]
+    },
+    "AMPLIFY_function_toggleFavorite_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "toggleFavorite"
         }
       ]
     },

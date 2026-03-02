@@ -10,9 +10,8 @@ import { formatDistance, formatDuration } from '../../../utils/routeUtils';
 import { ActivityImage } from './activity_image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { AddNotesModal } from './add_notes_modal';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const FAVORITES_STORAGE_KEY = '@atelic/saved_places_favorites';
+import { API, Auth } from 'aws-amplify';
+import { toggleFavorite as toggleFavoriteMutation } from '../../../graphql/mutations';
 
 // Helper function to convert 24-hour time to 12-hour format with AM/PM
 const format12Hour = (time24?: string): string => {
@@ -50,6 +49,7 @@ interface ActivityCardProps {
   onSwipeDelete?: (activity: Activity) => void; // Callback for swipe-left-to-delete
   deleteSavedPlace?: boolean; // When true (e.g. CitySavedPlacesModal), reduce swipeDeleteAction marginBottom to 10
   showFavoritesButton?: boolean; // Show heart button to toggle activity in/out of favorites
+  initialIsFavorite?: boolean; // Initial favorite state loaded from cloud
   onFavoritesToggle?: () => void; // Called after favorites state changes (e.g. to reload parent list)
 }
 
@@ -105,37 +105,33 @@ export function ActivityCard({
   onSwipeDelete,
   deleteSavedPlace = false,
   showFavoritesButton = false,
+  initialIsFavorite = false,
   onFavoritesToggle,
 }: ActivityCardProps) {
   const [notesModalVisible, setNotesModalVisible] = useState(false);
-  const [isInFavorites, setIsInFavorites] = useState(false);
+  const [isInFavorites, setIsInFavorites] = useState(initialIsFavorite);
 
   useEffect(() => {
-    if (!showFavoritesButton || !activity.place_id) return;
-    AsyncStorage.getItem(FAVORITES_STORAGE_KEY)
-      .then(stored => {
-        const items = stored ? JSON.parse(stored) : [];
-        setIsInFavorites(items.some((item: any) => item.activity?.place_id === activity.place_id));
-      })
-      .catch(() => {});
-  }, [showFavoritesButton, activity.place_id]);
+    setIsInFavorites(initialIsFavorite);
+  }, [initialIsFavorite]);
 
   const handleFavoritesToggle = async () => {
+    if (!activity.savedPlaceId) {
+      console.warn('[ActivityCard] Cannot toggle favorite: savedPlaceId missing');
+      return;
+    }
+    const next = !isInFavorites;
+    setIsInFavorites(next); // optimistic
     try {
-      const stored = await AsyncStorage.getItem(FAVORITES_STORAGE_KEY);
-      const items = stored ? JSON.parse(stored) : [];
-      if (isInFavorites) {
-        const newItems = items.filter((item: any) => item.activity?.place_id !== activity.place_id);
-        await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newItems));
-        setIsInFavorites(false);
-      } else {
-        const newItems = [...items, { activity, cityName: activity.city }];
-        await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newItems));
-        setIsInFavorites(true);
-      }
+      const user = await Auth.currentAuthenticatedUser();
+      await API.graphql({
+        query: toggleFavoriteMutation,
+        variables: { userID: user.username, savedPlaceId: activity.savedPlaceId, isFavorite: next },
+      });
       onFavoritesToggle?.();
     } catch (e) {
-      console.error('[ActivityCard] Error toggling favorites:', e);
+      console.error('[ActivityCard] Error toggling favorite:', e);
+      setIsInFavorites(!next); // revert on failure
     }
   };
   const swipeableRef = useRef<Swipeable>(null);
