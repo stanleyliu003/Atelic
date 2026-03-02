@@ -10,6 +10,9 @@ import { formatDistance, formatDuration } from '../../../utils/routeUtils';
 import { ActivityImage } from './activity_image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { AddNotesModal } from './add_notes_modal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const FAVORITES_STORAGE_KEY = '@atelic/saved_places_favorites';
 
 // Helper function to convert 24-hour time to 12-hour format with AM/PM
 const format12Hour = (time24?: string): string => {
@@ -46,6 +49,8 @@ interface ActivityCardProps {
   currentUserRole?: 'owner' | 'editor' | 'viewer'; // User's role for permission control
   onSwipeDelete?: (activity: Activity) => void; // Callback for swipe-left-to-delete
   deleteSavedPlace?: boolean; // When true (e.g. CitySavedPlacesModal), reduce swipeDeleteAction marginBottom to 10
+  showFavoritesButton?: boolean; // Show heart button to toggle activity in/out of favorites
+  onFavoritesToggle?: () => void; // Called after favorites state changes (e.g. to reload parent list)
 }
 
 // Helper function to convert our travel modes to Google Maps travel modes
@@ -99,8 +104,40 @@ export function ActivityCard({
   currentUserRole,
   onSwipeDelete,
   deleteSavedPlace = false,
+  showFavoritesButton = false,
+  onFavoritesToggle,
 }: ActivityCardProps) {
   const [notesModalVisible, setNotesModalVisible] = useState(false);
+  const [isInFavorites, setIsInFavorites] = useState(false);
+
+  useEffect(() => {
+    if (!showFavoritesButton || !activity.place_id) return;
+    AsyncStorage.getItem(FAVORITES_STORAGE_KEY)
+      .then(stored => {
+        const items = stored ? JSON.parse(stored) : [];
+        setIsInFavorites(items.some((item: any) => item.activity?.place_id === activity.place_id));
+      })
+      .catch(() => {});
+  }, [showFavoritesButton, activity.place_id]);
+
+  const handleFavoritesToggle = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(FAVORITES_STORAGE_KEY);
+      const items = stored ? JSON.parse(stored) : [];
+      if (isInFavorites) {
+        const newItems = items.filter((item: any) => item.activity?.place_id !== activity.place_id);
+        await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newItems));
+        setIsInFavorites(false);
+      } else {
+        const newItems = [...items, { activity, cityName: activity.city }];
+        await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newItems));
+        setIsInFavorites(true);
+      }
+      onFavoritesToggle?.();
+    } catch (e) {
+      console.error('[ActivityCard] Error toggling favorites:', e);
+    }
+  };
   const swipeableRef = useRef<Swipeable>(null);
   const dragValueRef = useRef(0);
   const dragXListenerRef = useRef<{ dragX: any; id: string } | null>(null);
@@ -302,14 +339,28 @@ export function ActivityCard({
                   </View>
                 )}
                 {activity.primary_type_display_name && (
-                  <View style={styles.typesContainer}>
+                  <View style={[styles.typesContainer, showFavoritesButton && styles.typesContainerWithHeart]}>
                     <Text
-                      style={[styles.typesText, disabled && styles.disabledText]}
+                      style={[styles.typesText, disabled && styles.disabledText, showFavoritesButton && { flexShrink: 1 }]}
                       numberOfLines={1}
                       ellipsizeMode="tail"
                     >
                       {activity.primary_type_display_name}
                     </Text>
+                    {showFavoritesButton && (
+                      <TouchableOpacity
+                        onPress={handleFavoritesToggle}
+                        style={styles.heartButton}
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <FontAwesome
+                          name={isInFavorites ? 'heart' : 'heart-o'}
+                          size={16}
+                          color={isInFavorites ? '#EF4444' : Colors.GRAY}
+                        />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 )}
                 {/*
@@ -680,6 +731,14 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit',
     fontSize: 12,
     color: '#94A3B8',
+  },
+  typesContainerWithHeart: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  heartButton: {
+    padding: 2,
   },
   swipeDeleteAction: {
     backgroundColor: '#EF4444',

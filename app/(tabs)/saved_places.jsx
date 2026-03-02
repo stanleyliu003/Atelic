@@ -23,7 +23,7 @@ import { CityCard } from '../../src/components/saved-places/CityCard';
 import { SavedPlacesSearchBar } from '../../src/components/saved-places/SavedPlacesSearchBar';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
-import { WISHLIST_STORAGE_KEY } from '../saved-places-wishlist';
+import { FAVORITES_STORAGE_KEY } from '../saved-places-favorites';
 import { CITY_PLACES_TEMP_KEY } from '../saved-places-city';
 import { COUNTRY_PLACES_TEMP_KEY } from '../saved-places-country';
 
@@ -41,7 +41,7 @@ export default function SavedPlaces() {
   const [carouselIndices, setCarouselIndices] = useState({}); // Track current index per city
   const [cityPhotoCounts, setCityPhotoCounts] = useState({}); // Track photo count per city
   const [searchQuery, setSearchQuery] = useState('');
-  const [wishlistCount, setWishlistCount] = useState(0);
+  const [favoritesCount, setFavoritesCount] = useState(0);
   const hasInitiallyLoaded = useRef(false);
   // Start at page 8 for onboarding flow, or skip to 14 if returning from IG_Demo
   const [emptyStatePage, setEmptyStatePage] = useState(
@@ -188,12 +188,12 @@ export default function SavedPlaces() {
   // Reload data whenever this tab gains focus (skips initial mount since useEffect handles that)
   useFocusEffect(
     useCallback(() => {
-      AsyncStorage.getItem(WISHLIST_STORAGE_KEY)
+      AsyncStorage.getItem(FAVORITES_STORAGE_KEY)
         .then(stored => {
           const items = stored ? JSON.parse(stored) : [];
-          setWishlistCount(items.length);
+          setFavoritesCount(items.length);
         })
-        .catch(() => setWishlistCount(0));
+        .catch(() => setFavoritesCount(0));
 
       if (!hasInitiallyLoaded.current) {
         hasInitiallyLoaded.current = true;
@@ -410,8 +410,8 @@ export default function SavedPlaces() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Saved Places</Text>
           <TouchableOpacity
-            style={styles.wishlistButton}
-            onPress={() => router.push('/saved-places-wishlist')}
+            style={styles.favoritesButton}
+            onPress={() => router.push('/saved-places-favorites')}
           >
             <Feather name="heart" size={24} color={Colors.GRAY} />
           </TouchableOpacity>
@@ -430,8 +430,8 @@ export default function SavedPlaces() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Saved Places</Text>
           <TouchableOpacity
-            style={styles.wishlistButton}
-            onPress={() => router.push('/saved-places-wishlist')}
+            style={styles.favoritesButton}
+            onPress={() => router.push('/saved-places-favorites')}
           >
             <Feather name="heart" size={24} color={Colors.GRAY} />
           </TouchableOpacity>
@@ -452,8 +452,8 @@ export default function SavedPlaces() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Saved Places</Text>
         <TouchableOpacity
-          style={styles.wishlistButton}
-          onPress={() => router.push('/saved-places-wishlist')}
+          style={styles.favoritesButton}
+          onPress={() => router.push('/saved-places-favorites')}
         >
           <Feather name="heart" size={24} color={Colors.GRAY} />
         </TouchableOpacity>
@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
     fontSize: 33,
     color: '#1F2937',
   },
-  wishlistButton: {
+  favoritesButton: {
     position: 'absolute',
     right: 25,
     bottom: 15,

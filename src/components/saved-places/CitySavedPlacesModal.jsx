@@ -18,7 +18,6 @@ import { API, Auth } from 'aws-amplify';
 import { deleteSavedPlace } from '../../graphql/mutations';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WISHLIST_STORAGE_KEY } from '../../../app/saved-places-wishlist';
 
 const ADD_TO_TRIP_STORAGE_KEY = '@atelic/add_to_trip_activities';
 
@@ -29,22 +28,10 @@ export function CitySavedPlacesModal({ onClose, cityName, places, onPlaceDeleted
   const [localPlaces, setLocalPlaces] = useState(places);
   // Map of savedPlaceId -> activityWithDetails for selected activities
   const [selectedActivitiesMap, setSelectedActivitiesMap] = useState(new Map());
-  const [wishlistCount, setWishlistCount] = useState(0);
 
   useEffect(() => {
-    // This effect syncs the local state when the places prop changes.
     setLocalPlaces(places);
   }, [places]);
-
-  // Load wishlist count on mount
-  useEffect(() => {
-    AsyncStorage.getItem(WISHLIST_STORAGE_KEY)
-      .then(stored => {
-        const items = stored ? JSON.parse(stored) : [];
-        setWishlistCount(items.length);
-      })
-      .catch(() => setWishlistCount(0));
-  }, []);
 
   useEffect(() => {
     setSelectedActivitiesMap(new Map());
@@ -70,27 +57,9 @@ export function CitySavedPlacesModal({ onClose, cityName, places, onPlaceDeleted
     router.push('/add-to-trip');
   };
 
-  const handleAddToWishlist = async () => {
-    if (selectedActivitiesMap.size === 0) return;
-    const activities = Array.from(selectedActivitiesMap.values());
-    try {
-      const stored = await AsyncStorage.getItem(WISHLIST_STORAGE_KEY);
-      const existing = stored ? JSON.parse(stored) : [];
-      const newItems = activities.map(activity => ({ activity, cityName }));
-      const merged = [...existing, ...newItems];
-      await AsyncStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(merged));
-      setWishlistCount(merged.length);
-      setSelectedActivitiesMap(new Map());
-      onClose();
-      router.push('/saved-places-wishlist');
-    } catch (e) {
-      console.error('[CitySavedPlacesModal] Error adding to wishlist:', e);
-    }
-  };
-
-  const handleWishlistButtonPress = () => {
+  const handleFavoritesButtonPress = () => {
     onClose();
-    router.push('/saved-places-wishlist');
+    router.push('/saved-places-favorites');
   };
 
   const handleActivityPress = (activity) => {
@@ -172,6 +141,7 @@ export function CitySavedPlacesModal({ onClose, cityName, places, onPlaceDeleted
         hideNotesButton={true}
         hideRouteInfo={true}
         deleteSavedPlace={true}
+        showFavoritesButton={true}
       />
     );
   };
@@ -189,8 +159,8 @@ export function CitySavedPlacesModal({ onClose, cityName, places, onPlaceDeleted
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{cityName}</Text>
           <TouchableOpacity
-            onPress={handleWishlistButtonPress}
-            style={styles.wishlistHeaderButton}
+            onPress={handleFavoritesButtonPress}
+            style={styles.favoritesHeaderButton}
           >
             <Feather name="heart" size={24} color={Colors.GRAY} />
           </TouchableOpacity>
@@ -214,21 +184,6 @@ export function CitySavedPlacesModal({ onClose, cityName, places, onPlaceDeleted
 
         {/* Action Buttons */}
         <View style={styles.createTripButtonContainer}>
-          <TouchableOpacity
-            style={[
-              styles.createTripButton,
-              styles.addToWishlistButton,
-              selectedActivitiesMap.size === 0 && styles.createTripButtonDisabled,
-            ]}
-            onPress={handleAddToWishlist}
-            disabled={selectedActivitiesMap.size === 0}
-          >
-            <Text style={styles.createTripButtonText}>
-              {selectedActivitiesMap.size > 0
-                ? `Add to Wishlist`
-                : 'Add to Wishlist'}
-            </Text>
-          </TouchableOpacity>
           <TouchableOpacity
             style={[
               styles.createTripButton,
@@ -293,7 +248,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: Colors.PRIMARY,
   },
-  wishlistHeaderButton: {
+  favoritesHeaderButton: {
     backgroundColor: 'white',
     borderRadius: 25,
     width: 50,
@@ -308,7 +263,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 160, // Extra padding for the two fixed buttons at bottom
+    paddingBottom: 100,
   },
   emptyContainer: {
     flex: 1,
@@ -342,9 +297,6 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  addToWishlistButton: {
-    backgroundColor: '#FF9900',
   },
   createTripButtonDisabled: {
     backgroundColor: '#D1D5DB',

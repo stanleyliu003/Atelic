@@ -3,6 +3,8 @@ import {
   Animated,
   Dimensions,
   FlatList,
+  Modal,
+  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -18,8 +20,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API, Auth } from 'aws-amplify';
 import { Colors } from '../../../constants/Colors';
 import { ActivityCard } from '../trip-view/activity/activity_card';
+import { ActivityDetailView } from '../trip-view/description_card';
 import { deleteSavedPlace as deleteSavedPlaceMutation } from '../../graphql/mutations';
-import { WISHLIST_STORAGE_KEY } from '../../../app/saved-places-wishlist';
+
+const ADD_TO_TRIP_STORAGE_KEY = '@atelic/add_to_trip_activities';
 
 const { height: screenHeight } = Dimensions.get('window');
 const HEIGHT_STATES = [0.30, 0.65, 0.90];
@@ -75,8 +79,10 @@ export function CountrySavedPlacesModal({ onClose, countryName, places, onPlaceD
   const mapRef = useRef(null);
   const [localPlaces, setLocalPlaces] = useState(places);
   const [expandedCities, setExpandedCities] = useState(new Set());
-  const [wishlistCount, setWishlistCount] = useState(0);
   const [currentHeightState, setCurrentHeightState] = useState(DEFAULT_HEIGHT_STATE);
+  const [selectedActivitiesMap, setSelectedActivitiesMap] = useState(new Map());
+  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [descriptionCardVisible, setDescriptionCardVisible] = useState(false);
 
   // Animated value for smooth panel height transitions
   const panelHeightAnim = useRef(
@@ -101,19 +107,39 @@ export function CountrySavedPlacesModal({ onClose, countryName, places, onPlaceD
     }).start();
   }, [currentHeightState]);
 
-  // Load wishlist count on mount
-  useEffect(() => {
-    AsyncStorage.getItem(WISHLIST_STORAGE_KEY)
-      .then(stored => {
-        const items = stored ? JSON.parse(stored) : [];
-        setWishlistCount(items.length);
-      })
-      .catch(() => setWishlistCount(0));
-  }, []);
-
-  const handleWishlistButtonPress = () => {
+  const handleFavoritesButtonPress = () => {
     onClose();
-    router.push('/saved-places-wishlist');
+    router.push('/saved-places-favorites');
+  };
+
+  const handleToggleSelection = (activity) => {
+    setSelectedActivitiesMap(prev => {
+      const newMap = new Map(prev);
+      if (newMap.has(activity.savedPlaceId)) {
+        newMap.delete(activity.savedPlaceId);
+      } else {
+        newMap.set(activity.savedPlaceId, activity);
+      }
+      return newMap;
+    });
+  };
+
+  const handleActivityPress = (activity) => {
+    setSelectedActivity(activity);
+    setDescriptionCardVisible(true);
+  };
+
+  const handleDescriptionCardClose = () => {
+    setDescriptionCardVisible(false);
+    setSelectedActivity(null);
+  };
+
+  const handleAddToTrip = async () => {
+    if (selectedActivitiesMap.size === 0) return;
+    const activities = Array.from(selectedActivitiesMap.values());
+    await AsyncStorage.setItem(ADD_TO_TRIP_STORAGE_KEY, JSON.stringify(activities));
+    onClose();
+    router.push('/add-to-trip');
   };
 
   // Group localPlaces by city, compute centroid lat/lng from activity coordinates
@@ -280,10 +306,16 @@ export function CountrySavedPlacesModal({ onClose, countryName, places, onPlaceD
                   <ActivityCard
                     key={place.savedPlaceId}
                     activity={activityWithDetails}
+                    onPress={() => handleToggleSelection(activityWithDetails)}
+                    onDescriptionCardPress={() => handleActivityPress(activityWithDetails)}
                     onSwipeDelete={handleDeleteActivity}
+                    showSelectionIndicator={true}
+                    useInlineSelectionLayout={true}
+                    isSelected={selectedActivitiesMap.has(activityWithDetails.savedPlaceId)}
                     hideNotesButton={true}
                     hideRouteInfo={true}
                     deleteSavedPlace={true}
+                    showFavoritesButton={true}
                   />
                 );
               })}
@@ -329,10 +361,10 @@ export function CountrySavedPlacesModal({ onClose, countryName, places, onPlaceD
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
 
-          {/* Floating wishlist button (top right) */}
+          {/* Floating favorites button (top right) */}
           <TouchableOpacity
-            style={styles.wishlistFloatingButton}
-            onPress={handleWishlistButtonPress}
+            style={styles.favoritesFloatingButton}
+            onPress={handleFavoritesButtonPress}
             activeOpacity={0.8}
           >
             <Feather name="heart" size={24} color={Colors.GRAY} />
@@ -356,7 +388,10 @@ export function CountrySavedPlacesModal({ onClose, countryName, places, onPlaceD
                 data={citiesData}
                 renderItem={renderCityItem}
                 keyExtractor={item => item.name}
-                contentContainerStyle={styles.listContent}
+                contentContainerStyle={[
+                  styles.listContent,
+                  selectedActivitiesMap.size > 0 && { paddingBottom: 130 },
+                ]}
                 showsVerticalScrollIndicator={false}
                 style={styles.flatList}
               />
@@ -366,8 +401,44 @@ export function CountrySavedPlacesModal({ onClose, countryName, places, onPlaceD
                 <Text style={styles.emptyText}>No saved cities in {countryName}</Text>
               </View>
             )}
+
+            {/* Action buttons — visible when activities are selected */}
+            {selectedActivitiesMap.size > 0 && (
+              <View style={styles.actionButtonContainer}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={handleAddToTrip}
+                >
+                  <Text style={styles.actionButtonText}>
+                    Add Now to Trip ({selectedActivitiesMap.size})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </Animated.View>
       </View>
+
+      {/* Description Card Modal */}
+      <Modal
+        visible={descriptionCardVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleDescriptionCardClose}
+      >
+        <SafeAreaView style={styles.descriptionCardModalContainer}>
+          <View style={styles.descriptionCardWrapper}>
+            {selectedActivity && (
+              <ActivityDetailView
+                activity={selectedActivity}
+                onClose={handleDescriptionCardClose}
+                variant="wishlist"
+                showDragIndicator={false}
+                currentUserRole="owner"
+              />
+            )}
+          </View>
+        </SafeAreaView>
+      </Modal>
     </GestureHandlerRootView>
   );
 }
@@ -404,7 +475,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  wishlistFloatingButton: {
+  favoritesFloatingButton: {
     position: 'absolute',
     top: 50,
     right: 15,
@@ -525,5 +596,38 @@ const styles = StyleSheet.create({
     color: Colors.GRAY,
     marginTop: 16,
     textAlign: 'center',
+  },
+  actionButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingBottom: 34,
+    paddingTop: 12,
+    backgroundColor: Colors.WHITE,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e5e5',
+    gap: 10,
+  },
+  actionButton: {
+    backgroundColor: '#F36406',
+    borderRadius: 15,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionButtonText: {
+    color: Colors.WHITE,
+    fontFamily: 'outfit-bold',
+    fontSize: 17,
+  },
+  descriptionCardModalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  descriptionCardWrapper: {
+    flex: 1,
+    marginHorizontal: 10,
   },
 });

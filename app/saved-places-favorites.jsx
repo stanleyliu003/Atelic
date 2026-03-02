@@ -21,7 +21,7 @@ import { Colors } from '../constants/Colors';
 import { ActivityCard } from '../src/components/trip-view/activity/activity_card';
 import { ActivityDetailView } from '../src/components/trip-view/description_card';
 
-export const WISHLIST_STORAGE_KEY = '@atelic/saved_places_wishlist';
+export const FAVORITES_STORAGE_KEY = '@atelic/saved_places_favorites';
 const ADD_TO_TRIP_STORAGE_KEY = '@atelic/add_to_trip_activities';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -92,12 +92,12 @@ const markerStyles = StyleSheet.create({
   },
 });
 
-export default function SavedPlacesWishlist() {
+export default function SavedPlacesFavorites() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const mapRef = useRef(null);
 
-  const [wishlistItems, setWishlistItems] = useState([]);
+  const [favoritesItems, setFavoritesItems] = useState([]);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [descriptionCardVisible, setDescriptionCardVisible] = useState(false);
@@ -112,7 +112,7 @@ export default function SavedPlacesWishlist() {
   const heightStateShared = useSharedValue(DEFAULT_HEIGHT_STATE);
 
   useEffect(() => {
-    loadWishlist();
+    loadFavorites();
   }, []);
 
   // Animate panel to new height when state changes
@@ -126,30 +126,30 @@ export default function SavedPlacesWishlist() {
     }).start();
   }, [currentHeightState]);
 
-  const loadWishlist = async () => {
+  const loadFavorites = async () => {
     try {
-      const stored = await AsyncStorage.getItem(WISHLIST_STORAGE_KEY);
-      setWishlistItems(stored ? JSON.parse(stored) : []);
+      const stored = await AsyncStorage.getItem(FAVORITES_STORAGE_KEY);
+      setFavoritesItems(stored ? JSON.parse(stored) : []);
     } catch (e) {
-      console.error('[SavedPlacesWishlist] Error loading wishlist:', e);
+      console.error('[SavedPlacesFavorites] Error loading favorites:', e);
     }
   };
 
   const sections = useMemo(() => {
     const cityMap = new Map();
-    wishlistItems.forEach((item, index) => {
+    favoritesItems.forEach((item, index) => {
       const city = item.cityName || 'Unknown';
       if (!cityMap.has(city)) cityMap.set(city, []);
       cityMap.get(city).push({ ...item, globalIndex: index });
     });
     return Array.from(cityMap.entries()).map(([title, data]) => ({ title, data }));
-  }, [wishlistItems]);
+  }, [favoritesItems]);
 
   const placeCoords = useMemo(() =>
-    wishlistItems
+    favoritesItems
       .map(item => ({ lat: item.activity?.lat, lng: item.activity?.lng }))
       .filter(c => c.lat != null && c.lng != null),
-    [wishlistItems]
+    [favoritesItems]
   );
 
   const hasMapCoords = placeCoords.length > 0;
@@ -220,11 +220,11 @@ export default function SavedPlacesWishlist() {
     });
   }, [getActivityId]);
 
-  const handleRemoveItem = async (globalIndex) => {
-    const removedItem = wishlistItems[globalIndex];
+  const handleRemoveFavorite = async (globalIndex) => {
+    const removedItem = favoritesItems[globalIndex];
     const removedId = removedItem ? getActivityId(removedItem) : null;
-    const newItems = wishlistItems.filter((_, i) => i !== globalIndex);
-    setWishlistItems(newItems);
+    const newItems = favoritesItems.filter((_, i) => i !== globalIndex);
+    setFavoritesItems(newItems);
     if (removedId) {
       setSelectedIds(prev => {
         const next = new Set(prev);
@@ -233,25 +233,25 @@ export default function SavedPlacesWishlist() {
       });
     }
     try {
-      await AsyncStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(newItems));
+      await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newItems));
     } catch (e) {
-      console.error('[SavedPlacesWishlist] Error removing item:', e);
+      console.error('[SavedPlacesFavorites] Error removing favorite:', e);
     }
   };
 
   const handleAddToTrip = async () => {
     if (selectedIds.size === 0) return;
-    const activities = wishlistItems
+    const activities = favoritesItems
       .filter(item => selectedIds.has(getActivityId(item)))
       .map(item => item.activity)
       .filter(Boolean);
     try {
       await AsyncStorage.setItem(ADD_TO_TRIP_STORAGE_KEY, JSON.stringify(activities));
-      const newItems = wishlistItems.filter(item => !selectedIds.has(getActivityId(item)));
-      await AsyncStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(newItems));
+      const newItems = favoritesItems.filter(item => !selectedIds.has(getActivityId(item)));
+      await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newItems));
       router.push('/add-to-trip');
     } catch (e) {
-      console.error('[SavedPlacesWishlist] Error adding to trip:', e);
+      console.error('[SavedPlacesFavorites] Error adding to trip:', e);
     }
   };
 
@@ -282,13 +282,15 @@ export default function SavedPlacesWishlist() {
         isSelected={isSelected}
         onPress={() => handleItemPress(item)}
         onDescriptionCardPress={() => handleDescriptionCardPress(activity)}
-        onSwipeDelete={() => handleRemoveItem(item.globalIndex)}
+        onSwipeDelete={() => handleRemoveFavorite(item.globalIndex)}
         hideNotesButton={true}
         hideRouteInfo={true}
         deleteSavedPlace={true}
         showSelectionIndicator={true}
         useInlineSelectionLayout={true}
         index={item.globalIndex}
+        showFavoritesButton={true}
+        onFavoritesToggle={loadFavorites}
       />
     );
   };
@@ -304,13 +306,13 @@ export default function SavedPlacesWishlist() {
           showsUserLocation={false}
           showsMyLocationButton={false}
         >
-          {wishlistItems.map((item, idx) => {
+          {favoritesItems.map((item, idx) => {
             if (item.activity?.lat == null || item.activity?.lng == null) return null;
             const id = item.activity?.instanceId || item.activity?.place_id || `idx-${idx}`;
             const isSelected = selectedIds.has(id);
             return (
               <Marker
-                key={`wishlist-marker-${idx}`}
+                key={`favorites-marker-${idx}`}
                 coordinate={{ latitude: item.activity.lat, longitude: item.activity.lng }}
                 tracksViewChanges={isSelected}
               >
@@ -344,10 +346,10 @@ export default function SavedPlacesWishlist() {
           </View>
         </GestureDetector>
 
-        {wishlistItems.length > 0 ? (
+        {favoritesItems.length > 0 ? (
           <SectionList
             sections={sections}
-            keyExtractor={(item, index) => `wishlist-item-${item.globalIndex ?? index}`}
+            keyExtractor={(item, index) => `favorites-item-${item.globalIndex ?? index}`}
             renderItem={renderItem}
             renderSectionHeader={renderSectionHeader}
             contentContainerStyle={{ paddingBottom: insets.bottom + BUTTON_AREA_HEIGHT }}
@@ -358,11 +360,11 @@ export default function SavedPlacesWishlist() {
         ) : (
           <View style={styles.emptyWrapper}>
             <View style={styles.listHeaderContainer}>
-              <Text style={styles.cardTitle}>My Wishlist</Text>
+              <Text style={styles.cardTitle}>My Favorites</Text>
             </View>
             <View style={styles.emptyContainer}>
               <Ionicons name="bookmark-outline" size={48} color={Colors.GRAY} />
-              <Text style={styles.emptyText}>Your wishlist is empty</Text>
+              <Text style={styles.emptyText}>Your favorites is empty</Text>
               <Text style={styles.emptySubtext}>Add places from your saved cities</Text>
             </View>
           </View>
@@ -490,9 +492,8 @@ const styles = StyleSheet.create({
   sectionHeaderText: {
     fontFamily: 'outfit-bold',
     fontSize: 25,
-    marginTop: 0,
-    marginBottom: 13,
     marginTop: 10,
+    marginBottom: 13,
     color: '#1a1a1a',
   },
   emptyWrapper: {
