@@ -5,7 +5,6 @@ import {
   TextInput,
   StyleSheet,
   SafeAreaView,
-  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   Modal,
@@ -17,6 +16,9 @@ import {
   Image,
   Dimensions,
 } from 'react-native';
+// ScrollView from RNGH shares the same gesture system as the carousel,
+// allowing failOffsetY on the carousel to properly yield vertical swipes to the scroll view.
+import { ScrollView } from 'react-native-gesture-handler';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -56,6 +58,7 @@ export default function FeedScreen() {
   const { restoreTripFromObject, setSelectedCity } = useCreateTrip();
   const params = useLocalSearchParams();
   const hasAutoLoadedRef = useRef(false);
+  const carouselTouchStartRef = useRef(null); // {x, y} of touch start for gesture direction logging
 
   // User state
   const [fullName, setFullName] = useState('');
@@ -1280,13 +1283,14 @@ export default function FeedScreen() {
         name: editFullName.trim(),
       });
 
-      // Update bio in UserProfilesStorage
+      // Update fullName, bio, and profile photo in UserProfilesStorage
       await API.graphql({
         query: customMutations.updateUserProfile,
         variables: {
           username: username,
           action: 'UPDATE_PROFILE_INFO',
           tripData: JSON.stringify({
+            fullName: editFullName.trim() || null,
             bio: editBio.trim() || null,
             profilePhotoUrl: profilePhotoUrl || null,
           }),
@@ -1449,7 +1453,23 @@ export default function FeedScreen() {
       >
         <View style={styles.tripCardContent}>
           {trip.selectedCity ? (
-            <View style={styles.carouselContainer}>
+            <View
+              style={styles.carouselContainer}
+              onTouchStart={(e) => {
+                const { pageX, pageY } = e.nativeEvent;
+                carouselTouchStartRef.current = { x: pageX, y: pageY };
+              }}
+              onTouchMove={(e) => {
+                if (!carouselTouchStartRef.current) return;
+                const { pageX, pageY } = e.nativeEvent;
+                const dx = pageX - carouselTouchStartRef.current.x;
+                const dy = pageY - carouselTouchStartRef.current.y;
+                const direction = Math.abs(dx) > Math.abs(dy) ? 'HORIZONTAL' : 'VERTICAL';
+              }}
+              onTouchEnd={() => {
+                carouselTouchStartRef.current = null;
+              }}
+            >
               <Carousel
                 loop={false}
                 width={CAROUSEL_WIDTH}
@@ -1459,9 +1479,13 @@ export default function FeedScreen() {
                   : [{}, {}, {}, {}, {}]}
                 scrollAnimationDuration={300}
                 defaultIndex={0}
-                onSnapToItem={(index) =>
-                  setCarouselIndices(prev => ({ ...prev, [`${keyPrefix}${trip.tripId}`]: index }))
-                }
+                onSnapToItem={(index) => {
+                  setCarouselIndices(prev => ({ ...prev, [`${keyPrefix}${trip.tripId}`]: index }));
+                }}
+                onConfigurePanGesture={(pan) => {
+                  pan.activeOffsetX([-10, 10]);
+                  pan.failOffsetY([-5, 5]);
+                }}
                 renderItem={({ item, index }) => (
                   <TripCarouselImage
                     photo_reference={item?.photo_reference}
@@ -1810,6 +1834,7 @@ export default function FeedScreen() {
                   </TouchableOpacity>
                 ) : null;
               })()}
+              <View style={{ height: 40 }} />
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -2463,7 +2488,12 @@ export default function FeedScreen() {
 
           {/* Edit Profile View */}
           {profileModalView === 'edit' && (
-            <ScrollView style={styles.editProfileContainer} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={styles.editProfileContainer}
+              contentContainerStyle={styles.editProfileScrollContent}
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets={true}
+            >
               {/* Profile Photo */}
               <View style={styles.editProfilePhotoSection}>
                 <TouchableOpacity onPress={handleChangeProfilePhoto} disabled={isUploadingPhoto}>
@@ -2772,13 +2802,13 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalSpacer: {
-    flex: 0.67,
+    flex: 0.6,
   },
   menuModal: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    flex: 0.33,
+    flex: 0.4,
     paddingTop: 8,
     elevation: 5,
     shadowColor: '#000',
@@ -3317,6 +3347,9 @@ const styles = StyleSheet.create({
   editProfileContainer: {
     flex: 1,
     paddingHorizontal: 20,
+  },
+  editProfileScrollContent: {
+    paddingBottom: 150,
   },
   editProfilePhotoSection: {
     alignItems: 'center',

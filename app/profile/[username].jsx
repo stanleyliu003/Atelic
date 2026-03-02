@@ -50,6 +50,7 @@ export default function UserProfileScreen() {
 
   // Profile data
   const [userProfile, setUserProfile] = useState(null);
+  const [profilePhotoKey, setProfilePhotoKey] = useState(Date.now()); // Cache-busting key
   const [isFollowing, setIsFollowing] = useState(false);
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [stats, setStats] = useState({
@@ -220,6 +221,8 @@ export default function UserProfileScreen() {
         ...profile,
         profilePhotoUrl: resolvedPhotoUrl
       });
+      // Update cache-busting key to force image reload
+      setProfilePhotoKey(Date.now());
 
       // Load statistics
       let travelStats = {
@@ -296,9 +299,9 @@ export default function UserProfileScreen() {
       }
 
       // Determine if viewer can see trips
-      // Trips are ONLY visible to confirmed followers (regardless of public/private status)
+      // Always load trips; non-followers will only see public trips (filtered in loadUserTrips)
       const isFollowingUser = userInSearch?.isFollowing || false;
-      const canView = isFollowingUser;
+      const canView = true;
 
       console.log('[UserProfile] Privacy check:', {
         isPrivateAccount: profile.isPrivateAccount,
@@ -646,6 +649,7 @@ export default function UserProfileScreen() {
                 name={userProfile.fullName || username}
                 profilePhotoUrl={userProfile.profilePhotoUrl}
                 size={80}
+                cacheKey={profilePhotoKey}
               />
             </View>
 

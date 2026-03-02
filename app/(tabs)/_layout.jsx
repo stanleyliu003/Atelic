@@ -14,7 +14,7 @@ export default function TabLayout() {
 
       <Tabs.Screen name = "saved_places"
         options={{
-            tabBarLabel:"Saved",
+            tabBarLabel:" ",
             tabBarIcon:({color, focused})=><Ionicons name={focused ? "bookmark" : "bookmark-outline"}
             size={24} color={color} />
         }}
@@ -28,7 +28,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen name = "feed"
         options={{
-            tabBarLabel:"Home",
+            tabBarLabel:" ",
             tabBarIcon:({color, focused})=><Ionicons name={focused ? "home" : "home-outline"}
             size={24} color={color} />
         }}

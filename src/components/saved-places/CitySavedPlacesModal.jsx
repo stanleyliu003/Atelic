@@ -111,7 +111,8 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
       pathname: '/(tabs)/create_new_trip',
       params: {
         prefilledCity: cityName,
-        fromSavedPlaces: 'true'
+        fromSavedPlaces: 'true',
+        //ts: Date.now()
       }
     });
   };

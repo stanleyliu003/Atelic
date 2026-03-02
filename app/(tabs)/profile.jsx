@@ -56,6 +56,7 @@ export default function Profile() {
 
   // Social features state
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);
+  const [profilePhotoKey, setProfilePhotoKey] = useState(Date.now()); // Cache-busting key for image reload
   const [bio, setBio] = useState(null);
   const [isPrivate, setIsPrivate] = useState(false);
   const [countriesVisited, setCountriesVisited] = useState(0);
@@ -156,6 +157,8 @@ export default function Profile() {
         // Resolve S3 key to signed URL if needed
         const resolvedPhotoUrl = await resolveProfilePhotoUrl(profile.profilePhotoUrl);
         setProfilePhotoUrl(resolvedPhotoUrl);
+        // Update cache-busting key to force image reload
+        setProfilePhotoKey(Date.now());
         setBio(profile.bio);
         setIsPrivate(profile.isPrivateAccount || false);
         setFollowersCount(profile.followersCount || 0);
@@ -982,6 +985,7 @@ export default function Profile() {
                   username={username}
                   fullName={fullName}
                   profilePhotoUrl={profilePhotoUrl}
+                  profilePhotoKey={profilePhotoKey}
                   bio={bio}
                   isOwnProfile={true}
                   isPrivate={isPrivate}

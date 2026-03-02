@@ -1471,6 +1471,41 @@ export default function TripViewMain() {
                     // Replace the entire dayActivities map to ensure deletes/renumbering are applied
                     setDayActivities(updatedState.dayActivities as any);
 
+                    // CRITICAL: Also update dayPolylines when days are deleted remotely
+                    // Without this, polylines remain keyed to old day numbers causing UI mismatch
+                    if (dayDeletions.length > 0) {
+                        console.log('[syncNewOperations] Renumbering dayPolylines for', dayDeletions.length, 'deleted days');
+
+                        // Sort deletions by day number descending to handle renumbering correctly
+                        const sortedDeletions = [...dayDeletions].sort((a, b) => (b.dayNumber || 0) - (a.dayNumber || 0));
+
+                        setDayPolylinesDeleteDay(prev => {
+                            let newPolylines = { ...prev };
+
+                            // Apply each deletion in order (highest day number first)
+                            sortedDeletions.forEach(delOp => {
+                                const deletedDayNum = delOp.dayNumber;
+                                if (!deletedDayNum) return;
+
+                                const updatedPolylines: { [key: number]: string } = {};
+                                Object.entries(newPolylines).forEach(([dayStr, polyline]) => {
+                                    const dayNum = Number(dayStr);
+                                    if (dayNum < deletedDayNum) {
+                                        // Keep days before the deleted day as-is
+                                        updatedPolylines[dayNum] = polyline as string;
+                                    } else if (dayNum > deletedDayNum) {
+                                        // Renumber days after the deleted day
+                                        updatedPolylines[dayNum - 1] = polyline as string;
+                                    }
+                                    // Skip the deleted day (dayNum === deletedDayNum)
+                                });
+                                newPolylines = updatedPolylines;
+                            });
+
+                            return newPolylines;
+                        });
+                    }
+
                     // Handle tab switching if days were deleted
                     if (dayDeletions.length > 0 && activeTab.startsWith('day')) {
                         const currentDayNumber = parseInt(activeTab.replace('day', ''));

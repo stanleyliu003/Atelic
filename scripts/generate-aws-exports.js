@@ -40,6 +40,8 @@ const configs = {
     userPoolId: "us-east-1_jupoBmxJI",
     userPoolWebClientId: "79vrt88lrj1abtm4trk1v3vgli",
     oauthDomain: "atelictravel-devstan.auth.us-east-1.amazoncognito.com",
+    s3Bucket: "amplifybackendd3e6cd8b095945dba7bea44fd55f4b97233e9-devstan",
+    identityPoolId: "us-east-1:fca50bb8-b911-48a1-8723-470257decef4",
   },
   staging: {
     graphqlEndpoint: "https://sxae4v434na2ngmjhp4dftjec4.appsync-api.us-east-1.amazonaws.com/graphql",
@@ -48,6 +50,8 @@ const configs = {
     userPoolId: "us-east-1_FZLv9sDqR",
     userPoolWebClientId: "gg1krard2vr3vifg6dhpe22r5",
     oauthDomain: "atelictravel-staging.auth.us-east-1.amazoncognito.com",
+    s3Bucket: "amplifybackendd3e6cd8b095945dba7bea44fd55f4b97233e9-staging",
+    identityPoolId: "us-east-1:fca50bb8-b911-48a1-8723-470257decef4",
   },
   production: {
     graphqlEndpoint: "https://oeep6fv7ajd7njiggfs6475b2u.appsync-api.us-east-1.amazonaws.com/graphql",
@@ -56,6 +60,8 @@ const configs = {
     userPoolId: "us-east-1_E4DLpP6Gb",
     userPoolWebClientId: "7secvhsict00783eaavkf9cih6",
     oauthDomain: "auth.atelictravel.com",
+    s3Bucket: "amplifybackendd3e6cd8b095945dba7bea44fd55f4b97233e9-production",
+    identityPoolId: "us-east-1:fca50bb8-b911-48a1-8723-470257decef4",
   }
 };
 
@@ -116,6 +122,9 @@ const awsmobile = {
     "aws_cognito_verification_mechanisms": [
         "EMAIL"
     ],
+    "aws_cognito_identity_pool_id": "${config.identityPoolId}",
+    "aws_user_files_s3_bucket": "${config.s3Bucket}",
+    "aws_user_files_s3_bucket_region": "us-east-1",
     "aws_dynamodb_all_tables_region": "us-east-1",
     "aws_dynamodb_table_schemas": [
         {

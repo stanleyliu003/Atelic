@@ -7,7 +7,9 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { API, Auth, Storage } from 'aws-amplify';
 import { UserSearchBar } from '../../src/components/explore/UserSearchBar';
@@ -347,7 +349,10 @@ export default function ExploreScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Explore</Text>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/feed')} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={28} color={Colors.BLACK} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>Explore</Text>
       </View>
 
       <View style={styles.searchContainer}>
@@ -380,15 +385,25 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.WHITE,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: Colors.LIGHT_GRAY,
   },
+  backButton: {
+    padding: 2,
+    zIndex: 1,
+  },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 'bold',
     color: Colors.BLACK,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
   },
   searchContainer: {
     paddingHorizontal: 16,
