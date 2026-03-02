@@ -411,7 +411,7 @@ export function CountrySavedPlacesModal({ onClose, countryName, places, onPlaceD
                   onPress={handleAddToTrip}
                 >
                   <Text style={styles.actionButtonText}>
-                    Add Now to Trip ({selectedActivitiesMap.size})
+                    Add Now to Trip
                   </Text>
                 </TouchableOpacity>
               </View>

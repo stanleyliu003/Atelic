@@ -195,7 +195,7 @@ export function CitySavedPlacesModal({ onClose, cityName, places, onPlaceDeleted
           >
             <Text style={styles.createTripButtonText}>
               {selectedActivitiesMap.size > 0
-                ? `Add Now to Trip (${selectedActivitiesMap.size})`
+                ? `Add Now to Trip`
                 : 'Add Now to Trip'}
             </Text>
           </TouchableOpacity>

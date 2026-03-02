@@ -406,7 +406,7 @@ export default function SavedPlacesFavorites() {
               onPress={handleAddToTrip}
             >
               <Text style={styles.addToTripButtonText}>
-                {`Add Now to Trip (${selectedIds.size})`}
+                {`Add Now to Trip`}
               </Text>
             </TouchableOpacity>
           </View>
