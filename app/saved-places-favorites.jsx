@@ -337,9 +337,10 @@ export default function SavedPlacesFavorites() {
             if (item.activity?.lat == null || item.activity?.lng == null) return null;
             const id = item.activity?.instanceId || item.activity?.place_id || `idx-${idx}`;
             const isSelected = selectedIds.has(id);
+            const markerKey = item.savedPlaceId || id;
             return (
               <Marker
-                key={`favorites-marker-${idx}`}
+                key={`favorites-marker-${markerKey}`}
                 coordinate={{ latitude: item.activity.lat, longitude: item.activity.lng }}
                 tracksViewChanges={isSelected}
               >
@@ -376,7 +377,7 @@ export default function SavedPlacesFavorites() {
         {favoritesItems.length > 0 ? (
           <SectionList
             sections={sections}
-            keyExtractor={(item, index) => `favorites-item-${item.globalIndex ?? index}`}
+            keyExtractor={(item) => `favorites-item-${item.savedPlaceId ?? item.globalIndex}`}
             renderItem={renderItem}
             renderSectionHeader={renderSectionHeader}
             contentContainerStyle={{ paddingBottom: 16 }}
