@@ -22,7 +22,7 @@ import { WISHLIST_STORAGE_KEY } from '../../../app/saved-places-wishlist';
 
 const ADD_TO_TRIP_STORAGE_KEY = '@atelic/add_to_trip_activities';
 
-export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPlaceDeleted, isCountry }) {
+export function CitySavedPlacesModal({ onClose, cityName, places, onPlaceDeleted, isCountry }) {
   const router = useRouter();
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [descriptionCardVisible, setDescriptionCardVisible] = useState(false);
@@ -33,28 +33,18 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
 
   useEffect(() => {
     // This effect syncs the local state when the places prop changes.
-    // This is important for when the modal is re-opened for a different city,
-    // or if the parent component refreshes the data.
     setLocalPlaces(places);
   }, [places]);
 
-  // Load wishlist count whenever the modal becomes visible
+  // Load wishlist count on mount
   useEffect(() => {
-    if (!visible) return;
     AsyncStorage.getItem(WISHLIST_STORAGE_KEY)
       .then(stored => {
         const items = stored ? JSON.parse(stored) : [];
         setWishlistCount(items.length);
       })
       .catch(() => setWishlistCount(0));
-  }, [visible]);
-
-  // Reset selection when modal closes or city changes
-  useEffect(() => {
-    if (!visible) {
-      setSelectedActivitiesMap(new Map());
-    }
-  }, [visible]);
+  }, []);
 
   useEffect(() => {
     setSelectedActivitiesMap(new Map());
@@ -102,21 +92,6 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
     onClose();
     router.push('/saved-places-wishlist');
   };
-
-  /*
-  const handleCreateTrip = () => {
-    console.log('[CitySavedPlacesModal] handleCreateTrip called with cityName:', cityName);
-    onClose(); // Close the modal first
-    router.push({
-      pathname: '/(tabs)/create_new_trip',
-      params: {
-        prefilledCity: cityName,
-        fromSavedPlaces: 'true',
-        //ts: Date.now()
-      }
-    });
-  };
-  */
 
   const handleActivityPress = (activity) => {
     setSelectedActivity(activity);
@@ -166,16 +141,16 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
       source: item.source,
       sourceUrl: item.sourceUrl
     });
-    
+
     // Extract the activity data from the saved place
     const activity = item.activity; // The DynamoDB field is 'activity', not 'activityData'
-    
+
     // Skip rendering if activity data is missing
     if (!activity) {
       console.warn('[CitySavedPlacesModal] Skipping item with missing activity');
       return null;
     }
-    
+
     // Copy source and sourceUrl from SavedPlace to Activity for display in description card
     // Also pass savedPlaceId so the delete function can find it
     const activityWithDetails = {
@@ -184,7 +159,7 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
       source: item.source,
       sourceUrl: item.sourceUrl,
     };
-    
+
     return (
       <ActivityCard
         activity={activityWithDetails}
@@ -202,13 +177,7 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
@@ -223,7 +192,7 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
             onPress={handleWishlistButtonPress}
             style={styles.wishlistHeaderButton}
           >
-            <Feather name="list" size={24} color="black" />
+            <Feather name="heart" size={24} color={Colors.GRAY} />
           </TouchableOpacity>
         </View>
 
@@ -298,8 +267,7 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
           </SafeAreaView>
         </Modal>
       </SafeAreaView>
-      </GestureHandlerRootView>
-    </Modal>
+    </GestureHandlerRootView>
   );
 }
 
@@ -326,16 +294,17 @@ const styles = StyleSheet.create({
     color: Colors.PRIMARY,
   },
   wishlistHeaderButton: {
-    flexDirection: 'row',
+    backgroundColor: 'white',
+    borderRadius: 25,
+    width: 50,
+    height: 50,
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: Colors.WHITE,
-    borderRadius: 8,
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2.84,
+    shadowRadius: 4,
+    elevation: 3,
   },
   listContent: {
     padding: 16,

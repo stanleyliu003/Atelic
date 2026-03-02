@@ -1,25 +1,30 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Dimensions,
   FlatList,
-  Modal,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { runOnJS, useSharedValue } from 'react-native-reanimated';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API, Auth } from 'aws-amplify';
 import { Colors } from '../../../constants/Colors';
-import { CitySavedPlacesModal } from './CitySavedPlacesModal';
+import { ActivityCard } from '../trip-view/activity/activity_card';
+import { deleteSavedPlace as deleteSavedPlaceMutation } from '../../graphql/mutations';
 import { WISHLIST_STORAGE_KEY } from '../../../app/saved-places-wishlist';
 
 const { height: screenHeight } = Dimensions.get('window');
-const CARD_HEIGHT = screenHeight * 0.48;
+const HEIGHT_STATES = [0.30, 0.65, 0.90];
+const DEFAULT_HEIGHT_STATE = 1; // 0.65 default
+const SNAP_THRESHOLD = 40;
 const MARKER_LABELS = 'abcdefghijklmnopqrstuvwxyz';
 
 // Strip ", Country" suffix from city names (e.g. "Milan, Italy" → "Milan")
@@ -65,28 +70,46 @@ const markerStyles = StyleSheet.create({
   },
 });
 
-export function CountrySavedPlacesModal({ visible, onClose, countryName, places, onPlaceDeleted }) {
+export function CountrySavedPlacesModal({ onClose, countryName, places, onPlaceDeleted }) {
   const router = useRouter();
   const mapRef = useRef(null);
   const [localPlaces, setLocalPlaces] = useState(places);
-  const [selectedCityData, setSelectedCityData] = useState(null);
-  const [cityModalVisible, setCityModalVisible] = useState(false);
+  const [expandedCities, setExpandedCities] = useState(new Set());
   const [wishlistCount, setWishlistCount] = useState(0);
+  const [currentHeightState, setCurrentHeightState] = useState(DEFAULT_HEIGHT_STATE);
+
+  // Animated value for smooth panel height transitions
+  const panelHeightAnim = useRef(
+    new Animated.Value(screenHeight * HEIGHT_STATES[DEFAULT_HEIGHT_STATE])
+  ).current;
+
+  // Shared value for access inside gesture worklets
+  const heightStateShared = useSharedValue(DEFAULT_HEIGHT_STATE);
 
   useEffect(() => {
     setLocalPlaces(places);
   }, [places]);
 
-  // Load wishlist count whenever the modal becomes visible
+  // Animate panel to new height when state changes
   useEffect(() => {
-    if (!visible) return;
+    Animated.spring(panelHeightAnim, {
+      toValue: screenHeight * HEIGHT_STATES[currentHeightState],
+      useNativeDriver: false,
+      damping: 20,
+      stiffness: 200,
+      mass: 0.8,
+    }).start();
+  }, [currentHeightState]);
+
+  // Load wishlist count on mount
+  useEffect(() => {
     AsyncStorage.getItem(WISHLIST_STORAGE_KEY)
       .then(stored => {
         const items = stored ? JSON.parse(stored) : [];
         setWishlistCount(items.length);
       })
       .catch(() => setWishlistCount(0));
-  }, [visible]);
+  }, []);
 
   const handleWishlistButtonPress = () => {
     onClose();
@@ -127,14 +150,24 @@ export function CountrySavedPlacesModal({ visible, onClose, countryName, places,
     [citiesData]
   );
 
+  // Re-fit map whenever height state changes
+  useEffect(() => {
+    const withCoords = citiesData.filter(c => c.lat != null && c.lng != null);
+    if (!mapRef.current || withCoords.length === 0) return;
+    const bottomPad = screenHeight * HEIGHT_STATES[currentHeightState] + 30;
+    const coords = withCoords.map(c => ({ latitude: c.lat, longitude: c.lng }));
+    mapRef.current.fitToCoordinates(coords, {
+      edgePadding: { top: 80, right: 60, bottom: bottomPad, left: 60 },
+      animated: true,
+    });
+  }, [currentHeightState]);
+
   const handleMapReady = () => {
     const withCoords = citiesData.filter(c => c.lat != null && c.lng != null);
     if (withCoords.length === 0 || !mapRef.current) return;
 
-    // For a single city, fitToCoordinates on one point zooms in maximally.
-    // Create a minimum bounding box (~0.5° span) around the city so the zoom
-    // level stays reasonable, then let fitToCoordinates handle the card offset.
     const SINGLE_CITY_SPAN = 0.25;
+    const bottomPad = screenHeight * HEIGHT_STATES[DEFAULT_HEIGHT_STATE] + 40;
     const coords = withCoords.length === 1
       ? [
           { latitude: withCoords[0].lat + SINGLE_CITY_SPAN, longitude: withCoords[0].lng + SINGLE_CITY_SPAN },
@@ -143,61 +176,126 @@ export function CountrySavedPlacesModal({ visible, onClose, countryName, places,
       : withCoords.map(c => ({ latitude: c.lat, longitude: c.lng }));
 
     mapRef.current.fitToCoordinates(coords, {
-      edgePadding: { top: 80, right: 60, bottom: CARD_HEIGHT + 40, left: 60 },
+      edgePadding: { top: 80, right: 60, bottom: bottomPad, left: 60 },
       animated: false,
     });
   };
 
-  const handleCityPress = (cityData) => {
-    setSelectedCityData(cityData);
-    setCityModalVisible(true);
+  // Called from gesture worklet via runOnJS
+  const applyHeightState = useCallback((newIndex) => {
+    setCurrentHeightState(newIndex);
+  }, []);
+
+  // Drag handle gesture — drag up to expand, drag down to collapse
+  const panGesture = Gesture.Pan()
+    .onEnd((event) => {
+      'worklet';
+      const dy = event.translationY;
+      let next = heightStateShared.value;
+      if (dy < -SNAP_THRESHOLD) {
+        next = Math.min(next + 1, HEIGHT_STATES.length - 1);
+      } else if (dy > SNAP_THRESHOLD) {
+        next = Math.max(next - 1, 0);
+      }
+      if (next !== heightStateShared.value) {
+        heightStateShared.value = next;
+        runOnJS(applyHeightState)(next);
+      }
+    });
+
+  const handleToggleCity = (cityName) => {
+    setExpandedCities(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(cityName)) {
+        newSet.delete(cityName);
+      } else {
+        newSet.add(cityName);
+      }
+      return newSet;
+    });
   };
 
-  const handleCloseCityModal = () => {
-    setCityModalVisible(false);
-    setSelectedCityData(null);
+  const handleDeleteActivity = async (activityToDelete) => {
+    const { savedPlaceId } = activityToDelete;
+    if (!savedPlaceId) {
+      console.error('[CountrySavedPlacesModal] Cannot delete: savedPlaceId is missing.');
+      return;
+    }
+
+    const deletedPlace = localPlaces.find(p => p.savedPlaceId === savedPlaceId);
+    const cityName = stripCountrySuffix(deletedPlace?.city);
+
+    // Optimistic UI update
+    setLocalPlaces(prev => prev.filter(p => p.savedPlaceId !== savedPlaceId));
+
+    try {
+      const user = await Auth.currentAuthenticatedUser();
+      await API.graphql({
+        query: deleteSavedPlaceMutation,
+        variables: { userID: user.username, savedPlaceId, deleteType: 'city' },
+      });
+      onPlaceDeleted?.(savedPlaceId, cityName);
+    } catch (error) {
+      console.error('[CountrySavedPlacesModal] Error deleting saved place:', error);
+      setLocalPlaces(places); // Revert on failure
+    }
   };
 
-  const handleCityPlaceDeleted = (deletedPlaceId) => {
-    const deletedPlace = localPlaces.find(p => p.savedPlaceId === deletedPlaceId);
-    const cityName = stripCountrySuffix(deletedPlace?.city) || selectedCityData?.name;
-
-    setLocalPlaces(prev => prev.filter(p => p.savedPlaceId !== deletedPlaceId));
-    setSelectedCityData(prev =>
-      prev ? { ...prev, places: prev.places.filter(p => p.savedPlaceId !== deletedPlaceId) } : null
+  const renderCityItem = ({ item, index }) => {
+    const isExpanded = expandedCities.has(item.name);
+    return (
+      <View>
+        <TouchableOpacity
+          style={styles.cityRow}
+          onPress={() => handleToggleCity(item.name)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.cityLabelBadge}>
+            <Text style={styles.cityLabelText}>{MARKER_LABELS[index] ?? '•'}</Text>
+          </View>
+          <Text style={styles.cityName}>{item.name}</Text>
+          <View style={styles.cityRowRight}>
+            <Text style={styles.cityCount}>
+              {item.count} place{item.count !== 1 ? 's' : ''}
+            </Text>
+            <Ionicons
+              name={isExpanded ? 'chevron-down' : 'chevron-up'}
+              size={18}
+              color={Colors.GRAY}
+            />
+          </View>
+        </TouchableOpacity>
+        {isExpanded && (
+          <View style={styles.cityActivitiesContainer}>
+            {item.places
+              .filter(place => place.activity)
+              .map(place => {
+                const activityWithDetails = {
+                  ...place.activity,
+                  savedPlaceId: place.savedPlaceId,
+                  source: place.source,
+                  sourceUrl: place.sourceUrl,
+                };
+                return (
+                  <ActivityCard
+                    key={place.savedPlaceId}
+                    activity={activityWithDetails}
+                    onSwipeDelete={handleDeleteActivity}
+                    hideNotesButton={true}
+                    hideRouteInfo={true}
+                    deleteSavedPlace={true}
+                  />
+                );
+              })}
+          </View>
+        )}
+      </View>
     );
-
-    onPlaceDeleted?.(deletedPlaceId, cityName);
   };
-
-  const renderCityItem = ({ item, index }) => (
-    <TouchableOpacity
-      style={styles.cityRow}
-      onPress={() => handleCityPress(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.cityLabelBadge}>
-        <Text style={styles.cityLabelText}>{MARKER_LABELS[index] ?? '•'}</Text>
-      </View>
-      <Text style={styles.cityName}>{item.name}</Text>
-      <View style={styles.cityRowRight}>
-        <Text style={styles.cityCount}>
-          {item.count} place{item.count !== 1 ? 's' : ''}
-        </Text>
-        <Ionicons name="chevron-forward" size={18} color={Colors.GRAY} />
-      </View>
-    </TouchableOpacity>
-  );
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={styles.root}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.root}>
           {/* Map fills entire background */}
           {hasMapCoords ? (
             <MapView
@@ -212,7 +310,7 @@ export function CountrySavedPlacesModal({ visible, onClose, countryName, places,
                   <Marker
                     key={city.name}
                     coordinate={{ latitude: city.lat, longitude: city.lng }}
-                    onPress={() => handleCityPress(city)}
+                    onPress={() => handleToggleCity(city.name)}
                   >
                     <CityMarker label={MARKER_LABELS[idx] ?? '•'} />
                   </Marker>
@@ -226,26 +324,28 @@ export function CountrySavedPlacesModal({ visible, onClose, countryName, places,
             </View>
           )}
 
-          {/* Floating back button over map — matches homeButton pattern */}
+          {/* Floating back button over map */}
           <TouchableOpacity style={styles.backButton} onPress={onClose} activeOpacity={0.8}>
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
 
-          {/* Floating wishlist count button (top right) */}
+          {/* Floating wishlist button (top right) */}
           <TouchableOpacity
             style={styles.wishlistFloatingButton}
             onPress={handleWishlistButtonPress}
             activeOpacity={0.8}
           >
-            <Feather name="list" size={24} color="black" />
+            <Feather name="heart" size={24} color={Colors.GRAY} />
           </TouchableOpacity>
 
-          {/* Bottom card with rounded top corners overlapping the map */}
-          <View style={styles.bottomCard}>
-            {/* Drag indicator */}
-            <View style={styles.dragIndicatorContainer}>
-              <View style={styles.dragIndicator} />
-            </View>
+          {/* Draggable bottom panel */}
+          <Animated.View style={[styles.bottomCard, { height: panelHeightAnim }]}>
+            {/* Drag handle — gesture target */}
+            <GestureDetector gesture={panGesture}>
+              <View style={styles.dragHandleArea}>
+                <View style={styles.dragIndicator} />
+              </View>
+            </GestureDetector>
 
             {/* Country title */}
             <Text style={styles.headerTitle}>{countryName}</Text>
@@ -266,22 +366,9 @@ export function CountrySavedPlacesModal({ visible, onClose, countryName, places,
                 <Text style={styles.emptyText}>No saved cities in {countryName}</Text>
               </View>
             )}
-          </View>
-
-          {/* City subfolder modal */}
-          {selectedCityData && (
-            <CitySavedPlacesModal
-              visible={cityModalVisible}
-              onClose={handleCloseCityModal}
-              cityName={selectedCityData.name}
-              places={selectedCityData.places}
-              onPlaceDeleted={handleCityPlaceDeleted}
-              isCountry={false}
-            />
-          )}
-        </View>
-      </GestureHandlerRootView>
-    </Modal>
+          </Animated.View>
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -300,10 +387,9 @@ const styles = StyleSheet.create({
     color: Colors.GRAY,
     marginTop: 8,
   },
-  // Floating back button — mirrors homeButton in trip-view_main
   backButton: {
     position: 'absolute',
-    top: 15,
+    top: 50,
     left: 15,
     zIndex: 10,
     backgroundColor: 'white',
@@ -320,42 +406,47 @@ const styles = StyleSheet.create({
   },
   wishlistFloatingButton: {
     position: 'absolute',
-    top: 15,
+    top: 50,
     right: 15,
     zIndex: 10,
-    flexDirection: 'row',
+    backgroundColor: 'white',
+    borderRadius: 25,
+    width: 50,
+    height: 50,
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: Colors.WHITE,
-    borderRadius: 8,
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2.84,
+    shadowRadius: 4,
     elevation: 3,
   },
-  // Bottom card that overlaps the map with rounded top corners
   bottomCard: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: CARD_HEIGHT,
     backgroundColor: Colors.WHITE,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 10,
+    overflow: 'hidden',
   },
-  dragIndicatorContainer: {
+  dragHandleArea: {
     width: '100%',
     alignItems: 'center',
     paddingTop: 10,
     paddingBottom: 4,
+  },
+  dragIndicator: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D1D5DB',
   },
   headerTitle: {
     fontFamily: 'outfit-bold',
@@ -413,6 +504,14 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit',
     fontSize: 14,
     color: Colors.GRAY,
+  },
+  cityActivitiesContainer: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 4,
+    backgroundColor: '#F9FAFB',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   emptyContainer: {
     flex: 1,

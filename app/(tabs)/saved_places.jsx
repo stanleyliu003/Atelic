@@ -19,13 +19,13 @@ import {
 } from 'react-native';
 import { getSavedPlacesDetailed } from '../../src/graphql/customQueries';
 import { deleteSavedCity, deleteSavedCountry } from '../../src/graphql/mutations';
-import { CitySavedPlacesModal } from '../../src/components/saved-places/CitySavedPlacesModal';
-import { CountrySavedPlacesModal } from '../../src/components/saved-places/CountrySavedPlacesModal';
 import { CityCard } from '../../src/components/saved-places/CityCard';
 import { SavedPlacesSearchBar } from '../../src/components/saved-places/SavedPlacesSearchBar';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 import { WISHLIST_STORAGE_KEY } from '../saved-places-wishlist';
+import { CITY_PLACES_TEMP_KEY } from '../saved-places-city';
+import { COUNTRY_PLACES_TEMP_KEY } from '../saved-places-country';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -37,14 +37,12 @@ export default function SavedPlaces() {
   const [cities, setCities] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [error, setError] = useState(null);
-  const [selectedCity, setSelectedCity] = useState(null);
-  const [cityModalVisible, setCityModalVisible] = useState(false);
-  const [countryModalVisible, setCountryModalVisible] = useState(false);
   const [allSavedPlaces, setAllSavedPlaces] = useState([]);
   const [carouselIndices, setCarouselIndices] = useState({}); // Track current index per city
   const [cityPhotoCounts, setCityPhotoCounts] = useState({}); // Track photo count per city
   const [searchQuery, setSearchQuery] = useState('');
   const [wishlistCount, setWishlistCount] = useState(0);
+  const hasInitiallyLoaded = useRef(false);
   // Start at page 8 for onboarding flow, or skip to 14 if returning from IG_Demo
   const [emptyStatePage, setEmptyStatePage] = useState(
     searchParams.skipOnboarding === 'true' ? 14 : 8
@@ -187,7 +185,7 @@ export default function SavedPlaces() {
     fetchSavedPlaces();
   }, [fetchSavedPlaces]);
 
-  // Reload wishlist count whenever this tab gains focus
+  // Reload data whenever this tab gains focus (skips initial mount since useEffect handles that)
   useFocusEffect(
     useCallback(() => {
       AsyncStorage.getItem(WISHLIST_STORAGE_KEY)
@@ -196,7 +194,14 @@ export default function SavedPlaces() {
           setWishlistCount(items.length);
         })
         .catch(() => setWishlistCount(0));
-    }, [])
+
+      if (!hasInitiallyLoaded.current) {
+        hasInitiallyLoaded.current = true;
+        return;
+      }
+      // Silently refetch to reflect any deletions made on city/country pages
+      fetchSavedPlaces();
+    }, [fetchSavedPlaces])
   );
 
   useEffect(() => { totalCountRef.current = totalCount; }, [totalCount]);
@@ -278,75 +283,21 @@ export default function SavedPlaces() {
     fetchSavedPlaces();
   }, [fetchSavedPlaces]);
 
-  const handleCardPress = (cardData) => {
-    setSelectedCity(cardData);
+  const handleCardPress = async (cardData) => {
+    const places = getPlacesForCard(cardData);
     if (cardData.isCountry) {
-      setCountryModalVisible(true);
+      await AsyncStorage.setItem(COUNTRY_PLACES_TEMP_KEY, JSON.stringify({
+        countryName: cardData.city,
+        places,
+      }));
+      router.push('/saved-places-country');
     } else {
-      setCityModalVisible(true);
-    }
-  };
-
-  const handleCloseCityModal = () => {
-    setCityModalVisible(false);
-    setSelectedCity(null);
-  };
-
-  const handleCloseCountryModal = () => {
-    setCountryModalVisible(false);
-    setSelectedCity(null);
-  };
-
-  const handlePlaceDeletedFromCountry = (deletedPlaceId, cityName) => {
-    setAllSavedPlaces(prevPlaces => {
-      const updatedPlaces = prevPlaces.filter(p => p.savedPlaceId !== deletedPlaceId);
-      setTotalCount(updatedPlaces.length);
-      return updatedPlaces;
-    });
-    if (cityName) {
-      setCities(prevCities =>
-        prevCities
-          .map(c => c.city === cityName ? { ...c, count: c.count - 1 } : c)
-          .filter(c => c.count > 0)
-      );
-    }
-  };
-
-  const handlePlaceDeleted = (deletedPlaceId) => {
-    // Determine context from the currently selected city card
-    const isCountryContext = selectedCity?.isCountry;
-    const isCityContext = !isCountryContext && selectedCity;
-
-    setAllSavedPlaces(prevPlaces => {
-      const updatedPlaces = prevPlaces.map(p => {
-        if (p.savedPlaceId !== deletedPlaceId) return p;
-
-        // Create a copy to modify
-        const updatedPlace = { ...p };
-
-        if (isCountryContext) {
-          delete updatedPlace.country;
-        } else if (isCityContext) {
-          delete updatedPlace.city;
-        }
-
-        // If place has neither city nor country, filter it out (return null)
-        if (!updatedPlace.city && !updatedPlace.country) return null;
-        
-        return updatedPlace;
-      }).filter(Boolean);
-
-      setTotalCount(updatedPlaces.length);
-      return updatedPlaces;
-    });
-
-    // If we deleted from a city context, update the city counts
-    if (isCityContext) {
-      setCities(prevCities =>
-        prevCities
-          .map(c => (c.city === selectedCity.city ? { ...c, count: c.count - 1 } : c))
-          .filter(c => c.count > 0)
-      );
+      await AsyncStorage.setItem(CITY_PLACES_TEMP_KEY, JSON.stringify({
+        cityName: cardData.city,
+        isCountry: false,
+        places,
+      }));
+      router.push('/saved-places-city');
     }
   };
 
@@ -462,7 +413,7 @@ export default function SavedPlaces() {
             style={styles.wishlistButton}
             onPress={() => router.push('/saved-places-wishlist')}
           >
-            <Feather name="list" size={24} color="black" />
+            <Feather name="heart" size={24} color={Colors.GRAY} />
           </TouchableOpacity>
         </View>
         <View style={styles.loadingContainer}>
@@ -482,7 +433,7 @@ export default function SavedPlaces() {
             style={styles.wishlistButton}
             onPress={() => router.push('/saved-places-wishlist')}
           >
-            <Feather name="list" size={24} color="black" />
+            <Feather name="heart" size={24} color={Colors.GRAY} />
           </TouchableOpacity>
         </View>
         <View style={styles.errorContainer}>
@@ -504,7 +455,7 @@ export default function SavedPlaces() {
           style={styles.wishlistButton}
           onPress={() => router.push('/saved-places-wishlist')}
         >
-          <Feather name="list" size={24} color="black" />
+          <Feather name="heart" size={24} color={Colors.GRAY} />
         </TouchableOpacity>
       </View>
 
@@ -627,28 +578,6 @@ export default function SavedPlaces() {
         </View>
       )}
 
-      {/* City Saved Places Modal */}
-      {selectedCity && !selectedCity.isCountry && (
-        <CitySavedPlacesModal
-          visible={cityModalVisible}
-          onClose={handleCloseCityModal}
-          cityName={selectedCity.city}
-          places={getPlacesForCard(selectedCity)}
-          onPlaceDeleted={handlePlaceDeleted}
-          isCountry={false}
-        />
-      )}
-
-      {/* Country Saved Places Modal */}
-      {selectedCity?.isCountry && (
-        <CountrySavedPlacesModal
-          visible={countryModalVisible}
-          onClose={handleCloseCountryModal}
-          countryName={selectedCity.city}
-          places={getPlacesForCard(selectedCity)}
-          onPlaceDeleted={handlePlaceDeletedFromCountry}
-        />
-      )}
     </View>
   );
 }
@@ -674,16 +603,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 25,
     bottom: 15,
-    flexDirection: 'row',
+    backgroundColor: 'white',
+    borderRadius: 25,
+    width: 50,
+    height: 50,
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: Colors.WHITE,
-    borderRadius: 8,
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2.84,
+    shadowRadius: 4,
+    elevation: 3,
   },
   headerSubtitle: {
     fontFamily: 'outfit',
