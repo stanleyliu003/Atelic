@@ -1776,6 +1776,22 @@
         }
       ]
     },
+    "AMPLIFY_function_toggleFavorite_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "toggleFavorite"
+        }
+      ]
+    },
+    "AMPLIFY_function_toggleFavorite_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "toggleFavorite"
+        }
+      ]
+    },
     "AMPLIFY_function_unfollowUser_deploymentBucketName": {
       "usedBy": [
         {
