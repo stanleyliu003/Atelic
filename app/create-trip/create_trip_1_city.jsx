@@ -519,7 +519,7 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
                             cachePolicy="disk"
                         />
                     ) : (
-                        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#F36406' }]} />
+                        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000' }]} />
                     )}
                     {/* Dark overlay for text readability */}
                     <View style={styles.photoOverlay} />
