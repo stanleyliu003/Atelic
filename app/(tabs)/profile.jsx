@@ -35,6 +35,7 @@ export default function Profile() {
   const [ownedTrips, setOwnedTrips] = useState([]);
   const [sharedTrips, setSharedTrips] = useState([]);
   const [isLoadingTrips, setIsLoadingTrips] = useState(true);
+  const [hasLoadedTrips, setHasLoadedTrips] = useState(false);
   const [tripsError, setTripsError] = useState(null);
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [isLoadingTrip, setIsLoadingTrip] = useState(false);
@@ -260,7 +261,9 @@ export default function Profile() {
 
   const loadUserTrips = async (userID) => {
     try {
-      setIsLoadingTrips(true);
+      if (!hasLoadedTrips) {
+        setIsLoadingTrips(true);
+      }
       setTripsError(null);
 
       const tripSummaries = await listUserTripsFromCloud(userID);
@@ -365,12 +368,16 @@ export default function Profile() {
       setUserTrips(sortedTrips);
       setOwnedTrips(owned);
       setSharedTrips(shared);
+      setHasLoadedTrips(true);
     } catch (error) {
       console.error('[Profile] Error loading trips:', error);
       setTripsError('Failed to load trips');
-      setUserTrips([]);
-      setOwnedTrips([]);
-      setSharedTrips([]);
+      // Don't clear trips if we had previously loaded them successfully
+      if (!hasLoadedTrips) {
+        setUserTrips([]);
+        setOwnedTrips([]);
+        setSharedTrips([]);
+      }
     } finally {
       setIsLoadingTrips(false);
     }
@@ -958,7 +965,7 @@ export default function Profile() {
           </View>
         )}
 
-        {isLoadingTrips ? (
+        {(isLoadingTrips || !hasLoadedTrips) ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={Colors.PRIMARY} />
             <Text style={styles.loadingText}>Loading trips...</Text>
@@ -1001,7 +1008,7 @@ export default function Profile() {
               </>
             )}
 
-            {(ownedTrips.length > 0 || sharedTrips.length > 0) ? (
+            {(ownedTrips.length > 0 || sharedTrips.length > 0) || !hasLoadedTrips ? (
               <>
                 {/* My Trips Title - scrolls with content */}
                 {ownedTrips.length > 0 && (

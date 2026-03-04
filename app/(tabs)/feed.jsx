@@ -86,6 +86,7 @@ export default function FeedScreen() {
   const [ownedTrips, setOwnedTrips] = useState([]);
   const [sharedTrips, setSharedTrips] = useState([]);
   const [isLoadingTrips, setIsLoadingTrips] = useState(true);
+  const [hasLoadedTrips, setHasLoadedTrips] = useState(false);
   const [tripsError, setTripsError] = useState(null);
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [isLoadingTrip, setIsLoadingTrip] = useState(false);
@@ -487,7 +488,10 @@ export default function FeedScreen() {
     const maxRetries = 2;
 
     try {
-      setIsLoadingTrips(true);
+      // Only show loading spinner if we haven't loaded trips before
+      if (!hasLoadedTrips) {
+        setIsLoadingTrips(true);
+      }
       setTripsError(null);
 
       const tripSummaries = await listUserTripsFromCloud(userID);
@@ -571,6 +575,7 @@ export default function FeedScreen() {
       setUserTrips(sortedTrips);
       setOwnedTrips(owned);
       setSharedTrips(shared);
+      setHasLoadedTrips(true);
       setIsLoadingTrips(false);
     } catch (error) {
       // Try to extract partial data if available
@@ -1620,7 +1625,7 @@ export default function FeedScreen() {
         }
       >
         {/* My Trips Section */}
-        {isLoadingTrips ? (
+        {(isLoadingTrips || !hasLoadedTrips) ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#F36406" />
             <Text style={styles.loadingText}>Loading your trips...</Text>
@@ -1647,7 +1652,7 @@ export default function FeedScreen() {
               </View>
             )}
 
-            {ownedTrips.length === 0 && sharedTrips.length === 0 && (
+            {hasLoadedTrips && ownedTrips.length === 0 && sharedTrips.length === 0 && (
               <View style={styles.emptyStateContainer}>
                 <View style={styles.emptyStateIcon}>
                   <Ionicons name="airplane" size={48} color="#F36406" />
