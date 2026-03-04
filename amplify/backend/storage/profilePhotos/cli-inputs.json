@@ -1,7 +1,7 @@
 {
   "resourceName": "profilePhotos",
   "policyUUID": "ade510b9",
-  "bucketName": "amplifybackendd3e6cd8b095945dba7bea44fd55f4b97",
+  "bucketName": "atelic-profile-photos-ade510b9",
   "storageAccess": "auth",
   "guestAccess": [],
   "authAccess": [

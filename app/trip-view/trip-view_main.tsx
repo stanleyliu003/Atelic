@@ -1503,6 +1503,42 @@ export default function TripViewMain() {
 
                             return newPolylines;
                         });
+
+                        // CRITICAL: Update startDate/endDate when days are deleted remotely
+                        // Without this, the tab dates will be incorrect after Day 1 is deleted
+                        const currentStartDate = latestTripDataRef.current.startDate || startDate;
+                        const currentEndDate = latestTripDataRef.current.endDate || endDate;
+                        const remainingDays = Object.keys(updatedState.dayActivities).length;
+
+                        // Count how many Day 1 deletions occurred (each advances startDate by 1)
+                        const day1Deletions = dayDeletions.filter(op => op.dayNumber === 1).length;
+
+                        if (day1Deletions > 0 && currentStartDate && remainingDays > 0) {
+                            console.log('[syncNewOperations] Day 1 deleted remotely - advancing startDate by', day1Deletions, 'days');
+                            const newStart = new Date(currentStartDate);
+                            newStart.setDate(newStart.getDate() + day1Deletions);
+                            const newStartDate = newStart.toISOString();
+                            setStartDate(newStartDate);
+                            latestTripDataRef.current.startDate = newStartDate;
+                        }
+
+                        // For non-Day-1 deletions, move endDate back
+                        const nonDay1Deletions = dayDeletions.filter(op => op.dayNumber !== 1).length;
+                        if (nonDay1Deletions > 0 && currentEndDate && remainingDays > 0) {
+                            console.log('[syncNewOperations] Non-Day-1 day deleted remotely - moving endDate back by', nonDay1Deletions, 'days');
+                            const newEnd = new Date(currentEndDate);
+                            newEnd.setDate(newEnd.getDate() - nonDay1Deletions);
+                            const newEndDate = newEnd.toISOString();
+                            setEndDate(newEndDate);
+                            latestTripDataRef.current.endDate = newEndDate;
+                        }
+
+                        // Update tripLength to match remaining days
+                        if (remainingDays !== tripLength) {
+                            console.log('[syncNewOperations] Updating tripLength from', tripLength, 'to', remainingDays);
+                            setTripLength(remainingDays);
+                            latestTripDataRef.current.tripLength = remainingDays;
+                        }
                     }
 
                     // Handle tab switching if days were deleted
@@ -1857,7 +1893,7 @@ export default function TripViewMain() {
                 }, 0);
             }
         }
-    }, [tripId, currentUserID, activities, dayActivities, updateActivities, setLegTravelMode]);
+    }, [tripId, currentUserID, activities, dayActivities, updateActivities, setLegTravelMode, startDate, endDate, tripLength]);
 
     // Function to add activities back to the trip saved places
     const addActivitiesToWishlist = (newActivities: Activity[], prependToTop: boolean = false) => {
