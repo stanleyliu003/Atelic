@@ -34,7 +34,7 @@ export default function Profile() {
   const [userTrips, setUserTrips] = useState([]);
   const [ownedTrips, setOwnedTrips] = useState([]);
   const [sharedTrips, setSharedTrips] = useState([]);
-  const [isLoadingTrips, setIsLoadingTrips] = useState(false);
+  const [isLoadingTrips, setIsLoadingTrips] = useState(true);
   const [tripsError, setTripsError] = useState(null);
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [isLoadingTrip, setIsLoadingTrip] = useState(false);
