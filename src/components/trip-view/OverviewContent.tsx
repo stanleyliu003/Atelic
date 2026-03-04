@@ -7,6 +7,7 @@ import { Activity, EnhancedRouteLeg } from '../../types/activity.types';
 import EditableTripTitle from './EditableTripTitle';
 import DaySummaryCard from './DaySummaryCard';
 import { getUserProfile } from '../../graphql/queries';
+import { InitialsAvatar } from '../common/InitialsAvatar';
 
 // Helper function to resolve S3 keys to signed URLs
 const resolveProfilePhotoUrl = async (url: string | null | undefined): Promise<string | null> => {
@@ -211,15 +212,7 @@ export default function OverviewContent({
               {(collaborators || []).slice(0, 3).map((collab, index) => {
                 const username = collab.username || collab.userName || '';
                 const fullName = collab.fullName || collab.email || '';
-                const initials = fullName
-                  .split(' ')
-                  .map(n => n[0])
-                  .join('')
-                  .toUpperCase()
-                  .slice(0, 2) || username.slice(0, 2).toUpperCase();
                 const photoUrl = collaboratorPhotos[username];
-
-                const isValidPhotoUrl = photoUrl && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'));
 
                 return (
                   <View
@@ -229,16 +222,12 @@ export default function OverviewContent({
                       { marginLeft: index === 0 ? 0 : -8, zIndex: 10 - index },
                     ]}
                   >
-                    {isValidPhotoUrl ? (
-                      <Image
-                        source={{ uri: photoUrl }}
-                        style={styles.collaboratorPhoto}
-                      />
-                    ) : (
-                      <View style={styles.collaboratorInitials}>
-                        <Text style={styles.initialsText}>{initials}</Text>
-                      </View>
-                    )}
+                    <InitialsAvatar
+                      name={fullName || username || '?'}
+                      profilePhotoUrl={photoUrl}
+                      size={28}
+                      fontSize={11}
+                    />
                   </View>
                 );
               })}
@@ -355,23 +344,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFFFFF',
     overflow: 'hidden',
-  },
-  collaboratorPhoto: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 16,
-  },
-  collaboratorInitials: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: Colors.ORANGE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  initialsText: {
-    fontSize: 11,
-    fontFamily: 'outfit-bold',
-    color: '#FFFFFF',
   },
   moreCollaborators: {
     width: '100%',

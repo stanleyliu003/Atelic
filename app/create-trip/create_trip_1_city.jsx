@@ -4,7 +4,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Animated, PanResponder, Switch, TouchableWithoutFeedback, Keyboard, ActivityIndicator, Alert } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Animated, PanResponder, Switch, TouchableWithoutFeedback, Keyboard, ActivityIndicator, Alert, Dimensions, LogBox } from 'react-native';
+
+// Suppress VirtualizedList nesting warning — GooglePlacesAutocomplete uses FlatList internally
+LogBox.ignoreLogs(['VirtualizedLists should never be nested inside plain ScrollViews']);
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { API, Auth } from 'aws-amplify';
@@ -13,6 +16,29 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import CalendarPicker from 'react-native-calendar-picker';
 import { ShareTripModal } from '../../src/components/trip-view/collaboration';
 import { createTrip } from '../../src/graphql/mutations';
+import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { UNSPLASH_ACCESS_KEY } from '../../src/constants/api';
+import { trackUnsplashDownload } from '../../src/services/unsplashService';
+import UnsplashInfoButton from '../../src/components/common/UnsplashInfoButton';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const PLACEHOLDER_BLURHASH = '|rF?hV%2WCj[ayj[a|j[az_NaeWBj@ayfRayfQfQM{M|azj[azf6telebu~qayj[j[fQayWBofofayayayj[fQj[ayayj[ayfjj[ay';
+
+// Static curated background photo
+const STATIC_HERO_URL = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1080&q=80';
+const STATIC_HERO_ATTRIBUTION = {
+    photographerName: 'Samuel Ferrara',
+    photographerProfileUrl: 'https://unsplash.com/@samferrara',
+    photoPageUrl: 'https://unsplash.com/photos/1527pjeb6jg',
+    downloadLocationUrl: '',
+};
+
+// Glass-morphism constants
+const GLASS_BG = 'rgba(255, 255, 255, 0.1)';
+const GLASS_BORDER = 'rgba(255, 255, 255, 0.18)';
+const GLASS_BG_STRONG = 'rgba(255, 255, 255, 0.14)';
+const GLASS_BORDER_STRONG = 'rgba(255, 255, 255, 0.22)';
 
 export default function create_trip_1_city({ showBackButton = true, prefilledCity: prefilledCityProp = null, fromSavedPlaces = null }) {
     const router = useRouter();
@@ -67,6 +93,11 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
     // Local state for city selection - only commit to context when user presses "Next"
     const [localSelectedCity, setLocalSelectedCity] = useState('');
     const [localSelectedCityLocation, setLocalSelectedCityLocation] = useState(null);
+
+    // Hero image state
+    const [heroImageUrl, setHeroImageUrl] = useState(null);
+    const [heroAttribution, setHeroAttribution] = useState(null);
+    const insets = useSafeAreaInsets();
 
 
     // Pan responder for swipe-down gesture to close calendar
@@ -199,6 +230,12 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
     }, [prefilledCityProp, params.prefilledCity])
 
 
+
+    // Set static hero background image
+    useEffect(() => {
+        setHeroImageUrl(STATIC_HERO_URL);
+        setHeroAttribution(STATIC_HERO_ATTRIBUTION);
+    }, []);
 
     // Fetch city categories independently - this can be slow due to Gemini
     const fetchCityCategories = async (cityName) => {
@@ -465,528 +502,501 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
 
     return (
         <KeyboardAvoidingView
-            style={{ flex: 1, backgroundColor: Colors.WHITE }}
+            style={{ flex: 1, backgroundColor: '#000' }}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={60}
+            keyboardVerticalOffset={0}
         >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <View style={{
-                    padding: 25,
-                    paddingTop: 40,
-                    backgroundColor: Colors.WHITE,
-                    minHeight: '100%'
-                }}>
-                    {/* Header Row */}
-                    {showBackButton && (
-                        <View style={styles.headerRow}>
-                            <TouchableOpacity onPress={() => router.replace('(tabs)/create_new_trip')} style={styles.backButton}>
-                                <Ionicons name="arrow-back" size={32} color="black" />
-                            </TouchableOpacity>
-                        </View>
+            <View style={{ flex: 1 }}>
+                {/* ===== FULL-BLEED BACKGROUND ===== */}
+                <View style={StyleSheet.absoluteFillObject}>
+                    {heroImageUrl ? (
+                        <Image
+                            source={{ uri: heroImageUrl }}
+                            style={StyleSheet.absoluteFillObject}
+                            contentFit="cover"
+                            placeholder={{ blurhash: PLACEHOLDER_BLURHASH }}
+                            transition={600}
+                            cachePolicy="disk"
+                        />
+                    ) : (
+                        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#F36406' }]} />
                     )}
-
-                {/* Destination Prompt */}
-                <View style={styles.promptSection}>                    
-                    <Text style={styles.promptTitleCity}>Where do you want to go?</Text>
+                    {/* Dark overlay for text readability */}
+                    <View style={styles.photoOverlay} />
                 </View>
 
-                {/* Enter City */}
-                <View style={styles.searchContainer}>
-                    <View style={styles.searchIconInsideContainer}>
-                        <Feather name="search" size={24} color="black" />
-                    </View>
-                    <GooglePlacesAutocomplete
-                        ref={googlePlacesRef}
-                        placeholder='Ex: Boston, MA, USA'
-                        onPress={async (data, details = null) => {
-                            // Use LOCAL state instead of context - only commit to context on "Next"
-                            setLocalSelectedCity(data.description);
-                            selectedCityRef.current = data.description;
-                            setHasSelectedPlace(true);
-                            // Store selected city's coordinates for initial map centering
-                            if (details && details.geometry && details.geometry.location) {
-                                const { lat, lng } = details.geometry.location;
-                                setLocalSelectedCityLocation({ lat, lng });
-                            } else {
-                                setLocalSelectedCityLocation(null);
-                            }
-                            // Update the text field to show the selected city immediately
-                            if (googlePlacesRef.current) {
-                                googlePlacesRef.current.setAddressText(data.description);
-                            }
-                            // Fetch city categories for trip planning (but don't save to cache)
-                            fetchCityCategories(data.description); // Don't await - let it run independently
-                        }}
-                        query={{
-                            key: process.env.EXPO_PUBLIC_GOOGLE_MAP_KEY,
-                            language: 'en',
-                            types: '(regions)',
-                        }}
-                        textInputProps={{
-                            autoCorrect: false,
-                            autoComplete: 'off',
-                            autoCapitalize: 'words',
-                            spellCheck: false,
-                            onChangeText: (text) => {
-                                setSearchText(text);
-                                // When user manually edits the text (different from selected city), hide the trip length section
-                                if (text !== selectedCityRef.current) {
-                                    setHasSelectedPlace(false);
-                                }
-                            },
-                        }}
-                        styles={{
-                            container: {
-                                flex: 0,
-                                zIndex: 1,
-                            },
-                            textInputContainer: {
-                                flexDirection: 'row',
-                                width: '100%',
-                            },
-                            textInput: {
-                                height: 55,
-                                color: '#1a1a1a',
-                                fontSize: 16,
-                                fontFamily: 'outfit',
-                                borderWidth: 0,
-                                borderRadius: 20,
-                                backgroundColor: '#ffffff',
-                                paddingHorizontal: 15,
-                                paddingLeft: 50,
-                                flex: 1,
-                                shadowColor: '#000',
-                                shadowOffset: { width: 0, height: 2 },
-                                shadowOpacity: 0.1,
-                                shadowRadius: 8,
-                                elevation: 4,
-                            },
-                            listView: {
-                                backgroundColor: 'white',
-                                borderRadius: 15,
-                                marginTop: 5,
-                                elevation: 3,
-                                shadowColor: '#000',
-                                shadowOffset: { width: 0, height: 2 },
-                                shadowOpacity: 0.1,
-                                shadowRadius: 4,
-                            },
-                            row: {
-                                backgroundColor: 'white',
-                                padding: 13,
-                                height: 44,
-                                flexDirection: 'row',
-                            },
-                            description: {
-                                fontFamily: 'outfit',
-                                fontSize: 16,
-                                color: '#1a1a1a',
-                            },
-                        }}
-                        fetchDetails={true}
-                        enablePoweredByContainer={false}
-                        debounce={200}
-                    />
-                </View>
+                {/* ===== BACK BUTTON (fixed) ===== */}
+                {showBackButton && (
+                    <TouchableOpacity
+                        onPress={() => router.replace('(tabs)/create_new_trip')}
+                        style={[styles.backButton, { top: insets.top + 10 }]}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    >
+                        <View style={styles.backButtonCircle}>
+                            <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
+                        </View>
+                    </TouchableOpacity>
+                )}
 
-                {/* Instruction text when user has typed but not selected */}
-                {searchText && !hasSelectedPlace && (
-                    <View style={styles.instructionContainer}>
-                        <Text style={styles.instructionText}>Select a destination from dropdown results</Text>
+                {/* ===== UNSPLASH ATTRIBUTION (fixed) ===== */}
+                {heroAttribution && (
+                    <View style={[styles.unsplashContainer, { top: insets.top }]}>
+                        <UnsplashInfoButton attribution={heroAttribution} />
                     </View>
                 )}
 
-                {/* Trip Length Selection - Only show when a place has been selected from autocomplete */}
-                {localSelectedCity && hasSelectedPlace && (
-                    <View style={styles.tripLengthSection}>
-                        <View style={styles.promptSection}>
-                            <Text style={styles.promptTitle}>How long is your trip?</Text>
-                        </View>
+                {/* ===== SCROLLABLE CONTENT ===== */}
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                    <ScrollView
+                        style={{ flex: 1 }}
+                        contentContainerStyle={styles.scrollContent}
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}
+                        bounces={true}
+                    >
+                        {/* Spacer — shrinks when trip details are visible so everything fits */}
+                        <View style={{ height: (localSelectedCity && hasSelectedPlace) ? SCREEN_HEIGHT * 0.15 : SCREEN_HEIGHT * 0.32 }} />
 
-                        {/* Calendar Button */}
-                        <View style={{ marginTop: -10 }}>
-                            <TouchableOpacity
-                                style={styles.calendarButton}
-                                onPress={() => setIsCalendarOpen(true)}
-                            >
-                                <View style={styles.calendarButtonContent}>
-                                    <MaterialCommunityIcons name="calendar-clock-outline" size={24} color="black" />
-                                    <Text style={[styles.calendarButtonText, !tripLength && styles.placeholderText]}>
-                                        {startDate && endDate
-                                            ? `${formatDate(startDate)}   -   ${formatDate(endDate)}`
-                                            : tripLength
-                                            ? `${tripLength} day${tripLength > 1 ? 's' : ''}`
-                                            : 'Select dates'}
-                                    </Text>
-                                </View>
-                            </TouchableOpacity>
-                        </View>
+                        {/* Title on photo */}
+                        <Text style={styles.heroTitle}>Where do you{'\n'}want to go?</Text>
 
-                        {/* Calendar Modal */}
-                        <Modal
-                            visible={isCalendarOpen}
-                            transparent={true}
-                            animationType="slide"
-                            onRequestClose={() => setIsCalendarOpen(false)}
-                        >
-                            <View style={styles.modalOverlay}>
-                                {/* Backdrop - tap to close */}
-                                <TouchableOpacity
-                                    style={styles.modalBackdrop}
-                                    activeOpacity={1}
-                                    onPress={() => setIsCalendarOpen(false)}
-                                />
-                                <View style={styles.modalContent}>
-                                    {/* Top Handle - Swipeable */}
-                                    <View {...panResponder.panHandlers} style={styles.modalHandleContainer}>
-                                        <View style={styles.modalHandle} />
-                                    </View>
-
-                                    {/* Header */}
-                                    <View style={styles.modalHeader}>
-                                        <View style={styles.toggleContainer}>
-                                            <Text style={styles.toggleLabel}>Flexible days</Text>
-                                            <Switch
-                                                value={isFlexibleDays}
-                                                onValueChange={(value) => {
-                                                    setIsFlexibleDays(value);
-                                                    // Clear all selections when switching modes
-                                                    startDateRef.current = null;
-                                                    setStartDate(null);
-                                                    setContextStartDate(null);
-                                                    setEndDate(null);
-                                                    setContextEndDate(null);
-                                                    setTripLength(null);
-                                                }}
-                                                trackColor={{ false: '#D1D5DB', true: '#FFA53F' }}
-                                                thumbColor={isFlexibleDays ? '#FFFFFF' : '#f4f3f4'}
-                                                ios_backgroundColor="#D1D5DB"
-                                            />
-                                        </View>
-                                    </View>
-
-                                    {/* Calendar or Flexible Days Dropdown */}
-                                    {!isFlexibleDays ? (
-                                        // Calendar View
-                                        <View style={styles.calendarContainer}>
-                                            <CalendarPicker
-                                                startFromMonday={false}
-                                                allowRangeSelection={true}
-                                                minDate={new Date(new Date().setHours(0, 0, 0, 0))}
-                                                maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 3))}
-                                                todayBackgroundColor="#E8F4FD"
-                                                todayTextStyle={{ color: '#27BFFF' }}
-                                                selectedDayColor="#FFA53F"
-                                                selectedDayTextColor="#FFFFFF"
-                                                selectedStartDate={startDate}
-                                                selectedEndDate={endDate}
-                                                enableSwipe={true}
-                                                weekdays={['S', 'M', 'T', 'W', 'T', 'F', 'S']}
-                                                allowBackwardRangeSelect={true}
-                                            onDateChange={async (date, type) => {
-                                                if (type === 'END_DATE') {
-                                                    // Only proceed if we have a valid date
-                                                    if (!date) {
-                                                        setEndDate(null);
-                                                        setContextEndDate(null);
-                                                        setTripLength(null);
-                                                        return;
-                                                    }
-
-                                                    // Use the ref to get the latest start date value
-                                                    const currentStartDate = startDateRef.current;
-
-                                                    if (currentStartDate) {
-                                                        // Normalize dates to midnight to avoid timezone issues
-                                                        const normalizedStart = new Date(currentStartDate);
-                                                        normalizedStart.setHours(0, 0, 0, 0);
-                                                        const normalizedEnd = new Date(date);
-                                                        normalizedEnd.setHours(0, 0, 0, 0);
-
-                                                        // Calculate time difference in milliseconds
-                                                        const timeDiff = normalizedEnd.getTime() - normalizedStart.getTime();
-
-                                                        // Check if the selected end date is before the start date
-                                                        if (timeDiff < 0) {
-                                                            // Swap: the earlier date becomes start, later becomes end
-                                                            const newStartDate = date;
-                                                            const newEndDate = currentStartDate;
-
-                                                            // Recalculate trip length with swapped dates (inclusive of both start and end dates)
-                                                            const swappedTimeDiff = normalizedStart.getTime() - normalizedEnd.getTime();
-                                                            const swappedDays = Math.round(swappedTimeDiff / (1000 * 60 * 60 * 24)) + 1;
-
-                                                            // Update ref, local state, and context together
-                                                            startDateRef.current = newStartDate;
-                                                            setStartDate(newStartDate);
-                                                            setContextStartDate(newStartDate.toISOString());
-                                                            setEndDate(newEndDate);
-                                                            setContextEndDate(newEndDate.toISOString());
-                                                            setTripLength(swappedDays);
-                                                        } else {
-                                                            // Normal forward selection - end date is after start date
-                                                            const days = Math.round(timeDiff / (1000 * 60 * 60 * 24)) + 1;
-
-                                                            setEndDate(date);
-                                                            setContextEndDate(date.toISOString());
-                                                            setTripLength(days);
-                                                        }
-
-                                                        // Save trip to database after dates are selected
-                                                        try {
-                                                            await saveTrip();
-                                                        } catch (error) {
-                                                            console.error('[create_trip_1_city] Error saving trip after date selection:', error);
-                                                        }
-                                                    }
-                                                } else {
-                                                    // Clear end date and trip length when selecting a new start date
-                                                    startDateRef.current = date;
-                                                    setStartDate(date);
-                                                    setContextStartDate(date.toISOString());
-                                                    setEndDate(null);
-                                                    setContextEndDate(null);
-                                                    setTripLength(null);
-                                                }
-                                            }}
-                                                width={350}
-                                                textStyle={{
-                                                    fontFamily: 'outfit',
-                                                    fontSize: 16,
-                                                }}
-                                                monthTitleStyle={{
-                                                    fontFamily: 'outfit-bold',
-                                                    fontSize: 24,
-                                                    color: '#1a1a1a',
-                                                }}
-                                                yearTitleStyle={{
-                                                    fontFamily: 'outfit-bold',
-                                                    fontSize: 24,
-                                                    color: '#1a1a1a',
-                                                }}
-                                                dayLabelsWrapper={{
-                                                    borderTopWidth: 0,
-                                                    borderBottomWidth: 0,
-                                                }}
-                                                previousComponent={
-                                                    <Ionicons name="chevron-back" size={24} color="#666666" />
-                                                }
-                                                nextComponent={
-                                                    <Ionicons name="chevron-forward" size={24} color="#666666" />
-                                                }
-                                            />
-                                        </View>
-                                    ) : (
-                                        // Flexible Days Dropdown
-                                        <View style={styles.flexibleDaysContainer}>
-                            <View style={styles.dropdownContainer}>
-                                <TouchableOpacity
-                                    style={styles.dropdownButton}
-                                    onPress={() => setIsDropdownOpen(!isDropdownOpen)}
-                                >
-                                    <View style={styles.dropdownContent}>
-                                        <MaterialCommunityIcons name="calendar-clock-outline" size={24} color="black" />
-                                        <Text style={[styles.dropdownButtonText, !tripLength && styles.placeholderText]}>
-                                            {tripLength ? `${tripLength} day${tripLength > 1 ? 's' : ''}` : 'Select number of days'}
+                        {/* Search Bar - glass effect on photo */}
+                        <View style={styles.searchWrapper}>
+                            <View style={styles.searchIconContainer}>
+                                <Feather name="search" size={18} color="rgba(255,255,255,0.7)" />
+                            </View>
+                            <GooglePlacesAutocomplete
+                                ref={googlePlacesRef}
+                                placeholder='Search a city...'
+                                onPress={async (data, details = null) => {
+                                    setLocalSelectedCity(data.description);
+                                    selectedCityRef.current = data.description;
+                                    setHasSelectedPlace(true);
+                                    if (details && details.geometry && details.geometry.location) {
+                                        const { lat, lng } = details.geometry.location;
+                                        setLocalSelectedCityLocation({ lat, lng });
+                                    } else {
+                                        setLocalSelectedCityLocation(null);
+                                    }
+                                    if (googlePlacesRef.current) {
+                                        googlePlacesRef.current.setAddressText(data.description);
+                                    }
+                                    fetchCityCategories(data.description);
+                                }}
+                                query={{
+                                    key: process.env.EXPO_PUBLIC_GOOGLE_MAP_KEY,
+                                    language: 'en',
+                                    types: '(regions)',
+                                }}
+                                textInputProps={{
+                                    autoCorrect: false,
+                                    autoComplete: 'off',
+                                    autoCapitalize: 'words',
+                                    spellCheck: false,
+                                    placeholderTextColor: 'rgba(255,255,255,0.45)',
+                                    onChangeText: (text) => {
+                                        setSearchText(text);
+                                        if (text !== selectedCityRef.current) {
+                                            setHasSelectedPlace(false);
+                                        }
+                                    },
+                                }}
+                                renderRow={(rowData) => (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                        <Text style={{ fontFamily: 'outfit-medium', fontSize: 15, color: '#FFFFFF', flex: 1 }} numberOfLines={1}>
+                                            {rowData.structured_formatting?.main_text || rowData.description}
+                                            {rowData.structured_formatting?.secondary_text ? (
+                                                <Text style={{ fontFamily: 'outfit', fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
+                                                    {'  '}
+                                                    {rowData.structured_formatting.secondary_text}
+                                                </Text>
+                                            ) : null}
                                         </Text>
                                     </View>
-                                    <Text style={[styles.dropdownArrow, isDropdownOpen && styles.dropdownArrowOpen]}>
-                                        ▼
-                                    </Text>
-                                </TouchableOpacity>
-
-                                {isDropdownOpen && (
-                                    <View style={styles.dropdownList}>
-                                        <ScrollView style={styles.optionsList} nestedScrollEnabled={true}>
-                                            {dayOptions.map(day => (
-                                                <TouchableOpacity
-                                                    key={day}
-                                                    style={[
-                                                        styles.option,
-                                                        tripLength === day && styles.selectedOption
-                                                    ]}
-                                                    onPress={async () => {
-                                                        setTripLength(day);
-                                                        setIsDropdownOpen(false);
-
-                                                        // Save trip to database after selecting flexible days
-                                                        try {
-                                                            await saveTrip();
-                                                        } catch (error) {
-                                                            console.error('[create_trip_1_city] Error saving trip after flexible days selection:', error);
-                                                        }
-                                                    }}
-                                                >
-                                                    <Text style={[
-                                                        styles.optionText,
-                                                        tripLength === day && styles.selectedOptionText
-                                                    ]}>
-                                                        {day} day{day > 1 ? 's' : ''}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            ))}
-                                        </ScrollView>
-                                    </View>
                                 )}
-                            </View>
-                                </View>
-                                    )}
+                                styles={{
+                                    container: {
+                                        flex: 0,
+                                        zIndex: 100,
+                                    },
+                                    textInputContainer: {
+                                        flexDirection: 'row',
+                                        width: '100%',
+                                    },
+                                    textInput: {
+                                        height: 54,
+                                        color: '#FFFFFF',
+                                        fontSize: 16,
+                                        fontFamily: 'outfit',
+                                        borderWidth: 1,
+                                        borderColor: 'rgba(255,255,255,0.2)',
+                                        borderRadius: 16,
+                                        backgroundColor: 'rgba(255,255,255,0.12)',
+                                        paddingHorizontal: 16,
+                                        paddingLeft: 46,
+                                        flex: 1,
+                                    },
+                                    listView: {
+                                        backgroundColor: GLASS_BG_STRONG,
+                                        borderRadius: 16,
+                                        marginTop: 8,
+                                        zIndex: 1000,
+                                        overflow: 'hidden',
+                                        borderWidth: 1,
+                                        borderColor: GLASS_BORDER_STRONG,
+                                    },
+                                    row: {
+                                        backgroundColor: 'transparent',
+                                        paddingVertical: 13,
+                                        paddingHorizontal: 16,
+                                    },
+                                    description: {
+                                        fontFamily: 'outfit',
+                                        fontSize: 15,
+                                        color: '#FFFFFF',
+                                    },
+                                    separator: {
+                                        height: StyleSheet.hairlineWidth,
+                                        backgroundColor: 'rgba(255,255,255,0.1)',
+                                        marginHorizontal: 16,
+                                    },
+                                }}
+                                fetchDetails={true}
+                                enablePoweredByContainer={false}
+                                debounce={200}
+                                flatListProps={{
+                                    nestedScrollEnabled: true,
+                                    scrollEnabled: false,
+                                    keyboardShouldPersistTaps: 'handled',
+                                }}
+                            />
+                        </View>
 
-                                    {/* Confirm Button */}
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.confirmButton,
-                                            { opacity: tripLength ? 1 : 0.3 }
-                                        ]}
-                                        onPress={() => {
-                                            // tripLength is already set in both modes, just close the modal
-                                            if (tripLength) {
-                                                setIsCalendarOpen(false);
-                                            }
-                                        }}
-                                        disabled={!tripLength}
-                                    >
-                                        <Text style={styles.confirmButtonText}>Confirm</Text>
-                                    </TouchableOpacity>
-                                </View>
+                        {/* Instruction text */}
+                        {searchText && !hasSelectedPlace && (
+                            <View style={styles.instructionContainer}>
+                                <Text style={styles.instructionText}>Select a destination from the results</Text>
                             </View>
-                        </Modal>
+                        )}
 
-                        {/* Trip Visibility Toggle - shown after trip length is selected */}
-                        {tripLength && (
-                            <View style={styles.visibilitySection}>
+                        {/* ===== TRIP DETAILS (glass cards on photo) ===== */}
+                        {localSelectedCity && hasSelectedPlace && (
+                            <View style={styles.detailsSection}>
+                                <Text style={styles.detailsSectionTitle}>Trip details</Text>
+
+                                {/* Calendar Button */}
                                 <TouchableOpacity
-                                    style={[
-                                        styles.visibilityToggleRow,
-                                        isPublic && styles.visibilityToggleRowActive
-                                    ]}
-                                    onPress={() => { setIsPublic(!isPublic); setIsPublicLoaded(true); }}
+                                    style={styles.glassRow}
+                                    onPress={() => setIsCalendarOpen(true)}
                                     activeOpacity={0.7}
                                 >
-                                    <View style={styles.visibilityToggleContent}>
-                                        <View style={[
-                                            styles.visibilityIconContainer,
-                                            isPublic && styles.visibilityIconContainerActive
-                                        ]}>
-                                            <Ionicons
-                                                name={isPublic ? "eye" : "eye-off-outline"}
-                                                size={20}
-                                                color={isPublic ? Colors.PRIMARY : '#888'}
-                                            />
+                                    <View style={styles.glassRowLeft}>
+                                        <View style={styles.glassIconCircle}>
+                                            <MaterialCommunityIcons name="calendar-clock-outline" size={20} color="#FFFFFF" />
                                         </View>
-                                        <View style={styles.visibilityTextContainer}>
-                                            <Text style={[
-                                                styles.visibilityToggleText,
-                                                isPublic && styles.visibilityToggleTextActive
-                                            ]}>
-                                                Show on Profile
-                                            </Text>
-                                            <Text style={styles.visibilitySubtext}>
-                                                {isPublic ? 'Friends can see this trip' : 'Only you can see this trip'}
+                                        <View>
+                                            <Text style={styles.glassRowLabel}>Dates</Text>
+                                            <Text style={[styles.glassRowValue, !tripLength && styles.glassPlaceholder]}>
+                                                {startDate && endDate
+                                                    ? `${formatDate(startDate)}  —  ${formatDate(endDate)}`
+                                                    : tripLength
+                                                    ? `${tripLength} day${tripLength > 1 ? 's' : ''}`
+                                                    : 'Choose your dates'}
                                             </Text>
                                         </View>
                                     </View>
-                                    <Switch
-                                        value={isPublic}
-                                        onValueChange={(value) => { setIsPublic(value); setIsPublicLoaded(true); }}
-                                        trackColor={{ false: '#E5E5E5', true: Colors.PRIMARY }}
-                                        thumbColor={'#FFFFFF'}
-                                        ios_backgroundColor="#E5E5E5"
-                                    />
+                                    <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.4)" />
                                 </TouchableOpacity>
-                            </View>
-                        )}
 
-                        {/* Invite Tripmate Button - shown after trip length is selected */}
-                        {tripLength && (
-                            <View style={{ marginTop: 18 }}>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.inviteTripmateButton,
-                                        isSavingTrip && styles.inviteTripmateButtonDisabled
-                                    ]}
-                                    onPress={handleInviteTripmate}
-                                    disabled={isSavingTrip}
+                                {/* Calendar Modal */}
+                                <Modal
+                                    visible={isCalendarOpen}
+                                    transparent={true}
+                                    animationType="slide"
+                                    onRequestClose={() => setIsCalendarOpen(false)}
                                 >
-                                    <View style={styles.inviteTripmateContent}>
-                                        {isSavingTrip ? (
-                                            <>
-                                                <ActivityIndicator size="small" color="#666" />
-                                                <Text style={styles.inviteTripmateText}>Loading...</Text>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <MaterialIcons name="person-add" size={24} color="#666" />
-                                                <View style={styles.inviteTripmateTextContainer}>
-                                                    <Text style={styles.inviteTripmateText}>Invite tripmates</Text>
-                                                    <Text style={styles.inviteTripmateOptional}>Optional</Text>
+                                    <View style={styles.modalOverlay}>
+                                        <TouchableOpacity
+                                            style={styles.modalBackdrop}
+                                            activeOpacity={1}
+                                            onPress={() => setIsCalendarOpen(false)}
+                                        />
+                                        <View style={styles.modalContent}>
+                                            <View {...panResponder.panHandlers} style={styles.modalHandleContainer}>
+                                                <View style={styles.modalHandle} />
+                                            </View>
+
+                                            <View style={styles.modalHeader}>
+                                                <View style={styles.toggleContainer}>
+                                                    <Text style={styles.toggleLabel}>Flexible days</Text>
+                                                    <Switch
+                                                        value={isFlexibleDays}
+                                                        onValueChange={(value) => {
+                                                            setIsFlexibleDays(value);
+                                                            startDateRef.current = null;
+                                                            setStartDate(null);
+                                                            setContextStartDate(null);
+                                                            setEndDate(null);
+                                                            setContextEndDate(null);
+                                                            setTripLength(null);
+                                                        }}
+                                                        trackColor={{ false: 'rgba(255,255,255,0.2)', true: '#F36406' }}
+                                                        thumbColor={'#FFFFFF'}
+                                                        ios_backgroundColor="rgba(255,255,255,0.2)"
+                                                    />
                                                 </View>
-                                            </>
-                                        )}
-                                    </View>
-                                </TouchableOpacity>
+                                            </View>
 
-                                {/* Invited Tripmates Display */}
-                                {collaborators && collaborators.filter(c => c.role !== 'owner').length > 0 && (
-                                    <View style={styles.invitedTripmatesContainer}>
-                                        {collaborators
-                                            .filter(c => c.role !== 'owner')
-                                            .map((collaborator, index) => (
-                                                <View key={collaborator.username || index} style={styles.tripmateChip}>
-                                                    <Text style={styles.tripmateUsername}>@{collaborator.username}</Text>
-                                                    <TouchableOpacity
-                                                        onPress={async () => {
-                                                            // Remove collaborator
-                                                            try {
-                                                                const { API } = await import('aws-amplify');
-                                                                const { removeCollaborator } = await import('../../src/graphql/mutations');
-
-                                                                const result = await API.graphql({
-                                                                    query: removeCollaborator,
-                                                                    variables: {
-                                                                        tripId,
-                                                                        username: collaborator.username
-                                                                    }
-                                                                });
-
-                                                                const updatedTrip = result.data?.removeCollaborator;
-                                                                if (updatedTrip?.collaborators) {
-                                                                    setCollaborators(updatedTrip.collaborators);
+                                            {!isFlexibleDays ? (
+                                                <View style={styles.calendarContainer}>
+                                                    <CalendarPicker
+                                                        startFromMonday={false}
+                                                        allowRangeSelection={true}
+                                                        minDate={new Date(new Date().setHours(0, 0, 0, 0))}
+                                                        maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 3))}
+                                                        todayBackgroundColor="rgba(243, 100, 6, 0.2)"
+                                                        todayTextStyle={{ color: '#FFA53F' }}
+                                                        selectedDayColor="#F36406"
+                                                        selectedDayTextColor="#FFFFFF"
+                                                        selectedRangeStartStyle={{ backgroundColor: '#F36406' }}
+                                                        selectedRangeEndStyle={{ backgroundColor: '#F36406' }}
+                                                        selectedRangeStyle={{ backgroundColor: 'rgba(243, 100, 6, 0.2)' }}
+                                                        selectedStartDate={startDate}
+                                                        selectedEndDate={endDate}
+                                                        enableSwipe={true}
+                                                        weekdays={['S', 'M', 'T', 'W', 'T', 'F', 'S']}
+                                                        allowBackwardRangeSelect={true}
+                                                        disabledDatesTextStyle={{ color: 'rgba(255,255,255,0.15)' }}
+                                                        customDayHeaderStyles={() => ({ textStyle: { color: 'rgba(255,255,255,0.5)', fontFamily: 'outfit' } })}
+                                                        onDateChange={async (date, type) => {
+                                                            if (type === 'END_DATE') {
+                                                                if (!date) {
+                                                                    setEndDate(null);
+                                                                    setContextEndDate(null);
+                                                                    setTripLength(null);
+                                                                    return;
                                                                 }
-                                                            } catch (error) {
-                                                                console.error('[create_trip_1_city] Error removing collaborator:', error);
-                                                                Alert.alert('Error', 'Failed to remove tripmate. Please try again.');
+                                                                const currentStartDate = startDateRef.current;
+                                                                if (currentStartDate) {
+                                                                    const normalizedStart = new Date(currentStartDate);
+                                                                    normalizedStart.setHours(0, 0, 0, 0);
+                                                                    const normalizedEnd = new Date(date);
+                                                                    normalizedEnd.setHours(0, 0, 0, 0);
+                                                                    const timeDiff = normalizedEnd.getTime() - normalizedStart.getTime();
+                                                                    if (timeDiff < 0) {
+                                                                        const newStartDate = date;
+                                                                        const newEndDate = currentStartDate;
+                                                                        const swappedTimeDiff = normalizedStart.getTime() - normalizedEnd.getTime();
+                                                                        const swappedDays = Math.round(swappedTimeDiff / (1000 * 60 * 60 * 24)) + 1;
+                                                                        startDateRef.current = newStartDate;
+                                                                        setStartDate(newStartDate);
+                                                                        setContextStartDate(newStartDate.toISOString());
+                                                                        setEndDate(newEndDate);
+                                                                        setContextEndDate(newEndDate.toISOString());
+                                                                        setTripLength(swappedDays);
+                                                                    } else {
+                                                                        const days = Math.round(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+                                                                        setEndDate(date);
+                                                                        setContextEndDate(date.toISOString());
+                                                                        setTripLength(days);
+                                                                    }
+                                                                    try {
+                                                                        await saveTrip();
+                                                                    } catch (error) {
+                                                                        console.error('[create_trip_1_city] Error saving trip after date selection:', error);
+                                                                    }
+                                                                }
+                                                            } else {
+                                                                startDateRef.current = date;
+                                                                setStartDate(date);
+                                                                setContextStartDate(date.toISOString());
+                                                                setEndDate(null);
+                                                                setContextEndDate(null);
+                                                                setTripLength(null);
                                                             }
                                                         }}
-                                                        style={styles.tripmateRemoveButton}
-                                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                    >
-                                                        <Ionicons name="close" size={16} color="#666" />
-                                                    </TouchableOpacity>
+                                                        width={350}
+                                                        textStyle={{ fontFamily: 'outfit', fontSize: 16, color: '#FFFFFF' }}
+                                                        monthTitleStyle={{ fontFamily: 'outfit-bold', fontSize: 24, color: '#FFFFFF' }}
+                                                        yearTitleStyle={{ fontFamily: 'outfit-bold', fontSize: 24, color: '#FFFFFF' }}
+                                                        dayLabelsWrapper={{ borderTopWidth: 0, borderBottomWidth: 0 }}
+                                                        previousComponent={<Ionicons name="chevron-back" size={24} color="rgba(255,255,255,0.6)" />}
+                                                        nextComponent={<Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.6)" />}
+                                                    />
                                                 </View>
-                                            ))}
+                                            ) : (
+                                                <View style={styles.flexibleDaysContainer}>
+                                                    <View style={styles.dropdownContainer}>
+                                                        <TouchableOpacity
+                                                            style={styles.dropdownButton}
+                                                            onPress={() => setIsDropdownOpen(!isDropdownOpen)}
+                                                        >
+                                                            <View style={styles.dropdownContent}>
+                                                                <MaterialCommunityIcons name="calendar-clock-outline" size={24} color="rgba(255,255,255,0.7)" />
+                                                                <Text style={[styles.dropdownButtonText, !tripLength && styles.placeholderText]}>
+                                                                    {tripLength ? `${tripLength} day${tripLength > 1 ? 's' : ''}` : 'Select number of days'}
+                                                                </Text>
+                                                            </View>
+                                                            <Text style={[styles.dropdownArrow, isDropdownOpen && styles.dropdownArrowOpen]}>
+                                                                ▼
+                                                            </Text>
+                                                        </TouchableOpacity>
+
+                                                        {isDropdownOpen && (
+                                                            <View style={styles.dropdownList}>
+                                                                <ScrollView style={styles.optionsList} nestedScrollEnabled={true}>
+                                                                    {dayOptions.map(day => (
+                                                                        <TouchableOpacity
+                                                                            key={day}
+                                                                            style={[styles.option, tripLength === day && styles.selectedOption]}
+                                                                            onPress={async () => {
+                                                                                setTripLength(day);
+                                                                                setIsDropdownOpen(false);
+                                                                                try {
+                                                                                    await saveTrip();
+                                                                                } catch (error) {
+                                                                                    console.error('[create_trip_1_city] Error saving trip after flexible days selection:', error);
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <Text style={[styles.optionText, tripLength === day && styles.selectedOptionText]}>
+                                                                                {day} day{day > 1 ? 's' : ''}
+                                                                            </Text>
+                                                                        </TouchableOpacity>
+                                                                    ))}
+                                                                </ScrollView>
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                </View>
+                                            )}
+
+                                            <TouchableOpacity
+                                                style={[styles.confirmButton, { opacity: tripLength ? 1 : 0.3 }]}
+                                                onPress={() => { if (tripLength) setIsCalendarOpen(false); }}
+                                                disabled={!tripLength}
+                                            >
+                                                <Text style={styles.confirmButtonText}>Confirm</Text>
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
+                                </Modal>
+
+                                {/* Visibility Toggle */}
+                                {tripLength && (
+                                    <TouchableOpacity
+                                        style={styles.glassRow}
+                                        onPress={() => { setIsPublic(!isPublic); setIsPublicLoaded(true); }}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={styles.glassRowLeft}>
+                                            <View style={styles.glassIconCircle}>
+                                                <Ionicons
+                                                    name={isPublic ? "eye" : "eye-off-outline"}
+                                                    size={18}
+                                                    color="#FFFFFF"
+                                                />
+                                            </View>
+                                            <View>
+                                                <Text style={styles.glassRowLabel}>Visibility</Text>
+                                                <Text style={styles.glassRowValue}>
+                                                    {isPublic ? 'Visible on profile' : 'Private trip'}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        <Switch
+                                            value={isPublic}
+                                            onValueChange={(value) => { setIsPublic(value); setIsPublicLoaded(true); }}
+                                            trackColor={{ false: 'rgba(255,255,255,0.2)', true: '#F36406' }}
+                                            thumbColor={'#FFFFFF'}
+                                            ios_backgroundColor="rgba(255,255,255,0.2)"
+                                        />
+                                    </TouchableOpacity>
                                 )}
+
+                                {/* Invite Tripmate */}
+                                {tripLength && (
+                                    <>
+                                        <TouchableOpacity
+                                            style={[styles.glassRow, isSavingTrip && { opacity: 0.5 }]}
+                                            onPress={handleInviteTripmate}
+                                            disabled={isSavingTrip}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={styles.glassRowLeft}>
+                                                <View style={styles.glassIconCircle}>
+                                                    {isSavingTrip ? (
+                                                        <ActivityIndicator size="small" color="#FFFFFF" />
+                                                    ) : (
+                                                        <MaterialIcons name="person-add" size={18} color="#FFFFFF" />
+                                                    )}
+                                                </View>
+                                                <View>
+                                                    <Text style={styles.glassRowLabel}>Tripmates</Text>
+                                                    <Text style={styles.glassRowValue}>
+                                                        {isSavingTrip ? 'Saving...' : 'Add friends to this trip'}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                            <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.4)" />
+                                        </TouchableOpacity>
+
+                                        {collaborators && collaborators.filter(c => c.role !== 'owner').length > 0 && (
+                                            <View style={styles.tripmatesContainer}>
+                                                {collaborators
+                                                    .filter(c => c.role !== 'owner')
+                                                    .map((collaborator, index) => (
+                                                        <View key={collaborator.username || index} style={styles.tripmateChip}>
+                                                            <Text style={styles.tripmateUsername}>@{collaborator.username}</Text>
+                                                            <TouchableOpacity
+                                                                onPress={async () => {
+                                                                    try {
+                                                                        const { API } = await import('aws-amplify');
+                                                                        const { removeCollaborator } = await import('../../src/graphql/mutations');
+                                                                        const result = await API.graphql({
+                                                                            query: removeCollaborator,
+                                                                            variables: { tripId, username: collaborator.username }
+                                                                        });
+                                                                        const updatedTrip = result.data?.removeCollaborator;
+                                                                        if (updatedTrip?.collaborators) {
+                                                                            setCollaborators(updatedTrip.collaborators);
+                                                                        }
+                                                                    } catch (error) {
+                                                                        console.error('[create_trip_1_city] Error removing collaborator:', error);
+                                                                        Alert.alert('Error', 'Failed to remove tripmate. Please try again.');
+                                                                    }
+                                                                }}
+                                                                style={styles.tripmateRemoveButton}
+                                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                            >
+                                                                <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.5)" />
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                    ))}
+                                            </View>
+                                        )}
+                                    </>
+                                )}
+
+                                {/* Start Planning Button */}
+                                {tripLength ? (
+                                    <TouchableOpacity
+                                        onPress={handleNext}
+                                        style={[styles.nextButton, { marginTop: 16 }]}
+                                        activeOpacity={0.85}
+                                    >
+                                        <Text style={styles.nextButtonText}>Start Planning</Text>
+                                        <Ionicons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 8 }} />
+                                    </TouchableOpacity>
+                                ) : null}
                             </View>
                         )}
-                    </View>
-                )}
 
-                {/* Next Button */}
-                <View style={styles.nextButtonContainer}>
-                    <TouchableOpacity
-                        onPress={handleNext}
-                        style={[
-                            styles.nextButton,
-                            { opacity: (localSelectedCity && hasSelectedPlace && tripLength) ? 1 : 0 }
-                        ]}
-                        disabled={!localSelectedCity || !hasSelectedPlace || !tripLength}
-                    >
-                        <Text style={styles.nextButtonText}>Next</Text>
-                    </TouchableOpacity>
-                </View>
-                </View>
-            </TouchableWithoutFeedback>
+                        {/* Bottom spacer for tab bar clearance */}
+                        <View style={{ height: 200 }} />
+                    </ScrollView>
+                </TouchableWithoutFeedback>
+            </View>
 
             {/* Share Trip Modal */}
             {currentUserID && tripId && (
@@ -1006,47 +1016,141 @@ export default function create_trip_1_city({ showBackButton = true, prefilledCit
 }
 
 const styles = StyleSheet.create({
-    label: {
-        fontFamily: 'outfit-medium',
-        fontSize: 18,
-        marginTop: 7,
-        marginBottom: 10,
-        color: '#1a1a1a'
+    // ===== BACKGROUND =====
+    photoOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0, 0, 0, 0.35)',
     },
-    headerRow: {
+
+    // ===== FIXED ELEMENTS =====
+    backButton: {
+        position: 'absolute',
+        left: 16,
+        zIndex: 20,
+    },
+    backButtonCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: GLASS_BG,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: GLASS_BORDER,
+    },
+    unsplashContainer: {
+        position: 'absolute',
+        right: 0,
+        left: 0,
+        height: 60,
+        zIndex: 15,
+    },
+
+    // ===== SCROLL CONTENT =====
+    scrollContent: {
+        flexGrow: 1,
+        paddingHorizontal: 24,
+    },
+
+    // ===== TITLE =====
+    heroTitle: {
+        fontFamily: 'outfit-bold',
+        fontSize: 36,
+        color: '#FFFFFF',
+        lineHeight: 44,
+        marginBottom: 24,
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 8,
+    },
+
+    // ===== SEARCH =====
+    searchWrapper: {
+        position: 'relative',
+        zIndex: 100,
+    },
+    searchIconContainer: {
+        position: 'absolute',
+        left: 16,
+        top: 18,
+        zIndex: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: 18,
+        width: 18,
+    },
+
+    // ===== INSTRUCTION =====
+    instructionContainer: {
+        marginTop: 16,
+        alignItems: 'center',
+    },
+    instructionText: {
+        fontFamily: 'outfit',
+        fontSize: 14,
+        color: 'rgba(255,255,255,0.6)',
+        textAlign: 'center',
+    },
+
+    // ===== DETAILS SECTION (glass) =====
+    detailsSection: {
+        marginTop: 20,
+        paddingBottom: 0,
+    },
+    detailsSectionTitle: {
+        fontFamily: 'outfit-bold',
+        fontSize: 16,
+        color: 'rgba(255,255,255,0.8)',
+        marginBottom: 12,
+        marginLeft: 4,
+    },
+
+    // ===== GLASS ROWS =====
+    glassRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 20,
+        justifyContent: 'space-between',
+        backgroundColor: GLASS_BG_STRONG,
+        borderWidth: 1,
+        borderColor: GLASS_BORDER_STRONG,
+        borderRadius: 16,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
         marginBottom: 10,
     },
-    backButton: {
-        marginRight: 15,
+    glassRowLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
     },
-    promptSection: {
-        paddingHorizontal: 20,
-        paddingVertical: 25,
-        alignItems: 'left',
-      },
-      promptTitleCity: {
-        fontFamily: 'outfit-bold',
-        fontSize: 24,
-        color: '#1a1a1a',
-        textAlign: 'left',
-        marginTop: 80,
-        marginLeft: -20,
-        marginBottom: 8,
-      },
-      promptTitle: {
-        fontFamily: 'outfit-bold',
-        fontSize: 24,
-        color: '#1a1a1a',
-        textAlign: 'left',
-        marginLeft: -20,
-        marginBottom: 8,
-      },
-    tripLengthSection: {
-        marginTop: 20,
+    glassIconCircle: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,0.12)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
+    glassRowLabel: {
+        fontFamily: 'outfit',
+        fontSize: 11,
+        color: 'rgba(255,255,255,0.5)',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 2,
+    },
+    glassRowValue: {
+        fontFamily: 'outfit-medium',
+        fontSize: 15,
+        color: '#FFFFFF',
+    },
+    glassPlaceholder: {
+        color: 'rgba(255,255,255,0.4)',
+        fontFamily: 'outfit',
+    },
+
+    // ===== DROPDOWN (in calendar modal) =====
     dropdownContainer: {
         position: 'relative',
         zIndex: 1000,
@@ -1055,148 +1159,143 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 15,
-        borderWidth: 0,
-        borderRadius: 20,
-        backgroundColor: 'white',
-        height: 55,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.15)',
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        height: 52,
     },
     dropdownButtonText: {
         fontFamily: 'outfit',
-        fontSize: 16,
-        color: '#1a1a1a',
+        fontSize: 15,
+        color: '#FFFFFF',
     },
     dropdownArrow: {
         fontFamily: 'outfit',
         fontSize: 12,
-        color: '#666',
+        color: 'rgba(255,255,255,0.5)',
         transform: [{ rotate: '0deg' }],
     },
     dropdownArrowOpen: {
         transform: [{ rotate: '180deg' }],
-    },
-    dropdownList: {
-        position: 'absolute',
-        top: 65,
-        left: 0,
-        right: 0,
-        backgroundColor: 'white',
-        borderWidth: 0,
-        borderRadius: 20,
-        elevation: 6,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        zIndex: 1001,
-    },
-    optionsList: {
-        maxHeight: 200,
-    },
-    option: {
-        padding: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
-    },
-    selectedOption: {
-        backgroundColor: Colors.PRIMARY + '20',
-    },
-    optionText: {
-        fontFamily: 'outfit',
-        fontSize: 16,
-        color: '#1a1a1a',
-        textAlign: 'center',
-    },
-    selectedOptionText: {
-        fontFamily: 'outfit-bold',
-        color: Colors.PRIMARY,
-    },
-    searchContainer: {
-        position: 'relative',
-        marginTop: -15,
-    },
-    searchIconInsideContainer: {
-        position: 'absolute',
-        left: 15,
-        top: 15,
-        zIndex: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: 24,
-        width: 24,
     },
     dropdownContent: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
     },
-    placeholderText: {
-        color: '#999999',
-    },
-    nextButtonContainer: {
+    dropdownList: {
         position: 'absolute',
-        bottom: 50,
-        left: 25,
-        right: 25,
+        top: 58,
+        left: 0,
+        right: 0,
+        backgroundColor: 'rgba(30, 30, 30, 0.95)',
+        borderRadius: 16,
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        zIndex: 1001,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.12)',
     },
+    optionsList: {
+        maxHeight: 200,
+    },
+    option: {
+        padding: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.08)',
+    },
+    selectedOption: {
+        backgroundColor: 'rgba(243, 100, 6, 0.2)',
+    },
+    optionText: {
+        fontFamily: 'outfit',
+        fontSize: 15,
+        color: '#FFFFFF',
+        textAlign: 'center',
+    },
+    selectedOptionText: {
+        fontFamily: 'outfit-bold',
+        color: '#FFA53F',
+    },
+    placeholderText: {
+        color: 'rgba(255,255,255,0.4)',
+        fontFamily: 'outfit',
+    },
+
+    // ===== NEXT BUTTON =====
     nextButton: {
-        padding: 15,
+        paddingVertical: 16,
         backgroundColor: '#F36406',
-        borderRadius: 15,
+        borderRadius: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 14,
+        elevation: 10,
     },
     nextButtonText: {
-        color: Colors.WHITE,
-        textAlign: 'center',
+        color: '#FFFFFF',
         fontFamily: 'outfit-bold',
         fontSize: 17,
     },
-    // Calendar Button Styles
-    calendarButton: {
+
+    // ===== TRIPMATES =====
+    tripmatesContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        paddingBottom: 10,
+        paddingHorizontal: 4,
+        gap: 8,
+    },
+    tripmateChip: {
+        flexDirection: 'row',
         alignItems: 'center',
-        padding: 15,
-        borderWidth: 0,
+        backgroundColor: 'rgba(255,255,255,0.12)',
         borderRadius: 20,
-        backgroundColor: 'white',
-        height: 55,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
+        paddingVertical: 6,
+        paddingLeft: 12,
+        paddingRight: 6,
+        gap: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.15)',
     },
-    calendarButtonContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    calendarButtonText: {
+    tripmateUsername: {
         fontFamily: 'outfit',
-        fontSize: 16,
-        color: '#1a1a1a',
+        fontSize: 14,
+        color: '#FFFFFF',
     },
-    // Calendar Modal Styles
+    tripmateRemoveButton: {
+        padding: 2,
+    },
+
+    // ===== CALENDAR MODAL =====
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
         justifyContent: 'flex-end',
     },
     modalBackdrop: {
         ...StyleSheet.absoluteFillObject,
     },
     modalContent: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#1A1A1E',
         borderTopLeftRadius: 25,
         borderTopRightRadius: 25,
         paddingHorizontal: 20,
         paddingBottom: 40,
         maxHeight: '80%',
+        borderTopWidth: 1,
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     modalHandleContainer: {
         paddingVertical: 12,
@@ -1205,7 +1304,7 @@ const styles = StyleSheet.create({
     modalHandle: {
         width: 40,
         height: 4,
-        backgroundColor: '#D1D5DB',
+        backgroundColor: 'rgba(255,255,255,0.25)',
         borderRadius: 2,
     },
     modalHeader: {
@@ -1223,13 +1322,7 @@ const styles = StyleSheet.create({
     toggleLabel: {
         fontFamily: 'outfit',
         fontSize: 16,
-        color: '#666666',
-    },
-    modalTitle: {
-        fontFamily: 'outfit-bold',
-        fontSize: 24,
-        color: '#1a1a1a',
-        textAlign: 'left',
+        color: 'rgba(255,255,255,0.7)',
     },
     flexibleDaysContainer: {
         height: 300,
@@ -1243,7 +1336,7 @@ const styles = StyleSheet.create({
     },
     confirmButton: {
         backgroundColor: '#F36406',
-        borderRadius: 25,
+        borderRadius: 16,
         paddingVertical: 16,
         marginTop: 35,
         alignItems: 'center',
@@ -1252,136 +1345,6 @@ const styles = StyleSheet.create({
     confirmButtonText: {
         color: '#FFFFFF',
         fontFamily: 'outfit-bold',
-        fontSize: 18,
-    },
-    instructionContainer: {
-        marginTop: 20,
-        alignItems: 'center',
-        paddingHorizontal: 20,
-    },
-    instructionText: {
-        fontFamily: 'outfit',
-        fontSize: 14,
-        color: '#F36406',
-        textAlign: 'center',
-    },
-    inviteTripmateButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 15,
-        borderWidth: 0,
-        borderRadius: 20,
-        backgroundColor: 'white',
-        minHeight: 55,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    inviteTripmateContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        flex: 1,
-    },
-    inviteTripmateTextContainer: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    inviteTripmateText: {
-        fontFamily: 'outfit',
-        fontSize: 16,
-        color: '#1a1a1a',
-    },
-    inviteTripmateOptional: {
-        fontFamily: 'outfit',
-        fontSize: 14,
-        color: '#999999',
-        fontStyle: 'italic',
-    },
-    inviteTripmateButtonDisabled: {
-        opacity: 0.6,
-    },
-    invitedTripmatesContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginTop: 12,
-        gap: 8,
-    },
-    tripmateChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#e9ecef',
-        borderRadius: 20,
-        paddingVertical: 6,
-        paddingLeft: 12,
-        paddingRight: 8,
-        gap: 6,
-    },
-    tripmateUsername: {
-        fontFamily: 'outfit',
-        fontSize: 14,
-        color: '#333',
-    },
-    tripmateRemoveButton: {
-        padding: 2,
-    },
-    // Trip Visibility Styles
-    visibilitySection: {
-        marginTop: 18,
-        marginBottom: 0,
-    },
-    visibilityToggleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: 'white',
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        borderWidth: 0,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    visibilityToggleRowActive: {},
-    visibilityToggleContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-        gap: 12,
-    },
-    visibilityIconContainer: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        backgroundColor: '#F5F5F5',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    visibilityIconContainerActive: {
-        backgroundColor: '#FFEDE3',
-    },
-    visibilityTextContainer: {
-        flex: 1,
-    },
-    visibilityToggleText: {
-        fontFamily: 'outfit-medium',
-        fontSize: 15,
-        color: '#1a1a1a',
-    },
-    visibilityToggleTextActive: {
-        color: Colors.PRIMARY,
-    },
-    visibilitySubtext: {
-        fontFamily: 'outfit',
-        fontSize: 12,
-        color: '#888',
-        marginTop: 2,
+        fontSize: 17,
     },
 })

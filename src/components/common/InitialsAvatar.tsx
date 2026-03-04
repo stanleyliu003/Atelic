@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { Colors } from '../../../constants/Colors';
 
@@ -54,33 +54,20 @@ export function InitialsAvatar({
   fontSize,
   cacheKey,
 }: InitialsAvatarProps) {
+  const [imageError, setImageError] = useState(false);
   const initials = useMemo(() => getInitials(name), [name]);
   const backgroundColor = useMemo(() => getColorForName(name), [name]);
   const calculatedFontSize = fontSize || size * 0.4;
 
-  // If there's a valid profile photo URL (must be http/https), show the image
-  const isValidUrl = profilePhotoUrl && (profilePhotoUrl.startsWith('http://') || profilePhotoUrl.startsWith('https://'));
-  if (isValidUrl) {
-    return (
-      <Image
-        key={cacheKey || 'avatar'} // Force re-render when key changes
-        source={{
-          uri: profilePhotoUrl,
-          cache: 'reload' as const, // Force reload to bypass cache
-        }}
-        style={[
-          styles.image,
-          {
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-          },
-        ]}
-      />
-    );
-  }
+  // Reset error state when URL changes
+  useEffect(() => {
+    setImageError(false);
+  }, [profilePhotoUrl]);
 
-  // Otherwise, show initials
+  // If there's a valid profile photo URL (must be http/https) and no error, show image over initials
+  const isValidUrl = profilePhotoUrl && (profilePhotoUrl.startsWith('http://') || profilePhotoUrl.startsWith('https://'));
+
+  // Always show initials as base layer, with image on top if available
   return (
     <View
       style={[
@@ -103,6 +90,24 @@ export function InitialsAvatar({
       >
         {initials}
       </Text>
+      {isValidUrl && !imageError && (
+        <Image
+          key={cacheKey || profilePhotoUrl}
+          source={{
+            uri: profilePhotoUrl,
+            cache: 'reload' as const,
+          }}
+          style={[
+            styles.imageOverlay,
+            {
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+            },
+          ]}
+          onError={() => setImageError(true)}
+        />
+      )}
     </View>
   );
 }
@@ -111,9 +116,12 @@ const styles = StyleSheet.create({
   container: {
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
-  image: {
-    backgroundColor: Colors.LIGHT_GRAY,
+  imageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
   initials: {
     color: Colors.WHITE,

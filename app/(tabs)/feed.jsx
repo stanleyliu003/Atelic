@@ -214,8 +214,14 @@ export default function FeedScreen() {
 
   const uploadImageToHost = async (imageUri) => {
     try {
-      const user = await Auth.currentAuthenticatedUser();
+      // Refresh credentials to ensure valid AWS session
+      const user = await Auth.currentAuthenticatedUser({ bypassCache: true });
       const userId = user.username;
+
+      // Force refresh the user session to get fresh credentials
+      const session = await Auth.currentSession();
+      console.log('[uploadImageToHost] Session valid:', session.isValid());
+
       const timestamp = Date.now();
       const filename = `profile-photos/${userId}/profile-${timestamp}.jpg`;
 
@@ -238,6 +244,14 @@ export default function FeedScreen() {
       return result.key;
     } catch (error) {
       console.error('Image upload error:', error);
+      // If it's an auth error, try to re-authenticate
+      if (error.code === 'InvalidAccessKeyId' || error.message?.includes('InvalidAccessKeyId')) {
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired. Please sign out and sign in again.',
+          [{ text: 'OK' }]
+        );
+      }
       throw error;
     }
   };

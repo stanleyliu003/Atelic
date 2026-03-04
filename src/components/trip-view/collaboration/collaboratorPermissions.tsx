@@ -7,12 +7,11 @@ import {
   Alert,
   ActionSheetIOS,
   Platform,
-  Image
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { API, Storage } from 'aws-amplify';
-import { getAvatarColor } from '../../../utils/avatarColors';
 import { getUserProfile } from '../../../graphql/queries';
+import { InitialsAvatar } from '../../common/InitialsAvatar';
 
 // Helper function to resolve S3 keys to signed URLs
 const resolveProfilePhotoUrl = async (url: string | null | undefined): Promise<string | null> => {
@@ -251,18 +250,14 @@ export const CollaboratorListItem: React.FC<CollaboratorListItemProps> = ({
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.userInfo} onPress={handleProfilePress}>
-        {profilePhotoUrl && (profilePhotoUrl.startsWith('http://') || profilePhotoUrl.startsWith('https://')) ? (
-          <Image
-            source={{ uri: profilePhotoUrl }}
-            style={styles.userAvatarImage}
+        <View style={{ marginRight: 12 }}>
+          <InitialsAvatar
+            name={collaborator.fullName || collaborator.username || '?'}
+            profilePhotoUrl={profilePhotoUrl}
+            size={40}
+            fontSize={16}
           />
-        ) : (
-          <View style={[styles.userAvatar, { backgroundColor: getAvatarColor(collaborator.email) }]}>
-            <Text style={styles.avatarText}>
-              {collaborator.fullName.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-        )}
+        </View>
 
         <View style={styles.userDetails}>
           <View style={styles.nameContainer}>
@@ -315,25 +310,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-  },
-  userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  userAvatarImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   userDetails: {
     flex: 1,

@@ -40,8 +40,8 @@ const configs = {
     userPoolId: "us-east-1_jupoBmxJI",
     userPoolWebClientId: "79vrt88lrj1abtm4trk1v3vgli",
     oauthDomain: "atelictravel-devstan.auth.us-east-1.amazoncognito.com",
-    s3Bucket: "amplifybackendd3e6cd8b095945dba7bea44fd55f4b97233e9-devstan",
-    identityPoolId: "us-east-1:fca50bb8-b911-48a1-8723-470257decef4",
+    s3Bucket: "atelic-profile-photos-ade510b90b448-devstan",
+    identityPoolId: "us-east-1:4df98ede-f0e6-42cf-a994-2acc4a1310f8",
   },
   staging: {
     graphqlEndpoint: "https://sxae4v434na2ngmjhp4dftjec4.appsync-api.us-east-1.amazonaws.com/graphql",
