@@ -15,10 +15,12 @@ import {
   RefreshControl,
   Image,
   Dimensions,
+  Platform,
 } from 'react-native';
 // ScrollView from RNGH shares the same gesture system as the carousel,
 // allowing failOffsetY on the carousel to properly yield vertical swipes to the scroll view.
 import { ScrollView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -54,6 +56,7 @@ const PROFILE_CARD_IMAGE_HEIGHT = PROFILE_CARD_WIDTH * 1.3;
 
 export default function FeedScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { restoreTripFromObject, setSelectedCity } = useCreateTrip();
   const params = useLocalSearchParams();
   const hasAutoLoadedRef = useRef(false);
@@ -82,7 +85,7 @@ export default function FeedScreen() {
   const [userTrips, setUserTrips] = useState([]);
   const [ownedTrips, setOwnedTrips] = useState([]);
   const [sharedTrips, setSharedTrips] = useState([]);
-  const [isLoadingTrips, setIsLoadingTrips] = useState(false);
+  const [isLoadingTrips, setIsLoadingTrips] = useState(true);
   const [tripsError, setTripsError] = useState(null);
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [isLoadingTrip, setIsLoadingTrip] = useState(false);
@@ -1423,186 +1426,146 @@ export default function FeedScreen() {
     }
   }, [hasMore, isLoadingFeed, loadFeed]);
 
-  const renderTripCard = (trip, keyPrefix = '') => (
-    <View
-      key={`${keyPrefix}${trip.tripId}`}
-      style={[
-        styles.tripCard,
-        selectedTripId === trip.tripId && isLoadingTrip && styles.tripCardLoading
-      ]}
-    >
+  const renderTripCard = (trip, keyPrefix = '') => {
+    // Get formatted date range
+    const getDateRange = () => {
+      const referenceDate = trip.startDate ? new Date(trip.startDate) : null;
+      if (referenceDate && trip.endDate) {
+        const endDate = new Date(trip.endDate);
+        const sameMonth = referenceDate.getMonth() === endDate.getMonth() &&
+                          referenceDate.getFullYear() === endDate.getFullYear();
+        if (sameMonth) {
+          return `${referenceDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${endDate.getDate()}`;
+        }
+        return `${referenceDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+      }
+      if (referenceDate) {
+        return referenceDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+      return null;
+    };
+
+    const dateRange = getDateRange();
+    const cityName = trip.selectedCity?.split(',')[0] || '';
+    const tripName = trip.tripTitle || cityName || 'Untitled Trip';
+
+    return (
       <TouchableOpacity
-        style={styles.tripCardMainArea}
+        key={`${keyPrefix}${trip.tripId}`}
+        style={[
+          styles.tripCard,
+          selectedTripId === trip.tripId && isLoadingTrip && styles.tripCardLoading
+        ]}
         onPress={() => {
           setSelectedTripId(trip.tripId);
           handleLoadTrip(trip.tripId);
         }}
         disabled={isLoadingTrip || deletingTripId === trip.tripId}
-        activeOpacity={1}
+        activeOpacity={0.95}
       >
-        <View style={styles.tripCardContent}>
-          {trip.selectedCity ? (
-            <View
-              style={styles.carouselContainer}
-              onTouchStart={(e) => {
-                const { pageX, pageY } = e.nativeEvent;
-                carouselTouchStartRef.current = { x: pageX, y: pageY };
-              }}
-              onTouchMove={(e) => {
-                if (!carouselTouchStartRef.current) return;
-                const { pageX, pageY } = e.nativeEvent;
-                const dx = pageX - carouselTouchStartRef.current.x;
-                const dy = pageY - carouselTouchStartRef.current.y;
-                const direction = Math.abs(dx) > Math.abs(dy) ? 'HORIZONTAL' : 'VERTICAL';
-              }}
-              onTouchEnd={() => {
-                carouselTouchStartRef.current = null;
-              }}
-            >
-              <Carousel
-                loop={false}
-                width={CAROUSEL_WIDTH}
-                height={180}
-                data={trip.tripPhotoReference && trip.tripPhotoReference.length > 0
-                  ? trip.tripPhotoReference
-                  : [{}, {}, {}, {}, {}]}
-                scrollAnimationDuration={300}
-                defaultIndex={0}
-                onSnapToItem={(index) => {
-                  setCarouselIndices(prev => ({ ...prev, [`${keyPrefix}${trip.tripId}`]: index }));
-                }}
-                onConfigurePanGesture={(pan) => {
-                  pan.activeOffsetX([-10, 10]);
-                  pan.failOffsetY([-5, 5]);
-                }}
-                renderItem={({ item, index }) => (
-                  <TripCarouselImage
-                    photo_reference={item?.photo_reference}
-                    place_id={item?.place_id}
-                    cityName={trip.selectedCity}
-                    photoIndex={index}
-                    style={styles.tripCardImage}
-                    onPhotoRefUpdate={(newRef) =>
-                      handleTripCarouselPhotoUpdate(trip.tripId, index, newRef)
-                    }
-                    onPhotoCountUpdate={(count) =>
-                      setTripPhotoCounts(prev => ({ ...prev, [`${keyPrefix}${trip.tripId}`]: count }))
-                    }
-                  />
-                )}
-              />
-              {(() => {
-                const photoCount = tripPhotoCounts[`${keyPrefix}${trip.tripId}`] || 5;
-                if (trip.tripPhotoReference?.length === 1 || photoCount === 1) {
-                  return null;
-                }
-                return (
-                  <View style={styles.paginationDots}>
-                    {Array.from({ length: photoCount }, (_, index) => (
-                      <View
-                        key={index}
-                        style={[
-                          styles.dot,
-                          (carouselIndices[`${keyPrefix}${trip.tripId}`] || 0) === index && styles.activeDot
-                        ]}
-                      />
-                    ))}
-                  </View>
-                );
-              })()}
-            </View>
-          ) : (
-            <Image
-              source={require('../../assets/images/default_trip.jpg')}
-              style={styles.tripCardImage}
-              resizeMode="cover"
-            />
-          )}
-          <View style={styles.tripCardInfo}>
-            <View style={styles.tripCardTitleRow}>
-              <Text style={styles.tripCardTitle}>
-                {trip.tripTitle || trip.selectedCity || 'Unknown Trip'}
-              </Text>
-              {selectedTripId === trip.tripId && isLoadingTrip ? (
-                <ActivityIndicator size="small" color={Colors.PRIMARY} style={styles.menuButton} />
-              ) : (
-                <TouchableOpacity
-                  style={styles.menuButton}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    setMenuVisible(trip.tripId);
-                  }}
-                  disabled={isLoadingTrip || deletingTripId === trip.tripId}
-                >
-                  <FontAwesome6 name="ellipsis" size={24} color={Colors.GRAY} />
-                </TouchableOpacity>
-              )}
-            </View>
-            {trip.tripTitle && trip.selectedCity && (
-              <Text style={styles.tripCardSubtitle}>{trip.selectedCity}</Text>
-            )}
-            <Text style={styles.tripCardLength}>
-              {(() => {
-                const referenceDate = trip.startDate ? new Date(trip.startDate) : (trip.createdAt ? new Date(trip.createdAt) : null);
-
-                if (referenceDate && trip.endDate) {
-                  const endDate = new Date(trip.endDate);
-                  const sameMonth = referenceDate.getMonth() === endDate.getMonth() && referenceDate.getFullYear() === endDate.getFullYear();
-
-                  if (sameMonth) {
-                    const startFormatted = referenceDate.toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric'
-                    });
-                    const endDay = endDate.getDate();
-                    const year = endDate.getFullYear();
-                    return `${startFormatted} - ${endDay}, ${year}`;
-                  } else if (referenceDate.getFullYear() === endDate.getFullYear()) {
-                    const startFormatted = referenceDate.toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric'
-                    });
-                    const endFormatted = endDate.toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric'
-                    });
-                    const year = endDate.getFullYear();
-                    return `${startFormatted} - ${endFormatted}, ${year}`;
-                  } else {
-                    const startFormatted = referenceDate.toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    });
-                    const endFormatted = endDate.toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    });
-                    return `${startFormatted} - ${endFormatted}`;
+        {/* Full-bleed Image */}
+        {trip.selectedCity ? (
+          <View style={styles.tripCardImageContainer}>
+            <Carousel
+              loop={false}
+              width={screenWidth - 48}
+              height={240}
+              data={trip.tripPhotoReference && trip.tripPhotoReference.length > 0
+                ? trip.tripPhotoReference
+                : [{}, {}, {}, {}, {}]}
+              scrollAnimationDuration={300}
+              defaultIndex={0}
+              onSnapToItem={(index) =>
+                setCarouselIndices(prev => ({ ...prev, [`${keyPrefix}${trip.tripId}`]: index }))
+              }
+              renderItem={({ item, index }) => (
+                <TripCarouselImage
+                  photo_reference={item?.photo_reference}
+                  place_id={item?.place_id}
+                  cityName={trip.selectedCity}
+                  photoIndex={index}
+                  style={styles.tripCardImage}
+                  onPhotoRefUpdate={(newRef) =>
+                    handleTripCarouselPhotoUpdate(trip.tripId, index, newRef)
                   }
-                } else if (referenceDate) {
-                  return referenceDate.toLocaleDateString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                  });
-                } else if (trip.endDate) {
-                  return new Date(trip.endDate).toLocaleDateString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                  });
-                } else {
-                  return trip.tripLength != null ? `${trip.tripLength} day trip` : 'Unknown length';
-                }
-              })()}
-            </Text>
+                  onPhotoCountUpdate={(count) =>
+                    setTripPhotoCounts(prev => ({ ...prev, [`${keyPrefix}${trip.tripId}`]: count }))
+                  }
+                />
+              )}
+            />
+          </View>
+        ) : (
+          <Image
+            source={require('../../assets/images/default_trip.jpg')}
+            style={styles.tripCardImage}
+            resizeMode="cover"
+          />
+        )}
+
+        {/* Menu Button - Top Right */}
+        <TouchableOpacity
+          style={styles.tripCardMenuButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            setMenuVisible(trip.tripId);
+          }}
+          hitSlop={{ top: 25, bottom: 25, left: 25, right: 25 }}
+          disabled={isLoadingTrip || deletingTripId === trip.tripId}
+        >
+          {selectedTripId === trip.tripId && isLoadingTrip ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Ionicons name="ellipsis-horizontal" size={16} color="#fff" />
+          )}
+        </TouchableOpacity>
+
+        {/* Pagination Dots - Top Center */}
+        {(() => {
+          const photoCount = tripPhotoCounts[`${keyPrefix}${trip.tripId}`] || 5;
+          if (trip.tripPhotoReference?.length === 1 || photoCount === 1) {
+            return null;
+          }
+          return (
+            <View style={styles.tripCardPaginationDots}>
+              {Array.from({ length: photoCount }, (_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.tripCardDot,
+                    (carouselIndices[`${keyPrefix}${trip.tripId}`] || 0) === index && styles.tripCardDotActive
+                  ]}
+                />
+              ))}
+            </View>
+          );
+        })()}
+
+        {/* Info Overlay - Bottom */}
+        <View style={styles.tripCardOverlay}>
+          <View style={styles.tripCardTextContainer}>
+            <Text style={styles.tripCardTitle} numberOfLines={1}>{tripName}</Text>
+            {dateRange && (
+              <Text style={styles.tripCardDate}>{dateRange}</Text>
+            )}
+          </View>
+          <View style={styles.tripCardArrowButton}>
+            <Ionicons name="arrow-forward" size={20} color="#fff" style={{ transform: [{ rotate: '-45deg' }] }} />
           </View>
         </View>
       </TouchableOpacity>
-    </View>
-  );
+    );
+  };
+
+  // Get greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const firstName = fullName?.split(' ')[0] || username?.split(' ')[0] || '';
 
   return (
     <View style={styles.container}>
@@ -1616,29 +1579,28 @@ export default function FeedScreen() {
             <InitialsAvatar
               name={fullName || username}
               profilePhotoUrl={profilePhotoUrl}
-              size={44}
+              size={48}
             />
           </TouchableOpacity>
-          <Text style={styles.headerText}>Home</Text>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.greetingText}>{getGreeting()}</Text>
+            <Text style={styles.headerName} numberOfLines={1}>{firstName || 'Traveler'}</Text>
+          </View>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity
-            style={styles.exploreButton}
+            style={styles.headerIconButton}
             onPress={() => router.push('/(tabs)/explore')}
           >
-            <Ionicons name="search-outline" size={26} color={Colors.GRAY} />
+            <Ionicons name="search" size={22} color="#1a1a1a" />
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.friendRequestsButton}
+            style={styles.headerIconButton}
             onPress={() => router.push('/profile/follow-requests')}
           >
-            <Ionicons name="people-outline" size={26} color={Colors.GRAY} />
+            <Ionicons name="people" size={22} color="#1a1a1a" />
             {pendingRequestsCount > 0 && (
-              <View style={styles.requestsBadge}>
-                <Text style={styles.requestsBadgeText}>
-                  {pendingRequestsCount > 99 ? '99+' : pendingRequestsCount}
-                </Text>
-              </View>
+              <View style={styles.notificationDot} />
             )}
           </TouchableOpacity>
         </View>
@@ -1646,44 +1608,64 @@ export default function FeedScreen() {
 
       <ScrollView
         style={styles.scrollView}
-        showsVerticalScrollIndicator={true}
+        contentContainerStyle={styles.scrollViewContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={Colors.PRIMARY}
-            colors={[Colors.PRIMARY]}
+            tintColor="#F36406"
+            colors={['#F36406']}
           />
         }
       >
         {/* My Trips Section */}
         {isLoadingTrips ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.PRIMARY} />
-            <Text style={styles.loadingText}>Loading trips...</Text>
+            <ActivityIndicator size="large" color="#F36406" />
+            <Text style={styles.loadingText}>Loading your trips...</Text>
           </View>
         ) : (
           <>
             {ownedTrips.length > 0 && (
-              <>
-                <Text style={styles.sectionTitle}>My Trips</Text>
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>My Trips</Text>
+                  <Text style={styles.tripCount}>{ownedTrips.length}</Text>
+                </View>
                 {ownedTrips.map(trip => renderTripCard(trip, 'owned-'))}
-              </>
+              </View>
             )}
 
             {sharedTrips.length > 0 && (
-              <>
-                <Text style={styles.sharedTripsSectionTitle}>Shared With Me</Text>
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Shared With Me</Text>
+                  <Text style={styles.tripCount}>{sharedTrips.length}</Text>
+                </View>
                 {sharedTrips.map(trip => renderTripCard(trip, 'shared-'))}
-              </>
+              </View>
             )}
 
             {ownedTrips.length === 0 && sharedTrips.length === 0 && (
-              <View style={styles.noTripsContainer}>
-                <FontAwesome name="suitcase" size={50} color={Colors.GRAY} />
-                <Text style={styles.noTripsText}>No trips found</Text>
+              <View style={styles.emptyStateContainer}>
+                <View style={styles.emptyStateIcon}>
+                  <Ionicons name="airplane" size={48} color="#F36406" />
+                </View>
+                <Text style={styles.emptyStateTitle}>No trips yet</Text>
+                <Text style={styles.emptyStateSubtitle}>Start planning your next adventure</Text>
+                <TouchableOpacity
+                  style={styles.emptyStateCta}
+                  onPress={() => router.push('/(tabs)/create_new_trip')}
+                >
+                  <Text style={styles.emptyStateCtaText}>Create Trip</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                </TouchableOpacity>
               </View>
             )}
+
+            {/* Bottom spacing for floating tab bar */}
+            <View style={{ height: 100 }} />
           </>
         )}
 
@@ -1696,44 +1678,30 @@ export default function FeedScreen() {
         animationType="slide"
         onRequestClose={() => setMenuVisible(null)}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setMenuVisible(null)}
-        >
-          <View style={styles.modalSpacer} />
+        <View style={styles.menuOverlay}>
           <TouchableOpacity
-            style={styles.menuModal}
+            style={styles.menuOverlayTap}
             activeOpacity={1}
-            onPress={() => {}}
-          >
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHandle} />
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setMenuVisible(null)}
-              >
-                <Ionicons name="close" size={32} color={Colors.GRAY} />
-              </TouchableOpacity>
-            </View>
+            onPress={() => setMenuVisible(null)}
+          />
+          <View style={[styles.menuSheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
+            {/* Handle */}
+            <View style={styles.menuHandle} />
 
-            <View style={styles.modalContent}>
+            {/* Menu Items */}
+            <View style={styles.menuOptionsContainer}>
               <TouchableOpacity
-                style={styles.menuItem}
+                style={styles.menuOption}
                 onPress={() => handleInviteCollaborators(menuVisible)}
                 disabled={isLoadingTripData}
               >
-                {isLoadingTripData ? (
-                  <>
-                    <ActivityIndicator size="small" color="black" />
-                    <Text style={styles.menuItemText}>Loading...</Text>
-                  </>
-                ) : (
-                  <>
-                    <Ionicons name="share-outline" size={30} color={Colors.PRIMARY} />
-                    <Text style={styles.menuItemText}>Share Trip</Text>
-                  </>
-                )}
+                <View style={styles.menuOptionIcon}>
+                  <Ionicons name="people" size={22} color="#1a1a1a" />
+                </View>
+                <Text style={styles.menuOptionText}>
+                  {isLoadingTripData ? 'Loading...' : 'Share Trip'}
+                </Text>
+                <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
               </TouchableOpacity>
 
               {/* Visible on Profile Toggle - only for owners */}
@@ -1745,24 +1713,22 @@ export default function FeedScreen() {
                 const isCurrentlyPublic = currentTrip.isPublic === true;
 
                 return (
-                  <View style={styles.menuItemWithToggle}>
-                    <View style={styles.menuItemToggleContent}>
-                      <Ionicons
-                        name={isCurrentlyPublic ? "eye-outline" : "eye-off-outline"}
-                        size={30}
-                        color={Colors.PRIMARY}
-                      />
-                      <Text style={styles.menuItemText}>Visible on Profile</Text>
+                  <View style={styles.menuOptionToggle}>
+                    <View style={styles.menuOptionLeft}>
+                      <View style={styles.menuOptionIcon}>
+                        <Ionicons name={isCurrentlyPublic ? "eye" : "eye-off"} size={22} color="#1a1a1a" />
+                      </View>
+                      <Text style={styles.menuOptionText}>Show on Profile</Text>
                     </View>
                     {isToggling ? (
-                      <ActivityIndicator size="small" color={Colors.PRIMARY} />
+                      <ActivityIndicator size="small" color="#F36406" />
                     ) : (
                       <Switch
                         value={isCurrentlyPublic}
                         onValueChange={() => handleToggleVisibility(menuVisible)}
-                        trackColor={{ false: '#D1D5DB', true: '#FFA53F' }}
-                        thumbColor={isCurrentlyPublic ? '#FFFFFF' : '#f4f3f4'}
-                        ios_backgroundColor="#D1D5DB"
+                        trackColor={{ false: '#E5E5EA', true: '#F36406' }}
+                        thumbColor="#FFFFFF"
+                        ios_backgroundColor="#E5E5EA"
                       />
                     )}
                   </View>
@@ -1776,24 +1742,19 @@ export default function FeedScreen() {
 
                 return (
                   <TouchableOpacity
-                    style={styles.menuItem}
+                    style={styles.menuOption}
                     onPress={() => {
                       setMenuVisible(null);
                       handleLeaveTrip(currentTrip.tripId);
                     }}
                     disabled={leavingTripId === currentTrip.tripId}
                   >
-                    {leavingTripId === currentTrip.tripId ? (
-                      <>
-                        <ActivityIndicator size="small" color="#FF4444" />
-                        <Text style={[styles.menuItemText, { color: '#FF4444' }]}>Leaving...</Text>
-                      </>
-                    ) : (
-                      <>
-                        <Ionicons name="log-out-outline" size={30} color="#FF4444" />
-                        <Text style={[styles.menuItemText, { color: '#FF4444' }]}>Leave Trip</Text>
-                      </>
-                    )}
+                    <View style={[styles.menuOptionIcon, styles.menuOptionIconDanger]}>
+                      <Ionicons name="exit" size={22} color="#FF3B30" />
+                    </View>
+                    <Text style={[styles.menuOptionText, styles.menuOptionTextDanger]}>
+                      {leavingTripId === currentTrip.tripId ? 'Leaving...' : 'Leave Trip'}
+                    </Text>
                   </TouchableOpacity>
                 );
               })()}
@@ -1802,31 +1763,25 @@ export default function FeedScreen() {
                 const currentTrip = userTrips.find(trip => trip.tripId === menuVisible);
                 return currentTrip?.userRole === 'owner' ? (
                   <TouchableOpacity
-                    style={styles.menuItem}
+                    style={styles.menuOption}
                     onPress={() => {
                       setMenuVisible(null);
                       handleDeleteTrip(menuVisible);
                     }}
                     disabled={deletingTripId === menuVisible}
                   >
-                    {deletingTripId === menuVisible ? (
-                      <>
-                        <ActivityIndicator size="small" color="#FF4444" />
-                        <Text style={[styles.menuItemText, { color: '#FF4444' }]}>Deleting...</Text>
-                      </>
-                    ) : (
-                      <>
-                        <FontAwesome name="trash" size={30} color="#FF4444" />
-                        <Text style={[styles.menuItemText, { color: '#FF4444' }]}> Delete Trip</Text>
-                      </>
-                    )}
+                    <View style={[styles.menuOptionIcon, styles.menuOptionIconDanger]}>
+                      <Ionicons name="trash" size={22} color="#FF3B30" />
+                    </View>
+                    <Text style={[styles.menuOptionText, styles.menuOptionTextDanger]}>
+                      {deletingTripId === menuVisible ? 'Deleting...' : 'Delete Trip'}
+                    </Text>
                   </TouchableOpacity>
                 ) : null;
               })()}
-              <View style={{ height: 40 }} />
             </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
 
       {/* Share Trip Modal */}
@@ -2558,196 +2513,278 @@ export default function FeedScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 25,
-    paddingTop: 55,
-    backgroundColor: Colors.WHITE,
+    backgroundColor: '#FAFAFA',
   },
   header: {
     flexDirection: 'row',
-    alignContent: 'center',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 25,
-    marginBottom: 0,
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 16,
+    backgroundColor: '#FAFAFA',
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 15,
+    gap: 14,
+    flex: 1,
   },
-  headerText: {
+  profileIconButton: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  greetingText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: '#9CA3AF',
+    letterSpacing: 0.3,
+  },
+  headerName: {
     fontFamily: 'outfit-bold',
-    fontSize: 35,
+    fontSize: 24,
+    color: '#1a1a1a',
+    letterSpacing: -0.5,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  exploreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: Colors.WHITE,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2.84,
-  },
-  friendRequestsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: Colors.WHITE,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2.84,
-  },
-  requestsBadge: {
-    position: 'absolute',
-    top: 2,
-    right: 4,
-    backgroundColor: Colors.ORANGE,
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  requestsBadgeText: {
-    color: Colors.WHITE,
-    fontSize: 11,
-    fontFamily: 'outfit-bold',
-  },
-  profileIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  profileIconPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.LIGHT_GRAY,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  settingsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: Colors.WHITE,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-  },
-  headerPlaceholder: {
-    width: 52,
+  headerIconButton: {
+    width: 44,
     height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#F36406',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   scrollView: {
     flex: 1,
-    marginTop: 30,
+  },
+  scrollViewContent: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+  },
+  section: {
+    marginBottom: 8,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 16,
+    gap: 10,
   },
   sectionTitle: {
     fontFamily: 'outfit-bold',
-    fontSize: 28,
-    color: Colors.PRIMARY,
-    marginBottom: 20,
-    marginTop: 10,
+    fontSize: 22,
+    color: '#1a1a1a',
+    letterSpacing: -0.3,
   },
-  sharedTripsSectionTitle: {
-    fontFamily: 'outfit-bold',
-    fontSize: 28,
-    color: Colors.PRIMARY,
-    marginBottom: 20,
-    marginTop: 30,
+  tripCount: {
+    fontFamily: 'outfit-semibold',
+    fontSize: 13,
+    color: '#fff',
+    backgroundColor: '#1a1a1a',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    textAlign: 'center',
+    lineHeight: 26,
+    overflow: 'hidden',
   },
   loadingContainer: {
     alignItems: 'center',
-    padding: 30,
+    justifyContent: 'center',
+    paddingVertical: 80,
   },
   loadingText: {
-    fontFamily: 'outfit',
-    fontSize: 16,
-    color: Colors.GRAY,
-    marginTop: 10,
-  },
-  noTripsContainer: {
-    alignItems: 'center',
-    padding: 40,
-  },
-  noTripsText: {
     fontFamily: 'outfit-medium',
-    fontSize: 18,
-    color: Colors.GRAY,
-    marginTop: 15,
+    fontSize: 15,
+    color: '#9CA3AF',
+    marginTop: 16,
   },
+  emptyStateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+    paddingHorizontal: 40,
+  },
+  emptyStateIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(243, 100, 6, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  emptyStateTitle: {
+    fontFamily: 'outfit-bold',
+    fontSize: 22,
+    color: '#1a1a1a',
+    marginBottom: 8,
+  },
+  emptyStateSubtitle: {
+    fontFamily: 'outfit',
+    fontSize: 15,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginBottom: 28,
+  },
+  emptyStateCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F36406',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 14,
+    gap: 8,
+    shadowColor: '#F36406',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  emptyStateCtaText: {
+    fontFamily: 'outfit-semibold',
+    fontSize: 16,
+    color: '#fff',
+  },
+  // Trip Card Styles
   tripCard: {
-    backgroundColor: Colors.WHITE,
-    borderRadius: 16,
-    marginBottom: 30,
+    borderRadius: 24,
+    marginBottom: 20,
+    height: 240,
+    position: 'relative',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  tripCardMainArea: {
-    flex: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
   },
   tripCardLoading: {
     opacity: 0.7,
   },
-  tripCardContent: {
-    flexDirection: 'column',
+  tripCardImageContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   tripCardImage: {
     width: '100%',
-    height: 180,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    height: 240,
+    borderRadius: 24,
   },
-  tripCardInfo: {
-    padding: 16,
-    paddingTop: 14,
-  },
-  tripCardTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  tripCardMenuButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
     alignItems: 'center',
-    width: '100%',
-    marginBottom: 2,
+  },
+  tripCardPaginationDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 20,
+    left: 0,
+    right: 0,
+  },
+  tripCardDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    marginHorizontal: 3,
+  },
+  tripCardDotActive: {
+    backgroundColor: '#fff',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  tripCardOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    paddingTop: 60,
+    // Gradient background for text readability
+    backgroundColor: 'transparent',
+  },
+  tripCardTextContainer: {
+    flex: 1,
+    marginRight: 16,
   },
   tripCardTitle: {
     fontFamily: 'outfit-bold',
-    fontSize: 20,
-    color: '#1a1a1a',
-    flex: 1,
+    fontSize: 24,
+    color: '#fff',
+    letterSpacing: -0.3,
+    marginBottom: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
-  tripCardSubtitle: {
-    fontFamily: 'outfit',
+  tripCardDate: {
+    fontFamily: 'outfit-medium',
     fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 2,
+    color: 'rgba(255, 255, 255, 0.85)',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
-  tripCardLength: {
-    fontFamily: 'outfit',
-    fontSize: 14,
-    color: '#9CA3AF',
+  tripCardArrowButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#F36406',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#F36406',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
   },
+  // Keep old styles for compatibility with other components
   menuButton: {
     width: 32,
     height: 32,
@@ -2785,6 +2822,85 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 4,
   },
+  // Menu Sheet Styles
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  menuOverlayTap: {
+    flex: 1,
+  },
+  menuSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 8,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  menuHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 12,
+  },
+  menuSheetTitle: {
+    fontFamily: 'outfit-semibold',
+    fontSize: 20,
+    color: '#1a1a1a',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  menuOptionsContainer: {
+    gap: 0,
+  },
+  menuOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  menuOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 11,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  menuOptionIconDanger: {
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+  },
+  menuOptionText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 17,
+    color: '#1a1a1a',
+    flex: 1,
+  },
+  menuOptionTextDanger: {
+    color: '#FF3B30',
+  },
+  menuOptionToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  menuOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  // Keep old modal styles for other modals
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',

@@ -34,7 +34,7 @@ export default function Profile() {
   const [userTrips, setUserTrips] = useState([]);
   const [ownedTrips, setOwnedTrips] = useState([]);
   const [sharedTrips, setSharedTrips] = useState([]);
-  const [isLoadingTrips, setIsLoadingTrips] = useState(false);
+  const [isLoadingTrips, setIsLoadingTrips] = useState(true);
   const [tripsError, setTripsError] = useState(null);
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [isLoadingTrip, setIsLoadingTrip] = useState(false);
@@ -1101,6 +1101,7 @@ export default function Profile() {
                               e.stopPropagation();
                               setMenuVisible(trip.tripId);
                             }}
+                            hitSlop={{ top: 25, bottom: 25, left: 25, right: 25 }}
                             disabled={isLoadingTrip || deletingTripId === trip.tripId}
                           >
                             <FontAwesome6 name="ellipsis" size={24} color={Colors.GRAY} />
@@ -1276,6 +1277,7 @@ export default function Profile() {
                               e.stopPropagation();
                               setMenuVisible(trip.tripId);
                             }}
+                            hitSlop={{ top: 25, bottom: 25, left: 25, right: 25 }}
                             disabled={isLoadingTrip || deletingTripId === trip.tripId}
                           >
                             <FontAwesome6 name="ellipsis" size={24} color={Colors.GRAY} />

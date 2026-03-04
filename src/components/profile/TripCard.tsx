@@ -220,6 +220,7 @@ export function TripCard({
                     e.stopPropagation();
                     onMenuPress();
                   }}
+                  hitSlop={{ top: 25, bottom: 25, left: 25, right: 25 }}
                   disabled={isLoading || isDeleting}
                 >
                   <FontAwesome6 name="ellipsis" size={24} color={Colors.GRAY} />
