@@ -83,6 +83,7 @@ export default function FeedScreen() {
   const [ownedTrips, setOwnedTrips] = useState([]);
   const [sharedTrips, setSharedTrips] = useState([]);
   const [isLoadingTrips, setIsLoadingTrips] = useState(true);
+  const [hasLoadedTrips, setHasLoadedTrips] = useState(false);
   const [tripsError, setTripsError] = useState(null);
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [isLoadingTrip, setIsLoadingTrip] = useState(false);
@@ -484,7 +485,9 @@ export default function FeedScreen() {
     const maxRetries = 2;
 
     try {
-      setIsLoadingTrips(true);
+      if (!hasLoadedTrips) {
+        setIsLoadingTrips(true);
+      }
       setTripsError(null);
 
       const tripSummaries = await listUserTripsFromCloud(userID);
@@ -568,6 +571,7 @@ export default function FeedScreen() {
       setUserTrips(sortedTrips);
       setOwnedTrips(owned);
       setSharedTrips(shared);
+      setHasLoadedTrips(true);
       setIsLoadingTrips(false);
     } catch (error) {
       // Try to extract partial data if available
@@ -1657,7 +1661,7 @@ export default function FeedScreen() {
         }
       >
         {/* My Trips Section */}
-        {isLoadingTrips ? (
+        {(isLoadingTrips || !hasLoadedTrips) ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={Colors.PRIMARY} />
             <Text style={styles.loadingText}>Loading trips...</Text>
@@ -1678,7 +1682,7 @@ export default function FeedScreen() {
               </>
             )}
 
-            {ownedTrips.length === 0 && sharedTrips.length === 0 && (
+            {hasLoadedTrips && ownedTrips.length === 0 && sharedTrips.length === 0 && (
               <View style={styles.noTripsContainer}>
                 <FontAwesome name="suitcase" size={50} color={Colors.GRAY} />
                 <Text style={styles.noTripsText}>No trips found</Text>
@@ -2282,7 +2286,7 @@ export default function FeedScreen() {
                     </TouchableOpacity>
                   </View>
 
-                  {isLoadingTrips ? (
+                  {(isLoadingTrips || !hasLoadedTrips) ? (
                     <View style={styles.profileLoadingTripsContainer}>
                       <ActivityIndicator size="large" color={Colors.ORANGE} />
                     </View>
