@@ -189,19 +189,29 @@ async function getProfileByUsername(username) {
  */
 async function findFollowRelationship(followerUsername, targetUsername) {
   try {
-    // Scan for follow relationships matching case-insensitively
-    const result = await docClient.send(new ScanCommand({
-      TableName: USER_FOLLOWS_TABLE,
-      Limit: 100
-    }));
+    // Scan all pages for follow relationships matching case-insensitively
+    let lastEvaluatedKey = undefined;
 
-    // Find case-insensitive match
-    const match = result.Items?.find(item =>
-      item.followerUsername?.toLowerCase() === followerUsername.toLowerCase() &&
-      item.followingUsername?.toLowerCase() === targetUsername.toLowerCase()
-    );
+    do {
+      const result = await docClient.send(new ScanCommand({
+        TableName: USER_FOLLOWS_TABLE,
+        ...(lastEvaluatedKey && { ExclusiveStartKey: lastEvaluatedKey }),
+      }));
 
-    return match || null;
+      // Find case-insensitive match in this page
+      const match = result.Items?.find(item =>
+        item.followerUsername?.toLowerCase() === followerUsername.toLowerCase() &&
+        item.followingUsername?.toLowerCase() === targetUsername.toLowerCase()
+      );
+
+      if (match) {
+        return match;
+      }
+
+      lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    return null;
   } catch (error) {
     console.error('Error finding follow relationship:', error);
     return null;

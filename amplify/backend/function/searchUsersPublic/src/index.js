@@ -1,5 +1,5 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, ScanCommand, QueryCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, ScanCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
@@ -42,15 +42,24 @@ exports.handler = async (event) => {
 async function searchUsers(searchTerm) {
   const searchLower = searchTerm.toLowerCase();
 
-  // Scan UserProfilesStorage - retrieve all users (no filter on DynamoDB side)
+  // Scan UserProfilesStorage - retrieve all users across all pages (no filter on DynamoDB side)
   // We'll do case-insensitive filtering in-memory since DynamoDB's contains() is case-sensitive
-  const scanParams = {
-    TableName: USER_PROFILES_TABLE,
-    ProjectionExpression: 'userID, email, fullName, username, isPrivateAccount, profilePhotoUrl, bio',
-  };
+  const allUsers = [];
+  let lastEvaluatedKey = undefined;
 
-  const result = await docClient.send(new ScanCommand(scanParams));
-  const allUsers = result.Items || [];
+  do {
+    const scanParams = {
+      TableName: USER_PROFILES_TABLE,
+      ProjectionExpression: 'userID, email, fullName, username, isPrivateAccount, profilePhotoUrl, bio',
+      ...(lastEvaluatedKey && { ExclusiveStartKey: lastEvaluatedKey }),
+    };
+
+    const result = await docClient.send(new ScanCommand(scanParams));
+    if (result.Items) {
+      allUsers.push(...result.Items);
+    }
+    lastEvaluatedKey = result.LastEvaluatedKey;
+  } while (lastEvaluatedKey);
 
   // Filter case-insensitively
   const filteredUsers = allUsers.filter(user => {

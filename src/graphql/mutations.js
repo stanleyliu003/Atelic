@@ -298,6 +298,7 @@ export const addCollaborator = /* GraphQL */ `
         __typename
       }
       deletedSavedPlaceIds
+      isPublic
       __typename
     }
   }
@@ -383,6 +384,7 @@ export const removeCollaborator = /* GraphQL */ `
         __typename
       }
       deletedSavedPlaceIds
+      isPublic
       __typename
     }
   }
@@ -472,6 +474,7 @@ export const updateCollaboratorRole = /* GraphQL */ `
         __typename
       }
       deletedSavedPlaceIds
+      isPublic
       __typename
     }
   }
@@ -561,6 +564,7 @@ export const updateUserProfile = /* GraphQL */ `
       notificationsEnabled
       devicePushToken
       snsEndpointArn
+      admin_permission
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate
