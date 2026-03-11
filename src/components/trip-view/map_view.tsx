@@ -210,8 +210,6 @@ interface MapViewProps {
   selectedActivities?: string[]; // Add selected activities prop
   onMarkerPress?: (activity: Activity) => void; // Add callback for marker press
   selectedMarker?: string | null; // Add selected marker prop
-  currentHeightState?: number; // Current height state (0=min, 1=default, 2=max)
-  heightStates?: number[]; // Array of height percentages [MIN_HEIGHT, DEFAULT_HEIGHT, MAX_HEIGHT]
   // Collaboration props
   onShareTrip?: () => void;
   allActivities?: Activity[]; // All activities from the trip (wishlist + all days)
@@ -289,8 +287,6 @@ export function TripMapView({
   selectedActivities = [], // Add default value
   onMarkerPress, // Add callback prop
   selectedMarker = null, // Add selected marker prop
-  currentHeightState = 1, // Default to middle state
-  heightStates = [0.30, 0.65, 0.90], // Default height states
   onShareTrip,
   allActivities = [],
   selectedCityLocation = null,
@@ -302,11 +298,6 @@ export function TripMapView({
 
   // Get the marker color based on the active tab (used for single day view)
   const markerColor = getMarkerColor(activeTab);
-
-  // Handle invite collaborators button press
-  const handleInviteCollaborators = () => {
-    onShareTrip?.();
-  };
 
   // Prepare markers
   const dynamicMarkers = useMemo(() => {
@@ -414,77 +405,37 @@ export function TripMapView({
       };
     }
 
-    if (currentHeightState === 1 || currentHeightState === 2) {
-      // Use the previous working logic for currentHeightState === 1
-      if (dynamicMarkers.length === 1) {
-        return {
-          latitude: dynamicMarkers[0].coordinate.latitude,
-          longitude: dynamicMarkers[0].coordinate.longitude,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
-        };
-      }
-
-      // Calculate bounds for multiple markers
-      const latitudes = dynamicMarkers.map(marker => marker.coordinate.latitude);
-      const longitudes = dynamicMarkers.map(marker => marker.coordinate.longitude);
-     
-      const minLat = Math.min(...latitudes);
-      const maxLat = Math.max(...latitudes);
-      const minLng = Math.min(...longitudes);
-      const maxLng = Math.max(...longitudes);
-
-      const latDelta = (maxLat - minLat) * 1.7; // Add 58% padding (10% more zoom out)
-      const lngDelta = (maxLng - minLng) * 1.7; // Add 58% padding (10% more zoom out)
-
-      // Ensure minimum delta values for zoom
-      const minDelta = 0.01;
-      const finalLatDelta = Math.max(latDelta, minDelta);
-      const finalLngDelta = Math.max(lngDelta, minDelta);
-
+    if (dynamicMarkers.length === 1) {
       return {
-        latitude: (minLat + maxLat) / 2 - finalLatDelta * 0.1, // Shift center slightly down
-        longitude: (minLng + maxLng) / 2,
-        latitudeDelta: finalLatDelta,
-        longitudeDelta: finalLngDelta,
-      };
-    } else {
-      // Use the current logic for currentHeightState === 0
-      // Extract all coordinates
-      const coordinates = dynamicMarkers.map(marker => marker.coordinate);
-      
-      // Calculate bounding box
-      const latitudes = coordinates.map(coord => coord.latitude);
-      const longitudes = coordinates.map(coord => coord.longitude);
-      
-      const minLat = Math.min(...latitudes);
-      const maxLat = Math.max(...latitudes);
-      const minLng = Math.min(...longitudes);
-      const maxLng = Math.max(...longitudes);
-      
-      // Calculate the center point of activities
-      const activitiesCenterLat = (minLat + maxLat) / 2;
-      const activitiesCenterLng = (minLng + maxLng) / 2;
-      
-      // Calculate the span of coordinates
-      const latSpan = maxLat - minLat;
-      const lngSpan = maxLng - minLng;
-      
-      // Add padding - use percentage-based padding for better scaling
-      const paddingFactor = 0.3; // 30% padding around the bounds
-      const minDelta = 0.005; // Minimum zoom level for very close markers
-      
-      // Calculate base deltas with padding, ensuring minimum zoom
-      const baseLatitudeDelta = Math.max(latSpan * (1 + paddingFactor), minDelta);
-      const baseLongitudeDelta = Math.max(lngSpan * (1 + paddingFactor), minDelta);
-      
-      return {
-        latitude: activitiesCenterLat,
-        longitude: activitiesCenterLng,
-        latitudeDelta: baseLatitudeDelta,
-        longitudeDelta: baseLongitudeDelta,
+        latitude: dynamicMarkers[0].coordinate.latitude,
+        longitude: dynamicMarkers[0].coordinate.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
       };
     }
+
+    // Calculate bounds for multiple markers
+    const latitudes = dynamicMarkers.map(marker => marker.coordinate.latitude);
+    const longitudes = dynamicMarkers.map(marker => marker.coordinate.longitude);
+
+    const minLat = Math.min(...latitudes);
+    const maxLat = Math.max(...latitudes);
+    const minLng = Math.min(...longitudes);
+    const maxLng = Math.max(...longitudes);
+
+    const latDelta = (maxLat - minLat) * 1.7;
+    const lngDelta = (maxLng - minLng) * 1.7;
+
+    const minDelta = 0.01;
+    const finalLatDelta = Math.max(latDelta, minDelta);
+    const finalLngDelta = Math.max(lngDelta, minDelta);
+
+    return {
+      latitude: (minLat + maxLat) / 2 - finalLatDelta * 0.1,
+      longitude: (minLng + maxLng) / 2,
+      latitudeDelta: finalLatDelta,
+      longitudeDelta: finalLngDelta,
+    };
   };
 
   // Simplified region calculation for selected marker
@@ -509,7 +460,7 @@ export function TripMapView({
   // Center the map on the first marker, or a default location if no markers exist
   const initialRegion: Region = useMemo(() => {
     return getInitialRegion();
-  }, [activeTab, dynamicMarkers, currentHeightState, allActivities, selectedCityLocation]);
+  }, [activeTab, dynamicMarkers, allActivities, selectedCityLocation]);
 
   // Split polyline into segments at hotel boundaries for multi-colored routes
   const polylineSegments = useMemo(() => {
@@ -576,37 +527,27 @@ export function TripMapView({
       const newRegion = getInitialRegion();
       mapRef.current.animateToRegion(newRegion, 1000); // 1 second animation
     }
-  }, [activities, activeTab, dynamicMarkers, currentHeightState, selectedCityLocation]);
+  }, [activities, activeTab, dynamicMarkers, selectedCityLocation]);
 
   // Updated useEffect for selected marker zoom
   useEffect(() => {
     if (mapRef.current && selectedMarker) {
       const selectedMarkerData = dynamicMarkers.find(marker => marker.activity.instanceId === selectedMarker);
       if (selectedMarkerData) {
-        if (currentHeightState === 1) {
-          // Use the previous working logic for currentHeightState === 1
-          const latitudeDelta = 0.01;
-          const zoomRegion = {
-            latitude: selectedMarkerData.coordinate.latitude - latitudeDelta * 0.1, // Shift Y down by 10%
-            longitude: selectedMarkerData.coordinate.longitude,
-            latitudeDelta: latitudeDelta, // Zoom in closer
-            longitudeDelta: 0.01,
-          };
-          mapRef.current.animateToRegion(zoomRegion, 800);
-        } else {
-          // Use the current logic for currentHeightState === 0
-          const zoomRegion = getRegionForSelectedMarker(selectedMarkerData.coordinate);
-          mapRef.current.animateToRegion(zoomRegion, 800);
-        }
+        const latitudeDelta = 0.01;
+        const zoomRegion = {
+          latitude: selectedMarkerData.coordinate.latitude - latitudeDelta * 0.1,
+          longitude: selectedMarkerData.coordinate.longitude,
+          latitudeDelta: latitudeDelta,
+          longitudeDelta: 0.01,
+        };
+        mapRef.current.animateToRegion(zoomRegion, 800);
       }
     }
-  }, [selectedMarker, dynamicMarkers, currentHeightState]);
-
-  // Dynamic map container height based on currentHeightState
-  const mapContainerHeight = currentHeightState === 1 || currentHeightState === 2 ? '40%' : '70%';
+  }, [selectedMarker, dynamicMarkers]);
 
   return (
-    <View style={[styles.mapContainer, { height: mapContainerHeight }]}>
+    <View style={[styles.mapContainer, { flex: 1 }]}>
       <MapView
         ref={mapRef}
         style={styles.map}
@@ -665,23 +606,13 @@ export function TripMapView({
         )}
       </MapView>
       
-      {/* Invite collaborators button overlay - hidden at MAX_HEIGHT */}
-      {currentHeightState !== 2 && (
-        <TouchableOpacity
-          style={styles.shareButton}
-          onPress={handleInviteCollaborators}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="share-outline" size={30} color={Colors.PRIMARY} />
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   mapContainer: {
-    height: '70%',
+    flex: 1,
     width: '100%',
     position: 'relative',
   },
@@ -730,21 +661,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'outfit-bold',
     fontWeight: 'bold',
-  },
-  shareButton: {
-    position: 'absolute',
-    top: 63,
-    right: 20,
-    backgroundColor: 'white',
-    borderRadius: 25,
-    width: 50,
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
 });

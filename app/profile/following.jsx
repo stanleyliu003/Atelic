@@ -148,7 +148,7 @@ export default function FollowingScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.BLACK} />
+          <Ionicons name="chevron-back" size={28} color={Colors.BLACK} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Following</Text>
         <View style={styles.headerRight} />
@@ -178,17 +178,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.LIGHT_GRAY,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
   },
   backButton: {
-    padding: 8,
+    padding: 4,
+    width: 40,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '600',
     color: Colors.BLACK,
     flex: 1,
     textAlign: 'center',

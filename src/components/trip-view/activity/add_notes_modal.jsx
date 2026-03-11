@@ -236,7 +236,7 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
             style={[styles.modalContent, isKeyboardVisible && styles.modalContentExpanded]}
             pointerEvents="auto"
           >
-            {/* Swipeable Drag Indicator */}
+            {/* Drag Indicator */}
             <GestureDetector gesture={swipeGesture}>
               <View style={styles.dragIndicatorContainer}>
                 <View style={styles.dragIndicator} />
@@ -245,66 +245,46 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
 
             {/* Header */}
             <Pressable style={styles.header} onPress={() => setTimeModalVisible(false)}>
-              <Text style={styles.placeName} numberOfLines={1}>
-                {activity.name}
-              </Text>
-              <TouchableOpacity onPress={handleSave}>
-                <Text style={styles.doneButton}>Done</Text>
+              <View style={styles.headerLeft}>
+                <Text style={styles.placeName} numberOfLines={1}>
+                  {activity.name}
+                </Text>
+              </View>
+              <TouchableOpacity style={styles.doneBtn} onPress={handleSave}>
+                <Text style={styles.doneBtnText}>Done</Text>
               </TouchableOpacity>
             </Pressable>
 
-            {/* Notes Input */}
-            <Pressable style={styles.notesInputContainer} onPress={() => setTimeModalVisible(false)}>
-              <ScrollView
-                contentContainerStyle={styles.notesScrollContent}
-              >
-                <TextInput
-                  ref={notesInputRef}
-                  style={styles.notesInput}
-                  placeholder={isViewer ? `Notes: ${activity.name}` : `Add notes about ${activity.name}...`}
-                  placeholderTextColor="#999"
-                  multiline
-                  value={notes}
-                  onChangeText={setNotes}
-                  onFocus={() => setTimeModalVisible(false)}
-                  textAlignVertical="top"
-                  editable={!isViewer}
-                />
-              </ScrollView>
-            </Pressable>
-
-            {/* Add Time Button */}
+            {/* Time Button */}
             <View style={styles.timePickerWrapper} pointerEvents="box-none">
               <View style={styles.timeButtonRow}>
                 <TouchableOpacity
-                  style={styles.addTimeButton}
+                  style={[styles.addTimeButton, startTime && endTime && styles.addTimeButtonActive]}
                   onPress={() => setTimeModalVisible(true)}
                   pointerEvents="auto"
                   disabled={isViewer}
                 >
-                  <MaterialIcons name="access-time" size={18} color={Colors.PRIMARY} />
-                  <Text style={styles.addTimeText}>
-                    {startTime && endTime ? `${format12Hour(startTime)} - ${format12Hour(endTime)}` : 'Add Time'}
+                  <MaterialIcons name="schedule" size={15} color={startTime && endTime ? '#3B82F6' : '#A1A1AA'} />
+                  <Text style={[styles.addTimeText, startTime && endTime && styles.addTimeTextActive]}>
+                    {startTime && endTime ? `${format12Hour(startTime)} – ${format12Hour(endTime)}` : 'Add time'}
                   </Text>
                 </TouchableOpacity>
 
-                {/* Clear Time Button - Only show if time is set and user is not a viewer */}
                 {startTime && endTime && !isViewer && (
                   <TouchableOpacity
                     style={styles.clearTimeButton}
                     onPress={() => {
-                      setTimeModalVisible(false); // Close the time modal first
+                      setTimeModalVisible(false);
                       setStartTime('');
                       setEndTime('');
                     }}
                     pointerEvents="auto"
                   >
-                    <MaterialIcons name="close" size={18} color="#666" />
+                    <MaterialIcons name="close" size={14} color="#A1A1AA" />
                   </TouchableOpacity>
                 )}
               </View>
 
-              {/* Time Picker Popover - Only show if not a viewer */}
               {!isViewer && (
                 <AddTimeModal
                   visible={timeModalVisible}
@@ -316,6 +296,27 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
                 />
               )}
             </View>
+
+            {/* Notes Input */}
+            <Pressable style={styles.notesInputContainer} onPress={() => setTimeModalVisible(false)}>
+              <ScrollView
+                contentContainerStyle={styles.notesScrollContent}
+                keyboardShouldPersistTaps="handled"
+              >
+                <TextInput
+                  ref={notesInputRef}
+                  style={styles.notesInput}
+                  placeholder={isViewer ? 'No notes yet' : 'Write a note...'}
+                  placeholderTextColor="#D4D4D8"
+                  multiline
+                  value={notes}
+                  onChangeText={setNotes}
+                  onFocus={() => setTimeModalVisible(false)}
+                  textAlignVertical="top"
+                  editable={!isViewer}
+                />
+              </ScrollView>
+            </Pressable>
           </GestureHandlerRootView>
         </View>
       </KeyboardAvoidingView>
@@ -327,91 +328,115 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   modalContent: {
-    height: '48%',
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
+    height: '45%',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   modalContentExpanded: {
-    height: '75%',
+    height: '72%',
   },
   dragIndicatorContainer: {
     width: '100%',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingTop: 10,
+    paddingBottom: 6,
   },
   dragIndicator: {
-    width: 40,
-    height: 5,
-    backgroundColor: '#D1D5DB',
-    borderRadius: 3,
+    width: 36,
+    height: 4,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 2,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    paddingVertical: 12,
+  },
+  headerLeft: {
+    flex: 1,
+    marginRight: 12,
   },
   placeName: {
-    fontFamily: 'outfit-medium',
-    fontSize: 20,
-    color: Colors.PRIMARY,
-    flex: 1,
-    marginRight: 10,
+    fontFamily: 'outfit-bold',
+    fontSize: 18,
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
   },
-  doneButton: {
+  doneBtn: {
+    backgroundColor: '#1A1A1A',
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+  },
+  doneBtnText: {
     fontFamily: 'outfit-medium',
-    fontSize: 16,
-    color: Colors.PRIMARY,
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
+  timePickerWrapper: {
+    position: 'relative',
+    marginBottom: 12,
+  },
+  timeButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  addTimeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    gap: 6,
+  },
+  addTimeButtonActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  addTimeText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 13,
+    color: '#A1A1AA',
+  },
+  addTimeTextActive: {
+    color: '#3B82F6',
+  },
+  clearTimeButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   notesInputContainer: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 15,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    padding: 14,
   },
   notesScrollContent: {
     flexGrow: 1,
   },
   notesInput: {
     fontFamily: 'outfit',
-    fontSize: 16,
-    color: Colors.PRIMARY,
-  },
-  timePickerWrapper: {
-    position: 'relative',
-    marginBottom: 30,
-  },
-  timeButtonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  addTimeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-    gap: 8,
-  },
-  clearTimeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f0f0f0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addTimeText: {
-    fontFamily: 'outfit-medium',
-    fontSize: 16,
-    color: Colors.PRIMARY,
+    fontSize: 15,
+    color: '#1A1A1A',
+    lineHeight: 22,
   },
 });

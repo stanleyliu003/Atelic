@@ -62,7 +62,7 @@ export default function FeedScreen() {
   const hasAutoLoadedRef = useRef(false);
   const carouselTouchStartRef = useRef(null); // {x, y} of touch start for gesture direction logging
 
-  // User state
+  // User states
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [currentUserID, setCurrentUserID] = useState('');
@@ -2090,15 +2090,16 @@ export default function FeedScreen() {
               }}
             >
               <Ionicons
-                name={profileModalView !== 'profile' ? 'arrow-back' : 'close'}
-                size={profileModalView !== 'profile' ? 28 : 32}
-                color={Colors.GRAY}
+                name="chevron-back"
+                size={28}
+                color={Colors.BLACK}
               />
             </TouchableOpacity>
             <Text style={styles.profileModalTitle}>
               {profileModalView === 'followers' ? 'Followers' :
                profileModalView === 'following' ? 'Following' :
-               profileModalView === 'edit' ? 'Edit Profile' : 'Profile'}
+               profileModalView === 'edit' ? 'Edit Profile' :
+               username ? `@${username}` : 'Profile'}
             </Text>
             {profileModalView === 'edit' ? (
               <TouchableOpacity
@@ -2120,10 +2121,10 @@ export default function FeedScreen() {
                   setIsSettingsModalVisible(true);
                 }}
               >
-                <Ionicons name="settings-outline" size={28} color={Colors.GRAY} />
+                <Ionicons name="settings-outline" size={24} color={Colors.GRAY} />
               </TouchableOpacity>
             ) : (
-              <View style={styles.headerPlaceholder} />
+              <View style={{ width: 40 }} />
             )}
           </View>
 
@@ -2960,6 +2961,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  settingsButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   modalContent: {
     flex: 1,
     paddingHorizontal: 20,
@@ -3191,21 +3198,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 25,
-    paddingTop: 25,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   profileModalTitle: {
-    fontFamily: 'outfit-bold',
-    fontSize: 28,
+    fontSize: 17,
+    fontWeight: '600',
     color: Colors.PRIMARY,
+    flex: 1,
+    textAlign: 'center',
   },
   profileModalScrollView: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 0,
   },
   // Instagram-style Profile Section
   profileSection: {

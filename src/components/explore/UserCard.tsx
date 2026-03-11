@@ -68,11 +68,11 @@ export function UserCard({
   };
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.6}>
       <InitialsAvatar
         name={fullName || username}
         profilePhotoUrl={profilePhotoUrl}
-        size={50}
+        size={44}
       />
 
       <View style={styles.userInfo}>
@@ -83,7 +83,7 @@ export function UserCard({
           {isPrivate && (
             <Ionicons
               name="lock-closed"
-              size={14}
+              size={12}
               color={Colors.GRAY}
               style={styles.lockIcon}
             />
@@ -93,12 +93,6 @@ export function UserCard({
         <Text style={styles.username} numberOfLines={1}>
           @{username}
         </Text>
-
-        {bio && (
-          <Text style={styles.bio} numberOfLines={2}>
-            {bio}
-          </Text>
-        )}
       </View>
 
       <TouchableOpacity
@@ -107,6 +101,7 @@ export function UserCard({
           e.stopPropagation();
           onFollowPress();
         }}
+        activeOpacity={0.7}
       >
         <Text style={getFollowButtonTextStyle()}>{getFollowButtonText()}</Text>
       </TouchableOpacity>
@@ -118,10 +113,9 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     backgroundColor: Colors.WHITE,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.LIGHT_GRAY,
   },
   userInfo: {
     flex: 1,
@@ -133,7 +127,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   fullName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: Colors.BLACK,
   },
@@ -143,20 +137,13 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 14,
     color: Colors.GRAY,
-    marginTop: 2,
-  },
-  bio: {
-    fontSize: 14,
-    color: Colors.DARK_GRAY,
-    marginTop: 4,
-    lineHeight: 18,
+    marginTop: 1,
   },
   followButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 7,
+    paddingHorizontal: 20,
     borderRadius: 8,
     backgroundColor: Colors.BLACK,
-    minWidth: 90,
     alignItems: 'center',
   },
   followingButton: {
@@ -172,7 +159,7 @@ const styles = StyleSheet.create({
     color: Colors.GRAY,
   },
   followButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: Colors.WHITE,
   },
@@ -180,7 +167,7 @@ const styles = StyleSheet.create({
     color: Colors.WHITE,
   },
   viewProfileButton: {
-    backgroundColor: Colors.LIGHT_GRAY,
+    backgroundColor: '#EFEFEF',
   },
   viewProfileButtonText: {
     color: Colors.BLACK,

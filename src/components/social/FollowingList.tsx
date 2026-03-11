@@ -127,6 +127,7 @@ export function FollowingList({
 const styles = StyleSheet.create({
   listContent: {
     flexGrow: 1,
+    paddingTop: 4,
   },
   emptyListContent: {
     flexGrow: 1,

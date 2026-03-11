@@ -1340,7 +1340,7 @@ PODS:
     - React-logger (= 0.74.5)
     - React-perflogger (= 0.74.5)
     - React-utils (= 0.74.5)
-  - RNAWSCognito (6.3.15):
+  - RNAWSCognito (6.3.16):
     - React-Core
   - RNCAsyncStorage (1.23.1):
     - React-Core
@@ -1486,7 +1486,7 @@ DEPENDENCIES:
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - react-native-appsflyer (from `../node_modules/react-native-appsflyer`)
   - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
-  - react-native-google-maps (from `/Users/stanleycliu/Desktop/Atelic_App_Dev/Atelic_Stable/node_modules/react-native-maps`)
+  - react-native-google-maps (from `/Users/ujjwalrastogi/Atelic_Stable/node_modules/react-native-maps`)
   - react-native-maps (from `../node_modules/react-native-maps`)
   - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
@@ -1651,7 +1651,7 @@ EXTERNAL SOURCES:
   react-native-get-random-values:
     :path: "../node_modules/react-native-get-random-values"
   react-native-google-maps:
-    :path: "/Users/stanleycliu/Desktop/Atelic_App_Dev/Atelic_Stable/node_modules/react-native-maps"
+    :path: "/Users/ujjwalrastogi/Atelic_Stable/node_modules/react-native-maps"
   react-native-maps:
     :path: "../node_modules/react-native-maps"
   react-native-netinfo:
@@ -1815,7 +1815,7 @@ SPEC CHECKSUMS:
   React-runtimescheduler: 2cbd0f3625b30bba08e8768776107f6f0203159b
   React-utils: 9fa4e5d0b5e6c6c85c958f19d6ef854337886417
   ReactCommon: 9f285823dbe955099978d9bff65a7653ca029256
-  RNAWSCognito: 45872f0cf19f95b3d14aea0979273e817af07138
+  RNAWSCognito: c271cb77af824c5fbfb5060cb22ecae245376939
   RNCAsyncStorage: aa75595c1aefa18f868452091fa0c411a516ce11
   RNCPicker: 7de564dce1f90b53e386a24001aafc3578233dfe
   RNDateTimePicker: dde7ca9005d716f3efa9a63004b441679bca9a41

@@ -286,9 +286,12 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}></Text>
+            <View style={styles.headerTitleRow}>
+              <MaterialIcons name="bed" size={20} color="#6366F1" />
+              <Text style={styles.headerTitle}>Add Hotel Stay</Text>
+            </View>
             <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="close" size={28} color="#333" />
+              <Ionicons name="close" size={24} color="#A1A1AA" />
             </TouchableOpacity>
           </View>
 
@@ -302,14 +305,24 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
               onPress={() => setIsCalendarOpen(true)}
             >
               <View style={styles.dateButtonContent}>
-                <MaterialCommunityIcons name="calendar-clock-outline" size={24} color="black" />
-                <Text style={[styles.dateButtonText, !stayLength && styles.placeholderText]}>
-                  {checkInDate && checkOutDate
-                    ? `${formatDate(checkInDate)}   -   ${formatDate(checkOutDate)}`
-                    : stayLength
-                    ? `${stayLength} night${stayLength > 1 ? 's' : ''}`
-                    : 'Select dates'}
-                </Text>
+                <MaterialIcons name="calendar-today" size={18} color="#6366F1" />
+                {checkInDate && checkOutDate ? (
+                  <View style={styles.dateRangeDisplay}>
+                    <Text style={styles.dateButtonText}>
+                      {formatDate(checkInDate)} → {formatDate(checkOutDate)}
+                    </Text>
+                    {stayLength && (
+                      <View style={styles.dateNightsBadge}>
+                        <MaterialIcons name="nights-stay" size={10} color="#6366F1" />
+                        <Text style={styles.dateNightsText}>{stayLength} {stayLength === 1 ? 'night' : 'nights'}</Text>
+                      </View>
+                    )}
+                  </View>
+                ) : (
+                  <Text style={[styles.dateButtonText, styles.placeholderText]}>
+                    Select dates
+                  </Text>
+                )}
               </View>
             </TouchableOpacity>
           </View>
@@ -465,7 +478,7 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
                       Check-in {checkInDate ? `(${formatShortDate(checkInDate)})` : ''}
                     </Text>
                     <View style={styles.timeButtonContent}>
-                      <Ionicons name="time-outline" size={20} color="black" />
+                      <MaterialIcons name="schedule" size={18} color="#6366F1" />
                       <Text style={styles.timeButtonText}>
                         {formatTime(checkInTime)}
                       </Text>
@@ -489,7 +502,7 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
                       Check-out {checkOutDate ? `(${formatShortDate(checkOutDate)})` : ''}
                     </Text>
                     <View style={styles.timeButtonContent}>
-                      <Ionicons name="time-outline" size={20} color="black" />
+                      <MaterialIcons name="schedule" size={18} color="#6366F1" />
                       <Text style={styles.timeButtonText}>
                         {formatTime(checkOutTime)}
                       </Text>
@@ -539,7 +552,7 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
                       activeOpacity={0.7}
                     >
                       <View style={styles.suggestionIconContainer}>
-                      <MaterialIcons name="bed" size={20} color="#444" />
+                      <MaterialIcons name="bed" size={20} color="#6366F1" />
                       </View>
                       <View style={styles.suggestionTextContainer}>
                         <Text
@@ -752,21 +765,21 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     backgroundColor: Colors.WHITE,
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-    height: '85%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    height: '90%',
   },
   dragIndicatorContainer: {
     width: '100%',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingTop: 30,
+    paddingTop: 10,
+    paddingBottom: 6,
   },
   dragIndicator: {
-    width: 40,
-    height: 5,
-    backgroundColor: '#D1D5DB',
-    borderRadius: 3,
+    width: 36,
+    height: 4,
+    backgroundColor: '#D4D4D8',
+    borderRadius: 2,
   },
   header: {
     flexDirection: 'row',
@@ -775,10 +788,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 15,
   },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   headerTitle: {
     fontFamily: 'outfit-bold',
-    fontSize: 20,
-    color: '#333',
+    fontSize: 18,
+    color: '#1A1A1A',
   },
   searchSection: {
     paddingHorizontal: 20,
@@ -786,9 +804,9 @@ const styles = StyleSheet.create({
   },
   searchSectionTitle: {
     fontFamily: 'outfit-bold',
-    fontSize: 18,
-    color: '#333',
-    marginBottom: 12,
+    fontSize: 16,
+    color: '#1A1A1A',
+    marginBottom: 10,
   },
   searchLabel: {
     fontFamily: 'outfit-medium',
@@ -809,16 +827,13 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    height: 55,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   searchIcon: {
     marginRight: 10,
@@ -918,24 +933,20 @@ const styles = StyleSheet.create({
   },
   stayDurationTitle: {
     fontFamily: 'outfit-bold',
-    fontSize: 18,
-    color: '#333',
-    marginBottom: 12,
+    fontSize: 16,
+    color: '#1A1A1A',
+    marginBottom: 10,
   },
   dateButton: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 15,
-    borderWidth: 0,
-    borderRadius: 20,
-    backgroundColor: 'white',
-    height: 55,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    borderRadius: 14,
+    backgroundColor: '#F9FAFB',
+    height: 52,
   },
   timeButton: {
     marginTop: 12,
@@ -952,7 +963,7 @@ const styles = StyleSheet.create({
   },
   halfWidthButton: {
     flex: 1,
-    height: 70,
+    height: 65,
   },
   timeButtonColumn: {
     flexDirection: 'column',
@@ -979,15 +990,36 @@ const styles = StyleSheet.create({
   dateButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
+    flex: 1,
+  },
+  dateRangeDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
   },
   dateButtonText: {
-    fontFamily: 'outfit',
-    fontSize: 16,
-    color: '#1a1a1a',
+    fontFamily: 'outfit-medium',
+    fontSize: 14,
+    color: '#1A1A1A',
+  },
+  dateNightsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  dateNightsText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 10,
+    color: '#6366F1',
   },
   placeholderText: {
-    color: '#999999',
+    color: '#A1A1AA',
   },
   suggestionsContainer: {
     flex: 1,
@@ -1048,10 +1080,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   suggestionIconContainer: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#f2f2f2',
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#F5F3FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1078,20 +1110,21 @@ const styles = StyleSheet.create({
   },
   calendarModalContent: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingBottom: 40,
     maxHeight: '80%',
   },
   calendarModalHandleContainer: {
-    paddingVertical: 12,
+    paddingTop: 10,
+    paddingBottom: 6,
     alignItems: 'center',
   },
   calendarModalHandle: {
-    width: 40,
+    width: 36,
     height: 4,
-    backgroundColor: '#D1D5DB',
+    backgroundColor: '#D4D4D8',
     borderRadius: 2,
   },
   calendarContainer: {
@@ -1100,10 +1133,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   calendarConfirmButton: {
-    backgroundColor: '#F36406',
-    borderRadius: 25,
-    paddingVertical: 16,
-    marginTop: 35,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 20,
+    paddingVertical: 14,
+    marginTop: 25,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1135,17 +1168,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.WHITE,
   },
   addLodgingButton: {
-    marginTop: 30,
-    backgroundColor: '#F36406',
-    borderRadius: 25,
-    paddingVertical: 16,
+    marginTop: 10,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 20,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
   },
   addLodgingButtonText: {
     color: '#FFFFFF',

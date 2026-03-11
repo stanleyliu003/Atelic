@@ -243,17 +243,20 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
 
   return (
     <View style={styles.overlayWrapper}>
-      {/* Backdrop overlay */}
       <Pressable
         style={styles.backdrop}
         onPress={onClose}
       />
-      {/* Popover container */}
       <View style={styles.popoverContainer}>
+        {/* Header labels */}
+        <View style={styles.headerRow}>
+          <Text style={styles.headerLabel}>Start</Text>
+          <Text style={styles.headerLabel}>End</Text>
+        </View>
+
         <View style={styles.timePickerContainer}>
           {/* Start Time */}
           <View style={styles.timeSection}>
-            <Text style={styles.timeSectionTitle}>Start</Text>
             <View style={styles.pickerRowContainer}>
               <View style={styles.rowSelectionIndicator} />
               <View style={styles.pickerRow}>
@@ -268,6 +271,7 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                   visible={visible}
                   disabled={isViewer}
                 />
+                <Text style={styles.colonSeparator}>:</Text>
                 <TimePickerColumn
                   values={MINUTES}
                   selectedValue={startMinute}
@@ -295,12 +299,11 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
             </View>
           </View>
 
-          {/* Divider */}
-          <View style={styles.divider} />
+          {/* Arrow separator */}
+          <Text style={styles.arrowSeparator}>→</Text>
 
           {/* End Time */}
           <View style={styles.timeSection}>
-            <Text style={styles.timeSectionTitle}>End</Text>
             <View style={styles.pickerRowContainer}>
               <View style={styles.rowSelectionIndicator} />
               <View style={styles.pickerRow}>
@@ -315,6 +318,7 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
                   visible={visible}
                   disabled={isViewer}
                 />
+                <Text style={styles.colonSeparator}>:</Text>
                 <TimePickerColumn
                   values={MINUTES}
                   selectedValue={endMinute}
@@ -366,44 +370,60 @@ const styles = StyleSheet.create({
   },
   popoverContainer: {
     position: 'absolute',
-    bottom: 60,
-    left: -60,
+    bottom: 52,
+    left: 0,
     right: 0,
-    marginHorizontal: 60,
-    backgroundColor: '#000',
+    backgroundColor: '#1A1A1A',
     borderRadius: 20,
-    padding: 15,
+    paddingTop: 14,
+    paddingBottom: 12,
+    paddingHorizontal: 12,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.44,
-    shadowRadius: 10.32,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
     elevation: 16,
     zIndex: 10,
   },
-  timePickerContainer: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    gap: 5,
+    paddingHorizontal: 8,
+    marginBottom: 4,
+  },
+  headerLabel: {
+    fontFamily: 'outfit-medium',
+    fontSize: 12,
+    color: '#71717A',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  timePickerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   timeSection: {
     flex: 1,
     alignItems: 'center',
   },
-  timeSectionTitle: {
-    fontFamily: 'outfit-bold',
+  arrowSeparator: {
+    fontFamily: 'outfit',
     fontSize: 16,
-    color: '#fff',
-    marginBottom: 8,
+    color: '#52525B',
+    marginHorizontal: 4,
+  },
+  colonSeparator: {
+    fontFamily: 'outfit-bold',
+    fontSize: 18,
+    color: '#71717A',
+    marginHorizontal: -2,
   },
   pickerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 2,
   },
-  // Container for hour, minute, and period columns so the highlight spans the full row
   pickerRowContainer: {
     height: ITEM_HEIGHT * 3,
     width: '100%',
@@ -412,7 +432,7 @@ const styles = StyleSheet.create({
   },
   pickerColumn: {
     height: ITEM_HEIGHT * 3,
-    width: 35,
+    width: 34,
     overflow: 'hidden',
   },
   pickerSpacer: {
@@ -425,23 +445,17 @@ const styles = StyleSheet.create({
   },
   pickerText: {
     fontFamily: 'outfit-medium',
-    fontSize: 18,
-    color: '#fff',
+    fontSize: 17,
+    color: '#E4E4E7',
   },
-  // Highlight the currently selected time across the whole row
   rowSelectionIndicator: {
     position: 'absolute',
     top: ITEM_HEIGHT,
-    left: 0,
-    right: 0,
+    left: 4,
+    right: 4,
     height: ITEM_HEIGHT,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 10,
     pointerEvents: 'none',
-  },
-  divider: {
-    width: 1,
-    backgroundColor: '#444',
-    marginHorizontal: 8,
   },
 });

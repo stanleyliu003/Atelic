@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 11,
     fontFamily: 'outfit-bold',
-    color: '#9CA3AF',
+    color: '#F36406',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     paddingHorizontal: 16,

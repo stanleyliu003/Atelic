@@ -1,7 +1,9 @@
 import { Colors } from '../../constants/Colors';
 import { useNavigation, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert, AppState, Animated, PanResponder, Dimensions, ActivityIndicator, Pressable } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert, AppState, ActivityIndicator, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { encodePolyline } from '../../src/utils/polyline';
 import { getMarkerColor } from '../../src/constants/mapColors';
@@ -17,6 +19,7 @@ import SimpleDatePicker from '../../src/components/trip-view/SimpleDatePicker';
 import { SearchBar } from '../../src/components/explore/SearchBar';
 import { AutocompleteModal } from '../../src/components/explore/AutocompleteModal';
 import { CategoryModal } from '../../src/components/explore/CategoryModal';
+import { AddHotelStayModal } from '../../src/components/explore/AddHotelStayModal';
 import { useActivitySelection } from '../../src/hooks/use_activity_selection';
 import { useDayActivities } from '../../src/hooks/use_day_activities';
 import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
@@ -116,15 +119,14 @@ export default function TripViewMain() {
         isPublic,
         isPublicLoaded,
     } = useCreateTrip();
-    // Primary tab state for Overview/Itinerary toggle
-    type PrimaryTab = 'overview' | 'itinerary';
-    // If coming from saved places, start on itinerary tab instead of overview
-    const [primaryTab, setPrimaryTab] = useState<PrimaryTab>(
-        fromSavedPlaces === 'true' ? 'itinerary' : 'overview'
+    // Single unified tab - 'overview' is now just another tab value
+    const [activeTab, setActiveTab] = useState<TabType>(
+        fromSavedPlaces === 'true' ? 'wishlist' : 'overview'
     );
-
-    const [activeTab, setActiveTab] = useState<TabType>('wishlist');
     const [shouldScrollToActive, setShouldScrollToActive] = useState(false);
+
+    // Map overlay toggle
+    const [isMapVisible, setIsMapVisible] = useState(false);
 
     // Date picker modal state
     const [datePickerVisible, setDatePickerVisible] = useState(false);
@@ -149,6 +151,7 @@ export default function TripViewMain() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
     const [showAutocomplete, setShowAutocomplete] = useState(false);
+    const [showHotelModal, setShowHotelModal] = useState(false);
     const [isAutocompleteAddingPlace, setIsAutocompleteAddingPlace] = useState(false);
     const [isShareModalVisible, setIsShareModalVisible] = useState(false);
     const [currentUserID, setCurrentUserID] = useState<string>('');
@@ -186,34 +189,7 @@ export default function TripViewMain() {
     const [modalOriginActivity, setModalOriginActivity] = useState<Activity | undefined>(undefined);
     const [modalDestinationActivity, setModalDestinationActivity] = useState<Activity | undefined>(undefined);
 
-    // State for draggable bottom section with 3 discrete states
-    const screenHeight = Dimensions.get('window').height;
-    const MIN_HEIGHT = 0.30; // 30% of screen height (minimum)
-    const DEFAULT_HEIGHT = 0.65; // 65% of screen height (default)
-    const MAX_HEIGHT = 0.90; // 90% of screen height (maximum)
-
-    // Current height state (0 = min, 1 = default, 2 = max)
-    const [currentHeightState, setCurrentHeightState] = useState(1); // Start at default
-    const [bottomHeight] = useState(new Animated.Value(DEFAULT_HEIGHT));
-
-    // Ref to track current state for pan responder (avoids stale closure)
-    const currentHeightStateRef = useRef(1);
-
-    // Array of height states for easy access
-    const heightStates = [MIN_HEIGHT, DEFAULT_HEIGHT, MAX_HEIGHT];
-
-    // Function to programmatically change height state
-    const changeHeightState = (newState: number) => {
-        if (newState >= 0 && newState < heightStates.length && newState !== currentHeightState) {
-            setCurrentHeightState(newState);
-            Animated.spring(bottomHeight, {
-                toValue: heightStates[newState],
-                useNativeDriver: false,
-                tension: 80,
-                friction: 12,
-            }).start();
-        }
-    };
+    // Bottom sheet removed - using fixed 40/60 split panel layout
 
     // Save-in-progress lock to prevent concurrent saves and duplicate tripID generation
     const [isSaving, setIsSaving] = useState(false);
@@ -304,17 +280,6 @@ export default function TripViewMain() {
         activeTabRef.current = activeTab;
     }, [activeTab]);
 
-    // Reset height to default state on component mount/reload
-    useEffect(() => {
-        setCurrentHeightState(1); // Reset to default state
-        currentHeightStateRef.current = 1; // Also reset the ref
-        bottomHeight.setValue(DEFAULT_HEIGHT);
-    }, []); // Empty dependency array means this runs only on mount
-
-    // Keep ref in sync with state
-    useEffect(() => {
-        currentHeightStateRef.current = currentHeightState;
-    }, [currentHeightState]);
 
 
     // Track screen focus to control subscription
@@ -341,53 +306,6 @@ export default function TripViewMain() {
         }));
     };
 
-    // Pan responder for swipe gestures between discrete states
-    const panResponder = useRef(
-        PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: (_, gestureState) => {
-                // Only respond to significant vertical movement
-                return Math.abs(gestureState.dy) > 10;
-            },
-            onPanResponderGrant: () => {
-                // Stop any ongoing animation
-                bottomHeight.stopAnimation();
-            },
-            onPanResponderMove: () => {
-                // Don't update position during move - we'll snap on release
-            },
-            onPanResponderRelease: (_, gestureState) => {
-                // More sensitive thresholds for better responsiveness
-                const swipeThreshold = 20; // Reduced from 50 to 20 for more sensitive distance detection
-                const swipeVelocityThreshold = 0.2; // Reduced from 0.5 to 0.2 for more sensitive velocity detection
-
-                const currentState = currentHeightStateRef.current; // Use ref for current value
-                let newState = currentState;
-
-                // Check for swipe up (negative dy) - go one step higher
-                // Accept EITHER sufficient distance OR sufficient velocity
-                if (gestureState.dy < -swipeThreshold || gestureState.vy < -swipeVelocityThreshold) {
-                    newState = Math.min(currentState + 1, 2); // Max state is 2
-                }
-                // Check for swipe down (positive dy) - go one step lower
-                // Accept EITHER sufficient distance OR sufficient velocity
-                else if (gestureState.dy > swipeThreshold || gestureState.vy > swipeVelocityThreshold) {
-                    newState = Math.max(currentState - 1, 0); // Min state is 0
-                }
-
-                // Animate to the new state if it changed
-                if (newState !== currentState) {
-                    setCurrentHeightState(newState);
-                    Animated.spring(bottomHeight, {
-                        toValue: heightStates[newState],
-                        useNativeDriver: false,
-                        tension: 80,
-                        friction: 8,
-                    }).start();
-                }
-            },
-        })
-    ).current;
 
     // Hooks for activity and day management
     const {
@@ -529,11 +447,6 @@ export default function TripViewMain() {
             clearSelection();
         }
 
-        // If clicking Overview tab in TabBar, switch back to primary Overview mode
-        if (tab === 'overview' && primaryTab === 'itinerary') {
-            setPrimaryTab('overview');
-        }
-
         setActiveTab(tab);
         // Don't auto-scroll for manual tab selection
         setShouldScrollToActive(false);
@@ -567,7 +480,6 @@ export default function TripViewMain() {
 
     // Handler for when a day card is pressed in Overview mode
     const handleOverviewDayPress = (dayNumber: number) => {
-        setPrimaryTab('itinerary');
         setActiveTab(`day${dayNumber}` as TabType);
         setShouldScrollToActive(true);
     };
@@ -2993,19 +2905,11 @@ export default function TripViewMain() {
         if (activity.place_id) {
             setSelectedMarker(activity.place_id);
         }
-        // Set height to DEFAULT_HEIGHT when opening activity detail
-        changeHeightState(1); // 1 = DEFAULT_HEIGHT
     };
 
-    // Handler for activity detail scroll state change
-    const handleActivityDetailScrollStateChange = (isScrolledDown: boolean) => {
-        if (isScrolledDown) {
-            // When scrolled down, expand to MAX_HEIGHT
-            changeHeightState(2); // 2 = MAX_HEIGHT
-        } else {
-            // When scrolled back to top, return to DEFAULT_HEIGHT
-            changeHeightState(1); // 1 = DEFAULT_HEIGHT
-        }
+    // Handler for activity detail scroll state change (no-op in split panel layout)
+    const handleActivityDetailScrollStateChange = (_isScrolledDown: boolean) => {
+        // No height changes needed in fixed split panel layout
     };
 
     // Handler for closing activity detail view
@@ -4319,6 +4223,27 @@ export default function TripViewMain() {
     }, [selectedCity, allSavedPlaces, updateActivities, isDeletedSavedPlace]);
 
     // Handle collaboration modal
+    // Handler for navigating home (save + navigate)
+    const handleHomePress = async () => {
+        const dayCountVal = getDayCount();
+        if (currentUserRole !== 'viewer') {
+            try {
+                await saveTrip();
+                lastSaveTimeRef.current = Date.now();
+            } catch (error) {
+                console.error('[trip-view_main] Manual save failed:', error);
+            }
+        }
+        if (tripId) {
+            router.push('/(tabs)/feed');
+        } else {
+            router.push({
+                pathname: '/trip-view/publish_success',
+                params: { dayCount: dayCountVal.toString() }
+            });
+        }
+    };
+
     const handleShareTrip = async () => {
 
         // For new trips (no tripId yet), initialize collaborators with current user as owner
@@ -4365,36 +4290,10 @@ export default function TripViewMain() {
         }
     }, [dayActivities]);
 
-    // Render primary tab toggle (Overview/Itinerary)
-    const renderPrimaryTabs = () => (
-        <View style={styles.primaryTabContainer}>
-            <TouchableOpacity
-                style={[styles.primaryTab, primaryTab === 'overview' && styles.primaryTabActive]}
-                onPress={() => setPrimaryTab('overview')}
-                activeOpacity={0.7}
-            >
-                <Text style={[styles.primaryTabText, primaryTab === 'overview' && styles.primaryTabTextActive]}>
-                    Overview
-                </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={[styles.primaryTab, primaryTab === 'itinerary' && styles.primaryTabActive]}
-                onPress={() => {
-                    setPrimaryTab('itinerary');
-                    setActiveTab('wishlist');
-                }}
-                activeOpacity={0.7}
-            >
-                <Text style={[styles.primaryTabText, primaryTab === 'itinerary' && styles.primaryTabTextActive]}>
-                    Itinerary
-                </Text>
-            </TouchableOpacity>
-        </View>
-    );
 
     // Prepare day polylines for overview mode with color coding
     const overviewDayPolylines = useMemo(() => {
-        if (primaryTab !== 'overview') return [];
+        if (activeTab !== 'overview') return [];
 
         const sortedDayNumbers = Object.keys(dayActivities)
             .map(Number)
@@ -4423,7 +4322,7 @@ export default function TripViewMain() {
                 }
             })
             .filter((item): item is { dayNumber: number; coordinates: { latitude: number; longitude: number }[]; color: string } => item !== null);
-    }, [primaryTab, dayPolylines, dayActivities]);
+    }, [activeTab, dayPolylines, dayActivities]);
 
     // Extract route legs for each day from the routeCache for Overview display
     const dayRouteLegs = useMemo(() => {
@@ -4444,7 +4343,7 @@ export default function TripViewMain() {
 
     // Create a map of activity instanceId to day number for marker coloring in overview mode
     const activityDayMap = useMemo(() => {
-        if (primaryTab !== 'overview') return undefined;
+        if (activeTab !== 'overview') return undefined;
 
         const map = new Map<string, number>();
         Object.keys(dayActivities).forEach((dayKey) => {
@@ -4459,90 +4358,82 @@ export default function TripViewMain() {
             }
         });
         return map;
-    }, [primaryTab, dayActivities]);
+    }, [activeTab, dayActivities]);
 
     return (
-        <>
-            <TripMapView
-                activities={primaryTab === 'overview' ? getAllDayActivities() : getActivitiesForTab(activeTab)}
-                activeTab={activeTab}
-                routeCoordinates={
-                    activeTab.startsWith('day') && getActivitiesForTab(activeTab).length > 0
-                        ? routeData.polyline
-                        : []
-                }
-                routeLoading={routeLoading}
-                selectedActivities={selectedActivities}
-                onMarkerPress={handleActivityDescriptionCardSelect}
-                selectedMarker={selectedMarker}
-                currentHeightState={currentHeightState}
-                heightStates={heightStates}
-                allActivities={getAllActivitiesFromTrip()}
-                selectedCityLocation={selectedCityLocation || undefined}
-                dayPolylines={primaryTab === 'overview' ? overviewDayPolylines : undefined}
-                activityDayMap={activityDayMap}
-                routeData={activeTab.startsWith('day') ? {
-                    legs: routeData.legs.map(leg => ({
-                        distance: leg.modeData[leg.selectedMode]?.distance,
-                        duration: leg.modeData[leg.selectedMode]?.duration,
-                    }))
-                } : undefined}
-                onShareTrip={async () => {
-                    if (!tripId) {
-                        // Save trip first if it doesn't exist
-                        try {
-                            await saveTrip();
-                            // Update timestamp only after successful save
-                            lastSaveTimeRef.current = Date.now();
-                        } catch (error) {
-                            console.error('[trip-view_main] Save before share failed:', error);
-                            // Still allow sharing even if save failed (trip might exist)
-                        }
+        <View style={styles.fullScreenContainer}>
+            {/* Map - always visible behind content */}
+            <View style={styles.mapBackground}>
+                <TripMapView
+                    activities={activeTab === 'overview' ? getAllDayActivities() : getActivitiesForTab(activeTab)}
+                    activeTab={activeTab}
+                    routeCoordinates={
+                        activeTab.startsWith('day') && getActivitiesForTab(activeTab).length > 0
+                            ? routeData.polyline
+                            : []
                     }
-                    handleShareTrip();
-                }}
-            />
+                    routeLoading={routeLoading}
+                    selectedActivities={selectedActivities}
+                    onMarkerPress={handleActivityDescriptionCardSelect}
+                    selectedMarker={selectedMarker}
+                    allActivities={getAllActivitiesFromTrip()}
+                    selectedCityLocation={selectedCityLocation || undefined}
+                    dayPolylines={activeTab === 'overview' ? overviewDayPolylines : undefined}
+                    activityDayMap={activityDayMap}
+                    routeData={activeTab.startsWith('day') ? {
+                        legs: routeData.legs.map(leg => ({
+                            distance: leg.modeData[leg.selectedMode]?.distance,
+                            duration: leg.modeData[leg.selectedMode]?.duration,
+                        }))
+                    } : undefined}
+                />
+                {/* Overlay buttons on map */}
+                <SafeAreaView edges={['top']} style={styles.mapOverlayButtons} pointerEvents="box-none">
+                    <View style={styles.mapHeaderRow}>
+                        <TouchableOpacity style={styles.mapBtn} onPress={handleHomePress}>
+                            <Ionicons name="arrow-back" size={20} color="#1A1A1A" />
+                        </TouchableOpacity>
+                        <View style={styles.headerRightButtons}>
+                            <TouchableOpacity style={styles.mapBtn} onPress={async () => {
+                                if (!tripId) {
+                                    try { await saveTrip(); lastSaveTimeRef.current = Date.now(); } catch (e) {}
+                                }
+                                handleShareTrip();
+                            }}>
+                                <Ionicons name="share-outline" size={20} color="#1A1A1A" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </SafeAreaView>
+            </View>
 
-            <Animated.View style={[
-                styles.container,
-                {
-                    height: bottomHeight.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ['0%', '100%'],
-                    }),
-                }
-            ]}>
-                {/* Draggable indicator bar */}
-                <View {...panResponder.panHandlers} style={styles.dragIndicatorContainer}>
-                    <View style={styles.dragIndicator} />
+            {/* Bottom sheet content area */}
+            <View style={styles.bottomSheet}>
+                {/* iOS-style drag handle */}
+                <View style={styles.dragHandleContainer}>
+                    <View style={styles.dragHandle} />
                 </View>
 
-                {/* Navigation - show either primary toggle or TabBar */}
-                {!showActivityDetail && (
-                    primaryTab === 'overview' ? (
-                        // Show Overview/Itinerary toggle
-                        renderPrimaryTabs()
-                    ) : (
-                        // Show TabBar with Overview, Wishlist, Day tabs in primary style
-                        <TabBar
-                            activeTab={activeTab}
-                            onTabChange={handleTabChange}
-                            dayCount={getDayCount()}
-                            onAddDay={handleAddDay}
-                            onDeleteDay={handleDeleteDay}
-                            onReorderDays={handleReorderDays}
-                            shouldScrollToActive={shouldScrollToActive}
-                            tabLabels={tabLabels}
-                            currentUserRole={currentUserRole}
-                            startDate={startDate}
-                            showOverviewTab={true}
-                            isDeleteMode={isTabBarDeleteMode}
-                            onDeleteModeChange={setIsTabBarDeleteMode}
-                            showDayButtons={true}
-                            usePrimaryStyle={true}
-                        />
-                    )
-                )}
+            {/* Day Pills */}
+            {!showActivityDetail && (
+                <TabBar
+                    activeTab={activeTab}
+                    onTabChange={handleTabChange}
+                    dayCount={getDayCount()}
+                    onAddDay={handleAddDay}
+                    onDeleteDay={handleDeleteDay}
+                    onReorderDays={handleReorderDays}
+                    shouldScrollToActive={shouldScrollToActive}
+                    tabLabels={tabLabels}
+                    currentUserRole={currentUserRole}
+                    startDate={startDate}
+                    showOverviewTab={true}
+                    isDeleteMode={isTabBarDeleteMode}
+                    onDeleteModeChange={setIsTabBarDeleteMode}
+                    showDayButtons={true}
+                    usePrimaryStyle={true}
+                />
+            )}
 
                 {/* Tab Content */}
                 <View style={styles.tabContent}>
@@ -4559,8 +4450,8 @@ export default function TripViewMain() {
                 ) : (
                 <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
                     <>
-                        {/* Overview Content - shown when primaryTab is 'overview' */}
-                        {primaryTab === 'overview' && (
+                        {/* Overview Content */}
+                        {activeTab === 'overview' && (
                             <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
                             <View style={styles.overviewWrapper}>
                                 <OverviewContent
@@ -4584,7 +4475,7 @@ export default function TripViewMain() {
                         )}
 
                                 {/* Wishlist/Saved Places Content - shown when in itinerary mode */}
-                                {primaryTab === 'itinerary' && activeTab === 'wishlist' && (() => {
+                                {activeTab === 'wishlist' && (() => {
                                     const wishlistActivities = getActivitiesForTab('wishlist');
                                     const activitiesByCity = wishlistActivities.reduce((acc: { [key: string]: Activity[] }, activity) => {
                                         const city = activity.city || 'Unknown City';
@@ -4748,7 +4639,7 @@ export default function TripViewMain() {
                                 })()}
 
                         {/* Day Schedule Content - shown when in itinerary mode */}
-                        {primaryTab === 'itinerary' && activeTab.startsWith('day') && (() => {
+                        {activeTab.startsWith('day') && (() => {
                             const currentDayNumber = parseInt(activeTab.replace('day', ''));
                             return (
                                 <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
@@ -4779,6 +4670,7 @@ export default function TripViewMain() {
                                     currentUserRole={currentUserRole}
                                     onOpenSettings={currentUserRole !== 'viewer' ? handleOpenSettings : undefined}
                                     onDelete={currentUserRole !== 'viewer' ? (activity, dayNumber) => handleDeleteActivity(activity, dayNumber) : undefined}
+                                    onAddHotel={currentUserRole !== 'viewer' ? () => setShowHotelModal(true) : undefined}
                                 />
                                 </Pressable>
                             );
@@ -4807,7 +4699,7 @@ export default function TripViewMain() {
                     onClose={() => setIsModalVisible(false)}
                     startDate={startDate}
                 />
-            </Animated.View>
+            </View>
 
             {/* AutocompleteModal for searching activities - new direct flow */}
             <AutocompleteModal
@@ -4887,158 +4779,112 @@ export default function TripViewMain() {
                 onSave={handleDateChange}
             />
 
-            {/* Home button - hidden at MAX_HEIGHT */}
-            {currentHeightState !== 2 && (
-                <TouchableOpacity
-                    style={styles.homeButton}
-                    onPress={async () => {
-                        const dayCountVal = getDayCount();
+            {/* Hotel Stay Modal - triggered from day schedule header */}
+            <AddHotelStayModal
+                visible={showHotelModal}
+                onClose={() => setShowHotelModal(false)}
+                onAddLodging={(lodgingData: any) => {
+                    setShowHotelModal(false);
+                    handleAddLodgingToTrip(lodgingData);
+                }}
+            />
 
-                        // Only save if user has edit permissions (owner or editor)
-                        if (currentUserRole !== 'viewer') {
-                            try {
-                                await saveTrip();
-                                // Update timestamp only after successful save
-                                lastSaveTimeRef.current = Date.now();
-                            } catch (error) {
-                                console.error('[trip-view_main] Manual save failed:', error);
-                                // Could show an alert to the user here if desired
-                            }
-                        } else {
-                            console.log('[trip-view_main] Viewer navigating home - skipping save');
-                        }
-
-                        // Check if this is an existing trip (loaded from cloud) or a new trip
-                        const isExistingTrip = tripId;
-
-                        if (isExistingTrip) {
-                            // This trip was loaded from cloud storage, go back to home/feed
-                            router.push('/(tabs)/feed');
-                        } else {
-                            // This is a new trip, show publish success page
-                            router.push({
-                                pathname: '/trip-view/publish_success',
-                                params: {
-                                    dayCount: dayCountVal.toString(),
-                                }
-                            });
-                        }
-                    }}
-                >
-                    <Entypo name="home" size={30} color={Colors.PRIMARY} />
-                </TouchableOpacity>
-            )}
-        </>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
+    fullScreenContainer: {
+        flex: 1,
+        backgroundColor: Colors.WHITE,
+    },
+    headerRightButtons: {
+        flexDirection: 'row',
+        gap: 4,
+    },
+    // Map overlay styles
+    mapOverlayButtons: {
         position: 'absolute',
-        bottom: 0,
+        top: 0,
         left: 0,
         right: 0,
-        backgroundColor: Colors.WHITE,
-        borderTopLeftRadius: 30,
-        borderTopRightRadius: 30,
-        paddingTop: 0,
+        zIndex: 10,
     },
-    dragIndicatorContainer: {
-        width: '100%',
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingTop: 8,
-    },
-    dragIndicator: {
-        width: 40,
-        height: 5,
-        backgroundColor: '#D1D5DB',
-        borderRadius: 3,
-    },
-    primaryTabContainer: {
+    mapHeaderRow: {
         flexDirection: 'row',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        backgroundColor: Colors.WHITE,
-    },
-    primaryTab: {
-        flex: 1,
-        paddingVertical: 11,
-        paddingHorizontal: 16,
+        justifyContent: 'space-between',
         alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingTop: 4,
+    },
+    mapBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.92)',
         justifyContent: 'center',
-        borderRadius: 10,
-        marginHorizontal: 3,
-        backgroundColor: '#F5F5F5',
-    },
-    primaryTabActive: {
-        backgroundColor: '#E3F2FD',
-        shadowColor: '#90CAF9',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 2,
-    },
-    primaryTabText: {
-        fontSize: 15,
-        fontFamily: 'outfit-medium',
-        color: '#6B7280',
-        letterSpacing: -0.2,
-    },
-    primaryTabTextActive: {
-        fontFamily: 'outfit-semibold',
-        color: '#1976D2',
-    },
-    homeButton: {
-        position: 'absolute',
-        top: 60,
-        left: 20,
-        zIndex: 1, // Ensure it's above the map
-        backgroundColor: 'white',
-        borderRadius: 25,
-        width: 50,
-        height: 50,
         alignItems: 'center',
-        justifyContent: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.12,
+        shadowRadius: 3,
         elevation: 3,
     },
-    shareButton: {
-        position: 'absolute',
-        top: 60,
-        left: 80, // Position next to home button
-        zIndex: 1,
-        backgroundColor: 'white',
-        borderRadius: 25,
-        width: 50,
-        height: 50,
-        alignItems: 'center',
+    mapBtnActive: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#F36406',
         justifyContent: 'center',
+        alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.15,
+        shadowRadius: 3,
         elevation: 3,
     },
     tabContent: {
         flex: 1,
-        marginTop: 0,
-        marginHorizontal: 8, // Reduced from 20 to 5
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 20, // Reduced from 20 to
-        marginBottom: 40, // Space for transfer button
-        overflow: 'visible', // Allow overflow for touch events
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 14,
+        paddingTop: 10,
+        paddingBottom: 40,
+        overflow: 'visible',
     },
     overviewWrapper: {
         flex: 1,
-        marginHorizontal: -28, // Cancel parent's padding (20) + marginHorizontal (8)
-        marginTop: -20, // Cancel parent's top padding
-        marginBottom: -60, // Cancel parent's bottom padding (20) + marginBottom (40)
-        overflow: 'visible', // Ensure touch events work with negative margins
+        marginHorizontal: -14,
+        marginTop: -10,
+        marginBottom: -40,
+        overflow: 'visible',
+    },
+    mapBackground: {
+        height: '40%',
+        position: 'relative',
+    },
+    bottomSheet: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        marginTop: -16,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    dragHandleContainer: {
+        alignItems: 'center',
+        paddingTop: 10,
+        paddingBottom: 6,
+    },
+    dragHandle: {
+        width: 36,
+        height: 4,
+        backgroundColor: '#D4D4D8',
+        borderRadius: 2,
     },
     citySection: {
         marginBottom: 5,

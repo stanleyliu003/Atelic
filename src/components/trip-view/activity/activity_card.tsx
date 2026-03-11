@@ -21,6 +21,22 @@ const format12Hour = (time24?: string): string => {
   return `${hour12}:${minute} ${isPM ? 'PM' : 'AM'}`;
 };
 
+// Helper to calculate nights between two ISO date strings
+const calculateNights = (checkIn?: string, checkOut?: string): number => {
+  if (!checkIn || !checkOut) return 0;
+  const start = new Date(checkIn);
+  const end = new Date(checkOut);
+  const diff = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(0, diff);
+};
+
+// Helper to format ISO date string to short format like "Nov 15"
+const formatLodgingDate = (isoString?: string): string => {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
 
 interface ActivityCardProps {
   activity: Activity;
@@ -248,153 +264,238 @@ export function ActivityCard({
     );
   };
 
-  const cardContent = (
-    <View style={styles.cardContainer}>
-      <View
+  // Card tap always opens detail view; selection is only via the checkbox
+  const handleCardTap = () => {
+    if (disabled) return;
+    if (onDescriptionCardPress) {
+      onDescriptionCardPress(activity);
+    } else if (onPress) {
+      onPress(activity);
+    }
+  };
+
+  // Determine hotel context from notes
+  const hotelContext = isHotel ? (activity.notes || '') : '';
+  const isCheckIn = hotelContext.includes('Check-in');
+  const isCheckOut = hotelContext.includes('Check-out');
+  const isSameDay = hotelContext === 'Check-in / Check-out';
+  const isMiddleDay = isHotel && !isCheckIn && !isCheckOut;
+  const nights = isHotel ? calculateNights(activity.lodgingCheckIn, activity.lodgingCheckOut) : 0;
+
+  const hotelCardContent = isHotel ? (
+    <View style={styles.cardOuter}>
+      <TouchableOpacity
         style={[
-          styles.activityCard,
+          styles.hotelCard,
           style,
-          (isSelected || duplicateActivityIndicator) && styles.selectedCard,
-          disabled && styles.disabledCard
+          (isSelected || duplicateActivityIndicator) && styles.hotelCardSelected,
+          disabled && styles.cardDisabled,
         ]}
+        onPress={handleCardTap}
+        onLongPress={handleLongPress}
+        disabled={disabled}
+        activeOpacity={0.7}
       >
-        <View style={styles.activityContent}>
-          {showSelectionIndicator && (
-            <View style={useInlineSelectionLayout ? styles.selectionContainerInline : styles.selectionAndGripContainer}>
-              <View style={useInlineSelectionLayout ? styles.selectionIndicatorWrapper : styles.selectionContainer}>
-                <View style={[
-                  styles.selectionIndicator,
-                  (isSelected || duplicateActivityIndicator) && styles.selectedIndicator
-                ]}>
-                  {(isSelected || duplicateActivityIndicator) && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-                <TouchableOpacity
-                  style={styles.selectionTouchArea}
-                  onPress={handlePress}
-                  disabled={disabled || duplicateActivityIndicator}
-                  activeOpacity={1}
-                />
-              </View>
-            </View>
-          )}
-
+        {/* Selection indicator for hotels */}
+        {showSelectionIndicator && (
           <TouchableOpacity
-            style={[styles.cardContentArea, useInlineSelectionLayout && styles.cardContentAreaInline]}
-            onPress={onDescriptionCardPress ? handleDescriptionCardPress : (!showSelectionIndicator ? handlePress : undefined)}
-            onLongPress={handleLongPress}
-            disabled={disabled}
-            activeOpacity={0.7}
+            style={styles.hotelSelectBtn}
+            onPress={handlePress}
+            disabled={disabled || duplicateActivityIndicator}
+            activeOpacity={0.6}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <View style={styles.activityInfo}>
-              <Text
-                style={[styles.activityText, disabled && styles.disabledText]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {getDisplayName()}
-              </Text>
-              <View style={styles.activityStats}>
-                {activity.rating && (
-                  <View style={styles.ratingContainer}>
-                    <Text style={[styles.ratingText, disabled && styles.disabledText]}>
-                      {activity.rating} <FontAwesome name="star" size={16} color="#FABC05" />
-                    </Text>
-                  </View>
-                )}
-                {activity.primary_type_display_name && (
-                  <View style={styles.typesContainer}>
-                    <Text
-                      style={[styles.typesText, disabled && styles.disabledText]}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
-                      {activity.primary_type_display_name}
-                    </Text>
-                  </View>
-                )}
-                {/*
-                {duplicateActivityIndicator && (
-                  <View style={styles.onListContainer}>
-                    <Text style={styles.onListText}>On list</Text>
-                  </View>
-                )}
-                  */}
-              </View>
-
-              {/* Add Notes/Time Section - Always on a new line - Hide in CategoryModal */}
-              {!hideNotesButton && (
-                <TouchableOpacity
-                  style={styles.notesSection}
-                  onPress={() => setNotesModalVisible(true)}
-                  disabled={disabled}
-                  activeOpacity={0.7}
-                >
-                  {hasNotes ? (
-                    <View style={styles.notesContentContainer}>
-                      {/* Time Section with clock icon */}
-                      {(activity.startTime && activity.endTime) && (
-                        <View style={styles.timeRow}>
-                          <Text style={styles.timeText}>
-                            {getNotesButtonText()}
-                          </Text>
-                          <MaterialIcons name="access-time" size={16} color="#60A5FA" style={styles.clockIcon} />
-                        </View>
-                      )}
-                      {/* Notes Section */}
-                      {activity.notes && (
-                        <Text style={styles.notesText} numberOfLines={1}>
-                          {activity.notes}
-                        </Text>
-                      )}
-                    </View>
-                  ) : (
-                    <View style={styles.addNotesButton}>
-                      <MaterialIcons name="edit" size={14} color="#94A3B8" />
-                      <Text style={styles.addNotesText}>Add Notes</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              )}
+            <View style={[
+              styles.selectCircle,
+              (isSelected || duplicateActivityIndicator) && styles.selectCircleActive,
+            ]}>
+              {(isSelected || duplicateActivityIndicator) && <Text style={styles.selectCheck}>✓</Text>}
             </View>
-
-            <ActivityImage
-              photo_reference={activity.photo_reference || ''}
-              place_id={activity.place_id}
-              style={[styles.activityImage, disabled && styles.disabledImage]}
-              activityName={activity.name}
-              primaryType={activity.primaryType}
-              types={activity.types}
-            />
           </TouchableOpacity>
+        )}
+
+        <View style={styles.hotelInfo}>
+          {/* Hotel name row with bed icon */}
+          <View style={styles.hotelNameRow}>
+            <MaterialIcons name="bed" size={18} color="#6366F1" />
+            <Text style={[styles.hotelName, disabled && styles.nameDisabled]} numberOfLines={1}>
+              {activity.name}
+            </Text>
+            {nights > 0 && (
+              <View style={styles.nightsBadge}>
+                <MaterialIcons name="nights-stay" size={11} color="#6366F1" />
+                <Text style={styles.nightsText}>{nights} {nights === 1 ? 'night' : 'nights'}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Rating + type */}
+          <View style={styles.meta}>
+            {activity.rating && (
+              <>
+                <FontAwesome name="star" size={10} color="#F59E0B" />
+                <Text style={styles.rating}>{activity.rating}</Text>
+              </>
+            )}
+            {activity.rating && activity.primary_type_display_name && (
+              <Text style={styles.metaDot}>·</Text>
+            )}
+            {activity.primary_type_display_name && (
+              <Text style={styles.type} numberOfLines={1}>{activity.primary_type_display_name}</Text>
+            )}
+          </View>
+
+          {/* Context row: check-in / check-out / staying overnight */}
+          <View style={styles.hotelContextRow}>
+            {isSameDay ? (
+              <>
+                <View style={styles.hotelContextItem}>
+                  <MaterialIcons name="login" size={12} color="#6366F1" />
+                  <Text style={styles.hotelContextText}>
+                    Check-in · {format12Hour(activity.lodgingTime?.checkIn)}
+                  </Text>
+                </View>
+                <View style={styles.hotelContextItem}>
+                  <MaterialIcons name="logout" size={12} color="#6366F1" />
+                  <Text style={styles.hotelContextText}>
+                    Check-out · {format12Hour(activity.lodgingTime?.checkOut)}
+                  </Text>
+                </View>
+              </>
+            ) : isCheckIn ? (
+              <View style={styles.hotelContextItem}>
+                <MaterialIcons name="login" size={12} color="#6366F1" />
+                <Text style={styles.hotelContextText}>
+                  Check-in · {format12Hour(activity.lodgingTime?.checkIn)}
+                  {activity.lodgingCheckIn ? ` · ${formatLodgingDate(activity.lodgingCheckIn)}` : ''}
+                </Text>
+              </View>
+            ) : isCheckOut ? (
+              <View style={styles.hotelContextItem}>
+                <MaterialIcons name="logout" size={12} color="#6366F1" />
+                <Text style={styles.hotelContextText}>
+                  Check-out · {format12Hour(activity.lodgingTime?.checkOut)}
+                  {activity.lodgingCheckOut ? ` · ${formatLodgingDate(activity.lodgingCheckOut)}` : ''}
+                </Text>
+              </View>
+            ) : isMiddleDay ? (
+              <View style={styles.hotelContextItem}>
+                <MaterialIcons name="nights-stay" size={12} color="#6366F1" />
+                <Text style={styles.hotelContextText}>Staying overnight</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
+    </View>
+  ) : null;
 
-      {/* Distance and Travel Time Info - Always visible to prevent disappearing during reorder */}
-      {!hideRouteInfo && !isLastActivity && (
-        <TouchableOpacity
-          style={styles.routeInfo}
-          onPress={handleRoutePress}
-          activeOpacity={0.7}
-        >
-          {nextActivityDistance !== undefined && nextActivityDistance !== null && nextActivityDistance > 0 && nextActivityDuration ? (
-            <>
-              <View style={styles.routeInfoItem}>
-                {getTravelModeIcon(travelMode)}
-                <Text style={styles.routeInfoValue}>  {formatDuration(nextActivityDuration)}</Text>
+  const regularCardContent = (
+    <View style={styles.cardOuter}>
+      <TouchableOpacity
+        style={[
+          styles.card,
+          style,
+          (isSelected || duplicateActivityIndicator) && styles.cardSelected,
+          disabled && styles.cardDisabled,
+        ]}
+        onPress={handleCardTap}
+        onLongPress={handleLongPress}
+        disabled={disabled}
+        activeOpacity={0.7}
+      >
+        {/* Photo */}
+        <View style={styles.photoWrap}>
+          <ActivityImage
+            photo_reference={activity.photo_reference || ''}
+            place_id={activity.place_id}
+            style={[styles.photo, disabled && styles.photoDisabled]}
+            activityName={activity.name}
+            primaryType={activity.primaryType}
+            types={activity.types}
+          />
+          {/* Selection badge overlaid on photo */}
+          {showSelectionIndicator && (
+            <TouchableOpacity
+              style={styles.selectBtn}
+              onPress={handlePress}
+              disabled={disabled || duplicateActivityIndicator}
+              activeOpacity={0.6}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <View style={[
+                styles.selectCircle,
+                (isSelected || duplicateActivityIndicator) && styles.selectCircleActive,
+              ]}>
+                {(isSelected || duplicateActivityIndicator) && <Text style={styles.selectCheck}>✓</Text>}
               </View>
-              <View style={styles.routeInfoItem}>
-                <Text style={styles.routeMidDotLabel}>· </Text>
-                <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
-              </View>
-              <FontAwesome5 name="chevron-right" size={18} color={Colors.PRIMARY} style={styles.chevronIcon} />
-            </>
-          ) : (
-            <Text style={styles.loadingText}>Loading...</Text>
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
-      )}
+        </View>
 
-      {/* Add Notes Modal */}
+        {/* Info */}
+        <View style={styles.info}>
+          {/* Top row: name + time badge or clock button on right */}
+          <View style={styles.nameRow}>
+            <Text style={[styles.name, disabled && styles.nameDisabled]} numberOfLines={2}>
+              {getDisplayName()}
+            </Text>
+            {activity.startTime && activity.endTime ? (
+              <TouchableOpacity
+                style={styles.timeBadge}
+                onPress={() => !disabled && currentUserRole !== 'viewer' && setNotesModalVisible(true)}
+                activeOpacity={0.6}
+              >
+                <MaterialIcons name="schedule" size={10} color="#3B82F6" />
+                <Text style={styles.timeText}>{format12Hour(activity.startTime)} – {format12Hour(activity.endTime)}</Text>
+              </TouchableOpacity>
+            ) : !hideNotesButton && !disabled && currentUserRole !== 'viewer' ? (
+              <TouchableOpacity
+                style={styles.clockBtn}
+                onPress={() => setNotesModalVisible(true)}
+                activeOpacity={0.6}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <MaterialIcons name="schedule" size={14} color="#D4D4D8" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          <View style={styles.meta}>
+            {activity.rating && (
+              <>
+                <FontAwesome name="star" size={10} color="#F59E0B" />
+                <Text style={styles.rating}>{activity.rating}</Text>
+              </>
+            )}
+            {activity.rating && activity.primary_type_display_name && (
+              <Text style={styles.metaDot}>·</Text>
+            )}
+            {activity.primary_type_display_name && (
+              <Text style={styles.type} numberOfLines={1}>{activity.primary_type_display_name}</Text>
+            )}
+          </View>
+
+          {/* Notes row */}
+          {activity.notes ? (
+            <View style={styles.notesRow}>
+              <MaterialIcons name="sticky-note-2" size={10} color="#D4D4D8" />
+              <Text style={styles.notesText} numberOfLines={1}>{activity.notes}</Text>
+            </View>
+          ) : !hideNotesButton ? (
+            <TouchableOpacity
+              style={styles.addNotes}
+              onPress={() => setNotesModalVisible(true)}
+              disabled={disabled}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="add" size={12} color="#C0C0C0" />
+              <Text style={styles.addNotesLabel}>Add notes</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </TouchableOpacity>
+
       <AddNotesModal
         visible={notesModalVisible}
         onClose={() => setNotesModalVisible(false)}
@@ -404,6 +505,8 @@ export function ActivityCard({
       />
     </View>
   );
+
+  const cardContent = isHotel ? hotelCardContent! : regularCardContent;
 
   if (onSwipeDelete) {
     return (
@@ -430,264 +533,258 @@ export function ActivityCard({
 }
 
 const styles = StyleSheet.create({
-  cardContainer: {
-    marginBottom: 5,
-    marginHorizontal: 2, // Add horizontal margin to show shadow borders
+  cardOuter: {
+    marginBottom: 0,
   },
-  activityCard: {
+  card: {
+    flexDirection: 'row',
     backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 2, // Reduced from 10 to 5 (saves 10px total: 5px on each side)
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  selectedCard: {
-    backgroundColor: '#f0f8ff',
-    //borderWidth: 1,
-    borderColor: Colors.PRIMARY,
-  },
-  disabledCard: {
-    opacity: 0.6,
-  },
-  activityContent: {
-    flexDirection: 'row',
-    padding: 10,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardContentArea: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingLeft: 40,
-  },
-  cardContentAreaInline: {
-    paddingLeft: 0, // Remove padding for inline layout
-  },
-  selectionAndGripContainer: {
-    position: 'absolute',
-    left: -10,
-    top: 10,
-    bottom: 10,
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  selectionContainerInline: {
-    // Inline layout for wishlist (original behavior)
-    marginRight: 12,
-  },
-  selectionContainer: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  selectionIndicatorWrapper: {
-    width: 24,
-    height: 24,
-    marginRight: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  selectionTouchArea: {
-    position: 'absolute',
-    width: 70,
-    height: 70,
-    top: -23, // Center the 70px touch area around the 24px indicator (70-24)/2 = 23
-    left: -23,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  selectionIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderColor: Colors.GRAY,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: 14,
+    height: 96,
+    overflow: 'hidden',
     borderWidth: 1,
-  },
-  selectedIndicator: {
-    backgroundColor: Colors.PRIMARY,
-    borderWidth: 1,
-    borderColor: Colors.PRIMARY,
-  },
-  checkmark: {
-    color: 'white',
-    fontSize: 13.5,
-    fontWeight: 'bold',
-  },
-  activityInfo: {
-    flex: 1,
-    marginRight: 10,
-  },
-  activityText: {
-    color: Colors.PRIMARY,
-    fontFamily: 'outfit-medium',
-    fontSize: 18,
-    marginBottom: 8,
-  },
-  disabledText: {
-    color: Colors.GRAY,
-  },
-  activityStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'nowrap',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  ratingText: {
-    fontFamily: 'outfit',
-    fontSize: 14,
-    color: Colors.GRAY,
-  },
-  typesContainer: {
-    borderRadius: 10,
-    paddingHorizontal: 0,
-    flex: 1,
-    minWidth: 0,
-  },
-  typesText: {
-    fontFamily: 'outfit',
-    fontSize: 13.5,
-    color: Colors.GRAY,
-    textTransform: 'capitalize',
-  },
-  onListContainer: {
-    backgroundColor: '#06b6d4',
-    borderRadius: 10,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-  },
-  onListText: {
-    fontFamily: 'outfit',
-    fontSize: 11,
-    color: Colors.WHITE,
-    textTransform: 'capitalize',
-  },
-  activityImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 10,
-  },
-  disabledImage: {
-    opacity: 0.6,
-  },
-  routeInfo: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    padding: 3.5,
-    marginTop: 0,
-    marginBottom: 27,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: '#F0F0F0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
     elevation: 1,
   },
-  routeInfoItem: {
-    flexDirection: 'row',
+  cardSelected: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1.5,
+    borderColor: '#F36406',
+  },
+  cardDisabled: {
+    opacity: 0.4,
+  },
+
+  // Photo
+  photoWrap: {
+    width: 96,
+    height: 96,
+    position: 'relative',
+  },
+  photo: {
+    width: 96,
+    height: 96,
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
+  },
+  photoDisabled: {
+    opacity: 0.5,
+  },
+
+  // Selection overlay on photo corner
+  selectBtn: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+  },
+  selectCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.85)',
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 9,
   },
-  routeInfoLabel: {
-    fontFamily: 'outfit',
-    fontSize: 13,
-    color: Colors.GRAY,
-    marginRight: 2,
+  selectCircleActive: {
+    backgroundColor: '#F36406',
+    borderColor: '#fff',
   },
-  routeMidDotLabel: {
-    fontFamily: 'outfit',
-    fontSize: 24,
-    color: Colors.PRIMARY,
-    marginLeft: -2,
+  selectCheck: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
   },
-  routeInfoValue: {
-    fontFamily: 'outfit-medium',
-    fontSize: 13,
-    color: Colors.PRIMARY,
+
+  // Info section
+  info: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingLeft: 12,
+    paddingRight: 12,
+    justifyContent: 'center',
+    gap: 2,
   },
-  chevronIcon: {
-    marginLeft: 8,
-  },
-  loadingText: {
-    fontFamily: 'outfit-medium',
-    fontSize: 18,
-    color: Colors.GRAY,
-  },
-  notesSection: {
-    marginTop: 8,
-    marginRight: 10,
-  },
-  notesContentContainer: {
-    backgroundColor: '#F0F9FF',
-    borderRadius: 6,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    gap: 1,
-    alignSelf: 'flex-start',
-  },
-  timeRow: {
+  nameRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     gap: 6,
+  },
+  name: {
+    fontFamily: 'outfit-bold',
+    fontSize: 15,
+    color: '#1A1A1A',
+    lineHeight: 19,
+    letterSpacing: -0.2,
+    flex: 1,
+  },
+  clockBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -2,
+  },
+  nameDisabled: {
+    color: '#B0B0B0',
+  },
+
+  // Meta line: ★ 4.9 · Category
+  meta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  rating: {
+    fontFamily: 'outfit-medium',
+    fontSize: 12,
+    color: '#71717A',
+  },
+  metaDot: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: '#D4D4D8',
+  },
+  type: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: '#A1A1AA',
+    flexShrink: 1,
+  },
+
+  // Time badge
+  timeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginTop: -2,
   },
   timeText: {
     fontFamily: 'outfit-medium',
-    fontSize: 13,
-    color: '#60A5FA',
-    fontWeight: '600',
+    fontSize: 10,
+    color: '#3B82F6',
   },
-  clockIcon: {
-    marginTop: 1,
+
+  // Notes
+  notesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   notesText: {
     fontFamily: 'outfit',
-    fontSize: 13,
-    color: '#9CA3AF',
-    lineHeight: 18,
+    fontSize: 11,
+    color: '#A1A1AA',
+    fontStyle: 'italic',
+    flex: 1,
   },
-  addNotesButton: {
-    backgroundColor: '#F9FAFB',
+
+  // Add notes
+  addNotes: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 1,
+  },
+  addNotesLabel: {
+    fontFamily: 'outfit',
+    fontSize: 11,
+    color: '#D4D4D8',
+  },
+
+  // Hotel card
+  hotelCard: {
+    backgroundColor: '#F5F3FF',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    borderColor: '#E0DBFF',
+    borderLeftWidth: 4,
+    borderLeftColor: '#6366F1',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  hotelCardSelected: {
+    backgroundColor: '#EDE9FE',
+    borderColor: '#6366F1',
+    borderWidth: 1.5,
+    borderLeftWidth: 4,
+  },
+  hotelSelectBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 2,
+  },
+  hotelInfo: {
+    gap: 4,
+  },
+  hotelNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    alignSelf: 'flex-start',
+    paddingRight: 28,
   },
-  addNotesText: {
-    fontFamily: 'outfit',
+  hotelName: {
+    fontFamily: 'outfit-bold',
+    fontSize: 15,
+    color: '#1A1A1A',
+    lineHeight: 19,
+    letterSpacing: -0.2,
+    flex: 1,
+  },
+  nightsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  nightsText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 11,
+    color: '#6366F1',
+  },
+  hotelContextRow: {
+    gap: 2,
+    marginTop: 2,
+  },
+  hotelContextItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  hotelContextText: {
+    fontFamily: 'outfit-medium',
     fontSize: 12,
-    color: '#94A3B8',
+    color: '#6366F1',
   },
+
+  // Swipe delete
   swipeDeleteAction: {
     backgroundColor: '#EF4444',
     justifyContent: 'center',
     alignItems: 'center',
     width: 80,
-    borderRadius: 10,
-    marginBottom: 16,
+    borderRadius: 14,
     marginLeft: 4,
   },
 });

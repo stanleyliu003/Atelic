@@ -66,15 +66,17 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 // Helper function to get the appropriate icon based on travel mode
-const getTravelModeIcon = (travelMode?: string) => {
+const getTravelModeIcon = (travelMode?: string, small = false) => {
+  const size = small ? 12 : 17;
+  const color = small ? '#A1A1AA' : Colors.PRIMARY;
   switch (travelMode) {
     case 'WALK':
-      return <MaterialIcons name="directions-walk" size={17} color={Colors.PRIMARY} />;
+      return <MaterialIcons name="directions-walk" size={size} color={color} />;
     case 'TRANSIT':
-      return <MaterialIcons name="directions-transit" size={17} color={Colors.PRIMARY} />;
+      return <MaterialIcons name="directions-transit" size={size} color={color} />;
     case 'DRIVE':
     default:
-      return <MaterialCommunityIcons name="car-outline" size={17} color={Colors.PRIMARY} />;
+      return <MaterialCommunityIcons name="car-outline" size={size} color={color} />;
   }
 };
 
@@ -233,36 +235,19 @@ function RouteInfoCard({
   return (
     <View style={styles.routeCard}>
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
+        <ActivityIndicator size="small" color="#E4E4E7" />
       ) : (
-        <>
-          {/* Left: Route Info + Dropdown Button */}
-          <TouchableOpacity
-            style={styles.routeMainButton}
-            onPress={handleSettingsPress}
-            activeOpacity={0.7}
-          >
-            {getTravelModeIcon(travelMode)}
-            <Text style={styles.routeInfoValue}>{formatDuration(nextActivityDuration)}</Text>
-            <Text style={styles.routeMidDotLabel}>•</Text>
-            <Text style={styles.routeInfoValue}>{formatDistance(nextActivityDistance)}</Text>
-            <FontAwesome5 name="chevron-down" size={14} color="#8E8E93" style={styles.chevronIcon} />
+        <TouchableOpacity style={styles.routeRow} onPress={handleRoutePress} activeOpacity={0.5}>
+          <View style={styles.routeLine} />
+          {getTravelModeIcon(travelMode, true)}
+          <Text style={styles.routeLabel}>
+            {formatDuration(nextActivityDuration)} · {formatDistance(nextActivityDistance)}
+          </Text>
+          <TouchableOpacity onPress={handleSettingsPress} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <FontAwesome5 name="angle-down" size={10} color="#D4D4D8" />
           </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.routeDivider} />
-
-          {/* Right: Directions Button */}
-          <TouchableOpacity
-            style={styles.directionsButton}
-            onPress={handleRoutePress}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.directionsText}>Directions</Text>
-          </TouchableOpacity>
-        </>
+          <View style={styles.routeLine} />
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -1281,93 +1266,28 @@ const styles = StyleSheet.create({
     elevation: 9999,
   },
   draggableCard: {
-    marginBottom: -10, // negative margin between activity card and route info
+    marginBottom: 0,
   },
   routeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    marginTop: 6,
-    marginBottom: 2,
-    borderWidth: 1,
-    borderColor: '#E5E5E7',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
-    overflow: 'hidden',
-  },
-  routeMainButton: {
-    flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  routeDivider: {
-    width: 1,
     height: 32,
-    backgroundColor: '#E5E5E7',
   },
-  directionsButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  directionsText: {
-    fontFamily: 'outfit-medium',
-    fontSize: 14,
-    color: '#007AFF',
-  },
-  routeInfo: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    padding: 6,
-    marginTop: 4,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  routeInfoItem: {
+  routeRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 5,
   },
-  routeMidDotLabel: {
+  routeLine: {
+    width: 16,
+    height: 1,
+    backgroundColor: '#E4E4E7',
+  },
+  routeLabel: {
     fontFamily: 'outfit',
-    fontSize: 13,
-    color: '#8E8E93',
-    marginHorizontal: 6,
-  },
-  routeInfoValue: {
-    fontFamily: 'outfit',
-    fontSize: 14,
-    color: '#1C1C1E',
-    marginLeft: 4,
-  },
-  chevronIcon: {
-    marginLeft: 10,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-  },
-  loadingText: {
-    fontFamily: 'outfit',
-    fontSize: 14,
-    color: Colors.GRAY,
+    fontSize: 11,
+    color: '#A1A1AA',
+    letterSpacing: 0.1,
   },
   autocompleteLoadingContainer: {
     marginTop:  10,

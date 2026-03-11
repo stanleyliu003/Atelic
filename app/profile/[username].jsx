@@ -592,7 +592,7 @@ export default function UserProfileScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={Colors.BLACK} />
+            <Ionicons name="chevron-back" size={28} color={Colors.BLACK} />
           </TouchableOpacity>
         </View>
         <View style={styles.loadingContainer}>
@@ -607,7 +607,7 @@ export default function UserProfileScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={Colors.BLACK} />
+            <Ionicons name="chevron-back" size={28} color={Colors.BLACK} />
           </TouchableOpacity>
         </View>
         <View style={styles.errorContainer}>
@@ -621,7 +621,7 @@ export default function UserProfileScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.BLACK} />
+          <Ionicons name="chevron-back" size={28} color={Colors.BLACK} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>@{username}</Text>
         <View style={styles.headerRight} />
@@ -952,23 +952,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.LIGHT_GRAY,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
   },
   backButton: {
     padding: 4,
+    width: 40,
   },
   headerTitle: {
-    fontSize: 18,
-    fontFamily: 'outfit-semibold',
+    fontSize: 17,
+    fontWeight: '600',
     color: Colors.BLACK,
     flex: 1,
     textAlign: 'center',
   },
   headerRight: {
-    width: 32,
+    width: 40,
   },
   loadingContainer: {
     flex: 1,
