@@ -31,7 +31,7 @@ import AddHotelTimeModal from './add_hotel_time_modal';
  * @param {function} onClose - Callback to close modal
  * @param {function} onAddLodging - Callback when adding lodging to trip (receives hotel data)
  */
-export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
+export const AddHotelStayModal = ({ visible, onClose, onAddLodging, existingHotel }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -50,6 +50,8 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
   const [checkInButtonLayout, setCheckInButtonLayout] = useState(null);
   const [checkOutButtonLayout, setCheckOutButtonLayout] = useState(null);
   const [stayType, setStayType] = useState('hotel'); // 'hotel' | 'airbnb' | 'custom_address'
+  const [addedHotels, setAddedHotels] = useState([]); // Track hotels added in this session
+  const [isAddingAnother, setIsAddingAnother] = useState(false); // Track if user clicked "Add another"
   const searchInputRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
   const checkInDateRef = useRef(null);
@@ -107,9 +109,8 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
     return `${month}/${day}`;
   };
 
-  // Handle modal close
-  const handleClose = () => {
-    // Reset state when closing
+  // Reset form for adding another hotel
+  const resetForm = () => {
     setSearchQuery('');
     setSuggestions([]);
     setSelectedPlace(null);
@@ -117,20 +118,55 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
     setCheckOutDate(null);
     setStayLength(null);
     setStayType('hotel');
-    setCheckInTime('15:00'); // Reset to default 3:00 PM
-    setCheckOutTime('11:00'); // Reset to default 11:00 AM
+    setCheckInTime('15:00');
+    setCheckOutTime('11:00');
     setError(null);
+  };
+
+  // Handle modal close
+  const handleClose = () => {
+    resetForm();
+    setAddedHotels([]);
+    setIsAddingAnother(false);
     onClose();
   };
 
-  // Focus search input when modal opens
+  // Pre-populate form when editing an existing hotel
   useEffect(() => {
-    if (visible && searchInputRef.current) {
+    if (visible && existingHotel) {
+      setSelectedPlace(existingHotel);
+      setSearchQuery(existingHotel.name || '');
+      setStayType('hotel');
+
+      if (existingHotel.lodgingCheckIn) {
+        const ciDate = new Date(existingHotel.lodgingCheckIn);
+        setCheckInDate(ciDate);
+        checkInDateRef.current = ciDate;
+      }
+      if (existingHotel.lodgingCheckOut) {
+        const coDate = new Date(existingHotel.lodgingCheckOut);
+        setCheckOutDate(coDate);
+      }
+      if (existingHotel.lodgingCheckIn && existingHotel.lodgingCheckOut) {
+        const ci = new Date(existingHotel.lodgingCheckIn);
+        const co = new Date(existingHotel.lodgingCheckOut);
+        const nights = Math.floor((co.getTime() - ci.getTime()) / (1000 * 60 * 60 * 24));
+        setStayLength(nights);
+      }
+      if (existingHotel.lodgingTime?.checkIn) {
+        setCheckInTime(existingHotel.lodgingTime.checkIn);
+      }
+      if (existingHotel.lodgingTime?.checkOut) {
+        setCheckOutTime(existingHotel.lodgingTime.checkOut);
+      }
+    } else if (visible && !existingHotel) {
+      // Reset form and focus search input when adding a new hotel
+      resetForm();
       setTimeout(() => {
         searchInputRef.current?.focus();
       }, 100);
     }
-  }, [visible]);
+  }, [visible, existingHotel]);
 
   // Debounced fetch autocomplete suggestions
   useEffect(() => {
@@ -231,10 +267,11 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
       return; // Don't allow adding without complete information
     }
 
-    // Prepare hotel activity with lodging flags
+    // Prepare hotel activity with lodging flags (clear context/notes to prevent stale inheritance)
     const hotelActivity = {
       ...selectedPlace,
-      // Add lodging-specific flags and metadata
+      notes: undefined,
+      lodgingContext: undefined,
       primaryType: 'lodging',
       isLodging: true,
       lodgingCheckIn: checkInDate.toISOString(),
@@ -245,7 +282,7 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
       },
     };
 
-    // Prepare lodging data
+    // isEdit true when editing existing hotel (first save), false when adding genuinely new hotels
     const lodgingData = {
       hotel: hotelActivity,
       checkInDate,
@@ -253,14 +290,61 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
       stayLength,
       checkInTime,
       checkOutTime,
+      isEdit: existingHotel && !isAddingAnother,
     };
+
+    // Track added hotel for display
+    setAddedHotels(prev => [...prev, {
+      name: selectedPlace.name,
+      checkIn: formatDate(checkInDate),
+      checkOut: formatDate(checkOutDate),
+      nights: stayLength,
+    }]);
 
     // Call parent callback
     if (onAddLodging) {
       onAddLodging(lodgingData);
     }
 
-    // Close modal and reset
+    // Reset form for adding another hotel (don't close)
+    resetForm();
+    setIsAddingAnother(true);
+  };
+
+  // Handle adding lodging and closing the modal
+  const handleAddLodgingAndClose = () => {
+    if (!selectedPlace || !checkInDate || !checkOutDate || !stayLength) {
+      return;
+    }
+
+    const hotelActivity = {
+      ...selectedPlace,
+      notes: undefined,
+      lodgingContext: undefined,
+      primaryType: 'lodging',
+      isLodging: true,
+      lodgingCheckIn: checkInDate.toISOString(),
+      lodgingCheckOut: checkOutDate.toISOString(),
+      lodgingTime: {
+        checkIn: checkInTime,
+        checkOut: checkOutTime,
+      },
+    };
+
+    const lodgingData = {
+      hotel: hotelActivity,
+      checkInDate,
+      checkOutDate,
+      stayLength,
+      checkInTime,
+      checkOutTime,
+      isEdit: existingHotel && !isAddingAnother,
+    };
+
+    if (onAddLodging) {
+      onAddLodging(lodgingData);
+    }
+
     handleClose();
   };
 
@@ -288,12 +372,38 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
               <MaterialIcons name="bed" size={20} color="#6366F1" />
-              <Text style={styles.headerTitle}>Add Hotel Stay</Text>
+              <Text style={styles.headerTitle}>{isAddingAnother || addedHotels.length > 0 ? 'Add Another Hotel' : existingHotel ? 'Hotel Stay' : 'Add Hotel Stay'}</Text>
             </View>
             <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close" size={24} color="#A1A1AA" />
             </TouchableOpacity>
           </View>
+
+          {/* Added Hotels Summary */}
+          {addedHotels.length > 0 && (
+            <View style={styles.addedHotelsSection}>
+              {addedHotels.map((hotel, index) => (
+                <View key={index} style={styles.addedHotelItem}>
+                  <View style={styles.addedHotelIcon}>
+                    <MaterialIcons name="check-circle" size={16} color="#22C55E" />
+                  </View>
+                  <View style={styles.addedHotelInfo}>
+                    <Text style={styles.addedHotelName} numberOfLines={1}>{hotel.name}</Text>
+                    <Text style={styles.addedHotelDates}>
+                      {hotel.checkIn} → {hotel.checkOut} · {hotel.nights} {hotel.nights === 1 ? 'night' : 'nights'}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+              <TouchableOpacity
+                style={styles.doneButton}
+                onPress={handleClose}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Stay Duration Section - Always show */}
           <View style={styles.stayDurationSection}>
@@ -386,8 +496,8 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
             </View>
           )} */}
 
-          {/* Search Section - Only show when Hotel is selected (uses getPlaceDetails) */}
-          {stayLength && stayType === 'hotel' && (
+          {/* Search Section - Only show when Hotel is selected and not editing existing (or adding another) */}
+          {stayLength && stayType === 'hotel' && (!existingHotel || isAddingAnother) && (
             <View style={styles.searchSection}>
               <Text style={styles.searchSectionTitle}>Where are you staying?</Text>
 
@@ -438,7 +548,7 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
             </View>
           )}
 
-          {/* Selected Place Activity Card - Hotel only */}
+          {/* Selected Place - Hotel only */}
           {stayType === 'hotel' && (selectedPlace || loadingPlaceDetails) && (
             <View style={styles.selectedPlaceContainer}>
               {loadingPlaceDetails ? (
@@ -447,13 +557,17 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
                   <Text style={styles.loadingPlaceDetailsText}>Loading hotel details...</Text>
                 </View>
               ) : selectedPlace ? (
-                <ActivityCard
-                  activity={selectedPlace}
-                  disabled={false}
-                  hideNotesButton={true}
-                  isLastActivity={true}
-                  onDescriptionCardPress={handleCardPress}
-                />
+                <View style={styles.existingHotelCard}>
+                  <MaterialIcons name="bed" size={16} color="#6366F1" />
+                  <View style={styles.existingHotelInfo}>
+                    <Text style={styles.existingHotelName} numberOfLines={1}>{selectedPlace.name}</Text>
+                    {selectedPlace.rating && (
+                      <Text style={styles.existingHotelMeta}>
+                        ★ {selectedPlace.rating} · Hotel
+                      </Text>
+                    )}
+                  </View>
+                </View>
               ) : null}
             </View>
           )}
@@ -577,7 +691,7 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
             </ScrollView>
           )}
 
-          {/* Add Lodging Button - Show when Hotel selected with place, dates, and times */}
+          {/* Add Lodging Buttons - Show when Hotel selected with place, dates, and times */}
           {stayType === 'hotel' && selectedPlace && checkInDate && checkOutDate && stayLength && (
             <View style={styles.addLodgingButtonContainer}>
               <TouchableOpacity
@@ -585,7 +699,14 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
                 onPress={handleAddLodging}
                 activeOpacity={0.8}
               >
-                <Text style={styles.addLodgingButtonText}>Add lodging</Text>
+                <Text style={styles.addLodgingButtonText}>Add another hotel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.addAndDoneButton}
+                onPress={handleAddLodgingAndClose}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.addAndDoneButtonText}>Save hotel</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -644,9 +765,9 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
                         const newCheckInDate = date;
                         const newCheckOutDate = currentCheckInDate;
 
-                        // Recalculate stay length with swapped dates (inclusive of both dates)
+                        // Recalculate stay length with swapped dates
                         const swappedTimeDiff = newCheckOutDate.getTime() - newCheckInDate.getTime();
-                        const swappedNights = Math.floor(swappedTimeDiff / (1000 * 60 * 60 * 24)) + 1;
+                        const swappedNights = Math.floor(swappedTimeDiff / (1000 * 60 * 60 * 24));
 
                         // Update ref, local state
                         checkInDateRef.current = newCheckInDate;
@@ -655,7 +776,7 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging }) => {
                         setStayLength(swappedNights);
                       } else {
                         // Normal forward selection - check-out date is after check-in date
-                        const nights = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+                        const nights = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
 
                         setCheckOutDate(date);
                         setStayLength(nights);
@@ -1178,6 +1299,97 @@ const styles = StyleSheet.create({
   addLodgingButtonText: {
     color: '#FFFFFF',
     fontFamily: 'outfit-bold',
-    fontSize: 18,
+    fontSize: 16,
+  },
+  existingHotelCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F3FF',
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#6366F1',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  existingHotelInfo: {
+    flex: 1,
+  },
+  existingHotelName: {
+    fontFamily: 'outfit-bold',
+    fontSize: 15,
+    color: '#1A1A1A',
+  },
+  existingHotelMeta: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: '#8B85C1',
+    marginTop: 1,
+  },
+  addAndDoneButton: {
+    backgroundColor: '#F5F3FF',
+    borderRadius: 20,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#E0DBFF',
+  },
+  addAndDoneButtonText: {
+    color: '#6366F1',
+    fontFamily: 'outfit-bold',
+    fontSize: 16,
+  },
+  // Added Hotels Section
+  addedHotelsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  addedHotelItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+  },
+  addedHotelIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addedHotelInfo: {
+    flex: 1,
+  },
+  addedHotelName: {
+    fontFamily: 'outfit-bold',
+    fontSize: 14,
+    color: '#1A1A1A',
+  },
+  addedHotelDates: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 1,
+  },
+  doneButton: {
+    backgroundColor: '#6366F1',
+    borderRadius: 20,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  doneButtonText: {
+    color: '#FFFFFF',
+    fontFamily: 'outfit-bold',
+    fontSize: 16,
   },
 });

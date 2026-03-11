@@ -20,6 +20,7 @@ import { SearchBar } from '../../src/components/explore/SearchBar';
 import { AutocompleteModal } from '../../src/components/explore/AutocompleteModal';
 import { CategoryModal } from '../../src/components/explore/CategoryModal';
 import { AddHotelStayModal } from '../../src/components/explore/AddHotelStayModal';
+import { AddFlightModal } from '../../src/components/explore/AddFlightModal';
 import { useActivitySelection } from '../../src/hooks/use_activity_selection';
 import { useDayActivities } from '../../src/hooks/use_day_activities';
 import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
@@ -152,6 +153,8 @@ export default function TripViewMain() {
     const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
     const [showAutocomplete, setShowAutocomplete] = useState(false);
     const [showHotelModal, setShowHotelModal] = useState(false);
+    const [editingHotel, setEditingHotel] = useState<any>(null);
+    const [showFlightModal, setShowFlightModal] = useState(false);
     const [isAutocompleteAddingPlace, setIsAutocompleteAddingPlace] = useState(false);
     const [isShareModalVisible, setIsShareModalVisible] = useState(false);
     const [currentUserID, setCurrentUserID] = useState<string>('');
@@ -2989,7 +2992,7 @@ export default function TripViewMain() {
     };
 
     // Handler for adding lodging to trip across multiple days
-    const handleAddLodgingToTrip = (lodgingData: any) => {
+    const handleAddLodgingToTrip = (lodgingData: any, removeExistingPlaceId?: string) => {
         const { hotel, checkInDate, checkOutDate, stayLength, checkInTime, checkOutTime } = lodgingData;
 
         console.log('[trip-view_main] Adding lodging to trip:', lodgingData);
@@ -3042,7 +3045,12 @@ export default function TripViewMain() {
 
         for (let dayNumber = checkInDayNumber; dayNumber <= checkOutDayNumber; dayNumber++) {
             const currentActivities = getDayActivities(dayNumber) || [];
-            const lodging = currentActivities.find((a) => isLodgingActivity(a));
+            // Skip: the hotel we're editing, and checkout-only activities (normal hotel transitions)
+            const lodging = currentActivities.find((a) =>
+                isLodgingActivity(a) &&
+                a.place_id !== removeExistingPlaceId &&
+                (a as any).lodgingContext !== 'Check-out'
+            );
             if (lodging?.place_id) {
                 overlappingPlaceId = lodging.place_id;
                 overlappingName = lodging.name || 'Hotel';
@@ -3051,11 +3059,11 @@ export default function TripViewMain() {
         }
 
         if (overlappingPlaceId) {
-            // Find full day range of the existing stay
+            // Find which days in the new range have the overlapping hotel (excluding checkout-only)
             for (let dayNumber = checkInDayNumber; dayNumber <= checkOutDayNumber; dayNumber++) {
                 const currentActivities = getDayActivities(dayNumber) || [];
                 const hasMatch = currentActivities.some(
-                    (a) => isLodgingActivity(a) && a.place_id === overlappingPlaceId
+                    (a) => isLodgingActivity(a) && a.place_id === overlappingPlaceId && (a as any).lodgingContext !== 'Check-out'
                 );
                 if (hasMatch) {
                     overlapMinDay = Math.min(overlapMinDay, dayNumber);
@@ -3069,17 +3077,16 @@ export default function TripViewMain() {
             endDayDate.setDate(endDayDate.getDate() + (overlapMaxDay - 1));
             const formatForAlert = (date: Date) =>
                 date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            const dateRangeStr = `${formatForAlert(startDayDate)} – ${formatForAlert(endDayDate)}`;
+            const overlapNights = overlapMaxDay - overlapMinDay + 1;
 
-            //Alert to confirm if the user would like to override their hotel with a new one. Maybe modal in the future
-            //(cont.) for customization?
             Alert.alert(
-                'Replace Hotel?',
-                `You are replacing your previous hotel at "${overlappingName}" from ${dateRangeStr}. Continue?`,
+                'Hotel Overlap',
+                `"${overlappingName}" already has a stay on ${formatForAlert(startDayDate)}${overlapMinDay !== overlapMaxDay ? ` – ${formatForAlert(endDayDate)}` : ''}. Adding "${hotel.name}" will replace it for ${overlapNights === 1 ? 'that day' : `those ${overlapNights} days`}.`,
                 [
-                    { text: 'No', style: 'cancel' },
+                    { text: 'Cancel', style: 'cancel' },
                     {
-                        text: 'Yes',
+                        text: 'Replace',
+                        style: 'destructive',
                         onPress: () => {
                             const toRemove = findRelatedLodgingInstancesWithDays(
                                 overlappingPlaceId!,
@@ -3087,7 +3094,12 @@ export default function TripViewMain() {
                             ).filter(({ dayNumber }) =>
                                 dayNumber >= checkInDayNumber &&
                                 dayNumber <= checkOutDayNumber
-                            ); //removing ONLY the days selected, not all instances of the old hotel
+                            ).filter(({ dayNumber }) => {
+                                // Don't remove checkout-only cards on the check-in day
+                                const acts = getDayActivities(dayNumber) || [];
+                                const matchingAct = acts.find((a) => isLodgingActivity(a) && a.place_id === overlappingPlaceId);
+                                return (matchingAct as any)?.lodgingContext !== 'Check-out';
+                            });
                             toRemove.forEach(({ instanceId, dayNumber }) => {
                                 const op = createOperation('remove', 'day', instanceId, dayNumber);
                                 queueSave(op);
@@ -3107,13 +3119,18 @@ export default function TripViewMain() {
             return;
         }
 
+        // If editing an existing hotel, remove all old instances from ALL days first
+        if (removeExistingPlaceId) {
+            removeLodgingStayByPlaceId(removeExistingPlaceId);
+        }
+
         doAddLodgingToDays(
             hotel,
             checkInDayNumber,
             checkOutDayNumber,
             checkInTime,
             checkOutTime,
-            null
+            removeExistingPlaceId || null
         );
 
         function doAddLodgingToDays(
@@ -3126,94 +3143,105 @@ export default function TripViewMain() {
         ) {
             for (let dayNumber = checkInDay; dayNumber <= checkOutDay; dayNumber++) {
                 let currentActivities = getDayActivities(dayNumber) || [];
-                //Checking to see if activity is lodging related
-                const lodgingActivities = currentActivities.filter(
-                    (a) => isLodgingActivity(a) && a.place_id === excludePlaceId
+                // When editing, filter out any remaining instances of the hotel being edited
+                if (excludePlaceId) {
+                    currentActivities = currentActivities.filter(
+                        (a) => !(isLodgingActivity(a) && a.place_id === excludePlaceId)
+                    );
+                }
+
+                // Separate: other hotels' lodging cards vs non-lodging activities vs same hotel's existing cards
+                const otherHotelLodging = currentActivities.filter(
+                    (a) => isLodgingActivity(a) && a.place_id !== hotelActivity.place_id
                 );
-                const nonLodgingActivities = currentActivities.filter(
+                const sameHotelLodging = currentActivities.filter(
+                    (a) => isLodgingActivity(a) && a.place_id === hotelActivity.place_id
+                );
+                const regularActivities = currentActivities.filter(
                     (a) => !isLodgingActivity(a)
                 );
-
-                const oldFirstLodging = lodgingActivities[0];
-                const oldLastLodging = lodgingActivities[lodgingActivities.length - 1];
                 const activitiesToAdd: Activity[] = [];
 
-                let preservedOldLodging: Activity[] = [];
-                if (excludePlaceId) {
-                    if (excludePlaceId && dayNumber === checkInDay && dayNumber !== 1 && oldFirstLodging) {
-                        preservedOldLodging.push(oldFirstLodging);
-                    }
-                    if (dayNumber === checkOutDay && oldLastLodging) {
-                        preservedOldLodging.push(oldLastLodging);
-                    }
-                }
-                //if not the first day, and old hotel remains at the borders of override, but are replaced throughout by new hotel
-
                 if (dayNumber === checkInDay && dayNumber === checkOutDay) {
-                    // Same-day stay, or last day
+                    // Same-day stay
                     activitiesToAdd.push({
                         ...hotelActivity,
                         instanceId: duplicateActivity(hotelActivity).instanceId,
-                        notes: 'Check-in / Check-out',
+                        lodgingContext: 'Check-in / Check-out',
                         startTime: addHoursToTime(checkInTimeStr, -1),
                         endTime: checkOutTimeStr,
                     });
                 }
                 else if (dayNumber === checkInDay) {
-                    // First day: ONLY last stop
+                    // Check-in day: last stop of the day
                     activitiesToAdd.push({
                         ...hotelActivity,
                         instanceId: duplicateActivity(hotelActivity).instanceId,
-                        notes: 'Check-in',
+                        lodgingContext: 'Check-in',
                         startTime: addHoursToTime(checkInTimeStr, -1),
                         endTime: addHoursToTime(checkInTimeStr, 1),
                     });
                 }
                 else if (dayNumber === checkOutDay) {
-                    // Last day: ONLY first stop
+                    // Check-out day: first stop of the day
                     activitiesToAdd.push({
                         ...hotelActivity,
                         instanceId: duplicateActivity(hotelActivity).instanceId,
-                        notes: 'Check-out',
+                        lodgingContext: 'Check-out',
                         startTime: addHoursToTime(checkOutTimeStr, -1),
                         endTime: checkOutTimeStr,
                     });
                 }
                 else {
-                    // Middle days: first + last
+                    // Middle days: staying overnight
                     activitiesToAdd.push(
                         {
                             ...hotelActivity,
                             instanceId: duplicateActivity(hotelActivity).instanceId,
+                            lodgingContext: 'Staying overnight',
                         },
                         {
                             ...hotelActivity,
                             instanceId: duplicateActivity(hotelActivity).instanceId,
+                            lodgingContext: 'Staying overnight',
                         }
                     );
                 }
 
+                // Split other hotels into checkout (goes first) and check-in (goes last)
+                const otherCheckouts = otherHotelLodging.filter((a) => (a as any).lodgingContext === 'Check-out');
+                const otherCheckins = otherHotelLodging.filter((a) => (a as any).lodgingContext === 'Check-in');
+                const otherStays = otherHotelLodging.filter((a) => (a as any).lodgingContext !== 'Check-out' && (a as any).lodgingContext !== 'Check-in');
+
                 let newOrder: Activity[] = [];
 
                 if (dayNumber === checkInDay) {
+                    // Other hotel checkouts first, then activities, then new hotel check-in last
                     newOrder = [
-                        ...preservedOldLodging,
-                        ...nonLodgingActivities,
-                        ...activitiesToAdd, // always exactly 1 here
+                        ...otherCheckouts,
+                        ...otherStays,
+                        ...regularActivities,
+                        ...activitiesToAdd,
+                        ...otherCheckins,
                     ];
                 }
                 else if (dayNumber === checkOutDay) {
+                    // New hotel checkout first, then activities, then other hotel check-ins
                     newOrder = [
-                        ...activitiesToAdd, // always exactly 1 here
-                        ...nonLodgingActivities,
-                        ...preservedOldLodging,
+                        ...otherCheckouts,
+                        ...activitiesToAdd,
+                        ...otherStays,
+                        ...regularActivities,
+                        ...otherCheckins,
                     ];
                 }
                 else {
                     newOrder = [
+                        ...otherCheckouts,
                         activitiesToAdd[0],
-                        ...nonLodgingActivities,
+                        ...regularActivities,
                         activitiesToAdd[1],
+                        ...otherCheckins,
                     ];
                 }
 
@@ -3239,12 +3267,56 @@ export default function TripViewMain() {
         }
     };
 
+    // Convert FlightReservation to an Activity and add it to a specific day
+    const handleAddFlightToTrip = (flightData: FlightReservation, dayNumber?: number) => {
+        const targetDay = dayNumber || (activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : null);
+
+        if (!targetDay) {
+            Alert.alert('Select a Day', 'Please navigate to a day tab before adding a flight.');
+            return;
+        }
+
+        const { flightInfo } = flightData;
+        const departureTime = new Date(flightInfo.schedule.departureScheduled);
+        const arrivalTime = new Date(flightInfo.schedule.arrivalScheduled);
+
+        const formatTime = (date: Date) => {
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        };
+
+        const flightActivity: Activity = {
+            instanceId: flightData.instanceId,
+            name: `${flightInfo.flightNumber} – ${flightInfo.origin.code} → ${flightInfo.destination.code}`,
+            primaryType: 'flight',
+            lat: null,
+            lng: null,
+            startTime: formatTime(departureTime),
+            endTime: formatTime(arrivalTime),
+            notes: [
+                `${flightInfo.airline.name}`,
+                `Departs: ${flightInfo.origin.name} (${flightInfo.origin.code})`,
+                `Arrives: ${flightInfo.destination.name} (${flightInfo.destination.code})`,
+                flightData.confirmationNumber ? `Confirmation: ${flightData.confirmationNumber}` : null,
+                flightData.seatNumber ? `Seat: ${flightData.seatNumber}` : null,
+                flightData.notes || null,
+            ].filter(Boolean).join('\n'),
+        };
+
+        addActivityToDay(flightActivity, targetDay);
+
+        const addOp = createOperation('add', 'day', [flightActivity], targetDay);
+        queueSave(addOp);
+
+        console.log('[trip-view_main] Flight added to day', targetDay, ':', flightInfo.flightNumber);
+    };
+
     // Handler for saving search results (new direct flow)
     const handleSaveSearchResults = (selectedActivities: Activity[], wishlistActivityIds?: string[], lodgingData?: any, flightData?: FlightReservation) => {
         // Handle flight data if provided
         if (flightData) {
-            // TODO: Implement flight handling
-            console.log('[trip-view_main] Flight data received but not yet implemented:', flightData);
+            handleAddFlightToTrip(flightData);
             return;
         }
 
@@ -4670,7 +4742,13 @@ export default function TripViewMain() {
                                     currentUserRole={currentUserRole}
                                     onOpenSettings={currentUserRole !== 'viewer' ? handleOpenSettings : undefined}
                                     onDelete={currentUserRole !== 'viewer' ? (activity, dayNumber) => handleDeleteActivity(activity, dayNumber) : undefined}
-                                    onAddHotel={currentUserRole !== 'viewer' ? () => setShowHotelModal(true) : undefined}
+                                    onAddHotel={currentUserRole !== 'viewer' ? (existingLodging?: any) => {
+                                        setEditingHotel(existingLodging || null);
+                                        setShowHotelModal(true);
+                                    } : undefined}
+                                    onAddFlight={currentUserRole !== 'viewer' ? () => {
+                                        setShowFlightModal(true);
+                                    } : undefined}
                                 />
                                 </Pressable>
                             );
@@ -4782,10 +4860,24 @@ export default function TripViewMain() {
             {/* Hotel Stay Modal - triggered from day schedule header */}
             <AddHotelStayModal
                 visible={showHotelModal}
-                onClose={() => setShowHotelModal(false)}
-                onAddLodging={(lodgingData: any) => {
+                onClose={() => {
                     setShowHotelModal(false);
-                    handleAddLodgingToTrip(lodgingData);
+                    setEditingHotel(null);
+                }}
+                onAddLodging={(lodgingData: any) => {
+                    const removeId = lodgingData.isEdit ? editingHotel?.place_id : undefined;
+                    handleAddLodgingToTrip(lodgingData, removeId);
+                }}
+                existingHotel={editingHotel}
+            />
+
+            {/* Flight Modal - triggered from day schedule header */}
+            <AddFlightModal
+                visible={showFlightModal}
+                onClose={() => setShowFlightModal(false)}
+                onAddFlight={(flightData: FlightReservation) => {
+                    handleAddFlightToTrip(flightData);
+                    setShowFlightModal(false);
                 }}
             />
 

@@ -96,12 +96,6 @@
             "REGION": {
               "Ref": "AWS::Region"
             },
-            "API_WISHLISTRESTAPI_APINAME": {
-              "Ref": "apiWishlistRestAPIApiName"
-            },
-            "API_WISHLISTRESTAPI_APIID": {
-              "Ref": "apiWishlistRestAPIApiId"
-            },
             "STORAGE_USERPROFILESSTORAGE_NAME": {
               "Ref": "storageUserProfilesStorageName"
             },
@@ -227,36 +221,6 @@
         "PolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "apigateway:POST",
-                "apigateway:PUT",
-                "apigateway:GET",
-                "apigateway:HEAD",
-                "apigateway:OPTIONS",
-                "apigateway:PATCH",
-                "apigateway:DELETE"
-              ],
-              "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:apigateway:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      "::/restapis/",
-                      {
-                        "Ref": "apiWishlistRestAPIApiName"
-                      },
-                      "/*"
-                    ]
-                  ]
-                }
-              ]
-            },
             {
               "Effect": "Allow",
               "Action": [

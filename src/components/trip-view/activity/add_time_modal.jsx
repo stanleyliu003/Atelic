@@ -115,7 +115,7 @@ function TimePickerColumn({ values, selectedValue, onValueChange, debugLabel, vi
   );
 }
 
-export default function AddTimeModal({ visible, onClose, initialStartTime, initialEndTime, onSave, currentUserRole }) {
+export default function AddTimeModal({ visible, onClose, initialStartTime, initialEndTime, onSave, currentUserRole, singleTimeMode = false, singleTimeLabel = 'Time' }) {
   const isViewer = currentUserRole === 'viewer';
   const didUserInteractRef = useRef(false);
   // Convert 24-hour time to 12-hour format with AM/PM
@@ -223,6 +223,13 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
     if (!visible || isViewer) return;
     if (!didUserInteractRef.current) return;
 
+    if (singleTimeMode) {
+      // Single time mode: just save the start time value
+      const time24 = to24Hour(startHour, startMinute, startPeriod);
+      onSave(time24);
+      return;
+    }
+
     const startTotal = toMinutes(startHour, startMinute, startPeriod);
     const endTotal = toMinutes(endHour, endMinute, endPeriod);
 
@@ -248,104 +255,160 @@ export default function AddTimeModal({ visible, onClose, initialStartTime, initi
         onPress={onClose}
       />
       <View style={styles.popoverContainer}>
-        {/* Header labels */}
-        <View style={styles.headerRow}>
-          <Text style={styles.headerLabel}>Start</Text>
-          <Text style={styles.headerLabel}>End</Text>
-        </View>
+        {singleTimeMode ? (
+          <>
+            {/* Single time mode header */}
+            <View style={styles.headerRow}>
+              <Text style={styles.headerLabel}>{singleTimeLabel}</Text>
+            </View>
 
-        <View style={styles.timePickerContainer}>
-          {/* Start Time */}
-          <View style={styles.timeSection}>
-            <View style={styles.pickerRowContainer}>
-              <View style={styles.rowSelectionIndicator} />
-              <View style={styles.pickerRow}>
-                <TimePickerColumn
-                  values={HOURS}
-                  selectedValue={startHour}
-                  onValueChange={(v) => {
-                    markInteracted();
-                    setStartHour(v);
-                  }}
-                  debugLabel="start-hour"
-                  visible={visible}
-                  disabled={isViewer}
-                />
-                <Text style={styles.colonSeparator}>:</Text>
-                <TimePickerColumn
-                  values={MINUTES}
-                  selectedValue={startMinute}
-                  onValueChange={(v) => {
-                    markInteracted();
-                    setStartMinute(v);
-                  }}
-                  debugLabel="start-minute"
-                  visible={visible}
-                  disabled={isViewer}
-                />
-                <TimePickerColumn
-                  values={PERIODS}
-                  selectedValue={startPeriod}
-                  onValueChange={(v) => {
-                    markInteracted();
-                    setStartPeriod(v);
-                  }}
-                  debugLabel="start-period"
-                  visible={visible}
-                  enableWrap={false}
-                  disabled={isViewer}
-                />
+            <View style={styles.timePickerContainer}>
+              <View style={styles.timeSection}>
+                <View style={styles.pickerRowContainer}>
+                  <View style={styles.rowSelectionIndicator} />
+                  <View style={styles.pickerRow}>
+                    <TimePickerColumn
+                      values={HOURS}
+                      selectedValue={startHour}
+                      onValueChange={(v) => {
+                        markInteracted();
+                        setStartHour(v);
+                      }}
+                      debugLabel="single-hour"
+                      visible={visible}
+                      disabled={isViewer}
+                    />
+                    <Text style={styles.colonSeparator}>:</Text>
+                    <TimePickerColumn
+                      values={MINUTES}
+                      selectedValue={startMinute}
+                      onValueChange={(v) => {
+                        markInteracted();
+                        setStartMinute(v);
+                      }}
+                      debugLabel="single-minute"
+                      visible={visible}
+                      disabled={isViewer}
+                    />
+                    <TimePickerColumn
+                      values={PERIODS}
+                      selectedValue={startPeriod}
+                      onValueChange={(v) => {
+                        markInteracted();
+                        setStartPeriod(v);
+                      }}
+                      debugLabel="single-period"
+                      visible={visible}
+                      enableWrap={false}
+                      disabled={isViewer}
+                    />
+                  </View>
+                </View>
               </View>
             </View>
-          </View>
+          </>
+        ) : (
+          <>
+            {/* Dual time mode header */}
+            <View style={styles.headerRow}>
+              <Text style={styles.headerLabel}>Start</Text>
+              <Text style={styles.headerLabel}>End</Text>
+            </View>
 
-          {/* Arrow separator */}
-          <Text style={styles.arrowSeparator}>→</Text>
+            <View style={styles.timePickerContainer}>
+              {/* Start Time */}
+              <View style={styles.timeSection}>
+                <View style={styles.pickerRowContainer}>
+                  <View style={styles.rowSelectionIndicator} />
+                  <View style={styles.pickerRow}>
+                    <TimePickerColumn
+                      values={HOURS}
+                      selectedValue={startHour}
+                      onValueChange={(v) => {
+                        markInteracted();
+                        setStartHour(v);
+                      }}
+                      debugLabel="start-hour"
+                      visible={visible}
+                      disabled={isViewer}
+                    />
+                    <Text style={styles.colonSeparator}>:</Text>
+                    <TimePickerColumn
+                      values={MINUTES}
+                      selectedValue={startMinute}
+                      onValueChange={(v) => {
+                        markInteracted();
+                        setStartMinute(v);
+                      }}
+                      debugLabel="start-minute"
+                      visible={visible}
+                      disabled={isViewer}
+                    />
+                    <TimePickerColumn
+                      values={PERIODS}
+                      selectedValue={startPeriod}
+                      onValueChange={(v) => {
+                        markInteracted();
+                        setStartPeriod(v);
+                      }}
+                      debugLabel="start-period"
+                      visible={visible}
+                      enableWrap={false}
+                      disabled={isViewer}
+                    />
+                  </View>
+                </View>
+              </View>
 
-          {/* End Time */}
-          <View style={styles.timeSection}>
-            <View style={styles.pickerRowContainer}>
-              <View style={styles.rowSelectionIndicator} />
-              <View style={styles.pickerRow}>
-                <TimePickerColumn
-                  values={HOURS}
-                  selectedValue={endHour}
-                  onValueChange={(v) => {
-                    markInteracted();
-                    setEndHour(v);
-                  }}
-                  debugLabel="end-hour"
-                  visible={visible}
-                  disabled={isViewer}
-                />
-                <Text style={styles.colonSeparator}>:</Text>
-                <TimePickerColumn
-                  values={MINUTES}
-                  selectedValue={endMinute}
-                  onValueChange={(v) => {
-                    markInteracted();
-                    setEndMinute(v);
-                  }}
-                  debugLabel="end-minute"
-                  visible={visible}
-                  disabled={isViewer}
-                />
-                <TimePickerColumn
-                  values={PERIODS}
-                  selectedValue={endPeriod}
-                  onValueChange={(v) => {
-                    markInteracted();
-                    setEndPeriod(v);
-                  }}
-                  debugLabel="end-period"
-                  visible={visible}
-                  enableWrap={false}
-                  disabled={isViewer}
-                />
+              {/* Arrow separator */}
+              <Text style={styles.arrowSeparator}>→</Text>
+
+              {/* End Time */}
+              <View style={styles.timeSection}>
+                <View style={styles.pickerRowContainer}>
+                  <View style={styles.rowSelectionIndicator} />
+                  <View style={styles.pickerRow}>
+                    <TimePickerColumn
+                      values={HOURS}
+                      selectedValue={endHour}
+                      onValueChange={(v) => {
+                        markInteracted();
+                        setEndHour(v);
+                      }}
+                      debugLabel="end-hour"
+                      visible={visible}
+                      disabled={isViewer}
+                    />
+                    <Text style={styles.colonSeparator}>:</Text>
+                    <TimePickerColumn
+                      values={MINUTES}
+                      selectedValue={endMinute}
+                      onValueChange={(v) => {
+                        markInteracted();
+                        setEndMinute(v);
+                      }}
+                      debugLabel="end-minute"
+                      visible={visible}
+                      disabled={isViewer}
+                    />
+                    <TimePickerColumn
+                      values={PERIODS}
+                      selectedValue={endPeriod}
+                      onValueChange={(v) => {
+                        markInteracted();
+                        setEndPeriod(v);
+                      }}
+                      debugLabel="end-period"
+                      visible={visible}
+                      enableWrap={false}
+                      disabled={isViewer}
+                    />
+                  </View>
+                </View>
               </View>
             </View>
-          </View>
-        </View>
+          </>
+        )}
       </View>
     </View>
   );

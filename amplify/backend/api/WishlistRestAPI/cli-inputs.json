@@ -7,6 +7,13 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/getFlightInfo": {
+      "name": "/getFlightInfo",
+      "lambdaFunction": "getFlightInfo",
+      "permissions": {
+        "setting": "open"
+      }
     }
   }
 }

@@ -106,7 +106,7 @@ export const getFlightInfo = async (flightIdent: string, flightDate?: Date): Pro
     // Cache the result
     await cacheFlightData(cacheKey, flightData);
 
-    return;
+    return flightData;
   } catch (error: any) {
     console.error('[flightService] Error fetching flight:', {
       message: error.message, 

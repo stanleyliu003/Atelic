@@ -1,13 +1,5 @@
 {
   "permissions": {
-    "api": {
-      "WishlistRestAPI": [
-        "create",
-        "read",
-        "update",
-        "delete"
-      ]
-    },
     "storage": {
       "UserProfilesStorage": [
         "read"

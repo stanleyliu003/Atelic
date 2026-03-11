@@ -43,7 +43,8 @@ interface DayScheduleProps {
   activeTab?: string; // Current active tab (wishlist or day#)
   onOpenSettings?: (legIndex: number) => void; // Callback for opening transportation settings
   onDelete?: (activity: Activity, dayNumber: number) => void; // Callback for swipe-to-delete
-  onAddHotel?: () => void; // Callback to open hotel stay modal
+  onAddHotel?: (existingLodging?: Activity) => void; // Callback to open hotel stay modal
+  onAddFlight?: () => void; // Callback to open flight modal
 }
 
 export function DaySchedule({
@@ -75,6 +76,7 @@ export function DaySchedule({
   onOpenSettings,
   onDelete,
   onAddHotel,
+  onAddFlight,
 }: DayScheduleProps) {
   const selectedCount = selectedActivities.length;
 
@@ -116,13 +118,14 @@ export function DaySchedule({
 
   const hotelContextLabel = useMemo(() => {
     if (!lodgingActivity) return '';
-    const notes = lodgingActivity.notes || '';
-    if (notes === 'Check-in / Check-out') return 'Same-day stay';
-    if (notes.includes('Check-in')) {
+    const notesCtx = (lodgingActivity.notes === 'Check-in' || lodgingActivity.notes === 'Check-out' || lodgingActivity.notes === 'Check-in / Check-out') ? lodgingActivity.notes : '';
+    const context = (lodgingActivity as any).lodgingContext || notesCtx;
+    if (context === 'Check-in / Check-out') return 'Same-day stay';
+    if (context.includes('Check-in')) {
       const time = lodgingActivity.lodgingTime?.checkIn;
       return `Check-in${time ? ` · ${format12Hour(time)}` : ''}`;
     }
-    if (notes.includes('Check-out')) {
+    if (context.includes('Check-out')) {
       const time = lodgingActivity.lodgingTime?.checkOut;
       return `Check-out${time ? ` · ${format12Hour(time)}` : ''}`;
     }
@@ -145,11 +148,22 @@ export function DaySchedule({
         </View>
 
         <View style={styles.actionButtons}>
+          {/* Add Flight Button */}
+          {onAddFlight && currentUserRole !== 'viewer' && (
+            <TouchableOpacity
+              style={styles.addFlightButton}
+              onPress={() => onAddFlight?.()}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="flight" size={14} color="#F36406" />
+              <Text style={styles.addFlightButtonText}>Add Flight</Text>
+            </TouchableOpacity>
+          )}
           {/* Add Hotel Button - show when no lodging exists and user can edit */}
           {onAddHotel && !lodgingActivity && currentUserRole !== 'viewer' && (
             <TouchableOpacity
               style={styles.addHotelButton}
-              onPress={onAddHotel}
+              onPress={() => onAddHotel?.()}
               activeOpacity={0.7}
             >
               <MaterialIcons name="bed" size={14} color="#6366F1" />
@@ -173,22 +187,22 @@ export function DaySchedule({
       {lodgingActivity && (
         <TouchableOpacity
           style={styles.hotelBanner}
-          onPress={() => onDescriptionCardPress?.(lodgingActivity)}
+          onPress={() => onAddHotel?.(lodgingActivity)}
           activeOpacity={0.7}
         >
-          <View style={styles.hotelBannerTop}>
-            <View style={styles.hotelBannerNameRow}>
-              <MaterialIcons name="bed" size={16} color="#6366F1" />
-              <Text style={styles.hotelBannerName} numberOfLines={1}>{lodgingActivity.name}</Text>
-            </View>
+          <View style={styles.hotelBannerLeft}>
+            <MaterialIcons name="bed" size={13} color="#6366F1" />
+            <Text style={styles.hotelBannerName} numberOfLines={1}>{lodgingActivity.name}</Text>
+          </View>
+          <View style={styles.hotelBannerRight}>
+            <Text style={styles.hotelBannerContext}>{hotelContextLabel}</Text>
             {hotelNights > 0 && (
-              <View style={styles.hotelBannerNightsBadge}>
-                <MaterialIcons name="nights-stay" size={10} color="#6366F1" />
-                <Text style={styles.hotelBannerNightsText}>{hotelNights} {hotelNights === 1 ? 'night' : 'nights'}</Text>
-              </View>
+              <View style={styles.hotelBannerDot} />
+            )}
+            {hotelNights > 0 && (
+              <Text style={styles.hotelBannerNightsText}>{hotelNights} {hotelNights === 1 ? 'night' : 'nights'}</Text>
             )}
           </View>
-          <Text style={styles.hotelBannerContext}>{hotelContextLabel}</Text>
         </TouchableOpacity>
       )}
 
@@ -289,6 +303,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  // Add Flight button
+  addFlightButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FEDCBA',
+  },
+  addFlightButtonText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 12,
+    color: '#F36406',
+  },
+
   // Add Hotel button
   addHotelButton: {
     flexDirection: 'row',
@@ -309,52 +341,48 @@ const styles = StyleSheet.create({
 
   // Hotel banner
   hotelBanner: {
-    backgroundColor: '#F5F3FF',
-    borderRadius: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: '#6366F1',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 12,
-    marginHorizontal: 2,
-  },
-  hotelBannerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 2,
+    backgroundColor: '#F5F3FF',
+    borderRadius: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    marginHorizontal: 2,
   },
-  hotelBannerNameRow: {
+  hotelBannerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    flex: 1,
+    gap: 5,
+    flexShrink: 1,
     marginRight: 8,
   },
   hotelBannerName: {
     fontFamily: 'outfit-bold',
-    fontSize: 14,
+    fontSize: 13,
     color: '#1A1A1A',
-    flex: 1,
+    flexShrink: 1,
   },
-  hotelBannerNightsBadge: {
+  hotelBannerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    backgroundColor: '#EDE9FE',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 8,
+    gap: 5,
+  },
+  hotelBannerContext: {
+    fontFamily: 'outfit',
+    fontSize: 11,
+    color: '#8B85C1',
+  },
+  hotelBannerDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#C4B5FD',
   },
   hotelBannerNightsText: {
     fontFamily: 'outfit-medium',
-    fontSize: 10,
-    color: '#6366F1',
-  },
-  hotelBannerContext: {
-    fontFamily: 'outfit-medium',
-    fontSize: 12,
-    color: '#6366F1',
-    marginLeft: 22,
+    fontSize: 11,
+    color: '#8B85C1',
   },
 });

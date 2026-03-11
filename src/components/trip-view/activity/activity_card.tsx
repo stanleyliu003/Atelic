@@ -10,6 +10,7 @@ import { formatDistance, formatDuration } from '../../../utils/routeUtils';
 import { ActivityImage } from './activity_image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { AddNotesModal } from './add_notes_modal';
+import { useCreateTrip } from '../../../../context/CreateTripContext';
 
 // Helper function to convert 24-hour time to 12-hour format with AM/PM
 const format12Hour = (time24?: string): string => {
@@ -274,13 +275,30 @@ export function ActivityCard({
     }
   };
 
-  // Determine hotel context from notes
-  const hotelContext = isHotel ? (activity.notes || '') : '';
+  // Determine hotel context from lodgingContext field (notes is now free for user notes)
+  const knownContexts = ['Check-in', 'Check-out', 'Check-in / Check-out'];
+  const notesIsContext = isHotel && !!(activity.notes && knownContexts.includes(activity.notes));
+  const hotelContext = isHotel ? ((activity as any).lodgingContext || (notesIsContext ? activity.notes : '')) : '';
+
+  // Migrate old hotels: move context from notes to lodgingContext so notes is free for user use
+  const { updateActivityNotes: migrateNotes } = useCreateTrip();
+  useEffect(() => {
+    if (isHotel && notesIsContext && !(activity as any).lodgingContext && activity.instanceId) {
+      migrateNotes(activity.instanceId, { lodgingContext: activity.notes, notes: '' });
+    }
+  }, [isHotel, notesIsContext, (activity as any).lodgingContext, activity.instanceId]);
   const isCheckIn = hotelContext.includes('Check-in');
   const isCheckOut = hotelContext.includes('Check-out');
   const isSameDay = hotelContext === 'Check-in / Check-out';
   const isMiddleDay = isHotel && !isCheckIn && !isCheckOut;
   const nights = isHotel ? calculateNights(activity.lodgingCheckIn, activity.lodgingCheckOut) : 0;
+
+  // For hotels: get the relevant time for this card's context
+  const hotelDisplayTime = isHotel ? (
+    isCheckOut ? format12Hour(activity.lodgingTime?.checkOut) :
+    isCheckIn ? format12Hour(activity.lodgingTime?.checkIn) :
+    ''
+  ) : '';
 
   const hotelCardContent = isHotel ? (
     <View style={styles.cardOuter}>
@@ -315,78 +333,88 @@ export function ActivityCard({
         )}
 
         <View style={styles.hotelInfo}>
-          {/* Hotel name row with bed icon */}
+          {/* Row 1: bed icon + name + nights badge */}
           <View style={styles.hotelNameRow}>
-            <MaterialIcons name="bed" size={18} color="#6366F1" />
+            <MaterialIcons name="bed" size={16} color="#6366F1" />
             <Text style={[styles.hotelName, disabled && styles.nameDisabled]} numberOfLines={1}>
               {activity.name}
             </Text>
             {nights > 0 && (
               <View style={styles.nightsBadge}>
-                <MaterialIcons name="nights-stay" size={11} color="#6366F1" />
-                <Text style={styles.nightsText}>{nights} {nights === 1 ? 'night' : 'nights'}</Text>
+                <MaterialIcons name="nights-stay" size={10} color="#6366F1" />
+                <Text style={styles.nightsText}>{nights}n</Text>
               </View>
             )}
           </View>
 
-          {/* Rating + type */}
-          <View style={styles.meta}>
+          {/* Row 2: rating + context + time */}
+          <View style={styles.hotelMetaRow}>
             {activity.rating && (
               <>
-                <FontAwesome name="star" size={10} color="#F59E0B" />
-                <Text style={styles.rating}>{activity.rating}</Text>
+                <FontAwesome name="star" size={9} color="#F59E0B" />
+                <Text style={styles.hotelRating}>{activity.rating}</Text>
+                <Text style={styles.hotelMetaDot}>·</Text>
               </>
             )}
-            {activity.rating && activity.primary_type_display_name && (
-              <Text style={styles.metaDot}>·</Text>
-            )}
-            {activity.primary_type_display_name && (
-              <Text style={styles.type} numberOfLines={1}>{activity.primary_type_display_name}</Text>
+            {isSameDay ? (
+              <Text style={styles.hotelContextText}>Same-day stay</Text>
+            ) : isCheckIn ? (
+              <Text style={styles.hotelContextText}>Check-in</Text>
+            ) : isCheckOut ? (
+              <Text style={styles.hotelContextText}>Check-out</Text>
+            ) : isMiddleDay ? (
+              <Text style={styles.hotelContextText}>Staying overnight</Text>
+            ) : null}
+            {/* Tappable time badge — only on check-in/out cards */}
+            {!hideNotesButton && !disabled && currentUserRole !== 'viewer' && (isCheckIn || isCheckOut || isSameDay) && (
+              <>
+                <Text style={styles.hotelMetaDot}>·</Text>
+                <TouchableOpacity
+                  style={styles.hotelTimeBadge}
+                  onPress={() => setNotesModalVisible(true)}
+                  activeOpacity={0.6}
+                >
+                  <MaterialIcons name="schedule" size={9} color="#6366F1" />
+                  {(isCheckIn || isSameDay) && activity.lodgingTime?.checkIn ? (
+                    <Text style={styles.hotelTimeText}>{format12Hour(activity.lodgingTime.checkIn)}</Text>
+                  ) : (isCheckOut || isSameDay) && activity.lodgingTime?.checkOut ? (
+                    <Text style={styles.hotelTimeText}>{format12Hour(activity.lodgingTime.checkOut)}</Text>
+                  ) : null}
+                </TouchableOpacity>
+              </>
             )}
           </View>
 
-          {/* Context row: check-in / check-out / staying overnight */}
-          <View style={styles.hotelContextRow}>
-            {isSameDay ? (
-              <>
-                <View style={styles.hotelContextItem}>
-                  <MaterialIcons name="login" size={12} color="#6366F1" />
-                  <Text style={styles.hotelContextText}>
-                    Check-in · {format12Hour(activity.lodgingTime?.checkIn)}
-                  </Text>
-                </View>
-                <View style={styles.hotelContextItem}>
-                  <MaterialIcons name="logout" size={12} color="#6366F1" />
-                  <Text style={styles.hotelContextText}>
-                    Check-out · {format12Hour(activity.lodgingTime?.checkOut)}
-                  </Text>
-                </View>
-              </>
-            ) : isCheckIn ? (
-              <View style={styles.hotelContextItem}>
-                <MaterialIcons name="login" size={12} color="#6366F1" />
-                <Text style={styles.hotelContextText}>
-                  Check-in · {format12Hour(activity.lodgingTime?.checkIn)}
-                  {activity.lodgingCheckIn ? ` · ${formatLodgingDate(activity.lodgingCheckIn)}` : ''}
-                </Text>
-              </View>
-            ) : isCheckOut ? (
-              <View style={styles.hotelContextItem}>
-                <MaterialIcons name="logout" size={12} color="#6366F1" />
-                <Text style={styles.hotelContextText}>
-                  Check-out · {format12Hour(activity.lodgingTime?.checkOut)}
-                  {activity.lodgingCheckOut ? ` · ${formatLodgingDate(activity.lodgingCheckOut)}` : ''}
-                </Text>
-              </View>
-            ) : isMiddleDay ? (
-              <View style={styles.hotelContextItem}>
-                <MaterialIcons name="nights-stay" size={12} color="#6366F1" />
-                <Text style={styles.hotelContextText}>Staying overnight</Text>
-              </View>
-            ) : null}
-          </View>
+          {/* Row 3: user notes */}
+          {activity.notes ? (
+            <TouchableOpacity
+              style={styles.hotelNotesRow}
+              onPress={() => !disabled && currentUserRole !== 'viewer' && setNotesModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="sticky-note-2" size={10} color="#C4B5FD" />
+              <Text style={styles.hotelNotesText} numberOfLines={1}>{activity.notes}</Text>
+            </TouchableOpacity>
+          ) : !hideNotesButton && !disabled && currentUserRole !== 'viewer' ? (
+            <TouchableOpacity
+              style={styles.hotelAddNotes}
+              onPress={() => setNotesModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.hotelAddNotesLabel}>+ Add notes</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </TouchableOpacity>
+
+      <AddNotesModal
+        visible={notesModalVisible}
+        onClose={() => setNotesModalVisible(false)}
+        activity={activity}
+        activeTab={activeTab}
+        currentUserRole={currentUserRole}
+        hotelTimeMode={isCheckIn ? 'checkin' : isCheckOut ? 'checkout' : isSameDay ? 'both' : undefined}
+      />
     </View>
   ) : null;
 
@@ -710,10 +738,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E0DBFF',
-    borderLeftWidth: 4,
+    borderLeftWidth: 3,
     borderLeftColor: '#6366F1',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     shadowColor: '#6366F1',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
@@ -724,7 +752,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EDE9FE',
     borderColor: '#6366F1',
     borderWidth: 1.5,
-    borderLeftWidth: 4,
+    borderLeftWidth: 3,
   },
   hotelSelectBtn: {
     position: 'absolute',
@@ -733,49 +761,90 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   hotelInfo: {
-    gap: 4,
+    gap: 2,
   },
   hotelNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     paddingRight: 28,
   },
   hotelName: {
     fontFamily: 'outfit-bold',
-    fontSize: 15,
+    fontSize: 14,
     color: '#1A1A1A',
-    lineHeight: 19,
+    lineHeight: 18,
     letterSpacing: -0.2,
     flex: 1,
   },
   nightsBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 2,
     backgroundColor: '#EDE9FE',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
   },
   nightsText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 10,
+    color: '#6366F1',
+  },
+  hotelMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    flexWrap: 'wrap',
+  },
+  hotelRating: {
+    fontFamily: 'outfit',
+    fontSize: 11,
+    color: '#71717A',
+  },
+  hotelMetaDot: {
+    fontFamily: 'outfit',
+    fontSize: 11,
+    color: '#D4D4D8',
+  },
+  hotelContextText: {
     fontFamily: 'outfit-medium',
     fontSize: 11,
     color: '#6366F1',
   },
-  hotelContextRow: {
-    gap: 2,
-    marginTop: 2,
+  hotelTimeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
   },
-  hotelContextItem: {
+  hotelTimeText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 10,
+    color: '#6366F1',
+  },
+  hotelNotesRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    marginTop: 2,
   },
-  hotelContextText: {
-    fontFamily: 'outfit-medium',
-    fontSize: 12,
-    color: '#6366F1',
+  hotelNotesText: {
+    fontFamily: 'outfit',
+    fontSize: 11,
+    color: '#7C3AED',
+    flex: 1,
+  },
+  hotelAddNotes: {
+    marginTop: 2,
+  },
+  hotelAddNotesLabel: {
+    fontFamily: 'outfit',
+    fontSize: 11,
+    color: '#A78BFA',
   },
 
   // Swipe delete

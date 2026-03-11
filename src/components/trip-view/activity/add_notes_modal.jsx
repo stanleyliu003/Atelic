@@ -31,12 +31,21 @@ const format12Hour = (time24) => {
   return `${hour12}:${minute} ${isPM ? 'PM' : 'AM'}`;
 };
 
-export function AddNotesModal({ visible, onClose, activity, activeTab, currentUserRole }) {
+export function AddNotesModal({ visible, onClose, activity, activeTab, currentUserRole, hotelTimeMode }) {
   const { updateActivityNotes, tripId } = useCreateTrip();
   const [notes, setNotes] = useState(activity.notes || '');
   const isWishlist = activeTab === 'wishlist';
   const [startTime, setStartTime] = useState(activity.startTime || '');
   const [endTime, setEndTime] = useState(activity.endTime || '');
+
+  // For hotel cards: single time instead of range
+  const isHotelTime = !!hotelTimeMode;
+  const hotelTimeField = hotelTimeMode === 'checkout' ? 'checkOut' : 'checkIn';
+  const hotelTimeLabel = hotelTimeMode === 'checkout' ? 'Check-out time' : hotelTimeMode === 'checkin' ? 'Check-in time' : 'Time';
+  const [hotelTime, setHotelTime] = useState(
+    hotelTimeMode === 'checkout' ? (activity.lodgingTime?.checkOut || '11:00') :
+    hotelTimeMode === 'checkin' ? (activity.lodgingTime?.checkIn || '15:00') : ''
+  );
   const [timeModalVisible, setTimeModalVisible] = useState(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const notesInputRef = useRef(null);
@@ -47,7 +56,12 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
     setNotes(activity.notes || '');
     setStartTime(activity.startTime || '');
     setEndTime(activity.endTime || '');
-  }, [activity.notes, activity.startTime, activity.endTime]);
+    if (hotelTimeMode === 'checkout') {
+      setHotelTime(activity.lodgingTime?.checkOut || '11:00');
+    } else if (hotelTimeMode === 'checkin') {
+      setHotelTime(activity.lodgingTime?.checkIn || '15:00');
+    }
+  }, [activity.notes, activity.startTime, activity.endTime, activity.lodgingTime]);
 
   // Track keyboard visibility
   useEffect(() => {
@@ -80,72 +94,56 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
     }
   }, [timeModalVisible]);
 
+  // Build updates object, including hotel time if applicable
+  const buildUpdates = () => {
+    const updates = {
+      notes: notes.trim(),
+      startTime,
+      endTime,
+    };
+    if (isHotelTime) {
+      updates.lodgingTime = {
+        ...(activity.lodgingTime || {}),
+        [hotelTimeField]: hotelTime,
+      };
+    }
+    return updates;
+  };
+
+  const hasChanges = () => {
+    const prevNotes = activity.notes || '';
+    const prevStartTime = activity.startTime || '';
+    const prevEndTime = activity.endTime || '';
+    let changed = prevNotes !== notes.trim() ||
+      prevStartTime !== startTime ||
+      prevEndTime !== endTime;
+    if (isHotelTime) {
+      const prevHotelTime = hotelTimeMode === 'checkout'
+        ? (activity.lodgingTime?.checkOut || '11:00')
+        : (activity.lodgingTime?.checkIn || '15:00');
+      changed = changed || prevHotelTime !== hotelTime;
+    }
+    return changed;
+  };
+
   const handleSave = () => {
-    // Only save if user is not a viewer
-    if (!isViewer) {
-      const nextNotes = notes.trim();
-      const nextStartTime = startTime;
-      const nextEndTime = endTime;
-
-      const prevNotes = activity.notes || '';
-      const prevStartTime = activity.startTime || '';
-      const prevEndTime = activity.endTime || '';
-
-      const hasChanged =
-        prevNotes !== nextNotes ||
-        prevStartTime !== nextStartTime ||
-        prevEndTime !== nextEndTime;
-
-      if (hasChanged) {
-        const updates = {
-          notes: nextNotes,
-          startTime: nextStartTime,
-          endTime: nextEndTime,
-        };
-
-        // Update local state
-        updateActivityNotes(activity.instanceId, updates);
-
-        // Track as OperationModify for real-time sync
-        trackModifyOperation(activity, activeTab, updates).catch((err) => {
-          console.error('[AddNotesModal] Failed to save modify operation:', err);
-        });
-      }
+    if (!isViewer && hasChanges()) {
+      const updates = buildUpdates();
+      updateActivityNotes(activity.instanceId, updates);
+      trackModifyOperation(activity, activeTab, updates).catch((err) => {
+        console.error('[AddNotesModal] Failed to save modify operation:', err);
+      });
     }
     onClose();
   };
 
   const handleClose = () => {
-    // Only save changes when closing via backdrop if user is not a viewer
-    if (!isViewer) {
-      const nextNotes = notes.trim();
-      const nextStartTime = startTime;
-      const nextEndTime = endTime;
-
-      const prevNotes = activity.notes || '';
-      const prevStartTime = activity.startTime || '';
-      const prevEndTime = activity.endTime || '';
-
-      const hasChanged =
-        prevNotes !== nextNotes ||
-        prevStartTime !== nextStartTime ||
-        prevEndTime !== nextEndTime;
-
-      if (hasChanged) {
-        const updates = {
-          notes: nextNotes,
-          startTime: nextStartTime,
-          endTime: nextEndTime,
-        };
-
-        // Update local state
-        updateActivityNotes(activity.instanceId, updates);
-
-        // Track as OperationModify for real-time sync
-        trackModifyOperation(activity, activeTab, updates).catch((err) => {
-          console.error('[AddNotesModal] Failed to save modify operation:', err);
-        });
-      }
+    if (!isViewer && hasChanges()) {
+      const updates = buildUpdates();
+      updateActivityNotes(activity.instanceId, updates);
+      trackModifyOperation(activity, activeTab, updates).catch((err) => {
+        console.error('[AddNotesModal] Failed to save modify operation:', err);
+      });
     }
     onClose();
   };
@@ -257,35 +255,53 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
 
             {/* Time Button */}
             <View style={styles.timePickerWrapper} pointerEvents="box-none">
-              <View style={styles.timeButtonRow}>
-                <TouchableOpacity
-                  style={[styles.addTimeButton, startTime && endTime && styles.addTimeButtonActive]}
-                  onPress={() => setTimeModalVisible(true)}
-                  pointerEvents="auto"
-                  disabled={isViewer}
-                >
-                  <MaterialIcons name="schedule" size={15} color={startTime && endTime ? '#3B82F6' : '#A1A1AA'} />
-                  <Text style={[styles.addTimeText, startTime && endTime && styles.addTimeTextActive]}>
-                    {startTime && endTime ? `${format12Hour(startTime)} – ${format12Hour(endTime)}` : 'Add time'}
-                  </Text>
-                </TouchableOpacity>
-
-                {startTime && endTime && !isViewer && (
+              {isHotelTime ? (
+                /* Hotel: single time picker for check-in or check-out */
+                <View style={styles.timeButtonRow}>
                   <TouchableOpacity
-                    style={styles.clearTimeButton}
-                    onPress={() => {
-                      setTimeModalVisible(false);
-                      setStartTime('');
-                      setEndTime('');
-                    }}
+                    style={[styles.addTimeButton, hotelTime && styles.hotelTimeButtonActive]}
+                    onPress={() => setTimeModalVisible(true)}
                     pointerEvents="auto"
+                    disabled={isViewer}
                   >
-                    <MaterialIcons name="close" size={14} color="#A1A1AA" />
+                    <MaterialIcons name="schedule" size={15} color={hotelTime ? '#6366F1' : '#A1A1AA'} />
+                    <Text style={[styles.addTimeText, hotelTime && styles.hotelTimeTextActive]}>
+                      {hotelTime ? `${hotelTimeLabel} · ${format12Hour(hotelTime)}` : hotelTimeLabel}
+                    </Text>
                   </TouchableOpacity>
-                )}
-              </View>
+                </View>
+              ) : (
+                /* Regular activity: time range */
+                <View style={styles.timeButtonRow}>
+                  <TouchableOpacity
+                    style={[styles.addTimeButton, startTime && endTime && styles.addTimeButtonActive]}
+                    onPress={() => setTimeModalVisible(true)}
+                    pointerEvents="auto"
+                    disabled={isViewer}
+                  >
+                    <MaterialIcons name="schedule" size={15} color={startTime && endTime ? '#3B82F6' : '#A1A1AA'} />
+                    <Text style={[styles.addTimeText, startTime && endTime && styles.addTimeTextActive]}>
+                      {startTime && endTime ? `${format12Hour(startTime)} – ${format12Hour(endTime)}` : 'Add time'}
+                    </Text>
+                  </TouchableOpacity>
 
-              {!isViewer && (
+                  {startTime && endTime && !isViewer && (
+                    <TouchableOpacity
+                      style={styles.clearTimeButton}
+                      onPress={() => {
+                        setTimeModalVisible(false);
+                        setStartTime('');
+                        setEndTime('');
+                      }}
+                      pointerEvents="auto"
+                    >
+                      <MaterialIcons name="close" size={14} color="#A1A1AA" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+
+              {!isViewer && !isHotelTime && (
                 <AddTimeModal
                   visible={timeModalVisible}
                   onClose={() => setTimeModalVisible(false)}
@@ -293,6 +309,18 @@ export function AddNotesModal({ visible, onClose, activity, activeTab, currentUs
                   initialEndTime={endTime}
                   onSave={handleTimeUpdate}
                   currentUserRole={currentUserRole}
+                />
+              )}
+              {!isViewer && isHotelTime && (
+                <AddTimeModal
+                  visible={timeModalVisible}
+                  onClose={() => setTimeModalVisible(false)}
+                  initialStartTime={hotelTime}
+                  initialEndTime={''}
+                  onSave={(time) => setHotelTime(time)}
+                  currentUserRole={currentUserRole}
+                  singleTimeMode={true}
+                  singleTimeLabel={hotelTimeLabel}
                 />
               )}
             </View>
@@ -404,6 +432,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFF6FF',
     borderColor: '#BFDBFE',
   },
+  hotelTimeButtonActive: {
+    backgroundColor: '#F5F3FF',
+    borderColor: '#DDD6FE',
+  },
   addTimeText: {
     fontFamily: 'outfit-medium',
     fontSize: 13,
@@ -411,6 +443,9 @@ const styles = StyleSheet.create({
   },
   addTimeTextActive: {
     color: '#3B82F6',
+  },
+  hotelTimeTextActive: {
+    color: '#6366F1',
   },
   clearTimeButton: {
     width: 30,
