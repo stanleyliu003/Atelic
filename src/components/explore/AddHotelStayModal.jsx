@@ -12,14 +12,11 @@ import {
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import CalendarPicker from 'react-native-calendar-picker';
-import { Colors } from '../../../constants/Colors';
 import { getSearchAutocomplete, getPlaceDetails } from '../../services/searchService';
 import { useCreateTrip } from '../../../context/CreateTripContext';
-import { ActivityCard } from '../trip-view/activity/activity_card';
 import { ActivityDetailView } from '../trip-view/description_card';
 import AddHotelTimeModal from './add_hotel_time_modal';
 
@@ -357,11 +354,19 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging, existingHote
       }
     });
 
+  // Determine modal title
+  const modalTitle = isAddingAnother || addedHotels.length > 0
+    ? 'Add Another Hotel'
+    : existingHotel ? 'Hotel Stay' : 'Add Hotel Stay';
+
+  // Whether the form is complete and ready to save
+  const canSave = stayType === 'hotel' && selectedPlace && checkInDate && checkOutDate && stayLength;
+
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
       <View style={styles.modalOverlay}>
         <GestureHandlerRootView style={styles.modalContainer}>
-          {/* Swipeable Drag Indicator */}
+          {/* Drag Handle */}
           <GestureDetector gesture={swipeGesture}>
             <View style={styles.dragIndicatorContainer}>
               <View style={styles.dragIndicator} />
@@ -370,148 +375,89 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging, existingHote
 
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.headerTitleRow}>
-              <MaterialIcons name="bed" size={20} color="#6366F1" />
-              <Text style={styles.headerTitle}>{isAddingAnother || addedHotels.length > 0 ? 'Add Another Hotel' : existingHotel ? 'Hotel Stay' : 'Add Hotel Stay'}</Text>
-            </View>
-            <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="close" size={24} color="#A1A1AA" />
+            <Text style={styles.headerTitle}>{modalTitle}</Text>
+            <TouchableOpacity
+              onPress={handleClose}
+              style={styles.closeButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <View style={styles.closeButtonCircle}>
+                <Ionicons name="close" size={16} color="#8E8E93" />
+              </View>
             </TouchableOpacity>
           </View>
 
-          {/* Added Hotels Summary */}
-          {addedHotels.length > 0 && (
-            <View style={styles.addedHotelsSection}>
-              {addedHotels.map((hotel, index) => (
-                <View key={index} style={styles.addedHotelItem}>
-                  <View style={styles.addedHotelIcon}>
-                    <MaterialIcons name="check-circle" size={16} color="#22C55E" />
+          <ScrollView
+            style={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContentContainer}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Added Hotels Summary */}
+            {addedHotels.length > 0 && (
+              <View style={styles.addedHotelsSection}>
+                {addedHotels.map((hotel, index) => (
+                  <View key={index} style={styles.addedHotelItem}>
+                    <View style={styles.addedHotelCheckIcon}>
+                      <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                    </View>
+                    <View style={styles.addedHotelInfo}>
+                      <Text style={styles.addedHotelName} numberOfLines={1}>{hotel.name}</Text>
+                      <Text style={styles.addedHotelDates}>
+                        {hotel.checkIn} → {hotel.checkOut} · {hotel.nights}n
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.addedHotelInfo}>
-                    <Text style={styles.addedHotelName} numberOfLines={1}>{hotel.name}</Text>
-                    <Text style={styles.addedHotelDates}>
-                      {hotel.checkIn} → {hotel.checkOut} · {hotel.nights} {hotel.nights === 1 ? 'night' : 'nights'}
-                    </Text>
-                  </View>
-                </View>
-              ))}
+                ))}
+              </View>
+            )}
+
+            {/* Dates Section */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionLabel}>Dates</Text>
               <TouchableOpacity
-                style={styles.doneButton}
-                onPress={handleClose}
-                activeOpacity={0.8}
+                style={styles.dateSelector}
+                onPress={() => setIsCalendarOpen(true)}
+                activeOpacity={0.6}
               >
-                <Text style={styles.doneButtonText}>Done</Text>
+                <View style={styles.dateSelectorContent}>
+                  <Ionicons name="calendar-outline" size={18} color={checkInDate ? '#6366F1' : '#C7C7CC'} />
+                  {checkInDate && checkOutDate ? (
+                    <View style={styles.dateRangeDisplay}>
+                      <Text style={styles.dateText}>
+                        {formatDate(checkInDate)}
+                      </Text>
+                      <Ionicons name="arrow-forward" size={14} color="#C7C7CC" />
+                      <Text style={styles.dateText}>
+                        {formatDate(checkOutDate)}
+                      </Text>
+                      {stayLength && (
+                        <View style={styles.nightsPill}>
+                          <Text style={styles.nightsPillText}>{stayLength}n</Text>
+                        </View>
+                      )}
+                    </View>
+                  ) : (
+                    <Text style={styles.datePlaceholder}>Select check-in & check-out</Text>
+                  )}
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
               </TouchableOpacity>
             </View>
-          )}
 
-          {/* Stay Duration Section - Always show */}
-          <View style={styles.stayDurationSection}>
-            <Text style={styles.stayDurationTitle}>How long is your stay?</Text>
-
-            {/* Date Selection Button */}
-            <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => setIsCalendarOpen(true)}
-            >
-              <View style={styles.dateButtonContent}>
-                <MaterialIcons name="calendar-today" size={18} color="#6366F1" />
-                {checkInDate && checkOutDate ? (
-                  <View style={styles.dateRangeDisplay}>
-                    <Text style={styles.dateButtonText}>
-                      {formatDate(checkInDate)} → {formatDate(checkOutDate)}
-                    </Text>
-                    {stayLength && (
-                      <View style={styles.dateNightsBadge}>
-                        <MaterialIcons name="nights-stay" size={10} color="#6366F1" />
-                        <Text style={styles.dateNightsText}>{stayLength} {stayLength === 1 ? 'night' : 'nights'}</Text>
-                      </View>
-                    )}
-                  </View>
-                ) : (
-                  <Text style={[styles.dateButtonText, styles.placeholderText]}>
-                    Select dates
-                  </Text>
-                )}
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Stay Type Selector - Only show after dates are selected */}
-          {/* {stayLength && (
-            <View style={styles.stayTypeSection}>
-              <Text style={styles.stayTypeTitle}>What type of place are you staying at?</Text>
-              <View style={styles.stayTypeOptionsRow}>
-                <TouchableOpacity
-                  style={[styles.stayTypeOption, stayType === 'hotel' && styles.stayTypeOptionSelected]}
-                  onPress={() => setStayType('hotel')}
-                  activeOpacity={0.7}
-                >
-                  <MaterialIcons
-                    name="hotel"
-                    size={22}
-                    color={stayType === 'hotel' ? Colors.WHITE : '#666'}
-                  />
-                  <Text style={[styles.stayTypeOptionText, stayType === 'hotel' && styles.stayTypeOptionTextSelected]}>
-                    Hotel
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.stayTypeOption, stayType === 'airbnb' && styles.stayTypeOptionSelected]}
-                  onPress={() => {
-                    setStayType('airbnb');
-                    setSelectedPlace(null);
-                    setSearchQuery('');
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons
-                    name="home-city-outline"
-                    size={22}
-                    color={stayType === 'airbnb' ? Colors.WHITE : '#666'}
-                  />
-                  <Text style={[styles.stayTypeOptionText, stayType === 'airbnb' && styles.stayTypeOptionTextSelected]}>
-                    AirBnB
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.stayTypeOption, stayType === 'custom_address' && styles.stayTypeOptionSelected]}
-                  onPress={() => {
-                    setStayType('custom_address');
-                    setSelectedPlace(null);
-                    setSearchQuery('');
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons
-                    name="map-marker-plus-outline"
-                    size={22}
-                    color={stayType === 'custom_address' ? Colors.WHITE : '#666'}
-                  />
-                  <Text style={[styles.stayTypeOptionText, stayType === 'custom_address' && styles.stayTypeOptionTextSelected]}>
-                    Custom Address
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )} */}
-
-          {/* Search Section - Only show when Hotel is selected and not editing existing (or adding another) */}
-          {stayLength && stayType === 'hotel' && (!existingHotel || isAddingAnother) && (
-            <View style={styles.searchSection}>
-              <Text style={styles.searchSectionTitle}>Where are you staying?</Text>
-
-              {/* Search Bar */}
-              <View style={styles.searchBarContainer}>
+            {/* Search Section */}
+            {stayLength && stayType === 'hotel' && (!existingHotel || isAddingAnother) && (
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionLabel}>Hotel</Text>
                 <View style={styles.searchBar}>
-                  <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+                  <Ionicons name="search" size={18} color="#8E8E93" />
                   <TextInput
                     ref={searchInputRef}
                     style={styles.searchInput}
                     value={searchQuery}
                     onChangeText={handleQueryChange}
-                    placeholder="Search for hotels or lodging"
-                    placeholderTextColor="#999"
+                    placeholder="Search hotels, resorts, lodging..."
+                    placeholderTextColor="#C7C7CC"
                     returnKeyType="search"
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -519,194 +465,186 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging, existingHote
                   {searchQuery.length > 0 && (
                     <TouchableOpacity
                       onPress={() => handleQueryChange('')}
-                      style={styles.clearButton}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                      <Ionicons name="close-circle" size={20} color="#999" />
+                      <Ionicons name="close-circle" size={18} color="#C7C7CC" />
                     </TouchableOpacity>
                   )}
                 </View>
               </View>
+            )}
 
-            </View>
-          )}
-
-          {/* AirBnB / Custom Address - Coming soon placeholder */}
-          {stayLength && stayType !== 'hotel' && (
-            <View style={styles.comingSoonContainer}>
-              <MaterialCommunityIcons
-                name={stayType === 'airbnb' ? 'home-city-outline' : 'map-marker-plus-outline'}
-                size={40}
-                color="#ccc"
-              />
-              <Text style={styles.comingSoonText}>
-                {stayType === 'airbnb' ? 'AirBnB' : 'Custom Address'} coming soon
-              </Text>
-              <Text style={styles.comingSoonSubtext}>
-                Switch to Hotel to add your stay for now
-              </Text>
-            </View>
-          )}
-
-          {/* Selected Place - Hotel only */}
-          {stayType === 'hotel' && (selectedPlace || loadingPlaceDetails) && (
-            <View style={styles.selectedPlaceContainer}>
-              {loadingPlaceDetails ? (
-                <View style={styles.loadingPlaceDetailsContainer}>
-                  <ActivityIndicator size="small" color={Colors.PRIMARY} />
-                  <Text style={styles.loadingPlaceDetailsText}>Loading hotel details...</Text>
-                </View>
-              ) : selectedPlace ? (
-                <View style={styles.existingHotelCard}>
-                  <MaterialIcons name="bed" size={16} color="#6366F1" />
-                  <View style={styles.existingHotelInfo}>
-                    <Text style={styles.existingHotelName} numberOfLines={1}>{selectedPlace.name}</Text>
-                    {selectedPlace.rating && (
-                      <Text style={styles.existingHotelMeta}>
-                        ★ {selectedPlace.rating} · Hotel
-                      </Text>
+            {/* Selected Hotel Card */}
+            {stayType === 'hotel' && (selectedPlace || loadingPlaceDetails) && (
+              <View style={styles.sectionContainer}>
+                {!(!existingHotel || isAddingAnother) && (
+                  <Text style={styles.sectionLabel}>Hotel</Text>
+                )}
+                {loadingPlaceDetails ? (
+                  <View style={styles.loadingPlaceContainer}>
+                    <ActivityIndicator size="small" color="#6366F1" />
+                    <Text style={styles.loadingPlaceText}>Finding hotel details...</Text>
+                  </View>
+                ) : selectedPlace ? (
+                  <View style={styles.selectedHotelCard}>
+                    <View style={styles.selectedHotelIconBg}>
+                      <MaterialIcons name="bed" size={18} color="#6366F1" />
+                    </View>
+                    <View style={styles.selectedHotelInfo}>
+                      <Text style={styles.selectedHotelName} numberOfLines={1}>{selectedPlace.name}</Text>
+                      <View style={styles.selectedHotelMeta}>
+                        {selectedPlace.rating && (
+                          <Text style={styles.selectedHotelRating}>
+                            ★ {selectedPlace.rating}
+                          </Text>
+                        )}
+                        {selectedPlace.formatted_address && (
+                          <Text style={styles.selectedHotelAddress} numberOfLines={1}>
+                            {selectedPlace.formatted_address}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    {(!existingHotel || isAddingAnother) && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setSelectedPlace(null);
+                          setSearchQuery('');
+                        }}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Ionicons name="close-circle" size={20} color="#C7C7CC" />
+                      </TouchableOpacity>
                     )}
                   </View>
-                </View>
-              ) : null}
-            </View>
-          )}
-
-          {/* Check-in and Check-out Time Buttons Row - Show below activity card when dates selected (Hotel only) */}
-          {stayType === 'hotel' && selectedPlace && !loadingPlaceDetails && stayLength && (
-            <View style={styles.timeButtonsSection}>
-              <View style={styles.timeButtonsRow}>
-                {/* Check-in Time Button */}
-                <TouchableOpacity
-                  ref={checkInButtonRef}
-                  style={[styles.dateButton, styles.halfWidthButton]}
-                  onPress={() => {
-                    checkInButtonRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
-                      setCheckInButtonLayout({ x: pageX, y: pageY, width, height });
-                      setShowCheckInTimeModal(true);
-                    });
-                  }}
-                >
-                  <View style={styles.timeButtonColumn}>
-                    <Text style={styles.timeButtonLabel}>
-                      Check-in {checkInDate ? `(${formatShortDate(checkInDate)})` : ''}
-                    </Text>
-                    <View style={styles.timeButtonContent}>
-                      <MaterialIcons name="schedule" size={18} color="#6366F1" />
-                      <Text style={styles.timeButtonText}>
-                        {formatTime(checkInTime)}
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-
-                {/* Check-out Time Button */}
-                <TouchableOpacity
-                  ref={checkOutButtonRef}
-                  style={[styles.dateButton, styles.halfWidthButton]}
-                  onPress={() => {
-                    checkOutButtonRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
-                      setCheckOutButtonLayout({ x: pageX, y: pageY, width, height });
-                      setShowCheckOutTimeModal(true);
-                    });
-                  }}
-                >
-                  <View style={styles.timeButtonColumn}>
-                    <Text style={styles.timeButtonLabel}>
-                      Check-out {checkOutDate ? `(${formatShortDate(checkOutDate)})` : ''}
-                    </Text>
-                    <View style={styles.timeButtonContent}>
-                      <MaterialIcons name="schedule" size={18} color="#6366F1" />
-                      <Text style={styles.timeButtonText}>
-                        {formatTime(checkOutTime)}
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
+                ) : null}
               </View>
-            </View>
-          )}
+            )}
 
-          {/* Suggestions List - Only show for Hotel when no place is selected or being loaded */}
-          {stayType === 'hotel' && !selectedPlace && !loadingPlaceDetails && (
-            <ScrollView style={styles.suggestionsContainer} showsVerticalScrollIndicator={false}>
-              {/* Loading State */}
-              {loading && (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={Colors.PRIMARY} />
-                  <Text style={styles.loadingText}>Loading suggestions...</Text>
+            {/* Time Section */}
+            {stayType === 'hotel' && selectedPlace && !loadingPlaceDetails && stayLength && (
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionLabel}>Times</Text>
+                <View style={styles.timeRow}>
+                  <TouchableOpacity
+                    ref={checkInButtonRef}
+                    style={styles.timeCard}
+                    onPress={() => {
+                      checkInButtonRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
+                        setCheckInButtonLayout({ x: pageX, y: pageY, width, height });
+                        setShowCheckInTimeModal(true);
+                      });
+                    }}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={styles.timeCardLabel}>Check-in</Text>
+                    <Text style={styles.timeCardValue}>{formatTime(checkInTime)}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    ref={checkOutButtonRef}
+                    style={styles.timeCard}
+                    onPress={() => {
+                      checkOutButtonRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
+                        setCheckOutButtonLayout({ x: pageX, y: pageY, width, height });
+                        setShowCheckOutTimeModal(true);
+                      });
+                    }}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={styles.timeCardLabel}>Check-out</Text>
+                    <Text style={styles.timeCardValue}>{formatTime(checkOutTime)}</Text>
+                  </TouchableOpacity>
                 </View>
-              )}
+              </View>
+            )}
 
-              {/* Error State */}
-              {!loading && error && (
-                <View style={styles.errorContainer}>
-                  <Ionicons name="alert-circle-outline" size={48} color="#999" />
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
-              )}
+            {/* Suggestions List */}
+            {stayType === 'hotel' && !selectedPlace && !loadingPlaceDetails && (
+              <>
+                {loading && (
+                  <View style={styles.centeredState}>
+                    <ActivityIndicator size="small" color="#6366F1" />
+                    <Text style={styles.stateText}>Searching...</Text>
+                  </View>
+                )}
 
-              {/* Empty State */}
-              {!loading && !error && suggestions.length === 0 && searchQuery.length >= 2 && (
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="search-outline" size={48} color="#ccc" />
-                  <Text style={styles.emptyText}>No hotels found</Text>
-                  <Text style={styles.emptySubtext}>Try a different search term</Text>
-                </View>
-              )}
+                {!loading && error && (
+                  <View style={styles.centeredState}>
+                    <Ionicons name="alert-circle-outline" size={36} color="#C7C7CC" />
+                    <Text style={styles.stateText}>{error}</Text>
+                  </View>
+                )}
 
-              {/* Suggestions List */}
-              {!loading && !error && suggestions.length > 0 && (
-                <View style={styles.suggestionsList}>
-                  {suggestions.map((suggestion, index) => (
-                    <TouchableOpacity
-                      key={suggestion.place_id || index}
-                      style={styles.suggestionItem}
-                      onPress={() => handleSuggestionSelect(suggestion)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.suggestionIconContainer}>
-                      <MaterialIcons name="bed" size={20} color="#6366F1" />
-                      </View>
-                      <View style={styles.suggestionTextContainer}>
-                        <Text
-                          style={styles.suggestionName}
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
-                        >
-                          {suggestion.name}
-                        </Text>
-                        <Text
-                          style={styles.suggestionAddress}
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
-                        >
-                          {suggestion.address_info}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </ScrollView>
-          )}
+                {!loading && !error && suggestions.length === 0 && searchQuery.length >= 2 && (
+                  <View style={styles.centeredState}>
+                    <Ionicons name="search-outline" size={36} color="#C7C7CC" />
+                    <Text style={styles.stateTextBold}>No results</Text>
+                    <Text style={styles.stateText}>Try a different search term</Text>
+                  </View>
+                )}
 
-          {/* Add Lodging Buttons - Show when Hotel selected with place, dates, and times */}
-          {stayType === 'hotel' && selectedPlace && checkInDate && checkOutDate && stayLength && (
-            <View style={styles.addLodgingButtonContainer}>
+                {!loading && !error && suggestions.length > 0 && (
+                  <View style={styles.suggestionsList}>
+                    {suggestions.map((suggestion, index) => (
+                      <TouchableOpacity
+                        key={suggestion.place_id || index}
+                        style={styles.suggestionItem}
+                        onPress={() => handleSuggestionSelect(suggestion)}
+                        activeOpacity={0.5}
+                      >
+                        <View style={styles.suggestionIcon}>
+                          <MaterialIcons name="bed" size={16} color="#6366F1" />
+                        </View>
+                        <View style={styles.suggestionText}>
+                          <Text style={styles.suggestionName} numberOfLines={1}>
+                            {suggestion.name}
+                          </Text>
+                          <Text style={styles.suggestionAddress} numberOfLines={1}>
+                            {suggestion.address_info}
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={14} color="#D1D1D6" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+          </ScrollView>
+
+          {/* Bottom Action Bar */}
+          {canSave && (
+            <View style={styles.bottomBar}>
               <TouchableOpacity
-                style={styles.addLodgingButton}
-                onPress={handleAddLodging}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.addLodgingButtonText}>Add another hotel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.addAndDoneButton}
+                style={styles.saveButton}
                 onPress={handleAddLodgingAndClose}
                 activeOpacity={0.8}
               >
-                <Text style={styles.addAndDoneButtonText}>Save hotel</Text>
+                <Text style={styles.saveButtonText}>
+                  {existingHotel && !isAddingAnother ? 'Save Changes' : 'Add to Trip'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.addAnotherButton}
+                onPress={handleAddLodging}
+                activeOpacity={0.6}
+              >
+                <Ionicons name="add" size={16} color="#6366F1" />
+                <Text style={styles.addAnotherButtonText}>Add another hotel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Done button when hotels have been added and form is empty */}
+          {addedHotels.length > 0 && !canSave && (
+            <View style={styles.bottomBar}>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleClose}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.saveButtonText}>Done</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -720,24 +658,37 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging, existingHote
         animationType="slide"
         onRequestClose={() => setIsCalendarOpen(false)}
       >
-        <View style={styles.calendarModalOverlay}>
-          <View style={styles.calendarModalContent}>
-            {/* Top Handle - Swipeable */}
-            <View {...calendarPanResponder.panHandlers} style={styles.calendarModalHandleContainer}>
-              <View style={styles.calendarModalHandle} />
+        <View style={styles.calendarOverlay}>
+          <View style={styles.calendarSheet}>
+            <View {...calendarPanResponder.panHandlers} style={styles.calendarHandleBar}>
+              <View style={styles.calendarHandle} />
             </View>
 
-            {/* Calendar View */}
+            <Text style={styles.calendarTitle}>Select Dates</Text>
+
+            {/* Selected range summary */}
+            {checkInDate && checkOutDate && stayLength && (
+              <View style={styles.calendarSummary}>
+                <Text style={styles.calendarSummaryText}>
+                  {formatDate(checkInDate)} → {formatDate(checkOutDate)}
+                </Text>
+                <View style={styles.nightsPill}>
+                  <Text style={styles.nightsPillText}>{stayLength}n</Text>
+                </View>
+              </View>
+            )}
+
             <View style={styles.calendarContainer}>
               <CalendarPicker
                 startFromMonday={false}
                 allowRangeSelection={true}
                 minDate={startDate ? new Date(startDate) : new Date(new Date().setHours(0, 0, 0, 0))}
                 maxDate={endDate ? new Date(endDate) : new Date(new Date().setFullYear(new Date().getFullYear() + 3))}
-                todayBackgroundColor="#E8F4FD"
-                todayTextStyle={{ color: '#27BFFF' }}
-                selectedDayColor="#FFA53F"
+                todayBackgroundColor="transparent"
+                todayTextStyle={{ color: '#6366F1', fontFamily: 'outfit-bold' }}
+                selectedDayColor="#6366F1"
                 selectedDayTextColor="#FFFFFF"
+                selectedRangeStyle={{ backgroundColor: '#EDE9FE' }}
                 selectedStartDate={checkInDate}
                 selectedEndDate={checkOutDate}
                 enableSwipe={true}
@@ -745,93 +696,74 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging, existingHote
                 allowBackwardRangeSelect={true}
                 onDateChange={(date, type) => {
                   if (type === 'END_DATE') {
-                    // Only proceed if we have a valid date
                     if (!date) {
                       setCheckOutDate(null);
                       setStayLength(null);
                       return;
                     }
-
-                    // Use the ref to get the latest check-in date value
                     const currentCheckInDate = checkInDateRef.current;
-
                     if (currentCheckInDate) {
-                      // Calculate time difference in milliseconds
                       const timeDiff = date.getTime() - currentCheckInDate.getTime();
-
-                      // Check if the selected check-out date is before the check-in date
                       if (timeDiff < 0) {
-                        // Swap: the earlier date becomes check-in, later becomes check-out
                         const newCheckInDate = date;
                         const newCheckOutDate = currentCheckInDate;
-
-                        // Recalculate stay length with swapped dates
                         const swappedTimeDiff = newCheckOutDate.getTime() - newCheckInDate.getTime();
                         const swappedNights = Math.floor(swappedTimeDiff / (1000 * 60 * 60 * 24));
-
-                        // Update ref, local state
                         checkInDateRef.current = newCheckInDate;
                         setCheckInDate(newCheckInDate);
                         setCheckOutDate(newCheckOutDate);
                         setStayLength(swappedNights);
                       } else {
-                        // Normal forward selection - check-out date is after check-in date
                         const nights = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-
                         setCheckOutDate(date);
                         setStayLength(nights);
                       }
                     }
                   } else {
-                    // Clear check-out date and stay length when selecting a new check-in date
                     checkInDateRef.current = date;
                     setCheckInDate(date);
                     setCheckOutDate(null);
                     setStayLength(null);
                   }
                 }}
-                width={350}
+                width={340}
                 textStyle={{
                   fontFamily: 'outfit',
-                  fontSize: 16,
+                  fontSize: 15,
+                  color: '#1C1C1E',
                 }}
                 monthTitleStyle={{
                   fontFamily: 'outfit-bold',
-                  fontSize: 24,
-                  color: '#1a1a1a',
+                  fontSize: 18,
+                  color: '#1C1C1E',
                 }}
                 yearTitleStyle={{
                   fontFamily: 'outfit-bold',
-                  fontSize: 24,
-                  color: '#1a1a1a',
+                  fontSize: 18,
+                  color: '#1C1C1E',
                 }}
                 dayLabelsWrapper={{
                   borderTopWidth: 0,
                   borderBottomWidth: 0,
                 }}
                 previousComponent={
-                  <Ionicons name="chevron-back" size={24} color="#666666" />
+                  <Ionicons name="chevron-back" size={20} color="#8E8E93" />
                 }
                 nextComponent={
-                  <Ionicons name="chevron-forward" size={24} color="#666666" />
+                  <Ionicons name="chevron-forward" size={20} color="#8E8E93" />
                 }
               />
             </View>
 
-            {/* Confirm Button */}
             <TouchableOpacity
-              style={[
-                styles.calendarConfirmButton,
-                { opacity: stayLength ? 1 : 0.3 }
-              ]}
-              onPress={() => {
-                if (stayLength) {
-                  setIsCalendarOpen(false);
-                }
-              }}
+              style={[styles.calendarConfirmButton, !stayLength && styles.calendarConfirmDisabled]}
+              onPress={() => { if (stayLength) setIsCalendarOpen(false); }}
               disabled={!stayLength}
+              activeOpacity={0.8}
             >
-              <Text style={styles.calendarConfirmButtonText}>Confirm</Text>
+              <Text style={[styles.calendarConfirmText, !stayLength && styles.calendarConfirmTextDisabled]}>
+                {stayLength ? `Confirm · ${stayLength} ${stayLength === 1 ? 'night' : 'nights'}` : 'Select dates'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -879,239 +811,95 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging, existingHote
 };
 
 const styles = StyleSheet.create({
+  // ─── Modal Shell ─────────────────────────────────────
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: Colors.WHITE,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    height: '90%',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    height: '92%',
   },
   dragIndicatorContainer: {
     width: '100%',
     alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 6,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   dragIndicator: {
     width: 36,
-    height: 4,
-    backgroundColor: '#D4D4D8',
-    borderRadius: 2,
+    height: 5,
+    backgroundColor: '#E5E5EA',
+    borderRadius: 2.5,
   },
+
+  // ─── Header ──────────────────────────────────────────
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 15,
-  },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    paddingTop: 6,
+    paddingBottom: 14,
   },
   headerTitle: {
     fontFamily: 'outfit-bold',
-    fontSize: 18,
-    color: '#1A1A1A',
+    fontSize: 17,
+    color: '#1C1C1E',
+    textAlign: 'center',
   },
-  searchSection: {
+  closeButton: {
+    position: 'absolute',
+    right: 16,
+  },
+  closeButtonCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F2F2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ─── Scroll Content ──────────────────────────────────
+  scrollContent: {
+    flex: 1,
+  },
+  scrollContentContainer: {
+    paddingBottom: 20,
+  },
+
+  // ─── Sections ────────────────────────────────────────
+  sectionContainer: {
     paddingHorizontal: 20,
-    marginBottom: 0,
+    marginBottom: 20,
   },
-  searchSectionTitle: {
-    fontFamily: 'outfit-bold',
-    fontSize: 16,
-    color: '#1A1A1A',
-    marginBottom: 10,
-  },
-  searchLabel: {
+  sectionLabel: {
     fontFamily: 'outfit-medium',
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 10,
-  },
-  helperText: {
-    fontFamily: 'outfit',
-    fontSize: 12,
-    color: '#666',
-    marginTop: 8,
-    lineHeight: 16,
-  },
-  searchBarContainer: {
+    fontSize: 13,
+    color: '#8E8E93',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
     marginBottom: 8,
   },
-  searchBar: {
+
+  // ─── Date Selector ───────────────────────────────────
+  dateSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 14,
+    justifyContent: 'space-between',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    height: 48,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    paddingVertical: 14,
   },
-  searchIcon: {
-    marginRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontFamily: 'outfit-medium',
-    fontSize: 16,
-    color: '#333',
-    padding: 0,
-  },
-  clearButton: {
-    marginLeft: 8,
-  },
-  selectedPlaceContainer: {
-    paddingHorizontal: 20,
-    marginTop: 15,
-    marginBottom: 5,
-  },
-  loadingPlaceDetailsContainer: {
+  dateSelectorContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 20,
     gap: 10,
-  },
-  loadingPlaceDetailsText: {
-    fontFamily: 'outfit',
-    fontSize: 14,
-    color: Colors.GRAY,
-  },
-  stayDurationSection: {
-    paddingHorizontal: 20,
-    marginTop: 0,
-    marginBottom: 20,
-  },
-  stayTypeSection: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  stayTypeTitle: {
-    fontFamily: 'outfit-bold',
-    fontSize: 18,
-    color: '#333',
-    marginBottom: 12,
-  },
-  stayTypeOptionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    flexWrap: 'wrap',
-  },
-  stayTypeOption: {
-    flex: 1,
-    minWidth: 90,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: '#f3f4f6',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  stayTypeOptionSelected: {
-    backgroundColor: Colors.PRIMARY || '#FFA53F',
-    borderColor: Colors.PRIMARY || '#FFA53F',
-  },
-  stayTypeOptionText: {
-    fontFamily: 'outfit-medium',
-    fontSize: 14,
-    color: '#666',
-  },
-  stayTypeOptionTextSelected: {
-    color: Colors.WHITE,
-  },
-  comingSoonContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 30,
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 16,
-    gap: 8,
-  },
-  comingSoonText: {
-    fontFamily: 'outfit-bold',
-    fontSize: 16,
-    color: '#666',
-  },
-  comingSoonSubtext: {
-    fontFamily: 'outfit',
-    fontSize: 14,
-    color: '#999',
-  },
-  stayDurationTitle: {
-    fontFamily: 'outfit-bold',
-    fontSize: 16,
-    color: '#1A1A1A',
-    marginBottom: 10,
-  },
-  dateButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    borderRadius: 14,
-    backgroundColor: '#F9FAFB',
-    height: 52,
-  },
-  timeButton: {
-    marginTop: 12,
-  },
-  timeButtonsSection: {
-    paddingHorizontal: 20,
-    marginTop: 15,
-    marginBottom: 10,
-  },
-  timeButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  halfWidthButton: {
-    flex: 1,
-    height: 65,
-  },
-  timeButtonColumn: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: 6,
-  },
-  timeButtonLabel: {
-    fontFamily: 'outfit-medium',
-    fontSize: 12,
-    color: '#666',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  timeButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  timeButtonText: {
-    fontFamily: 'outfit',
-    fontSize: 16,
-    color: '#1a1a1a',
-  },
-  dateButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     flex: 1,
   },
   dateRangeDisplay: {
@@ -1120,228 +908,220 @@ const styles = StyleSheet.create({
     gap: 8,
     flex: 1,
   },
-  dateButtonText: {
+  dateText: {
     fontFamily: 'outfit-medium',
-    fontSize: 14,
-    color: '#1A1A1A',
+    fontSize: 15,
+    color: '#1C1C1E',
   },
-  dateNightsBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
+  datePlaceholder: {
+    fontFamily: 'outfit',
+    fontSize: 15,
+    color: '#C7C7CC',
+  },
+  nightsPill: {
     backgroundColor: '#EDE9FE',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
   },
-  dateNightsText: {
-    fontFamily: 'outfit-medium',
-    fontSize: 10,
+  nightsPillText: {
+    fontFamily: 'outfit-bold',
+    fontSize: 11,
     color: '#6366F1',
   },
-  placeholderText: {
-    color: '#A1A1AA',
+
+  // ─── Search Bar ──────────────────────────────────────
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
+    gap: 8,
   },
-  suggestionsContainer: {
+  searchInput: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 10,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  loadingText: {
     fontFamily: 'outfit',
-    fontSize: 14,
-    color: '#666',
-    marginTop: 10,
+    fontSize: 15,
+    color: '#1C1C1E',
+    padding: 0,
   },
-  errorContainer: {
+
+  // ─── Selected Hotel Card ─────────────────────────────
+  selectedHotelCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+  },
+  selectedHotelIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#EDE9FE',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
   },
-  errorText: {
-    fontFamily: 'outfit',
-    fontSize: 14,
-    color: '#999',
-    marginTop: 10,
-    textAlign: 'center',
+  selectedHotelInfo: {
+    flex: 1,
   },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
+  selectedHotelName: {
     fontFamily: 'outfit-bold',
-    fontSize: 18,
-    color: '#999',
-    marginTop: 15,
+    fontSize: 15,
+    color: '#1C1C1E',
   },
-  emptySubtext: {
+  selectedHotelMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  selectedHotelRating: {
+    fontFamily: 'outfit-medium',
+    fontSize: 13,
+    color: '#6366F1',
+  },
+  selectedHotelAddress: {
+    fontFamily: 'outfit',
+    fontSize: 13,
+    color: '#8E8E93',
+    flex: 1,
+  },
+
+  // ─── Loading Place ───────────────────────────────────
+  loadingPlaceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 10,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+  },
+  loadingPlaceText: {
     fontFamily: 'outfit',
     fontSize: 14,
-    color: '#ccc',
-    marginTop: 5,
+    color: '#8E8E93',
+  },
+
+  // ─── Time Cards ──────────────────────────────────────
+  timeRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  timeCard: {
+    flex: 1,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+  },
+  timeCardLabel: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: '#8E8E93',
+    marginBottom: 4,
+  },
+  timeCardValue: {
+    fontFamily: 'outfit-bold',
+    fontSize: 17,
+    color: '#1C1C1E',
+  },
+
+  // ─── States (loading, error, empty) ──────────────────
+  centeredState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 8,
+  },
+  stateText: {
+    fontFamily: 'outfit',
+    fontSize: 14,
+    color: '#8E8E93',
     textAlign: 'center',
   },
+  stateTextBold: {
+    fontFamily: 'outfit-bold',
+    fontSize: 16,
+    color: '#8E8E93',
+  },
+
+  // ─── Suggestions ─────────────────────────────────────
   suggestionsList: {
-    paddingBottom: 20,
+    paddingHorizontal: 20,
   },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
     gap: 12,
   },
-  suggestionIconContainer: {
-    width: 32,
-    height: 32,
+  suggestionIcon: {
+    width: 34,
+    height: 34,
     borderRadius: 10,
-    backgroundColor: '#F5F3FF',
+    backgroundColor: '#F2F2F7',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  suggestionTextContainer: {
+  suggestionText: {
     flex: 1,
-    marginLeft: 4,
   },
   suggestionName: {
     fontFamily: 'outfit-medium',
-    fontSize: 16,
-    color: '#333',
+    fontSize: 15,
+    color: '#1C1C1E',
   },
   suggestionAddress: {
     fontFamily: 'outfit',
-    fontSize: 14,
-    color: '#999',
-    marginTop: 2,
-  },
-  // Calendar Modal Styles
-  calendarModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  calendarModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    maxHeight: '80%',
-  },
-  calendarModalHandleContainer: {
-    paddingTop: 10,
-    paddingBottom: 6,
-    alignItems: 'center',
-  },
-  calendarModalHandle: {
-    width: 36,
-    height: 4,
-    backgroundColor: '#D4D4D8',
-    borderRadius: 2,
-  },
-  calendarContainer: {
-    height: 292,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  calendarConfirmButton: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 20,
-    paddingVertical: 14,
-    marginTop: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  calendarConfirmButtonText: {
-    color: '#FFFFFF',
-    fontFamily: 'outfit-bold',
-    fontSize: 18,
-  },
-  // Description Modal Styles
-  descriptionModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  descriptionModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-    maxHeight: '90%',
-    height: '90%',
-  },
-  // Add Lodging Button Styles
-  addLodgingButtonContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    paddingBottom: 30,
-    borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
-    backgroundColor: Colors.WHITE,
-  },
-  addLodgingButton: {
-    marginTop: 10,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 20,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addLodgingButtonText: {
-    color: '#FFFFFF',
-    fontFamily: 'outfit-bold',
-    fontSize: 16,
-  },
-  existingHotelCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F3FF',
-    borderRadius: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: '#6366F1',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    gap: 8,
-  },
-  existingHotelInfo: {
-    flex: 1,
-  },
-  existingHotelName: {
-    fontFamily: 'outfit-bold',
-    fontSize: 15,
-    color: '#1A1A1A',
-  },
-  existingHotelMeta: {
-    fontFamily: 'outfit',
-    fontSize: 12,
-    color: '#8B85C1',
+    fontSize: 13,
+    color: '#8E8E93',
     marginTop: 1,
   },
-  addAndDoneButton: {
-    backgroundColor: '#F5F3FF',
-    borderRadius: 20,
-    paddingVertical: 14,
+
+  // ─── Bottom Action Bar ───────────────────────────────
+  bottomBar: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 34,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E5E5EA',
+  },
+  saveButton: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#E0DBFF',
   },
-  addAndDoneButtonText: {
-    color: '#6366F1',
+  saveButtonText: {
+    color: '#FFFFFF',
     fontFamily: 'outfit-bold',
     fontSize: 16,
   },
-  // Added Hotels Section
+  addAnotherButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 4,
+    marginTop: 4,
+  },
+  addAnotherButtonText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 14,
+    color: '#6366F1',
+  },
+
+  // ─── Added Hotels Summary ────────────────────────────
   addedHotelsSection: {
     paddingHorizontal: 20,
     marginBottom: 16,
@@ -1349,19 +1129,17 @@ const styles = StyleSheet.create({
   addedHotelItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#F2F2F7',
     borderRadius: 12,
     padding: 12,
-    marginBottom: 8,
+    marginBottom: 6,
     gap: 10,
-    borderWidth: 1,
-    borderColor: '#DCFCE7',
   },
-  addedHotelIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#DCFCE7',
+  addedHotelCheckIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#34C759',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1371,25 +1149,95 @@ const styles = StyleSheet.create({
   addedHotelName: {
     fontFamily: 'outfit-bold',
     fontSize: 14,
-    color: '#1A1A1A',
+    color: '#1C1C1E',
   },
   addedHotelDates: {
     fontFamily: 'outfit',
     fontSize: 12,
-    color: '#6B7280',
+    color: '#8E8E93',
     marginTop: 1,
   },
-  doneButton: {
-    backgroundColor: '#6366F1',
-    borderRadius: 20,
-    paddingVertical: 12,
+
+  // ─── Calendar Modal ──────────────────────────────────
+  calendarOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  calendarSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingHorizontal: 20,
+    paddingBottom: 34,
+  },
+  calendarHandleBar: {
+    paddingTop: 8,
+    paddingBottom: 4,
+    alignItems: 'center',
+  },
+  calendarHandle: {
+    width: 36,
+    height: 5,
+    backgroundColor: '#E5E5EA',
+    borderRadius: 2.5,
+  },
+  calendarTitle: {
+    fontFamily: 'outfit-bold',
+    fontSize: 17,
+    color: '#1C1C1E',
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  calendarSummary: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
+    gap: 8,
+    marginBottom: 4,
   },
-  doneButtonText: {
+  calendarSummaryText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 14,
+    color: '#8E8E93',
+  },
+  calendarContainer: {
+    height: 300,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  calendarConfirmButton: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 14,
+    paddingVertical: 15,
+    marginTop: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarConfirmDisabled: {
+    backgroundColor: '#F2F2F7',
+  },
+  calendarConfirmText: {
     color: '#FFFFFF',
     fontFamily: 'outfit-bold',
     fontSize: 16,
+  },
+  calendarConfirmTextDisabled: {
+    color: '#C7C7CC',
+  },
+
+  // ─── Description Modal ───────────────────────────────
+  descriptionModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  descriptionModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '90%',
+    height: '90%',
   },
 });
