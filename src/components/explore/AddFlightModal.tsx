@@ -27,6 +27,7 @@ import {
   getFlightStatusColor,
 } from '../../services/flightService';
 import type { Airline, FlightInfo, FlightReservation } from '../../types/flight.types';
+import type { Activity } from '../../types/activity.types';
 import { useCreateTrip } from '../../../context/CreateTripContext';
 
 /**
@@ -34,16 +35,23 @@ import { useCreateTrip } from '../../../context/CreateTripContext';
  * Modal for adding flight reservations with airline autocomplete and flight search
  */
 
+interface TripFlight {
+  activity: Activity;
+  dayNumber: number;
+}
+
 interface AddFlightModalProps {
   visible: boolean;
   onClose: () => void;
   onAddFlight?: (flight: FlightReservation) => void;
+  tripFlights?: TripFlight[];
 }
 
 export const AddFlightModal: React.FC<AddFlightModalProps> = ({
   visible,
   onClose,
   onAddFlight,
+  tripFlights = [],
 }) => {
   const { startDate, endDate } = useCreateTrip();
 
@@ -286,6 +294,116 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
+            {/* Existing Trip Flights */}
+            {tripFlights.length > 0 && (
+              <View style={styles.existingFlightsSection}>
+                <Text style={styles.sectionLabel}>Your Flights</Text>
+                {tripFlights.map((tripFlight, index) => {
+                  const flight = tripFlight.activity;
+                  // Parse "AA100 – JFK → LHR" format
+                  const nameMatch = flight.name?.match(/^(.+?)\s*[–-]\s*([A-Z]{3})\s*→\s*([A-Z]{3})$/);
+                  const flightNum = nameMatch ? nameMatch[1].trim() : null;
+                  const origin = nameMatch ? nameMatch[2] : null;
+                  const dest = nameMatch ? nameMatch[3] : null;
+
+                  // Compute flight date from trip start date + day number
+                  let flightDateStr: string | null = null;
+                  if (startDate) {
+                    const d = new Date(startDate);
+                    d.setDate(d.getDate() + tripFlight.dayNumber - 1);
+                    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    flightDateStr = `${days[d.getDay()]} ${months[d.getMonth()]} ${d.getDate()}`;
+                  }
+
+                  // Extract airline + airport names from notes
+                  let airline: string | undefined;
+                  let originName: string | undefined;
+                  let destName: string | undefined;
+                  if (Array.isArray(flight.notes)) {
+                    flight.notes.forEach((note: string) => {
+                      if (typeof note === 'string') {
+                        if (!note.startsWith('Departs') && !note.startsWith('Arrives') && !note.startsWith('Confirmation') && !note.startsWith('Seat') && !airline) {
+                          airline = note;
+                        }
+                        const depMatch = note.match(/^Departs:\s*(.+?)\s*\([A-Z]{3}\)$/);
+                        if (depMatch) originName = depMatch[1];
+                        const arrMatch = note.match(/^Arrives:\s*(.+?)\s*\([A-Z]{3}\)$/);
+                        if (arrMatch) destName = arrMatch[1];
+                      }
+                    });
+                  }
+
+                  const fmtTime = (t?: string | null) => {
+                    if (!t) return null;
+                    const [h, m] = t.split(':');
+                    const hour = parseInt(h, 10);
+                    const isPM = hour >= 12;
+                    const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                    return `${h12}:${m} ${isPM ? 'PM' : 'AM'}`;
+                  };
+
+                  return (
+                    <View
+                      key={flight.instanceId || index}
+                      style={styles.efCard}
+                    >
+                      {/* Header: icon + flight number + airline */}
+                      <View style={styles.efHeader}>
+                        <View style={styles.efIconWrap}>
+                          <Ionicons name="airplane" size={18} color="#FFF" />
+                        </View>
+                        <View style={styles.efHeaderText}>
+                          <Text style={styles.efName} numberOfLines={1}>
+                            {flightNum || flight.name}
+                          </Text>
+                          {airline && <Text style={styles.efAirline} numberOfLines={1}>{airline}</Text>}
+                        </View>
+                        {flightDateStr && (
+                          <View style={styles.efDatePill}>
+                            <Ionicons name="calendar-outline" size={12} color="#F36406" />
+                            <Text style={styles.efDateText}>{flightDateStr}</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Two-column departure / arrival */}
+                      {origin && dest && (
+                        <View style={styles.efRouteRow}>
+                          <View style={styles.efRouteSide}>
+                            <Text style={styles.efRouteLabel}>DEPARTURE</Text>
+                            <Text style={styles.efRouteCode}>{origin}</Text>
+                            {originName && <Text style={styles.efRouteCity} numberOfLines={1}>{originName}</Text>}
+                            {flight.startTime && <Text style={styles.efRouteTime}>{fmtTime(flight.startTime)}</Text>}
+                          </View>
+                          <View style={styles.efRouteCenter}>
+                            <View style={styles.efRouteDot} />
+                            <View style={styles.efRouteLine} />
+                            <Ionicons name="airplane" size={14} color="#F36406" />
+                            <View style={styles.efRouteLine} />
+                            <View style={styles.efRouteDot} />
+                          </View>
+                          <View style={[styles.efRouteSide, { alignItems: 'flex-end' }]}>
+                            <Text style={styles.efRouteLabel}>ARRIVAL</Text>
+                            <Text style={styles.efRouteCode}>{dest}</Text>
+                            {destName && <Text style={styles.efRouteCity} numberOfLines={1}>{destName}</Text>}
+                            {flight.endTime && <Text style={styles.efRouteTime}>{fmtTime(flight.endTime)}</Text>}
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* Section divider when there are existing flights */}
+            {tripFlights.length > 0 && (
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionLabel}>Add New Flight</Text>
+              </View>
+            )}
+
             {/* Date Section */}
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionLabel}>Date</Text>
@@ -964,6 +1082,21 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#E5E5EA',
   },
+  addAnotherButton: {
+    backgroundColor: '#FFF7F0',
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FEE4CC',
+    marginBottom: 8,
+  },
+  addAnotherButtonText: {
+    color: '#F36406',
+    fontFamily: 'outfit-bold',
+    fontSize: 15,
+  },
   addButton: {
     backgroundColor: '#1C1C1E',
     borderRadius: 14,
@@ -1018,6 +1151,107 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: 'outfit-bold',
     fontSize: 16,
+  },
+
+  // ─── Existing Flights ──────────────────────────────
+  existingFlightsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  efCard: {
+    backgroundColor: '#FFFAF6',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#FEE4CC',
+    padding: 18,
+    marginBottom: 12,
+  },
+  efHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  efIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F36406',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  efHeaderText: {
+    flex: 1,
+  },
+  efName: {
+    fontFamily: 'outfit-semibold',
+    fontSize: 16,
+    color: '#1C1C1E',
+    letterSpacing: -0.2,
+  },
+  efAirline: {
+    fontFamily: 'outfit',
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 1,
+  },
+  efRouteRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF4ED',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#FEE4CC',
+  },
+  efRouteSide: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  efRouteLabel: {
+    fontFamily: 'outfit-medium',
+    fontSize: 10,
+    color: '#AEAEB2',
+    letterSpacing: 1.2,
+    marginBottom: 5,
+  },
+  efRouteCode: {
+    fontFamily: 'outfit-bold',
+    fontSize: 22,
+    color: '#1C1C1E',
+    letterSpacing: -0.3,
+  },
+  efRouteCity: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  efRouteTime: {
+    fontFamily: 'outfit-semibold',
+    fontSize: 13,
+    color: '#F36406',
+    marginTop: 3,
+  },
+  efRouteCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    paddingTop: 18,
+    gap: 3,
+    flexDirection: 'row',
+  },
+  efRouteDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#D1D1D6',
+  },
+  efRouteLine: {
+    width: 8,
+    height: 1.5,
+    backgroundColor: '#E5E5EA',
   },
 });
 

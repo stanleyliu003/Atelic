@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/Colors';
 import { Activity, EnhancedRouteLeg } from '../../types/activity.types';
 import { getMarkerColor } from '../../constants/mapColors';
@@ -183,10 +183,10 @@ export default function DaySummaryCard({
                     <View style={[
                       styles.marker,
                       isHotel && styles.markerHotel,
-                      { borderColor: monotoneBorder }
+                      { borderColor: isHotel ? '#DDD6FE' : monotoneBorder }
                     ]}>
                       {isHotel ? (
-                        <Ionicons name="home" size={10} color={monotoneGray} />
+                        <MaterialIcons name="bed" size={10} color="#6366F1" />
                       ) : (
                         <Text style={[styles.markerNumber, { color: monotoneGray }]}>{activityNumber}</Text>
                       )}

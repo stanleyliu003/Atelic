@@ -71,6 +71,7 @@ interface OverviewContentProps {
   collaborators?: Collaborator[];
   dayRouteLegs?: { [dayNumber: number]: EnhancedRouteLeg[] };
   onCollaboratorsPress?: () => void;
+  onBookingPress?: (activity: Activity) => void;
 }
 
 export default function OverviewContent({
@@ -88,6 +89,7 @@ export default function OverviewContent({
   collaborators,
   dayRouteLegs,
   onCollaboratorsPress,
+  onBookingPress,
 }: OverviewContentProps) {
   const isViewer = currentUserRole === 'viewer';
   const [collaboratorPhotos, setCollaboratorPhotos] = useState<{ [username: string]: string | null }>({});
@@ -158,9 +160,9 @@ export default function OverviewContent({
   });
 
   // Extract unique hotels and flights across all days
-  const allHotels: { name: string; checkIn?: string; checkOut?: string; nights: number }[] = [];
-  const allFlights: { name: string; time?: string }[] = [];
-  const seenHotels = new Set<string>();
+  const allHotels: { name: string; checkIn?: string; checkOut?: string; nights: number; firstDayDate?: Date | null; lastDayDate?: Date | null; activity: Activity }[] = [];
+  const allFlights: { name: string; time?: string; endTime?: string; date?: Date | null; activity: Activity; flightNumber?: string; origin?: string; destination?: string; airline?: string }[] = [];
+  const seenHotels = new Map<string, number>(); // key -> index in allHotels
   const seenFlights = new Set<string>();
 
   sortedDayNumbers.forEach(dayNum => {
@@ -169,20 +171,52 @@ export default function OverviewContent({
       if (a.isLodging === true || a.primaryType === 'lodging') {
         const key = a.name || a.place_id || '';
         if (!seenHotels.has(key)) {
-          seenHotels.add(key);
           const checkIn = a.lodgingCheckIn;
           const checkOut = a.lodgingCheckOut;
           let nights = 0;
           if (checkIn && checkOut) {
             nights = Math.max(0, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)));
           }
-          allHotels.push({ name: a.name, checkIn, checkOut, nights });
+          seenHotels.set(key, allHotels.length);
+          allHotels.push({
+            name: a.name, checkIn, checkOut, nights,
+            firstDayDate: calculateDayDate(startDate, dayNum),
+            lastDayDate: calculateDayDate(startDate, dayNum),
+            activity: a,
+          });
+        } else {
+          // Update last day this hotel appears on
+          const idx = seenHotels.get(key)!;
+          allHotels[idx].lastDayDate = calculateDayDate(startDate, dayNum);
         }
       } else if (a.primaryType === 'flight') {
         const key = a.instanceId || a.name || '';
         if (!seenFlights.has(key)) {
           seenFlights.add(key);
-          allFlights.push({ name: a.name, time: a.startTime });
+          // Parse "AA100 – JFK → LHR" format
+          let flightNumber: string | undefined;
+          let origin: string | undefined;
+          let destination: string | undefined;
+          let airline: string | undefined;
+          const nameMatch = a.name?.match(/^(.+?)\s*[–-]\s*([A-Z]{3})\s*→\s*([A-Z]{3})$/);
+          if (nameMatch) {
+            flightNumber = nameMatch[1].trim();
+            origin = nameMatch[2];
+            destination = nameMatch[3];
+          }
+          // Extract airline from notes (first line is airline name)
+          if (Array.isArray(a.notes)) {
+            const firstNote = a.notes[0];
+            if (firstNote && typeof firstNote === 'string' && !firstNote.startsWith('Departs') && !firstNote.startsWith('Arrives')) {
+              airline = firstNote;
+            }
+          } else if (typeof a.notes === 'string') {
+            const lines = a.notes.split('\n');
+            if (lines[0] && !lines[0].startsWith('Departs') && !lines[0].startsWith('Arrives')) {
+              airline = lines[0];
+            }
+          }
+          allFlights.push({ name: a.name, time: a.startTime, endTime: a.endTime, date: calculateDayDate(startDate, dayNum), activity: a, flightNumber, origin, destination, airline });
         }
       }
     });
@@ -297,7 +331,7 @@ export default function OverviewContent({
           <Text style={styles.sectionHeader}>STAYS & FLIGHTS</Text>
           <View style={styles.bookingsList}>
             {allHotels.map((hotel, i) => (
-              <View key={`hotel-${i}`} style={styles.bookingItem}>
+              <Pressable key={`hotel-${i}`} style={styles.bookingItem} onPress={() => onBookingPress?.(hotel.activity)}>
                 <View style={styles.bookingIconWrap}>
                   <MaterialIcons name="bed" size={14} color="#6366F1" />
                 </View>
@@ -306,24 +340,37 @@ export default function OverviewContent({
                   <Text style={styles.bookingMeta}>
                     {hotel.checkIn && hotel.checkOut
                       ? `${formatShortDate(hotel.checkIn)} → ${formatShortDate(hotel.checkOut)}`
-                      : 'Dates not set'}
+                      : hotel.firstDayDate
+                        ? `${formatShortDate(hotel.firstDayDate.toISOString())}${hotel.lastDayDate && hotel.lastDayDate.getTime() !== hotel.firstDayDate.getTime() ? ` → ${formatShortDate(hotel.lastDayDate.toISOString())}` : ''}`
+                        : 'Dates not set'}
                     {hotel.nights > 0 ? ` · ${hotel.nights}n` : ''}
                   </Text>
                 </View>
-              </View>
+              </Pressable>
             ))}
             {allFlights.map((flight, i) => (
-              <View key={`flight-${i}`} style={styles.bookingItem}>
+              <Pressable key={`flight-${i}`} style={styles.bookingItem} onPress={() => onBookingPress?.(flight.activity)}>
                 <View style={[styles.bookingIconWrap, styles.bookingIconFlight]}>
                   <Ionicons name="airplane" size={12} color="#F36406" />
                 </View>
                 <View style={styles.bookingInfo}>
-                  <Text style={styles.bookingName} numberOfLines={1}>{flight.name}</Text>
-                  {flight.time && (
-                    <Text style={styles.bookingMeta}>{formatTime12h(flight.time)}</Text>
-                  )}
+                  <Text style={styles.bookingName} numberOfLines={1}>
+                    {flight.origin && flight.destination
+                      ? `${flight.origin} → ${flight.destination}`
+                      : flight.name}
+                  </Text>
+                  <Text style={styles.bookingMeta} numberOfLines={1}>
+                    {flight.flightNumber || ''}
+                    {flight.flightNumber && flight.airline ? ' · ' : ''}
+                    {flight.airline || ''}
+                    {(flight.flightNumber || flight.airline) && (flight.date || flight.time) ? ' · ' : ''}
+                    {flight.date ? formatShortDate(flight.date.toISOString()) : ''}
+                    {flight.date && flight.time ? ', ' : ''}
+                    {flight.time ? formatTime12h(flight.time) : ''}
+                    {!flight.flightNumber && !flight.airline && !flight.date && !flight.time ? 'Date not set' : ''}
+                  </Text>
                 </View>
-              </View>
+              </Pressable>
             ))}
           </View>
         </View>
@@ -515,12 +562,12 @@ const styles = StyleSheet.create({
 
   // Bookings section
   bookingsSection: {
-    paddingHorizontal: 16,
     marginTop: 4,
     marginBottom: 4,
   },
   bookingsList: {
     marginTop: 8,
+    paddingHorizontal: 16,
     gap: 6,
   },
   bookingItem: {
@@ -557,4 +604,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8E8E93',
   },
+
 });

@@ -28,7 +28,7 @@ import AddHotelTimeModal from './add_hotel_time_modal';
  * @param {function} onClose - Callback to close modal
  * @param {function} onAddLodging - Callback when adding lodging to trip (receives hotel data)
  */
-export const AddHotelStayModal = ({ visible, onClose, onAddLodging, existingHotel }) => {
+export const AddHotelStayModal = ({ visible, onClose, onAddLodging, existingHotel, tripHotels = [], onEditHotel }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -393,7 +393,73 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging, existingHote
             contentContainerStyle={styles.scrollContentContainer}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Added Hotels Summary */}
+            {/* Existing Trip Hotels */}
+            {tripHotels.length > 0 && !existingHotel && (
+              <View style={styles.existingHotelsSection}>
+                <Text style={styles.sectionLabel}>Your Stays</Text>
+                {tripHotels.map((hotel, index) => {
+                  const ciDate = hotel.lodgingCheckIn ? formatDate(new Date(hotel.lodgingCheckIn)) : null;
+                  const coDate = hotel.lodgingCheckOut ? formatDate(new Date(hotel.lodgingCheckOut)) : null;
+                  const ciTime = hotel.lodgingTime?.checkIn ? formatTime(hotel.lodgingTime.checkIn) : null;
+                  const coTime = hotel.lodgingTime?.checkOut ? formatTime(hotel.lodgingTime.checkOut) : null;
+                  let nights = 0;
+                  if (hotel.lodgingCheckIn && hotel.lodgingCheckOut) {
+                    nights = Math.max(0, Math.round((new Date(hotel.lodgingCheckOut).getTime() - new Date(hotel.lodgingCheckIn).getTime()) / (1000 * 60 * 60 * 24)));
+                  }
+                  return (
+                    <TouchableOpacity
+                      key={hotel.instanceId || hotel.place_id || index}
+                      style={styles.ehCard}
+                      onPress={() => onEditHotel?.(hotel)}
+                      activeOpacity={0.7}
+                    >
+                      {/* Header: icon + name + nights pill */}
+                      <View style={styles.ehHeader}>
+                        <View style={styles.ehIconWrap}>
+                          <MaterialIcons name="bed" size={18} color="#FFF" />
+                        </View>
+                        <Text style={styles.ehName} numberOfLines={2}>{hotel.name}</Text>
+                        {nights > 0 && (
+                          <View style={styles.ehNightsPill}>
+                            <Ionicons name="moon-outline" size={12} color="#6366F1" />
+                            <Text style={styles.ehNightsText}>{nights}n</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Two-column check-in / check-out */}
+                      <View style={styles.ehDatesRow}>
+                        <View style={styles.ehDateSide}>
+                          <Text style={styles.ehDateLabel}>CHECK-IN</Text>
+                          <Text style={styles.ehDateValue}>{ciDate || '—'}</Text>
+                          {ciTime && <Text style={styles.ehTimeValue}>{ciTime}</Text>}
+                        </View>
+                        <View style={styles.ehDateCenter}>
+                          <View style={styles.ehDateDot} />
+                          <View style={styles.ehDateLine} />
+                          <MaterialIcons name="arrow-forward" size={14} color="#6366F1" />
+                          <View style={styles.ehDateLine} />
+                          <View style={styles.ehDateDot} />
+                        </View>
+                        <View style={[styles.ehDateSide, { alignItems: 'flex-end' }]}>
+                          <Text style={styles.ehDateLabel}>CHECK-OUT</Text>
+                          <Text style={styles.ehDateValue}>{coDate || '—'}</Text>
+                          {coTime && <Text style={styles.ehTimeValue}>{coTime}</Text>}
+                        </View>
+                      </View>
+
+                      {/* Tap to edit hint */}
+                      <View style={styles.ehEditHint}>
+                        <Ionicons name="create-outline" size={12} color="#AEAEB2" />
+                        <Text style={styles.ehEditHintText}>Tap to edit</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* Added Hotels Summary (just added in this session) */}
             {addedHotels.length > 0 && (
               <View style={styles.addedHotelsSection}>
                 {addedHotels.map((hotel, index) => (
@@ -409,6 +475,13 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging, existingHote
                     </View>
                   </View>
                 ))}
+              </View>
+            )}
+
+            {/* Section divider when there are existing hotels */}
+            {tripHotels.length > 0 && !existingHotel && (
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionLabel}>Add New Stay</Text>
               </View>
             )}
 
@@ -1119,6 +1192,121 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit-medium',
     fontSize: 14,
     color: '#6366F1',
+  },
+
+  // ─── Existing Trip Hotels ────────────────────────────
+  existingHotelsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  ehCard: {
+    backgroundColor: '#FAFAFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#EEEDFC',
+    padding: 18,
+    marginBottom: 12,
+  },
+  ehHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  ehIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#6366F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ehName: {
+    flex: 1,
+    fontFamily: 'outfit-semibold',
+    fontSize: 16,
+    color: '#1C1C1E',
+    letterSpacing: -0.2,
+  },
+  ehNightsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+  },
+  ehNightsText: {
+    fontFamily: 'outfit-semibold',
+    fontSize: 13,
+    color: '#6366F1',
+  },
+  ehDatesRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F5F3FF',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#EDE9FE',
+  },
+  ehDateSide: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  ehDateLabel: {
+    fontFamily: 'outfit-medium',
+    fontSize: 10,
+    color: '#AEAEB2',
+    letterSpacing: 1.2,
+    marginBottom: 5,
+  },
+  ehDateValue: {
+    fontFamily: 'outfit-bold',
+    fontSize: 15,
+    color: '#1C1C1E',
+    letterSpacing: -0.3,
+  },
+  ehTimeValue: {
+    fontFamily: 'outfit-semibold',
+    fontSize: 13,
+    color: '#6366F1',
+    marginTop: 3,
+  },
+  ehDateCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    paddingTop: 18,
+    gap: 3,
+    flexDirection: 'row',
+  },
+  ehDateDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#D1D1D6',
+  },
+  ehDateLine: {
+    width: 8,
+    height: 1.5,
+    backgroundColor: '#E5E5EA',
+  },
+  ehEditHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 12,
+  },
+  ehEditHintText: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: '#AEAEB2',
   },
 
   // ─── Added Hotels Summary ────────────────────────────

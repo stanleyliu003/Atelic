@@ -22,6 +22,7 @@ import { CategoryModal } from '../../src/components/explore/CategoryModal';
 import { AddHotelStayModal } from '../../src/components/explore/AddHotelStayModal';
 import { AddFlightModal } from '../../src/components/explore/AddFlightModal';
 import FlightDetailModal from '../../src/components/trip-view/flight_detail_modal';
+import HotelDetailModal from '../../src/components/trip-view/hotel_detail_modal';
 import { useActivitySelection } from '../../src/hooks/use_activity_selection';
 import { useDayActivities } from '../../src/hooks/use_day_activities';
 import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
@@ -177,6 +178,8 @@ export default function TripViewMain() {
     const [showActivityDetail, setShowActivityDetail] = useState(false);
     const [showFlightDetailModal, setShowFlightDetailModal] = useState(false);
     const [flightDetailActivity, setFlightDetailActivity] = useState<Activity | null>(null);
+    const [showHotelDetailModal, setShowHotelDetailModal] = useState(false);
+    const [hotelDetailActivity, setHotelDetailActivity] = useState<Activity | null>(null);
 
     // State for selected marker
     const [selectedMarker, setSelectedMarker] = useState<string | null>(null);
@@ -2911,6 +2914,12 @@ export default function TripViewMain() {
             setShowFlightDetailModal(true);
             return;
         }
+        // Hotels get a compact modal with edit support
+        if (activity.isLodging === true || activity.primaryType === 'lodging') {
+            setHotelDetailActivity(activity);
+            setShowHotelDetailModal(true);
+            return;
+        }
         setSelectedActivityForDetail(activity);
         setShowActivityDetail(true);
         // Set selected marker when opening detail view
@@ -3021,24 +3030,42 @@ export default function TripViewMain() {
         }
 
         // Calculate which day numbers correspond to check-in and check-out dates
-        const tripStartDate = new Date(startDate);
-        tripStartDate.setHours(0, 0, 0, 0); // Normalize to midnight
+        // Extract year/month/day as integers, handling Date objects, ISO strings, and moment-like objects
+        const getDateParts = (d: any): [number, number, number] => {
+            // If it has a toDate() method (moment.js or date-fns), convert first
+            if (d && typeof d === 'object' && typeof d.toDate === 'function') {
+                d = d.toDate();
+            }
+            if (d instanceof Date) {
+                return [d.getFullYear(), d.getMonth(), d.getDate()];
+            }
+            // For strings: extract YYYY-MM-DD portion to avoid timezone shift
+            const str = String(d);
+            const datePart = str.split('T')[0];
+            const parts = datePart.split('-').map(Number);
+            return [parts[0], parts[1] - 1, parts[2]]; // month is 0-indexed
+        };
 
-        const checkInDateTime = new Date(checkInDate);
-        checkInDateTime.setHours(0, 0, 0, 0);
+        const [sy, sm, sd] = getDateParts(startDate);
+        const [ciy, cim, cid] = getDateParts(checkInDate);
+        const [coy, com, cod] = getDateParts(checkOutDate);
 
-        const checkOutDateTime = new Date(checkOutDate);
-        checkOutDateTime.setHours(0, 0, 0, 0);
+        const tripStartDate = new Date(sy, sm, sd);
+        const checkInDateTime = new Date(ciy, cim, cid);
+        const checkOutDateTime = new Date(coy, com, cod);
 
-        // Calculate day numbers (day 1 = trip start date)
-        const checkInDayNumber = Math.floor((checkInDateTime.getTime() - tripStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        const checkOutDayNumber = Math.floor((checkOutDateTime.getTime() - tripStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        // Use Math.round to handle any DST edge cases (±1 hour)
+        const checkInDayNumber = Math.round((checkInDateTime.getTime() - tripStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const checkOutDayNumber = Math.round((checkOutDateTime.getTime() - tripStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-        console.log('[trip-view_main] Check-in day:', checkInDayNumber, 'Check-out day:', checkOutDayNumber);
+        console.log('[trip-view_main] startDate raw:', startDate, 'type:', typeof startDate);
+        console.log('[trip-view_main] checkInDate raw:', String(checkInDate), 'type:', typeof checkInDate, 'instanceof Date:', checkInDate instanceof Date);
+        console.log('[trip-view_main] parsed: tripStart=', `${sy}-${sm+1}-${sd}`, 'checkIn=', `${ciy}-${cim+1}-${cid}`, 'checkOut=', `${coy}-${com+1}-${cod}`);
+        console.log('[trip-view_main] Check-in day:', checkInDayNumber, 'Check-out day:', checkOutDayNumber, 'dayCount:', dayCount);
 
-        // Validate day numbers
-        if (checkInDayNumber < 1 || checkInDayNumber > dayCount || checkOutDayNumber < 1 || checkOutDayNumber > dayCount) {
-            console.log('[trip-view_main] Invalid day numbers calculated.');
+        // Validate day numbers (checkout can be dayCount+1 since you check out the morning after)
+        if (checkInDayNumber < 1 || checkInDayNumber > dayCount || checkOutDayNumber < 1 || checkOutDayNumber > dayCount + 1) {
+            console.log('[trip-view_main] Invalid day numbers - checkIn:', checkInDayNumber, 'checkOut:', checkOutDayNumber, 'dayCount:', dayCount);
             Alert.alert('Invalid Dates', 'The selected check-in/check-out dates are outside your trip dates.');
             return;
         }
@@ -3150,7 +3177,9 @@ export default function TripViewMain() {
             checkOutTimeStr: string,
             excludePlaceId: string | null
         ) {
-            for (let dayNumber = checkInDay; dayNumber <= checkOutDay; dayNumber++) {
+            // Clamp checkOutDay to dayCount so we don't add to non-existent days
+            const effectiveCheckOutDay = Math.min(checkOutDay, dayCount);
+            for (let dayNumber = checkInDay; dayNumber <= effectiveCheckOutDay; dayNumber++) {
                 let currentActivities = getDayActivities(dayNumber) || [];
                 // When editing, filter out any remaining instances of the hotel being edited
                 if (excludePlaceId) {
@@ -3171,7 +3200,7 @@ export default function TripViewMain() {
                 );
                 const activitiesToAdd: Activity[] = [];
 
-                if (dayNumber === checkInDay && dayNumber === checkOutDay) {
+                if (dayNumber === checkInDay && dayNumber === effectiveCheckOutDay) {
                     // Same-day stay
                     activitiesToAdd.push({
                         ...hotelActivity,
@@ -3191,7 +3220,7 @@ export default function TripViewMain() {
                         endTime: addHoursToTime(checkInTimeStr, 1),
                     });
                 }
-                else if (dayNumber === checkOutDay) {
+                else if (dayNumber === effectiveCheckOutDay) {
                     // Check-out day: first stop of the day
                     activitiesToAdd.push({
                         ...hotelActivity,
@@ -4441,6 +4470,44 @@ export default function TripViewMain() {
         return map;
     }, [activeTab, dayActivities]);
 
+    // Extract unique hotels across all days for the AddHotelStayModal
+    const tripHotels = useMemo(() => {
+        const seen = new Set<string>();
+        const hotels: Activity[] = [];
+        Object.keys(dayActivities).map(Number).sort((a, b) => a - b).forEach(dayNum => {
+            const acts = dayActivities[dayNum]?.activities || [];
+            acts.forEach((a: Activity) => {
+                if (a.isLodging === true || a.primaryType === 'lodging') {
+                    const key = a.name || a.place_id || '';
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        hotels.push(a);
+                    }
+                }
+            });
+        });
+        return hotels;
+    }, [dayActivities]);
+
+    // Extract unique flights across all days for the AddFlightModal
+    const tripFlights = useMemo(() => {
+        const seen = new Set<string>();
+        const flights: { activity: Activity; dayNumber: number }[] = [];
+        Object.keys(dayActivities).map(Number).sort((a, b) => a - b).forEach(dayNum => {
+            const acts = dayActivities[dayNum]?.activities || [];
+            acts.forEach((a: Activity) => {
+                if (a.primaryType === 'flight') {
+                    const key = a.instanceId || a.name || '';
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        flights.push({ activity: a, dayNumber: dayNum });
+                    }
+                }
+            });
+        });
+        return flights;
+    }, [dayActivities]);
+
     return (
         <View style={styles.fullScreenContainer}>
             {/* Map - always visible behind content */}
@@ -4547,7 +4614,30 @@ export default function TripViewMain() {
                     onDelete={currentUserRole !== 'viewer' ? (activity) => {
                         handleDeleteActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined);
                     } : undefined}
+                    onAddAnotherFlight={currentUserRole !== 'viewer' ? () => {
+                        setShowFlightModal(true);
+                    } : undefined}
                     currentUserRole={currentUserRole}
+                />
+
+                {/* Hotel Detail Compact Modal */}
+                <HotelDetailModal
+                    visible={showHotelDetailModal}
+                    activity={hotelDetailActivity}
+                    onClose={() => {
+                        setShowHotelDetailModal(false);
+                        setHotelDetailActivity(null);
+                    }}
+                    onDelete={currentUserRole !== 'viewer' ? (activity) => {
+                        handleDeleteActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined);
+                    } : undefined}
+                    onEdit={currentUserRole !== 'viewer' ? (activity) => {
+                        setEditingHotel(activity);
+                        setShowHotelModal(true);
+                    } : undefined}
+                    currentUserRole={currentUserRole}
+                    startDate={startDate}
+                    dayNumber={activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined}
                 />
 
                 {/* Tab Content */}
@@ -4573,6 +4663,7 @@ export default function TripViewMain() {
                                     collaborators={collaborators}
                                     dayRouteLegs={dayRouteLegs}
                                     onCollaboratorsPress={handleShareTrip}
+                                    onBookingPress={handleActivityDescriptionCardSelect}
                                 />
                             </View>
                             </Pressable>
@@ -4900,6 +4991,12 @@ export default function TripViewMain() {
                     handleAddLodgingToTrip(lodgingData, removeId);
                 }}
                 existingHotel={editingHotel}
+                tripHotels={tripHotels}
+                onEditHotel={(hotel: Activity) => {
+                    setShowHotelModal(false);
+                    setEditingHotel(hotel);
+                    setTimeout(() => setShowHotelModal(true), 300);
+                }}
             />
 
             {/* Flight Modal - triggered from day schedule header */}
@@ -4910,6 +5007,7 @@ export default function TripViewMain() {
                     handleAddFlightToTrip(flightData);
                     setShowFlightModal(false);
                 }}
+                tripFlights={tripFlights}
             />
 
         </View>
