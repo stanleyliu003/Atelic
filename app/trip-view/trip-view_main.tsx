@@ -4959,7 +4959,7 @@ const styles = StyleSheet.create({
         overflow: 'visible',
     },
     mapBackground: {
-        height: '40%',
+        height: '35%',
         position: 'relative',
     },
     bottomSheet: {

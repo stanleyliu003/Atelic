@@ -1262,8 +1262,7 @@ const styles = StyleSheet.create({
   },
   searchBarContainer: {
     paddingHorizontal: 0,
-    marginBottom: -12,
-    marginTop:-8,
+    marginBottom: 6,
   },
   activityCard: {
     marginBottom: 12,

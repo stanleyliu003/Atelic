@@ -16,10 +16,7 @@
     "s3Key": {
       "Type": "String"
     },
-    "amadeusApiKey": {
-      "Type": "String"
-    },
-    "amadeusApiSecretKey": {
+    "aviationStackApiKey": {
       "Type": "String"
     },
     "storageUserProfilesStorageName": {
@@ -97,11 +94,8 @@
             "STORAGE_USERPROFILESSTORAGE_STREAMARN": {
               "Ref": "storageUserProfilesStorageStreamArn"
             },
-            "Amadeus_API_Key": {
-              "Ref": "amadeusApiKey"
-            },
-            "Amadeus_API_Secret_Key": {
-              "Ref": "amadeusApiSecretKey"
+            "AviationStack_API_Key": {
+              "Ref": "aviationStackApiKey"
             }
           }
         },
