@@ -172,10 +172,10 @@ exports.handler = async (event) => {
     console.log(`[getFlightInfo] Looking up flight: ${flightIata} on ${scheduledDate}`);
 
     // Build AviationStack API URL
+    // Note: flight_date is not supported on free plan, omit it
     const queryParams = new URLSearchParams({
       access_key: AVIATIONSTACK_API_KEY,
-      flight_iata: flightIata,
-      flight_date: scheduledDate
+      flight_iata: flightIata
     });
 
     const apiUrl = `${AVIATIONSTACK_API_BASE}?${queryParams.toString()}`;
@@ -185,7 +185,8 @@ exports.handler = async (event) => {
     const response = await fetch(apiUrl);
 
     if (!response.ok) {
-      console.error(`[getFlightInfo] API error: ${response.status}`);
+      const errorBody = await response.text();
+      console.error(`[getFlightInfo] API error: ${response.status}, body: ${errorBody}`);
       throw new Error(`AviationStack API error: ${response.status}`);
     }
 

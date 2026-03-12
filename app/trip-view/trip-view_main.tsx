@@ -21,6 +21,7 @@ import { AutocompleteModal } from '../../src/components/explore/AutocompleteModa
 import { CategoryModal } from '../../src/components/explore/CategoryModal';
 import { AddHotelStayModal } from '../../src/components/explore/AddHotelStayModal';
 import { AddFlightModal } from '../../src/components/explore/AddFlightModal';
+import FlightDetailModal from '../../src/components/trip-view/flight_detail_modal';
 import { useActivitySelection } from '../../src/hooks/use_activity_selection';
 import { useDayActivities } from '../../src/hooks/use_day_activities';
 import { useTransferActivities } from '../../src/hooks/use_transfer_activities';
@@ -174,6 +175,8 @@ export default function TripViewMain() {
     // State for activity detail view
     const [selectedActivityForDetail, setSelectedActivityForDetail] = useState<Activity | null>(null);
     const [showActivityDetail, setShowActivityDetail] = useState(false);
+    const [showFlightDetailModal, setShowFlightDetailModal] = useState(false);
+    const [flightDetailActivity, setFlightDetailActivity] = useState<Activity | null>(null);
 
     // State for selected marker
     const [selectedMarker, setSelectedMarker] = useState<string | null>(null);
@@ -2902,6 +2905,12 @@ export default function TripViewMain() {
 
     // Handler for activity description card selection
     const handleActivityDescriptionCardSelect = (activity: Activity) => {
+        // Flights get a compact modal instead of full pageSheet
+        if (activity.primaryType === 'flight') {
+            setFlightDetailActivity(activity);
+            setShowFlightDetailModal(true);
+            return;
+        }
         setSelectedActivityForDetail(activity);
         setShowActivityDetail(true);
         // Set selected marker when opening detail view
@@ -4526,6 +4535,20 @@ export default function TripViewMain() {
                         />
                     )}
                 </Modal>
+
+                {/* Flight Detail Compact Modal */}
+                <FlightDetailModal
+                    visible={showFlightDetailModal}
+                    activity={flightDetailActivity}
+                    onClose={() => {
+                        setShowFlightDetailModal(false);
+                        setFlightDetailActivity(null);
+                    }}
+                    onDelete={currentUserRole !== 'viewer' ? (activity) => {
+                        handleDeleteActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined);
+                    } : undefined}
+                    currentUserRole={currentUserRole}
+                />
 
                 {/* Tab Content */}
                 <View style={styles.tabContent}>

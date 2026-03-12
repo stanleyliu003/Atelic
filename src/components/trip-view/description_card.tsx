@@ -51,7 +51,9 @@ const calculateDuration = (startTime: string, endTime: string): string => {
 
   const startMinutes = startHour * 60 + startMin;
   const endMinutes = endHour * 60 + endMin;
-  const diffMinutes = endMinutes - startMinutes;
+  // Handle overnight (e.g., 19:30 → 06:20 next day)
+  let diffMinutes = endMinutes - startMinutes;
+  if (diffMinutes < 0) diffMinutes += 24 * 60;
 
   if (diffMinutes < 60) {
     return `${diffMinutes}m`;
@@ -1446,3 +1448,4 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
 });
+

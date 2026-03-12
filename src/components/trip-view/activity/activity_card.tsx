@@ -1,6 +1,7 @@
 import { Colors } from '../../../../constants/Colors';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -196,14 +197,28 @@ export function ActivityCard({
     }
   };
 
-  // Format the activity name with optional number prefix (hotels don't get numbers)
+  // Format the activity name with optional number prefix (hotels and flights don't get numbers)
   const isHotel = activity.isLodging === true || activity.primaryType === 'lodging';
+  const isFlight = activity.primaryType === 'flight';
   const getDisplayName = () => {
-    if (index !== undefined && index >= 0 && !isHotel) {
+    if (index !== undefined && index >= 0 && !isHotel && !isFlight) {
       return `${index + 1}. ${activity.name}`;
     }
     return activity.name;
   };
+
+  // Parse flight info from activity name and notes
+  const flightParsed = isFlight ? (() => {
+    // Name format: "AA100 – JFK → LHR"
+    const nameMatch = activity.name?.match(/^(.+?)\s*[–-]\s*([A-Z]{3})\s*→\s*([A-Z]{3})$/);
+    const flightNumber = nameMatch?.[1] || activity.name;
+    const originCode = nameMatch?.[2] || '';
+    const destCode = nameMatch?.[3] || '';
+    // First line of notes is airline name
+    const notesLines = (activity.notes || '').split('\n');
+    const airlineName = notesLines[0] || '';
+    return { flightNumber, originCode, destCode, airlineName };
+  })() : null;
 
   // Helper to determine if activity has notes or times
   const hasNotes = !!(activity.notes || activity.startTime || activity.endTime);
@@ -416,6 +431,94 @@ export function ActivityCard({
     </View>
   ) : null;
 
+  const flightCardContent = isFlight ? (
+    <View style={styles.cardOuter}>
+      <TouchableOpacity
+        style={[
+          styles.flightCard,
+          style,
+          (isSelected || duplicateActivityIndicator) && styles.flightCardSelected,
+          disabled && styles.cardDisabled,
+        ]}
+        onPress={handleCardTap}
+        onLongPress={handleLongPress}
+        disabled={disabled}
+        activeOpacity={0.7}
+      >
+        {/* Selection indicator for flights */}
+        {showSelectionIndicator && (
+          <TouchableOpacity
+            style={styles.hotelSelectBtn}
+            onPress={handlePress}
+            disabled={disabled || duplicateActivityIndicator}
+            activeOpacity={0.6}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <View style={[
+              styles.selectCircle,
+              (isSelected || duplicateActivityIndicator) && styles.selectCircleActive,
+            ]}>
+              {(isSelected || duplicateActivityIndicator) && <Text style={styles.selectCheck}>✓</Text>}
+            </View>
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.hotelInfo}>
+          {/* Row 1: airplane icon + flight number */}
+          <View style={styles.hotelNameRow}>
+            <Ionicons name="airplane" size={14} color="#F36406" />
+            <Text style={[styles.hotelName, disabled && styles.nameDisabled]} numberOfLines={1}>
+              {flightParsed?.flightNumber}
+            </Text>
+            {/* Time badge */}
+            {activity.startTime && activity.endTime && (
+              <View style={styles.flightTimeBadge}>
+                <MaterialIcons name="schedule" size={9} color="#F36406" />
+                <Text style={styles.flightTimeText}>
+                  {format12Hour(activity.startTime)} – {format12Hour(activity.endTime)}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Row 2: route + airline */}
+          <View style={styles.hotelMetaRow}>
+            {flightParsed?.originCode && flightParsed?.destCode ? (
+              <Text style={styles.flightRouteText}>
+                {flightParsed.originCode} → {flightParsed.destCode}
+              </Text>
+            ) : null}
+            {flightParsed?.airlineName ? (
+              <>
+                <Text style={styles.hotelMetaDot}>·</Text>
+                <Text style={styles.flightAirlineText} numberOfLines={1}>{flightParsed.airlineName}</Text>
+              </>
+            ) : null}
+          </View>
+
+          {/* Row 3: user notes (skip first line which is airline name) */}
+          {!hideNotesButton && !disabled && currentUserRole !== 'viewer' ? (
+            <TouchableOpacity
+              style={styles.hotelAddNotes}
+              onPress={() => setNotesModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.flightAddNotesLabel}>+ Add notes</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </TouchableOpacity>
+
+      <AddNotesModal
+        visible={notesModalVisible}
+        onClose={() => setNotesModalVisible(false)}
+        activity={activity}
+        activeTab={activeTab}
+        currentUserRole={currentUserRole}
+      />
+    </View>
+  ) : null;
+
   const regularCardContent = (
     <View style={styles.cardOuter}>
       <TouchableOpacity
@@ -536,7 +639,7 @@ export function ActivityCard({
     </View>
   );
 
-  const cardContent = isHotel ? hotelCardContent! : regularCardContent;
+  const cardContent = isHotel ? hotelCardContent! : isFlight ? flightCardContent! : regularCardContent;
 
   if (onSwipeDelete) {
     return (
@@ -834,6 +937,59 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit',
     fontSize: 11,
     color: '#A78BFA',
+  },
+
+  // Flight card (orange theme, mirrors hotel card structure)
+  flightCard: {
+    backgroundColor: '#FFFAF6',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FEECD6',
+    borderLeftWidth: 3,
+    borderLeftColor: '#F36406',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    shadowColor: '#F36406',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  flightCardSelected: {
+    backgroundColor: '#FFF2E5',
+    borderColor: '#F36406',
+    borderWidth: 1.5,
+    borderLeftWidth: 3,
+  },
+  flightTimeBadge: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 2,
+    backgroundColor: '#FFF4ED',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  flightTimeText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 10,
+    color: '#F36406',
+  },
+  flightRouteText: {
+    fontFamily: 'outfit-bold',
+    fontSize: 11,
+    color: '#F36406',
+  },
+  flightAirlineText: {
+    fontFamily: 'outfit',
+    fontSize: 11,
+    color: '#A1A1AA',
+    flexShrink: 1,
+  },
+  flightAddNotesLabel: {
+    fontFamily: 'outfit',
+    fontSize: 11,
+    color: '#FDBA74',
   },
 
   // Swipe delete

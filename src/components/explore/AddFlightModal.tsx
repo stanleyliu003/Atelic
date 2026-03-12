@@ -204,6 +204,19 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
     }
   };
 
+  const resetForm = useCallback(() => {
+    setFlightDate(null);
+    setAirlineQuery('');
+    setAirlineSuggestions([]);
+    setSelectedAirline(null);
+    setFlightNumber('');
+    setFlightInfo(null);
+    setConfirmationNumber('');
+    setSeatNumber('');
+    setError(null);
+    setLoading(false);
+  }, []);
+
   const handleAddFlight = () => {
     if (!flightInfo) return;
     const reservation = createFlightReservation(flightInfo, {
@@ -214,6 +227,18 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
       onAddFlight(reservation);
     }
     handleClose();
+  };
+
+  const handleAddFlightAndAnother = () => {
+    if (!flightInfo) return;
+    const reservation = createFlightReservation(flightInfo, {
+      confirmationNumber: confirmationNumber || undefined,
+      seatNumber: seatNumber || undefined,
+    });
+    if (onAddFlight) {
+      onAddFlight(reservation);
+    }
+    resetForm();
   };
 
   const swipeGesture = Gesture.Pan().onEnd((event) => {
@@ -501,6 +526,13 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
           {/* Bottom Action Bar */}
           {flightInfo && (
             <View style={styles.bottomBar}>
+              <TouchableOpacity
+                style={styles.addAnotherButton}
+                onPress={handleAddFlightAndAnother}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.addAnotherButtonText}>Add & Add Another</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.addButton}
                 onPress={handleAddFlight}

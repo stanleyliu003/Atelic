@@ -99,7 +99,11 @@ export const getFlightInfo = async (flightIdent: string, flightDate?: Date): Pro
       authMode: 'API_KEY',
     });
 
-    const parsed = JSON.parse((result as any).data.getFlightInfo);
+    // AWSJSON double-stringifies: parse until we get an object
+    let parsed = (result as any).data.getFlightInfo;
+    while (typeof parsed === 'string') {
+      parsed = JSON.parse(parsed);
+    }
 
     if (!parsed.success) {
       throw new Error(parsed.error || 'Failed to fetch flight');

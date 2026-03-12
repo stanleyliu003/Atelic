@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Image } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { API, Storage } from 'aws-amplify';
 import { Colors } from '../../../constants/Colors';
 import { Activity, EnhancedRouteLeg } from '../../types/activity.types';
+
+// Helper to format 24h time to 12h
+const formatTime12h = (time24?: string): string => {
+  if (!time24) return '';
+  const [h, m] = time24.split(':');
+  const hour = parseInt(h, 10);
+  const isPM = hour >= 12;
+  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return `${h12}:${m} ${isPM ? 'PM' : 'AM'}`;
+};
 import EditableTripTitle from './EditableTripTitle';
 import DaySummaryCard from './DaySummaryCard';
 import { getUserProfile } from '../../graphql/queries';
@@ -147,7 +157,45 @@ export default function OverviewContent({
     cumulativeCount += nonHotelCount;
   });
 
-  // Calculate day date helper
+  // Extract unique hotels and flights across all days
+  const allHotels: { name: string; checkIn?: string; checkOut?: string; nights: number }[] = [];
+  const allFlights: { name: string; time?: string }[] = [];
+  const seenHotels = new Set<string>();
+  const seenFlights = new Set<string>();
+
+  sortedDayNumbers.forEach(dayNum => {
+    const acts = dayActivities[dayNum]?.activities || [];
+    acts.forEach(a => {
+      if (a.isLodging === true || a.primaryType === 'lodging') {
+        const key = a.name || a.place_id || '';
+        if (!seenHotels.has(key)) {
+          seenHotels.add(key);
+          const checkIn = a.lodgingCheckIn;
+          const checkOut = a.lodgingCheckOut;
+          let nights = 0;
+          if (checkIn && checkOut) {
+            nights = Math.max(0, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)));
+          }
+          allHotels.push({ name: a.name, checkIn, checkOut, nights });
+        }
+      } else if (a.primaryType === 'flight') {
+        const key = a.instanceId || a.name || '';
+        if (!seenFlights.has(key)) {
+          seenFlights.add(key);
+          allFlights.push({ name: a.name, time: a.startTime });
+        }
+      }
+    });
+  });
+
+  const hasBookings = allHotels.length > 0 || allFlights.length > 0;
+
+  const formatShortDate = (iso?: string): string => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[d.getMonth()]} ${d.getDate()}`;
+  };
 
   const formatDateRange = (): string => {
     if (startDate && endDate) {
@@ -242,6 +290,44 @@ export default function OverviewContent({
           </View>
         </View>
       </View>
+
+      {/* Stays & Flights */}
+      {hasBookings && (
+        <View style={styles.bookingsSection}>
+          <Text style={styles.sectionHeader}>STAYS & FLIGHTS</Text>
+          <View style={styles.bookingsList}>
+            {allHotels.map((hotel, i) => (
+              <View key={`hotel-${i}`} style={styles.bookingItem}>
+                <View style={styles.bookingIconWrap}>
+                  <MaterialIcons name="bed" size={14} color="#6366F1" />
+                </View>
+                <View style={styles.bookingInfo}>
+                  <Text style={styles.bookingName} numberOfLines={1}>{hotel.name}</Text>
+                  <Text style={styles.bookingMeta}>
+                    {hotel.checkIn && hotel.checkOut
+                      ? `${formatShortDate(hotel.checkIn)} → ${formatShortDate(hotel.checkOut)}`
+                      : 'Dates not set'}
+                    {hotel.nights > 0 ? ` · ${hotel.nights}n` : ''}
+                  </Text>
+                </View>
+              </View>
+            ))}
+            {allFlights.map((flight, i) => (
+              <View key={`flight-${i}`} style={styles.bookingItem}>
+                <View style={[styles.bookingIconWrap, styles.bookingIconFlight]}>
+                  <Ionicons name="airplane" size={12} color="#F36406" />
+                </View>
+                <View style={styles.bookingInfo}>
+                  <Text style={styles.bookingName} numberOfLines={1}>{flight.name}</Text>
+                  {flight.time && (
+                    <Text style={styles.bookingMeta}>{formatTime12h(flight.time)}</Text>
+                  )}
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* Days Section */}
       <View style={styles.daysSection}>
@@ -425,5 +511,50 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
+  },
+
+  // Bookings section
+  bookingsSection: {
+    paddingHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  bookingsList: {
+    marginTop: 8,
+    gap: 6,
+  },
+  bookingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  bookingIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: '#EDE9FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bookingIconFlight: {
+    backgroundColor: '#FFF4ED',
+  },
+  bookingInfo: {
+    flex: 1,
+    gap: 1,
+  },
+  bookingName: {
+    fontFamily: 'outfit-medium',
+    fontSize: 14,
+    color: '#1C1C1E',
+  },
+  bookingMeta: {
+    fontFamily: 'outfit',
+    fontSize: 12,
+    color: '#8E8E93',
   },
 });
