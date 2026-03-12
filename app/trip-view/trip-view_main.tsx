@@ -1,7 +1,7 @@
 import { Colors } from '../../constants/Colors';
 import { useNavigation, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert, AppState, ActivityIndicator, Pressable } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert, AppState, ActivityIndicator, Pressable, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useCreateTrip } from '../../context/CreateTripContext';
@@ -4507,19 +4507,28 @@ export default function TripViewMain() {
                 />
             )}
 
+                {/* Activity Detail Modal */}
+                <Modal
+                    visible={showActivityDetail && !!selectedActivityForDetail}
+                    animationType="slide"
+                    presentationStyle="pageSheet"
+                    onRequestClose={handleCloseActivityDetail}
+                >
+                    {selectedActivityForDetail && (
+                        <ActivityDetailView
+                            activity={selectedActivityForDetail}
+                            onClose={handleCloseActivityDetail}
+                            showDragIndicator={true}
+                            onDuplicate={(activity) => handleDuplicateActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
+                            onDelete={(activity) => handleDeleteActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
+                            currentUserRole={currentUserRole}
+                            onScrollStateChange={handleActivityDetailScrollStateChange}
+                        />
+                    )}
+                </Modal>
+
                 {/* Tab Content */}
                 <View style={styles.tabContent}>
-                {showActivityDetail && selectedActivityForDetail ? (
-                    <ActivityDetailView
-                        activity={selectedActivityForDetail}
-                        onClose={handleCloseActivityDetail}
-                        showDragIndicator={false}
-                        onDuplicate={(activity) => handleDuplicateActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
-                        onDelete={(activity) => handleDeleteActivity(activity, activeTab.startsWith('day') ? parseInt(activeTab.replace('day', '')) : undefined)}
-                        currentUserRole={currentUserRole}
-                        onScrollStateChange={handleActivityDetailScrollStateChange}
-                    />
-                ) : (
                 <Pressable onPress={handleBackgroundTap} style={{ flex: 1 }}>
                     <>
                         {/* Overview Content */}
@@ -4755,7 +4764,6 @@ export default function TripViewMain() {
                         })()}
                     </>
                 </Pressable>
-                )}
                 </View>
 
                 {/* Transfer Button Container */}

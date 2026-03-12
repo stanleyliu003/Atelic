@@ -81,44 +81,38 @@ export const getFlightInfo = async (flightIdent: string, flightDate?: Date): Pro
 
     console.log('[flightService] Fetching flight from API:', flightIdent, flightDate);
 
-    // Prepare request body
-    const requestBody: { flightIdent: string; flightDate?: string } = {
-      flightIdent: flightIdent.toUpperCase(),
-    };
+    const dateStr = flightDate ? flightDate.toISOString() : new Date().toISOString();
 
-    // Add flight date if provided
-    if (flightDate) {
-      requestBody.flightDate = flightDate.toISOString();
-    }
+    // Call Lambda via GraphQL @function
+    const query = /* GraphQL */ `
+      query GetFlightInfo($flightIdent: String!, $flightDate: String!) {
+        getFlightInfo(flightIdent: $flightIdent, flightDate: $flightDate)
+      }
+    `;
 
-    // Call Lambda function via REST API
-    const response = await API.post('WishlistRestAPI', '/getFlightInfo', {
-      body: requestBody,
-      timeout: 30000, // 30 second timeout
+    const result = await API.graphql({
+      query,
+      variables: {
+        flightIdent: flightIdent.toUpperCase(),
+        flightDate: dateStr,
+      },
+      authMode: 'API_KEY',
     });
 
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to fetch flight');
+    const parsed = JSON.parse((result as any).data.getFlightInfo);
+
+    if (!parsed.success) {
+      throw new Error(parsed.error || 'Failed to fetch flight');
     }
 
-    const flightData: FlightInfo = response.flight;
+    const flightData: FlightInfo = parsed.flight;
 
     // Cache the result
     await cacheFlightData(cacheKey, flightData);
 
     return flightData;
   } catch (error: any) {
-    console.error('[flightService] Error fetching flight:', {
-      message: error.message, 
-      response: error.response,
-      data: error.response?.data,
-      status: error.response?.status,
-    });
-
-
-    if (error.response?.status === 404) {
-      throw new Error('Flight not found. Please check the flight number.');
-    }
+    console.error('[flightService] Error fetching flight:', error.message || error);
 
     throw new Error(error.message || 'Failed to fetch flight information');
   }

@@ -277,7 +277,9 @@ const styles = StyleSheet.create({
     color: '#A1A1AA',
   },
   actionButtons: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
   },
   actionButton: {
     paddingVertical: 7,

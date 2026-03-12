@@ -68,7 +68,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 // Helper function to get the appropriate icon based on travel mode
 const getTravelModeIcon = (travelMode?: string, small = false) => {
   const size = small ? 12 : 17;
-  const color = small ? '#A1A1AA' : Colors.PRIMARY;
+  const color = small ? '#48484A' : Colors.PRIMARY;
   switch (travelMode) {
     case 'WALK':
       return <MaterialIcons name="directions-walk" size={size} color={color} />;
@@ -235,18 +235,28 @@ function RouteInfoCard({
   return (
     <View style={styles.routeCard}>
       {isLoading ? (
-        <ActivityIndicator size="small" color="#E4E4E7" />
+        <ActivityIndicator size="small" color="#E5E5EA" />
       ) : (
-        <TouchableOpacity style={styles.routeRow} onPress={handleRoutePress} activeOpacity={0.5}>
-          <View style={styles.routeLine} />
+        <TouchableOpacity
+          style={styles.routeRow}
+          onPress={handleSettingsPress}
+          activeOpacity={0.7}
+        >
           {getTravelModeIcon(travelMode, true)}
-          <Text style={styles.routeLabel}>
-            {formatDuration(nextActivityDuration)} · {formatDistance(nextActivityDistance)}
-          </Text>
-          <TouchableOpacity onPress={handleSettingsPress} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <FontAwesome5 name="angle-down" size={10} color="#D4D4D8" />
+          <Text style={styles.routeDuration}>{formatDuration(nextActivityDuration)}</Text>
+          <Text style={styles.routeSep}>·</Text>
+          <Text style={styles.routeDistance}>{formatDistance(nextActivityDistance)}</Text>
+          <Ionicons name="chevron-down" size={9} color="#B0B0B0" />
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity
+            style={styles.routeDirectionsBtn}
+            onPress={handleRoutePress}
+            activeOpacity={0.6}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.routeDirectionsText}>Directions</Text>
+            <Ionicons name="arrow-forward" size={9} color="#3B82F6" />
           </TouchableOpacity>
-          <View style={styles.routeLine} />
         </TouchableOpacity>
       )}
     </View>
@@ -836,7 +846,7 @@ const DraggableActivityCard = React.memo(function DraggableActivityCard({
   // Track scroll offset when drag starts to compensate for autoscroll
   const initialScrollY = useSharedValue(0);
 
-  const ITEM_HEIGHT = 169; // Total height: activity card (110px) + route info card (~54px) + margins (5px)
+  const ITEM_HEIGHT = 112; // Total height: activity card (~88px + 12px margin) + route connector (~12px net)
   const MOVEMENT_THRESHOLD = 0.3; // Card must be dragged at least 30% of ITEM_HEIGHT to trigger reorder (~51px)
 
   // Update original index when component re-renders with new index
@@ -1269,25 +1279,40 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   routeCard: {
-    alignItems: 'center',
     justifyContent: 'center',
-    height: 32,
+    height: 18,
+    marginVertical: -3,
+    paddingHorizontal: 6,
   },
   routeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
   },
-  routeLine: {
-    width: 16,
-    height: 1,
-    backgroundColor: '#E4E4E7',
-  },
-  routeLabel: {
+  routeSep: {
     fontFamily: 'outfit',
     fontSize: 11,
-    color: '#A1A1AA',
-    letterSpacing: 0.1,
+    color: '#D4D4D8',
+  },
+  routeDuration: {
+    fontFamily: 'outfit-medium',
+    fontSize: 11,
+    color: '#48484A',
+  },
+  routeDistance: {
+    fontFamily: 'outfit',
+    fontSize: 11,
+    color: '#8E8E93',
+  },
+  routeDirectionsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  routeDirectionsText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 11,
+    color: '#3B82F6',
   },
   autocompleteLoadingContainer: {
     marginTop:  10,

@@ -432,6 +432,7 @@ type AppVersionConfig {
    getFeed(username: String!, nextToken: String, limit: Int): FeedResult @function(name: "getFeed-${env}") @auth(rules: [{ allow: public }])
    getUserStatistics(username: String!): UserStatistics @function(name: "getUserStatistics-${env}") @auth(rules: [{ allow: public }])
    searchUsersPublic(searchTerm: String!, currentUsername: String!): [UserSearchResult] @function(name: "searchUsersPublic-${env}") @auth(rules: [{ allow: public }])
+   getFlightInfo(flightIdent: String!, flightDate: String!): AWSJSON @function(name: "getFlightInfo-${env}") @auth(rules: [{ allow: public }])
  }
 
    input WaypointInput {

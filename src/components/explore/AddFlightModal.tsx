@@ -12,11 +12,10 @@ import {
   View,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import CalendarPicker from 'react-native-calendar-picker';
-import { Colors } from '../../../constants/Colors';
 import {
   searchAirlines,
   getFlightInfo,
@@ -33,10 +32,6 @@ import { useCreateTrip } from '../../../context/CreateTripContext';
 /**
  * AddFlightModal Component
  * Modal for adding flight reservations with airline autocomplete and flight search
- *
- * @param {boolean} visible - Whether modal is visible
- * @param {function} onClose - Callback to close modal
- * @param {function} onAddFlight - Callback when adding flight to trip (receives FlightReservation)
  */
 
 interface AddFlightModalProps {
@@ -50,7 +45,6 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
   onClose,
   onAddFlight,
 }) => {
-  // Get trip dates from context
   const { startDate, endDate } = useCreateTrip();
 
   // Date selection state
@@ -97,17 +91,11 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
     if (!date) return '';
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-    const dayName = days[date.getDay()];
-    const monthName = months[date.getMonth()];
-    const dayNumber = date.getDate();
-
-    return `${dayName} ${monthName} ${dayNumber}`;
+    return `${days[date.getDay()]} ${months[date.getMonth()]} ${date.getDate()}`;
   };
 
   // Handle modal close
   const handleClose = useCallback(() => {
-    // Reset all state when closing
     setFlightDate(null);
     setAirlineQuery('');
     setAirlineSuggestions([]);
@@ -153,10 +141,8 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
     };
   }, [airlineQuery, selectedAirline]);
 
-  // Handle airline query change
   const handleAirlineQueryChange = (text: string) => {
     setAirlineQuery(text);
-    // Clear selected airline when user types
     if (selectedAirline) {
       setSelectedAirline(null);
       setFlightNumber('');
@@ -165,55 +151,39 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
     setError(null);
   };
 
-  // Handle airline selection
   const handleAirlineSelect = (airline: Airline) => {
     setSelectedAirline(airline);
     setAirlineQuery(`${airline.name} · ${airline.iata}`);
     setAirlineSuggestions([]);
-    setFlightNumber(airline.iata); // Pre-fill with airline code
+    setFlightNumber(airline.iata);
     setError(null);
-
-    // Focus on flight number input
     setTimeout(() => {
       flightNumberInputRef.current?.focus();
     }, 100);
   };
 
-  // Handle flight number change
   const handleFlightNumberChange = (text: string) => {
-    if (!selectedAirline) {
-      return;
-    }
-
-    // Auto-format: remove spaces and dashes, uppercase
+    if (!selectedAirline) return;
     const formatted = text.toUpperCase().replace(/[-\s]/g, '');
-
-    // Ensure the IATA code prefix is always present and can't be removed
     if (!formatted.startsWith(selectedAirline.iata)) {
-      // If user tries to delete the prefix, restore it
       setFlightNumber(selectedAirline.iata);
       return;
     }
-
     setFlightNumber(formatted);
     setFlightInfo(null);
     setError(null);
   };
 
-  // Search for flight
   const handleSearchFlight = async () => {
     Keyboard.dismiss();
-
     if (!flightDate) {
       setError('Please select a flight date');
       return;
     }
-
     if (!flightNumber) {
       setError('Please enter a flight number');
       return;
     }
-
     if (!isValidFlightIdent(flightNumber)) {
       setError('Invalid format. Use airline code + number (e.g., AA100)');
       return;
@@ -234,35 +204,29 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
     }
   };
 
-  // Handle adding flight to trip
   const handleAddFlight = () => {
     if (!flightInfo) return;
-
     const reservation = createFlightReservation(flightInfo, {
       confirmationNumber: confirmationNumber || undefined,
       seatNumber: seatNumber || undefined,
     });
-
     if (onAddFlight) {
       onAddFlight(reservation);
     }
-
     handleClose();
   };
 
-  // Swipe down gesture to close
   const swipeGesture = Gesture.Pan().onEnd((event) => {
     if (event.translationY > 100 && event.velocityY > 0) {
       runOnJS(handleClose)();
     }
   });
 
-  // Get status badge color
   const getStatusBadgeStyle = (status: string) => {
     const color = getFlightStatusColor(status);
     return {
-      backgroundColor: color + '20', // 20% opacity
-      borderColor: color,
+      backgroundColor: color + '15',
+      borderColor: color + '40',
     };
   };
 
@@ -270,7 +234,7 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
     <Modal visible={visible} animationType="slide" transparent={true}>
       <View style={styles.modalOverlay}>
         <GestureHandlerRootView style={styles.modalContainer}>
-          {/* Swipeable Drag Indicator */}
+          {/* Drag Indicator */}
           <GestureDetector gesture={swipeGesture}>
             <View style={styles.dragIndicatorContainer}>
               <View style={styles.dragIndicator} />
@@ -279,105 +243,110 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>When are you flying?</Text>
+            <Text style={styles.headerTitle}>Add Flight</Text>
             <TouchableOpacity
+              style={styles.closeButton}
               onPress={handleClose}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="close" size={28} color="#333" />
+              <View style={styles.closeButtonCircle}>
+                <Ionicons name="close" size={16} color="#8E8E93" />
+              </View>
             </TouchableOpacity>
           </View>
 
           <ScrollView
-            style={styles.scrollContainer}
+            style={styles.scrollContent}
+            contentContainerStyle={styles.scrollContentContainer}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Flight Date Section */}
-            <View style={styles.searchSection}>
+            {/* Date Section */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionLabel}>Date</Text>
               <TouchableOpacity
-                style={styles.dateButton}
+                style={styles.dateSelector}
                 onPress={() => setIsCalendarOpen(true)}
+                activeOpacity={0.6}
               >
-                <View style={styles.dateButtonContent}>
-                  <MaterialCommunityIcons name="calendar-clock-outline" size={24} color="black" />
-                  <Text style={[styles.dateButtonText, !flightDate && styles.placeholderText]}>
+                <View style={styles.dateSelectorContent}>
+                  <Ionicons name="calendar-outline" size={18} color={flightDate ? '#1C1C1E' : '#C7C7CC'} />
+                  <Text style={flightDate ? styles.dateText : styles.datePlaceholder}>
                     {flightDate ? formatDateDisplay(flightDate) : 'Select flight date'}
                   </Text>
                 </View>
+                <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
               </TouchableOpacity>
             </View>
 
-            {/* Airline Search Section - Only show when date is selected */}
+            {/* Airline Search Section */}
             {flightDate && (
-              <View style={styles.searchSection}>
-              <Text style={styles.sectionLabel}>Which airline are you flying?</Text>
-              <View style={styles.searchBar}>
-              <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
-                <TextInput
-                  ref={airlineInputRef}
-                  style={styles.searchInput}
-                  value={airlineQuery}
-                  onChangeText={handleAirlineQueryChange}
-                  placeholder="Search airline (e.g., American, AA)"
-                  placeholderTextColor="#999"
-                  returnKeyType="next"
-                  autoCorrect={false}
-                />
-                {airlineQuery.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setAirlineQuery('');
-                      setSelectedAirline(null);
-                      setFlightNumber('');
-                      setFlightInfo(null);
-                    }}
-                    style={styles.clearButton}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Ionicons name="close-circle" size={20} color="#999" />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Airline Suggestions */}
-              {airlineSuggestions.length > 0 && !selectedAirline && (
-                <View style={styles.suggestionsContainer}>
-                  {airlineSuggestions.map((airline) => (
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionLabel}>Airline</Text>
+                <View style={styles.searchBar}>
+                  <Ionicons name="search" size={18} color="#8E8E93" />
+                  <TextInput
+                    ref={airlineInputRef}
+                    style={styles.searchInput}
+                    value={airlineQuery}
+                    onChangeText={handleAirlineQueryChange}
+                    placeholder="Search airline (e.g., American, AA)"
+                    placeholderTextColor="#C7C7CC"
+                    returnKeyType="next"
+                    autoCorrect={false}
+                  />
+                  {airlineQuery.length > 0 && (
                     <TouchableOpacity
-                      key={airline.id}
-                      style={styles.suggestionItem}
-                      onPress={() => handleAirlineSelect(airline)}
-                      activeOpacity={0.7}
+                      onPress={() => {
+                        setAirlineQuery('');
+                        setSelectedAirline(null);
+                        setFlightNumber('');
+                        setFlightInfo(null);
+                      }}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                      <View style={styles.suggestionIconContainer}>
-                        <Ionicons name="airplane" size={18} color="#444" />
-                      </View>
-                      <View style={styles.suggestionTextContainer}>
+                      <Ionicons name="close-circle" size={18} color="#C7C7CC" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Airline Suggestions */}
+                {airlineSuggestions.length > 0 && !selectedAirline && (
+                  <View style={styles.suggestionsList}>
+                    {airlineSuggestions.map((airline) => (
+                      <TouchableOpacity
+                        key={airline.id}
+                        style={styles.suggestionItem}
+                        onPress={() => handleAirlineSelect(airline)}
+                        activeOpacity={0.5}
+                      >
+                        <View style={styles.suggestionIcon}>
+                          <Ionicons name="airplane" size={14} color="#F36406" />
+                        </View>
                         <Text style={styles.suggestionName} numberOfLines={1}>
                           {airline.name}
                         </Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </View>
+                        <Ionicons name="chevron-forward" size={14} color="#D1D1D6" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
             )}
 
-            {/* Flight Number Section - Only show when airline is selected */}
+            {/* Flight Number Section */}
             {flightDate && selectedAirline && (
-              <View style={styles.searchSection}>
-                <Text style={styles.sectionLabel}>Flight number</Text>
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionLabel}>Flight Number</Text>
                 <View style={styles.flightNumberRow}>
-                  <View style={[styles.searchBar, styles.flightNumberInput]}>
+                  <View style={[styles.searchBar, { flex: 1 }]}>
                     <TextInput
                       ref={flightNumberInputRef}
                       style={styles.searchInput}
                       value={flightNumber}
                       onChangeText={handleFlightNumberChange}
                       placeholder="e.g., AA100"
-                      placeholderTextColor="#999"
+                      placeholderTextColor="#C7C7CC"
                       returnKeyType="search"
                       autoCapitalize="characters"
                       autoCorrect={false}
@@ -396,15 +365,14 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
                     {loading ? (
                       <ActivityIndicator size="small" color="#fff" />
                     ) : (
-                      <Ionicons name="search" size={22} color="#fff" />
+                      <Text style={styles.searchButtonText}>Search</Text>
                     )}
                   </TouchableOpacity>
                 </View>
 
-                {/* Error Message */}
                 {error && (
                   <View style={styles.errorContainer}>
-                    <Ionicons name="alert-circle" size={18} color="#DC2626" />
+                    <Ionicons name="alert-circle" size={16} color="#FF3B30" />
                     <Text style={styles.errorText}>{error}</Text>
                   </View>
                 )}
@@ -413,31 +381,22 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
 
             {/* Flight Details Card */}
             {flightInfo && (
-              <View style={styles.flightCardContainer}>
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionLabel}>Flight Details</Text>
                 <View style={styles.flightCard}>
                   {/* Flight Header */}
                   <View style={styles.flightHeader}>
                     <View style={styles.flightHeaderLeft}>
                       <View style={styles.airlineIconContainer}>
-                        <Ionicons name="airplane" size={24} color="#F36406" />
+                        <Ionicons name="airplane" size={18} color="#F36406" />
                       </View>
                       <View>
                         <Text style={styles.flightNumber}>{flightInfo.flightNumber}</Text>
                         <Text style={styles.airlineName}>{flightInfo.airline.name}</Text>
                       </View>
                     </View>
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        getStatusBadgeStyle(flightInfo.status.text),
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.statusText,
-                          { color: getFlightStatusColor(flightInfo.status.text) },
-                        ]}
-                      >
+                    <View style={[styles.statusBadge, getStatusBadgeStyle(flightInfo.status.text)]}>
+                      <Text style={[styles.statusText, { color: getFlightStatusColor(flightInfo.status.text) }]}>
                         {flightInfo.status.text}
                       </Text>
                     </View>
@@ -445,116 +404,109 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
 
                   {/* Flight Route */}
                   <View style={styles.routeContainer}>
-                    {/* Departure */}
                     <View style={styles.airportInfo}>
                       <Text style={styles.airportCode}>{flightInfo.origin.code}</Text>
-                      <Text style={styles.airportCity} numberOfLines={1}>
-                        {flightInfo.origin.city}
-                      </Text>
+                      <Text style={styles.airportCity} numberOfLines={1}>{flightInfo.origin.city}</Text>
                       <Text style={styles.flightTime}>
                         {formatFlightTime(flightInfo.schedule.departureScheduled)}
                       </Text>
                       {flightInfo.origin.terminal && (
-                        <Text style={styles.terminalGate}>
-                          Terminal {flightInfo.origin.terminal}
-                        </Text>
+                        <Text style={styles.terminalGate}>Terminal {flightInfo.origin.terminal}</Text>
                       )}
                       {flightInfo.origin.gate && (
                         <Text style={styles.terminalGate}>Gate {flightInfo.origin.gate}</Text>
                       )}
                     </View>
 
-                    {/* Arrival */}
+                    <View style={styles.routeArrow}>
+                      <View style={styles.routeArrowLine} />
+                      <Ionicons name="airplane" size={14} color="#F36406" />
+                      <View style={styles.routeArrowLine} />
+                    </View>
+
                     <View style={[styles.airportInfo, styles.airportInfoRight]}>
                       <Text style={styles.airportCode}>{flightInfo.destination.code}</Text>
-                      <Text style={styles.airportCity} numberOfLines={1}>
-                        {flightInfo.destination.city}
-                      </Text>
+                      <Text style={styles.airportCity} numberOfLines={1}>{flightInfo.destination.city}</Text>
                       <Text style={styles.flightTime}>
                         {formatFlightTime(flightInfo.schedule.arrivalScheduled)}
                       </Text>
                       {flightInfo.destination.terminal && (
-                        <Text style={styles.terminalGate}>
-                          Terminal {flightInfo.destination.terminal}
-                        </Text>
+                        <Text style={styles.terminalGate}>Terminal {flightInfo.destination.terminal}</Text>
                       )}
                       {flightInfo.destination.gate && (
-                        <Text style={styles.terminalGate}>
-                          Gate {flightInfo.destination.gate}
-                        </Text>
+                        <Text style={styles.terminalGate}>Gate {flightInfo.destination.gate}</Text>
                       )}
                     </View>
                   </View>
 
-                  {/* Flight Date */}
-                  <View style={styles.flightDateContainer}>
-                    <Ionicons name="calendar-outline" size={16} color="#666" />
-                    <Text style={styles.flightDate}>
+                  {/* Flight Date + Aircraft */}
+                  <View style={styles.flightDateRow}>
+                    <Ionicons name="calendar-outline" size={14} color="#8E8E93" />
+                    <Text style={styles.flightDateText}>
                       {formatFlightDate(flightInfo.schedule.departureScheduled)}
                     </Text>
                     {flightInfo.aircraft?.type && (
                       <>
-                        <Text style={styles.dateSeparator}>•</Text>
-                        <Text style={styles.aircraftType}>{flightInfo.aircraft.type}</Text>
+                        <Text style={styles.flightDateSep}>·</Text>
+                        <Text style={styles.flightDateText}>{flightInfo.aircraft.type}</Text>
                       </>
                     )}
                   </View>
                 </View>
+              </View>
+            )}
 
-                {/* Optional Details */}
-                <View style={styles.optionalDetailsSection}>
-                  <Text style={styles.optionalDetailsTitle}>Optional Details</Text>
-
-                  <View style={styles.optionalInputRow}>
-                    <View style={styles.optionalInputContainer}>
-                      <Text style={styles.optionalInputLabel}>Confirmation #</Text>
-                      <TextInput
-                        style={styles.optionalInput}
-                        value={confirmationNumber}
-                        onChangeText={setConfirmationNumber}
-                        placeholder="ABC123"
-                        placeholderTextColor="#999"
-                        autoCapitalize="characters"
-                      />
-                    </View>
-                    <View style={styles.optionalInputContainer}>
-                      <Text style={styles.optionalInputLabel}>Seat</Text>
-                      <TextInput
-                        style={styles.optionalInput}
-                        value={seatNumber}
-                        onChangeText={setSeatNumber}
-                        placeholder="12A"
-                        placeholderTextColor="#999"
-                        autoCapitalize="characters"
-                      />
-                    </View>
+            {/* Optional Details */}
+            {flightInfo && (
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionLabel}>Optional Details</Text>
+                <View style={styles.optionalRow}>
+                  <View style={styles.optionalInputWrap}>
+                    <Text style={styles.optionalLabel}>Confirmation #</Text>
+                    <TextInput
+                      style={styles.optionalInput}
+                      value={confirmationNumber}
+                      onChangeText={setConfirmationNumber}
+                      placeholder="ABC123"
+                      placeholderTextColor="#C7C7CC"
+                      autoCapitalize="characters"
+                    />
+                  </View>
+                  <View style={styles.optionalInputWrap}>
+                    <Text style={styles.optionalLabel}>Seat</Text>
+                    <TextInput
+                      style={styles.optionalInput}
+                      value={seatNumber}
+                      onChangeText={setSeatNumber}
+                      placeholder="12A"
+                      placeholderTextColor="#C7C7CC"
+                      autoCapitalize="characters"
+                    />
                   </View>
                 </View>
               </View>
             )}
 
-            {/* Loading State - Only show when actively searching */}
+            {/* Loading State */}
             {loading && !flightInfo && (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={Colors.PRIMARY} />
-                <Text style={styles.loadingText}>Searching for flight...</Text>
+              <View style={styles.centeredState}>
+                <ActivityIndicator size="small" color="#F36406" />
+                <Text style={styles.stateText}>Searching for flight...</Text>
               </View>
             )}
 
-
-            {/* Bottom padding for scroll */}
             <View style={{ height: 100 }} />
           </ScrollView>
 
-          {/* Add Flight Button - Show when flight info is available */}
+          {/* Bottom Action Bar */}
           {flightInfo && (
-            <View style={styles.addFlightButtonContainer}>
+            <View style={styles.bottomBar}>
               <TouchableOpacity
-                style={styles.addFlightButton}
+                style={styles.addButton}
                 onPress={handleAddFlight}
                 activeOpacity={0.8}
               >
-                <Text style={styles.addFlightButtonText}>Add Flight</Text>
+                <Text style={styles.addButtonText}>Add Flight</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -568,23 +520,21 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
         animationType="slide"
         onRequestClose={() => setIsCalendarOpen(false)}
       >
-        <View style={styles.calendarModalOverlay}>
-          <View style={styles.calendarModalContent}>
-            {/* Top Handle - Swipeable */}
-            <View {...calendarPanResponder.panHandlers} style={styles.calendarModalHandleContainer}>
-              <View style={styles.calendarModalHandle} />
+        <View style={styles.calendarOverlay}>
+          <View style={styles.calendarContent}>
+            <View {...calendarPanResponder.panHandlers} style={styles.calendarHandleContainer}>
+              <View style={styles.calendarHandle} />
             </View>
 
-            {/* Calendar View */}
             <View style={styles.calendarContainer}>
               <CalendarPicker
                 startFromMonday={false}
                 allowRangeSelection={false}
                 minDate={startDate ? new Date(startDate) : new Date(new Date().setHours(0, 0, 0, 0))}
                 maxDate={endDate ? new Date(endDate) : new Date(new Date().setFullYear(new Date().getFullYear() + 3))}
-                todayBackgroundColor="#E8F4FD"
-                todayTextStyle={{ color: '#27BFFF' }}
-                selectedDayColor="#FFA53F"
+                todayBackgroundColor="#EFF6FF"
+                todayTextStyle={{ color: '#3B82F6' }}
+                selectedDayColor="#F36406"
                 selectedDayTextColor="#FFFFFF"
                 selectedStartDate={flightDate}
                 enableSwipe={true}
@@ -592,48 +542,46 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
                 onDateChange={(date) => {
                   setFlightDate(date);
                 }}
-                width={350}
+                width={340}
                 textStyle={{
                   fontFamily: 'outfit',
-                  fontSize: 16,
+                  fontSize: 15,
+                  color: '#1C1C1E',
                 }}
                 monthTitleStyle={{
                   fontFamily: 'outfit-bold',
-                  fontSize: 24,
-                  color: '#1a1a1a',
+                  fontSize: 18,
+                  color: '#1C1C1E',
                 }}
                 yearTitleStyle={{
                   fontFamily: 'outfit-bold',
-                  fontSize: 24,
-                  color: '#1a1a1a',
+                  fontSize: 18,
+                  color: '#1C1C1E',
                 }}
                 dayLabelsWrapper={{
                   borderTopWidth: 0,
                   borderBottomWidth: 0,
                 }}
                 previousComponent={
-                  <Ionicons name="chevron-back" size={24} color="#666666" />
+                  <Ionicons name="chevron-back" size={20} color="#8E8E93" />
                 }
                 nextComponent={
-                  <Ionicons name="chevron-forward" size={24} color="#666666" />
+                  <Ionicons name="chevron-forward" size={20} color="#8E8E93" />
                 }
               />
             </View>
 
-            {/* Confirm Button */}
             <TouchableOpacity
-              style={[
-                styles.calendarConfirmButton,
-                { opacity: flightDate ? 1 : 0.3 }
-              ]}
+              style={[styles.calendarConfirmButton, { opacity: flightDate ? 1 : 0.3 }]}
               onPress={() => {
-                if (flightDate) {
-                  setIsCalendarOpen(false);
-                }
+                if (flightDate) setIsCalendarOpen(false);
               }}
               disabled={!flightDate}
+              activeOpacity={0.8}
             >
-              <Text style={styles.calendarConfirmButtonText}>Confirm</Text>
+              <Text style={styles.calendarConfirmText}>
+                {flightDate ? `Confirm · ${formatDateDisplay(flightDate)}` : 'Select a date'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -643,210 +591,238 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
 };
 
 const styles = StyleSheet.create({
+  // ─── Modal Shell ─────────────────────────────────────
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: Colors.WHITE,
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-    height: '85%',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    height: '92%',
   },
   dragIndicatorContainer: {
     width: '100%',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingTop: 30,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   dragIndicator: {
-    width: 40,
+    width: 36,
     height: 5,
-    backgroundColor: '#D1D5DB',
-    borderRadius: 3,
+    backgroundColor: '#E5E5EA',
+    borderRadius: 2.5,
   },
+
+  // ─── Header ──────────────────────────────────────────
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 15,
+    paddingTop: 6,
+    paddingBottom: 14,
   },
   headerTitle: {
     fontFamily: 'outfit-bold',
-    fontSize: 20,
-    color: '#333',
+    fontSize: 17,
+    color: '#1C1C1E',
+    textAlign: 'center',
   },
-  scrollContainer: {
+  closeButton: {
+    position: 'absolute',
+    right: 16,
+  },
+  closeButtonCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F2F2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ─── Scroll Content ──────────────────────────────────
+  scrollContent: {
     flex: 1,
-    paddingHorizontal: 20,
   },
-  searchSection: {
+  scrollContentContainer: {
+    paddingBottom: 20,
+  },
+
+  // ─── Sections ────────────────────────────────────────
+  sectionContainer: {
+    paddingHorizontal: 20,
     marginBottom: 20,
   },
   sectionLabel: {
-    fontFamily: 'outfit-bold',
-    fontSize: 20,
-    color: '#333',
-    marginBottom: 12,
+    fontFamily: 'outfit-medium',
+    fontSize: 13,
+    color: '#8E8E93',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 8,
   },
+
+  // ─── Date Selector ───────────────────────────────────
+  dateSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  dateSelectorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dateText: {
+    fontFamily: 'outfit-medium',
+    fontSize: 15,
+    color: '#1C1C1E',
+  },
+  datePlaceholder: {
+    fontFamily: 'outfit',
+    fontSize: 15,
+    color: '#C7C7CC',
+  },
+
+  // ─── Search Bar ──────────────────────────────────────
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    height: 55,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  searchIcon: {
-    marginRight: 10,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
-    fontFamily: 'outfit-medium',
-    fontSize: 16,
-    color: '#333',
+    fontFamily: 'outfit',
+    fontSize: 15,
+    color: '#1C1C1E',
     padding: 0,
   },
-  clearButton: {
-    marginLeft: 8,
-  },
-  suggestionsContainer: {
-    marginTop: 8,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    overflow: 'hidden',
+
+  // ─── Suggestions ─────────────────────────────────────
+  suggestionsList: {
+    marginTop: 4,
   },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
+    gap: 12,
   },
-  suggestionIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f5f5f5',
+  suggestionIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#FFF4ED',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
-  },
-  suggestionTextContainer: {
-    flex: 1,
   },
   suggestionName: {
-    fontFamily: 'outfit',
+    fontFamily: 'outfit-medium',
     fontSize: 15,
-    color: '#333',
+    color: '#1C1C1E',
+    flex: 1,
   },
+
+  // ─── Flight Number ───────────────────────────────────
   flightNumberRow: {
     flexDirection: 'row',
     gap: 10,
   },
-  flightNumberInput: {
-    flex: 1,
-  },
   searchButton: {
-    width: 55,
-    height: 55,
-    borderRadius: 20,
-    backgroundColor: '#F36406',
+    height: 44,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: '#1C1C1E',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#F36406',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
   },
   searchButtonDisabled: {
-    backgroundColor: '#ccc',
-    shadowOpacity: 0,
+    backgroundColor: '#D1D1D6',
   },
+  searchButtonText: {
+    fontFamily: 'outfit-bold',
+    fontSize: 15,
+    color: '#FFFFFF',
+  },
+
+  // ─── Error ───────────────────────────────────────────
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 10,
-    paddingHorizontal: 5,
     gap: 6,
   },
   errorText: {
     fontFamily: 'outfit',
-    fontSize: 14,
-    color: '#DC2626',
+    fontSize: 13,
+    color: '#FF3B30',
   },
-  flightCardContainer: {
-    marginTop: 10,
-  },
+
+  // ─── Flight Card ─────────────────────────────────────
   flightCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 14,
+    padding: 16,
   },
   flightHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   flightHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   airlineIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: '#FFF4ED',
     alignItems: 'center',
     justifyContent: 'center',
   },
   flightNumber: {
     fontFamily: 'outfit-bold',
-    fontSize: 18,
-    color: '#333',
+    fontSize: 16,
+    color: '#1C1C1E',
   },
   airlineName: {
     fontFamily: 'outfit',
-    fontSize: 14,
-    color: '#666',
+    fontSize: 13,
+    color: '#8E8E93',
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
     borderWidth: 1,
   },
   statusText: {
     fontFamily: 'outfit-medium',
-    fontSize: 12,
+    fontSize: 11,
   },
+
+  // ─── Route ───────────────────────────────────────────
   routeContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 14,
   },
   airportInfo: {
     flex: 1,
@@ -856,168 +832,141 @@ const styles = StyleSheet.create({
   },
   airportCode: {
     fontFamily: 'outfit-bold',
-    fontSize: 28,
-    color: '#333',
+    fontSize: 24,
+    color: '#1C1C1E',
   },
   airportCity: {
     fontFamily: 'outfit',
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 1,
   },
   flightTime: {
     fontFamily: 'outfit-medium',
-    fontSize: 16,
-    color: '#333',
-    marginTop: 8,
+    fontSize: 15,
+    color: '#1C1C1E',
+    marginTop: 6,
   },
   terminalGate: {
     fontFamily: 'outfit',
-    fontSize: 12,
+    fontSize: 11,
     color: '#F36406',
-    marginTop: 4,
+    marginTop: 2,
   },
-
-  flightDateContainer: {
+  routeArrow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    paddingTop: 10,
+    paddingHorizontal: 6,
+    gap: 4,
   },
-  flightDate: {
-    fontFamily: 'outfit',
-    fontSize: 14,
-    color: '#666',
+  routeArrowLine: {
+    width: 12,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#D1D1D6',
   },
-  dateSeparator: {
-    color: '#ccc',
-    marginHorizontal: 4,
-  },
-  aircraftType: {
-    fontFamily: 'outfit',
-    fontSize: 14,
-    color: '#666',
-  },
-  optionalDetailsSection: {
-    marginTop: 20,
-  },
-  optionalDetailsTitle: {
-    fontFamily: 'outfit-medium',
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
-  },
-  optionalInputRow: {
+
+  // ─── Flight Date ─────────────────────────────────────
+  flightDateRow: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    gap: 5,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E5E5EA',
   },
-  optionalInputContainer: {
+  flightDateText: {
+    fontFamily: 'outfit',
+    fontSize: 13,
+    color: '#8E8E93',
+  },
+  flightDateSep: {
+    fontFamily: 'outfit',
+    fontSize: 13,
+    color: '#D1D1D6',
+  },
+
+  // ─── Optional Details ────────────────────────────────
+  optionalRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  optionalInputWrap: {
     flex: 1,
   },
-  optionalInputLabel: {
+  optionalLabel: {
     fontFamily: 'outfit',
     fontSize: 12,
-    color: '#999',
+    color: '#8E8E93',
     marginBottom: 6,
   },
   optionalInput: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F2F2F7',
     borderRadius: 12,
-    paddingHorizontal: 15,
+    paddingHorizontal: 14,
     paddingVertical: 12,
     fontFamily: 'outfit-medium',
     fontSize: 15,
-    color: '#333',
+    color: '#1C1C1E',
   },
-  loadingContainer: {
+
+  // ─── States ──────────────────────────────────────────
+  centeredState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: 40,
+    gap: 8,
   },
-  loadingText: {
+  stateText: {
     fontFamily: 'outfit',
     fontSize: 14,
-    color: '#666',
-    marginTop: 15,
+    color: '#8E8E93',
   },
-  addFlightButtonContainer: {
+
+  // ─── Bottom Bar ──────────────────────────────────────
+  bottomBar: {
     paddingHorizontal: 20,
-    paddingVertical: 15,
-    paddingBottom: 30,
-    borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
-    backgroundColor: Colors.WHITE,
+    paddingTop: 12,
+    paddingBottom: 34,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E5E5EA',
   },
-  addFlightButton: {
-    backgroundColor: '#F36406',
-    borderRadius: 25,
-    paddingVertical: 16,
+  addButton: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  addFlightButtonText: {
+  addButtonText: {
     color: '#FFFFFF',
     fontFamily: 'outfit-bold',
-    fontSize: 18,
-  },
-  // Date button styles
-  dateButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 15,
-    borderWidth: 0,
-    borderRadius: 20,
-    backgroundColor: 'white',
-    height: 55,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  dateButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  dateButtonText: {
-    fontFamily: 'outfit',
     fontSize: 16,
-    color: '#1a1a1a',
   },
-  placeholderText: {
-    color: '#999999',
-  },
-  // Calendar Modal Styles
-  calendarModalOverlay: {
+
+  // ─── Calendar Modal ──────────────────────────────────
+  calendarOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'flex-end',
   },
-  calendarModalContent: {
+  calendarContent: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     paddingHorizontal: 20,
     paddingBottom: 40,
     maxHeight: '80%',
   },
-  calendarModalHandleContainer: {
+  calendarHandleContainer: {
     paddingVertical: 12,
     alignItems: 'center',
   },
-  calendarModalHandle: {
-    width: 40,
+  calendarHandle: {
+    width: 36,
     height: 4,
-    backgroundColor: '#D1D5DB',
+    backgroundColor: '#E5E5EA',
     borderRadius: 2,
   },
   calendarContainer: {
@@ -1026,19 +975,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   calendarConfirmButton: {
-    backgroundColor: '#F36406',
-    borderRadius: 25,
-    paddingVertical: 16,
-    marginTop: 35,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 14,
+    paddingVertical: 15,
+    marginTop: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  calendarConfirmButtonText: {
+  calendarConfirmText: {
     color: '#FFFFFF',
     fontFamily: 'outfit-bold',
-    fontSize: 18,
+    fontSize: 16,
   },
 });
 
 export default AddFlightModal;
-

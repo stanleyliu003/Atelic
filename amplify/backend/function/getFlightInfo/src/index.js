@@ -183,36 +183,26 @@ exports.handler = async (event) => {
   try {
     console.log(`[getFlightInfo] Event: ${JSON.stringify(event)}`);
 
-    // Parse request body
-    const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
-    const { flightIdent, flightDate } = body;
+    // Support both REST API (event.body) and GraphQL @function (event.arguments) formats
+    const isGraphQL = !!event.arguments;
+    let flightIdent, flightDate;
+    if (isGraphQL) {
+      flightIdent = event.arguments.flightIdent;
+      flightDate = event.arguments.flightDate;
+    } else {
+      const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+      flightIdent = body.flightIdent;
+      flightDate = body.flightDate;
+    }
 
     if (!flightIdent) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          success: false,
-          error: 'Flight number is required'
-        })
-      };
+      if (isGraphQL) return JSON.stringify({ success: false, error: 'Flight number is required' });
+      return { statusCode: 400, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: JSON.stringify({ success: false, error: 'Flight number is required' }) };
     }
 
     if (!flightDate) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          success: false,
-          error: 'Flight date is required'
-        })
-      };
+      if (isGraphQL) return JSON.stringify({ success: false, error: 'Flight date is required' });
+      return { statusCode: 400, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: JSON.stringify({ success: false, error: 'Flight date is required' }) };
     }
 
     // Parse flight identifier
@@ -220,17 +210,8 @@ exports.handler = async (event) => {
     try {
       parsedFlight = parseFlightIdent(flightIdent);
     } catch (err) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          success: false,
-          error: err.message
-        })
-      };
+      if (isGraphQL) return JSON.stringify({ success: false, error: err.message });
+      return { statusCode: 400, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: JSON.stringify({ success: false, error: err.message }) };
     }
 
     console.log(`[getFlightInfo] Parsed flight: ${parsedFlight.carrierCode}${parsedFlight.flightNumber} on ${flightDate}`);
@@ -241,17 +222,8 @@ exports.handler = async (event) => {
       accessToken = await getAmadeusAccessToken();
     } catch (err) {
       console.error('[getFlightInfo] Authentication error:', err);
-      return {
-        statusCode: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          success: false,
-          error: 'Failed to authenticate with flight data provider'
-        })
-      };
+      if (isGraphQL) return JSON.stringify({ success: false, error: 'Failed to authenticate with flight data provider' });
+      return { statusCode: 500, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: JSON.stringify({ success: false, error: 'Failed to authenticate with flight data provider' }) };
     }
 
     // Format date for Amadeus (YYYY-MM-DD)
@@ -289,31 +261,14 @@ exports.handler = async (event) => {
       }
 
       if (response.status === 404) {
-        return {
-          statusCode: 404,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            success: false,
-            error: 'Flight not found for the specified date'
-          })
-        };
+        if (isGraphQL) return JSON.stringify({ success: false, error: 'Flight not found for the specified date' });
+        return { statusCode: 404, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: JSON.stringify({ success: false, error: 'Flight not found for the specified date' }) };
       }
 
       if (response.status === 400) {
-        return {
-          statusCode: 400,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            success: false,
-            error: errorDetails || 'Invalid flight request. Please check the flight number and date.'
-          })
-        };
+        const msg = errorDetails || 'Invalid flight request. Please check the flight number and date.';
+        if (isGraphQL) return JSON.stringify({ success: false, error: msg });
+        return { statusCode: 400, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: JSON.stringify({ success: false, error: msg }) };
       }
 
       throw new Error(`Amadeus API error: ${response.status}${errorDetails ? ` - ${errorDetails}` : ''}`);
@@ -326,47 +281,39 @@ exports.handler = async (event) => {
     const flightData = transformAmadeusResponse(data, parsedFlight.carrierCode, parsedFlight.flightNumber);
 
     if (!flightData) {
+      if (isGraphQL) {
+        return JSON.stringify({ success: false, error: 'No flight data available for the specified date' });
+      }
       return {
         statusCode: 404,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          success: false,
-          error: 'No flight data available for the specified date'
-        })
+        headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ success: false, error: 'No flight data available for the specified date' })
       };
     }
 
     console.log(`[getFlightInfo] Successfully fetched flight: ${parsedFlight.carrierCode}${parsedFlight.flightNumber}`);
 
+    const result = { success: true, flight: flightData };
+    if (isGraphQL) {
+      return JSON.stringify(result);
+    }
     return {
       statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        success: true,
-        flight: flightData
-      })
+      headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+      body: JSON.stringify(result)
     };
 
   } catch (error) {
     console.error('[getFlightInfo] Error:', error);
 
+    const errorResult = { success: false, error: 'Failed to fetch flight information', message: error.message };
+    if (event.arguments) {
+      return JSON.stringify(errorResult);
+    }
     return {
       statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        success: false,
-        error: 'Failed to fetch flight information',
-        message: error.message
-      })
+      headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+      body: JSON.stringify(errorResult)
     };
   }
 };

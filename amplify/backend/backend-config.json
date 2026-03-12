@@ -42,14 +42,6 @@
           ],
           "category": "function",
           "resourceName": "wishlistAnalyzer"
-        },
-        {
-          "attributes": [
-            "Name",
-            "Arn"
-          ],
-          "category": "function",
-          "resourceName": "getFlightInfo"
         }
       ],
       "providerPlugin": "awscloudformation",

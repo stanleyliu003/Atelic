@@ -15,22 +15,6 @@
     {
       "cloudFormationParameterName": "amadeusApiSecretKey",
       "environmentVariableName": "Amadeus_API_Secret_Key"
-    },
-    {
-      "cloudFormationParameterName": "amadeusApiKey",
-      "environmentVariableName": "Amadeus_API_Key"
-    },
-    {
-      "cloudFormationParameterName": "amadeusApiSecretKey",
-      "environmentVariableName": "Amadeus_API_Secret_Key"
-    },
-    {
-      "cloudFormationParameterName": "amadeusApiKey",
-      "environmentVariableName": "Amadeus_API_Key"
-    },
-    {
-      "cloudFormationParameterName": "amadeusApiSecretKey",
-      "environmentVariableName": "Amadeus_API_Secret_Key"
     }
   ]
 }
