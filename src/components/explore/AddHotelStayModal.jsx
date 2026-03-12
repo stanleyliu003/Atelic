@@ -435,11 +435,11 @@ export const AddHotelStayModal = ({ visible, onClose, onAddLodging, existingHote
                           {ciTime && <Text style={styles.ehTimeValue}>{ciTime}</Text>}
                         </View>
                         <View style={styles.ehDateCenter}>
-                          <View style={styles.ehDateDot} />
                           <View style={styles.ehDateLine} />
-                          <MaterialIcons name="arrow-forward" size={14} color="#6366F1" />
+                          <View style={styles.ehDateConnectorIcon}>
+                            <Ionicons name="chevron-forward" size={10} color="#6366F1" />
+                          </View>
                           <View style={styles.ehDateLine} />
-                          <View style={styles.ehDateDot} />
                         </View>
                         <View style={[styles.ehDateSide, { alignItems: 'flex-end' }]}>
                           <Text style={styles.ehDateLabel}>CHECK-OUT</Text>
@@ -1200,23 +1200,28 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   ehCard: {
-    backgroundColor: '#FAFAFF',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#EEEDFC',
-    padding: 18,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
     marginBottom: 12,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F0EEFF',
   },
   ehHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
+    gap: 12,
+    marginBottom: 14,
   },
   ehIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     backgroundColor: '#6366F1',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1232,12 +1237,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#F0EEFF',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E0E7FF',
   },
   ehNightsText: {
     fontFamily: 'outfit-semibold',
@@ -1247,12 +1250,10 @@ const styles = StyleSheet.create({
   ehDatesRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#F5F3FF',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 1,
-    borderColor: '#EDE9FE',
+    backgroundColor: '#F8F7FF',
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
   },
   ehDateSide: {
     flex: 1,
@@ -1280,21 +1281,24 @@ const styles = StyleSheet.create({
   ehDateCenter: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
-    paddingTop: 18,
+    paddingHorizontal: 8,
+    paddingTop: 16,
     gap: 3,
     flexDirection: 'row',
   },
-  ehDateDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#D1D1D6',
+  ehDateConnectorIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#EEEDFC',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   ehDateLine: {
-    width: 8,
+    width: 12,
     height: 1.5,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: '#E0DDFC',
+    borderRadius: 1,
   },
   ehEditHint: {
     flexDirection: 'row',

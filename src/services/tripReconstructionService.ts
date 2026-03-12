@@ -150,7 +150,8 @@ function applyAddOperation(
         const newActivities = [...existingDay.activities];
         newActivities.splice(insertIndex + 1, 0, ...activitiesToAdd);
         // Enforce lodging anchors when adding activities during reconstruction
-        const enforcedActivities = enforceLodgingAnchors(newActivities);
+        const totalDays = Object.keys(state.dayActivities).length;
+        const enforcedActivities = enforceLodgingAnchors(newActivities, dayNumber, totalDays);
         return {
           ...state,
           dayActivities: {
@@ -167,7 +168,8 @@ function applyAddOperation(
     // Default: append to end
     const updatedActivities = [...existingDay.activities, ...activitiesToAdd];
     // Enforce lodging anchors when adding activities during reconstruction
-    const enforcedActivities = enforceLodgingAnchors(updatedActivities);
+    const totalDays = Object.keys(state.dayActivities).length;
+    const enforcedActivities = enforceLodgingAnchors(updatedActivities, dayNumber, totalDays);
     return {
       ...state,
       dayActivities: {
@@ -517,7 +519,9 @@ function applyMoveOperation(
         ? toDay.activities
         : [...toDay.activities, activity];
       // Enforce lodging anchors when moving activities to a day during reconstruction
-      const enforcedActivities = enforceLodgingAnchors(updatedActivities);
+      const totalDaysForMove = Object.keys(newState.dayActivities).length;
+      const toDayNumber = Number(toLocation);
+      const enforcedActivities = enforceLodgingAnchors(updatedActivities, toDayNumber, totalDaysForMove);
 
       newState.dayActivities = {
         ...newState.dayActivities,

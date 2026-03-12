@@ -10,12 +10,15 @@ export function useDayActivities() {
     setDayActivities,
   } = useCreateTrip();
 
-  const addActivityToDay = useCallback((activity: Activity, dayNumber: number) => {
+  const addActivityToDay = useCallback((activity: Activity, dayNumber: number, position?: 'start' | 'end') => {
     setDayActivities((prev: any) => {
       const currentActivities = prev[dayNumber]?.activities || [];
-      const updatedActivities = [...currentActivities, activity];
+      const updatedActivities = position === 'start'
+        ? [activity, ...currentActivities]
+        : [...currentActivities, activity];
+      const totalDays = Object.keys(prev).length;
       // Enforce lodging anchors when adding new activities (e.g., from "add places" button)
-      const enforcedActivities = enforceLodgingAnchors(updatedActivities);
+      const enforcedActivities = enforceLodgingAnchors(updatedActivities, dayNumber, totalDays);
 
       return {
         ...prev,
@@ -81,7 +84,8 @@ export function useDayActivities() {
         ...activities,
       ];
       // Enforce lodging anchors when transferring activities (e.g., from different tabs)
-      const updatedTargetActivities = enforceLodgingAnchors(targetDayActivities);
+      const totalDays = Object.keys(newDayActivities).length;
+      const updatedTargetActivities = enforceLodgingAnchors(targetDayActivities, dayNumber, totalDays);
 
       newDayActivities[dayNumber] = {
         ...newDayActivities[dayNumber],

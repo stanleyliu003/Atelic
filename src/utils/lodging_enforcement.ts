@@ -15,7 +15,11 @@ export function isLodgingActivity(activity: Activity): boolean {
  * @param activities - Array of activities for a day
  * @returns Reordered array with lodging at correct positions
  */
-export function enforceLodgingAnchors(activities: Activity[]): Activity[] {
+export function enforceLodgingAnchors(
+  activities: Activity[],
+  dayNumber?: number,
+  totalDays?: number,
+): Activity[] {
   if (!activities || activities.length === 0) {
     return activities;
   }
@@ -32,8 +36,35 @@ export function enforceLodgingAnchors(activities: Activity[]): Activity[] {
     }
   });
 
-  // If no lodging, return as-is
+  // Reorder non-lodging: flights go to start on day 1, end on last day
+  const isFirstDay = dayNumber === 1;
+  const isLastDay = dayNumber != null && totalDays != null && dayNumber === totalDays;
+
+  if (isFirstDay || isLastDay) {
+    const flights: Activity[] = [];
+    const regular: Activity[] = [];
+    nonLodgingActivities.forEach(a => {
+      if (a.primaryType === 'flight') {
+        flights.push(a);
+      } else {
+        regular.push(a);
+      }
+    });
+    if (flights.length > 0) {
+      nonLodgingActivities.length = 0;
+      if (isFirstDay) {
+        nonLodgingActivities.push(...flights, ...regular);
+      } else {
+        nonLodgingActivities.push(...regular, ...flights);
+      }
+    }
+  }
+
+  // If no lodging, return with flight reordering applied
   if (lodgingActivities.length === 0) {
+    if (isFirstDay || isLastDay) {
+      return nonLodgingActivities.length > 0 ? nonLodgingActivities : activities;
+    }
     return activities;
   }
 
@@ -76,6 +107,7 @@ export function enforceAllDayLodgingAnchors(dayActivities: {
   [dayNumber: number]: { dayNumber: number; activities: Activity[]; encodedPolyline?: string };
 }): typeof dayActivities {
   const updatedDayActivities = { ...dayActivities };
+  const totalDays = Object.keys(updatedDayActivities).length;
 
   Object.keys(updatedDayActivities).forEach(dayKey => {
     const dayNumber = Number(dayKey);
@@ -84,7 +116,7 @@ export function enforceAllDayLodgingAnchors(dayActivities: {
     if (dayData && dayData.activities) {
       updatedDayActivities[dayNumber] = {
         ...dayData,
-        activities: enforceLodgingAnchors(dayData.activities),
+        activities: enforceLodgingAnchors(dayData.activities, dayNumber, totalDays),
       };
     }
   });

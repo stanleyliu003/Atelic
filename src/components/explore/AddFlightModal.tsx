@@ -377,11 +377,11 @@ export const AddFlightModal: React.FC<AddFlightModalProps> = ({
                             {flight.startTime && <Text style={styles.efRouteTime}>{fmtTime(flight.startTime)}</Text>}
                           </View>
                           <View style={styles.efRouteCenter}>
-                            <View style={styles.efRouteDot} />
                             <View style={styles.efRouteLine} />
-                            <Ionicons name="airplane" size={14} color="#F36406" />
+                            <View style={styles.efRouteConnectorIcon}>
+                              <Ionicons name="airplane" size={10} color="#F36406" />
+                            </View>
                             <View style={styles.efRouteLine} />
-                            <View style={styles.efRouteDot} />
                           </View>
                           <View style={[styles.efRouteSide, { alignItems: 'flex-end' }]}>
                             <Text style={styles.efRouteLabel}>ARRIVAL</Text>
@@ -1159,23 +1159,28 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   efCard: {
-    backgroundColor: '#FFFAF6',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#FEE4CC',
-    padding: 18,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
     marginBottom: 12,
+    shadowColor: '#F36406',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#FFF0E6',
   },
   efHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
+    gap: 12,
+    marginBottom: 14,
   },
   efIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     backgroundColor: '#F36406',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1198,12 +1203,10 @@ const styles = StyleSheet.create({
   efRouteRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#FFF4ED',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 1,
-    borderColor: '#FEE4CC',
+    backgroundColor: '#FFF8F3',
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
   },
   efRouteSide: {
     flex: 1,
@@ -1237,21 +1240,38 @@ const styles = StyleSheet.create({
   efRouteCenter: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
-    paddingTop: 18,
+    paddingHorizontal: 8,
+    paddingTop: 16,
     gap: 3,
     flexDirection: 'row',
   },
-  efRouteDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#D1D1D6',
+  efRouteConnectorIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFEEDD',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   efRouteLine: {
-    width: 8,
+    width: 12,
     height: 1.5,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: '#FDDCBE',
+    borderRadius: 1,
+  },
+  efDatePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF4ED',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  efDateText: {
+    fontFamily: 'outfit-semibold',
+    fontSize: 13,
+    color: '#F36406',
   },
 });
 

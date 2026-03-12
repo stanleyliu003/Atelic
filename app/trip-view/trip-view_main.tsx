@@ -3342,12 +3342,15 @@ export default function TripViewMain() {
             ].filter(Boolean).join('\n'),
         };
 
-        addActivityToDay(flightActivity, targetDay);
+        // Position flight based on day: day 1 → start, last day → end
+        const totalDays = getDayCount();
+        const position = targetDay === 1 ? 'start' as const : targetDay === totalDays ? 'end' as const : undefined;
+        addActivityToDay(flightActivity, targetDay, position);
 
         const addOp = createOperation('add', 'day', [flightActivity], targetDay);
         queueSave(addOp);
 
-        console.log('[trip-view_main] Flight added to day', targetDay, ':', flightInfo.flightNumber);
+        console.log('[trip-view_main] Flight added to day', targetDay, '(position:', position || 'default', '):', flightInfo.flightNumber);
     };
 
     // Handler for saving search results (new direct flow)
@@ -5122,13 +5125,13 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     wishlistSearchBarContainer: {
-        marginBottom: -15,
+        marginBottom: 0,
     },
     wishlistContent: {
         paddingBottom: 20,
     },
     categoriesSection: {
-        marginTop: -10,
+        marginTop: 10,
         marginBottom: 20,
     },
     categoriesTitle: {

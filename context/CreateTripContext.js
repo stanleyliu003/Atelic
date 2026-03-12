@@ -4,6 +4,7 @@ import { randomUUID } from 'expo-crypto';
 import { retrieveTripFromCloud, listUserTripsFromCloud } from '../src/services/lambdaService';
 import { generateCategoryActivities as generateCategoryActivitiesGraphQL } from '../src/services/generateCategoryActivities';
 import { ensureActivitiesHaveInstanceIds } from '../src/utils/activityInstanceId';
+import { enforceAllDayLodgingAnchors } from '../src/utils/lodging_enforcement';
 
 // Define the shape of our context data
 const CreateTripContext = createContext();
@@ -141,7 +142,9 @@ export const CreateTripProvider = ({ children }) => {
             // Keep activities in their original order when restoring from cloud
             activitiesByDay[day.dayNumber] = { activities: day.activities || [] };
         });
-        setDayActivities(activitiesByDay);
+        // Enforce lodging anchors and flight positioning on restore
+        const enforced = enforceAllDayLodgingAnchors(activitiesByDay);
+        setDayActivities(enforced);
     };
 
     // Direct setter for dayActivities (if used elsewhere)
