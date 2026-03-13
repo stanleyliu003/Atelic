@@ -566,19 +566,10 @@ export function ActivityCard({
         <View style={styles.info}>
           {/* Top row: name + time badge or clock button on right */}
           <View style={styles.nameRow}>
-            <Text style={[styles.name, disabled && styles.nameDisabled]} numberOfLines={2}>
+            <Text style={[styles.name, disabled && styles.nameDisabled]} numberOfLines={1}>
               {getDisplayName()}
             </Text>
-            {activity.startTime && activity.endTime ? (
-              <TouchableOpacity
-                style={styles.timeBadge}
-                onPress={() => !disabled && currentUserRole !== 'viewer' && setNotesModalVisible(true)}
-                activeOpacity={0.6}
-              >
-                <MaterialIcons name="schedule" size={10} color="#3B82F6" />
-                <Text style={styles.timeText}>{format12Hour(activity.startTime)} – {format12Hour(activity.endTime)}</Text>
-              </TouchableOpacity>
-            ) : !hideNotesButton && !disabled && currentUserRole !== 'viewer' ? (
+            {!activity.startTime && !activity.endTime && !hideNotesButton && !disabled && currentUserRole !== 'viewer' ? (
               <TouchableOpacity
                 style={styles.clockBtn}
                 onPress={() => setNotesModalVisible(true)}
@@ -590,19 +581,31 @@ export function ActivityCard({
             ) : null}
           </View>
 
-          <View style={styles.meta}>
-            {activity.rating && (
-              <>
-                <FontAwesome name="star" size={10} color="#F59E0B" />
-                <Text style={styles.rating}>{activity.rating}</Text>
-              </>
-            )}
-            {activity.rating && activity.primary_type_display_name && (
-              <Text style={styles.metaDot}>·</Text>
-            )}
-            {activity.primary_type_display_name && (
-              <Text style={styles.type} numberOfLines={1}>{activity.primary_type_display_name}</Text>
-            )}
+          <View style={styles.metaRow}>
+            <View style={styles.meta}>
+              {activity.rating && (
+                <>
+                  <FontAwesome name="star" size={10} color="#F59E0B" />
+                  <Text style={styles.rating}>{activity.rating}</Text>
+                </>
+              )}
+              {activity.rating && activity.primary_type_display_name && (
+                <Text style={styles.metaDot}>·</Text>
+              )}
+              {activity.primary_type_display_name && (
+                <Text style={styles.type} numberOfLines={1}>{activity.primary_type_display_name}</Text>
+              )}
+            </View>
+            {activity.startTime && activity.endTime ? (
+              <TouchableOpacity
+                style={styles.timeBadge}
+                onPress={() => !disabled && currentUserRole !== 'viewer' && setNotesModalVisible(true)}
+                activeOpacity={0.6}
+              >
+                <MaterialIcons name="schedule" size={9} color="#3B82F6" />
+                <Text style={styles.timeText}>{format12Hour(activity.startTime)} – {format12Hour(activity.endTime)}</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
 
           {/* Notes row */}
@@ -672,8 +675,8 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    borderRadius: 16,
-    height: 88,
+    borderRadius: 14,
+    height: 76,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#F0F0F0',
@@ -694,15 +697,15 @@ const styles = StyleSheet.create({
 
   // Photo
   photoWrap: {
-    width: 88,
-    height: 88,
+    width: 76,
+    height: 76,
     position: 'relative',
   },
   photo: {
-    width: 88,
-    height: 88,
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
+    width: 76,
+    height: 76,
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
   },
   photoDisabled: {
     opacity: 0.5,
@@ -737,7 +740,7 @@ const styles = StyleSheet.create({
   // Info section
   info: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 5,
     paddingLeft: 12,
     paddingRight: 12,
     justifyContent: 'center',
@@ -750,11 +753,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   name: {
-    fontFamily: 'outfit-bold',
-    fontSize: 15,
+    fontFamily: 'outfit-medium',
+    fontSize: 13.5,
     color: '#1A1A1A',
-    lineHeight: 19,
-    letterSpacing: -0.2,
+    lineHeight: 17,
+    letterSpacing: -0.1,
     flex: 1,
   },
   clockBtn: {
@@ -770,11 +773,18 @@ const styles = StyleSheet.create({
     color: '#B0B0B0',
   },
 
-  // Meta line: ★ 4.9 · Category
+  // Meta row: rating/category on left, time badge on right
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
   meta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    flexShrink: 1,
   },
   rating: {
     fontFamily: 'outfit-medium',
@@ -799,14 +809,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     backgroundColor: '#EFF6FF',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 8,
-    marginTop: -2,
+    paddingHorizontal: 6,
+    paddingVertical: 2.5,
+    borderRadius: 6,
   },
   timeText: {
     fontFamily: 'outfit-medium',
-    fontSize: 10,
+    fontSize: 9,
     color: '#3B82F6',
   },
 

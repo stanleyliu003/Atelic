@@ -156,7 +156,6 @@ export function DaySchedule({
               activeOpacity={0.7}
             >
               <MaterialIcons name="flight" size={14} color="#F36406" />
-              <Text style={styles.addFlightButtonText}>Add Flight</Text>
             </TouchableOpacity>
           )}
           {/* Add Hotel Button - show when no lodging exists and user can edit */}
@@ -167,7 +166,6 @@ export function DaySchedule({
               activeOpacity={0.7}
             >
               <MaterialIcons name="bed" size={14} color="#6366F1" />
-              <Text style={styles.addHotelButtonText}>Add Stay</Text>
             </TouchableOpacity>
           )}
           {/* Optimize Route Button - commented out for now
@@ -182,29 +180,6 @@ export function DaySchedule({
           )} */}
         </View>
       </View>
-
-      {/* Hotel Summary Banner */}
-      {lodgingActivity && (
-        <TouchableOpacity
-          style={styles.hotelBanner}
-          onPress={() => onAddHotel?.(lodgingActivity)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.hotelBannerLeft}>
-            <MaterialIcons name="bed" size={13} color="#6366F1" />
-            <Text style={styles.hotelBannerName} numberOfLines={1}>{lodgingActivity.name}</Text>
-          </View>
-          <View style={styles.hotelBannerRight}>
-            <Text style={styles.hotelBannerContext}>{hotelContextLabel}</Text>
-            {hotelNights > 0 && (
-              <View style={styles.hotelBannerDot} />
-            )}
-            {hotelNights > 0 && (
-              <Text style={styles.hotelBannerNightsText}>{hotelNights} {hotelNights === 1 ? 'night' : 'nights'}</Text>
-            )}
-          </View>
-        </TouchableOpacity>
-      )}
 
       {/* Activities List - handles its own scrolling, SearchBar is inside at top */}
       <ActivityList
@@ -307,38 +282,26 @@ const styles = StyleSheet.create({
 
   // Add Flight button
   addFlightButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     backgroundColor: '#FFF7ED',
     borderWidth: 1,
     borderColor: '#FEDCBA',
-  },
-  addFlightButtonText: {
-    fontFamily: 'outfit-medium',
-    fontSize: 12,
-    color: '#F36406',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Add Hotel button
   addHotelButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     backgroundColor: '#F5F3FF',
     borderWidth: 1,
     borderColor: '#E0DBFF',
-  },
-  addHotelButtonText: {
-    fontFamily: 'outfit-medium',
-    fontSize: 12,
-    color: '#6366F1',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Hotel banner

@@ -57,12 +57,20 @@ function formatDate(dateString) {
 /**
  * Transform AviationStack API response to app format
  */
-function transformResponse(apiData, carrierCode, flightNumber) {
+function transformResponse(apiData, carrierCode, flightNumber, scheduledDate) {
   if (!apiData || !apiData.data || apiData.data.length === 0) {
     return null;
   }
 
-  const flight = apiData.data[0];
+  // If multiple results, try to find the one matching the requested date
+  let flight = apiData.data[0];
+  if (apiData.data.length > 1 && scheduledDate) {
+    const match = apiData.data.find(f => {
+      const depDate = (f.departure?.scheduled || '').split('T')[0];
+      return depDate === scheduledDate;
+    });
+    if (match) flight = match;
+  }
   const dep = flight.departure || {};
   const arr = flight.arrival || {};
   const airlineData = flight.airline || {};
@@ -172,10 +180,10 @@ exports.handler = async (event) => {
     console.log(`[getFlightInfo] Looking up flight: ${flightIata} on ${scheduledDate}`);
 
     // Build AviationStack API URL
-    // Note: flight_date is not supported on free plan, omit it
     const queryParams = new URLSearchParams({
       access_key: AVIATIONSTACK_API_KEY,
-      flight_iata: flightIata
+      flight_iata: flightIata,
+      flight_date: scheduledDate
     });
 
     const apiUrl = `${AVIATIONSTACK_API_BASE}?${queryParams.toString()}`;
@@ -203,7 +211,7 @@ exports.handler = async (event) => {
     }
 
     // Transform response to app format
-    const flightData = transformResponse(data, parsedFlight.carrierCode, parsedFlight.flightNumber);
+    const flightData = transformResponse(data, parsedFlight.carrierCode, parsedFlight.flightNumber, scheduledDate);
 
     if (!flightData) {
       return makeResponse(isGraphQL, 404, {

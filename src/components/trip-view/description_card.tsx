@@ -581,7 +581,7 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
         </View>
 
         {/* Activity Name */}
-        <Text style={styles.activityNameMain}>{liveActivity.name}</Text>
+        <Text style={styles.activityNameMain} numberOfLines={1}>{liveActivity.name}</Text>
 
         {/* Rating and Review Count */}
         {liveActivity.rating && (

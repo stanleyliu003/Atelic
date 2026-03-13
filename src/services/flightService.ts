@@ -259,19 +259,27 @@ export const createFlightReservation = (
 
 /**
  * Format flight time for display
- * @param isoString - ISO date string from API
+ * AviationStack returns local airport times with misleading +00:00 offset,
+ * so we extract the time portion directly from the ISO string.
+ * @param isoString - ISO date string from API (local airport time with +00:00)
  * @returns Formatted time string (e.g., "2:30 PM")
  */
 export const formatFlightTime = (isoString: string | null | undefined): string => {
   if (!isoString) return '--:--';
 
   try {
-    const date = new Date(isoString);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+    // Extract time directly from ISO string (don't convert through Date which shifts timezone)
+    const timePart = isoString.split('T')[1];
+    if (timePart) {
+      const [hourStr, minuteStr] = timePart.substring(0, 5).split(':');
+      let hour = parseInt(hourStr, 10);
+      const minute = minuteStr;
+      const period = hour >= 12 ? 'PM' : 'AM';
+      if (hour === 0) hour = 12;
+      else if (hour > 12) hour -= 12;
+      return `${hour}:${minute} ${period}`;
+    }
+    return '--:--';
   } catch {
     return '--:--';
   }

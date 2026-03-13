@@ -124,7 +124,7 @@ export function useDayActivities() {
   }, [setDayActivities, dayActivities]);
 
   const getDayActivities = useCallback((dayNumber: number): Activity[] => {
-    return dayActivities[dayNumber]?.activities || [];
+    return (dayActivities[dayNumber]?.activities || []).filter((a: Activity) => a && a.name);
   }, [dayActivities]);
 
   const getAllDayActivities = useCallback((): Activity[] => {
@@ -140,7 +140,7 @@ export function useDayActivities() {
         ...prev,
         [dayNumber]: {
           ...prev[dayNumber],
-          activities: newOrder,
+          activities: newOrder.filter((a: Activity) => a && a.name),
         },
       };
     });

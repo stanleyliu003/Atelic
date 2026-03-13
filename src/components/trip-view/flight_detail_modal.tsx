@@ -32,20 +32,6 @@ const formatTo12Hour = (time24: string): string => {
   return `${hour}:${minute} ${period}`;
 };
 
-const calculateDuration = (startTime: string, endTime: string): string => {
-  const [startHour, startMin] = startTime.split(':').map(Number);
-  const [endHour, endMin] = endTime.split(':').map(Number);
-  const startMinutes = startHour * 60 + startMin;
-  const endMinutes = endHour * 60 + endMin;
-  let diffMinutes = endMinutes - startMinutes;
-  if (diffMinutes < 0) diffMinutes += 24 * 60;
-  if (diffMinutes < 60) {
-    return `${diffMinutes}m`;
-  }
-  const hours = Math.floor(diffMinutes / 60);
-  const mins = diffMinutes % 60;
-  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-};
 
 const FlightDetailModal: React.FC<FlightDetailModalProps> = ({
   visible,
@@ -106,9 +92,8 @@ const FlightDetailModal: React.FC<FlightDetailModalProps> = ({
   const seatLine = notesLines.find(l => l.startsWith('Seat:'));
   const confirmation = confirmationLine?.replace('Confirmation: ', '') || '';
   const seat = seatLine?.replace('Seat: ', '') || '';
-  const duration = activity.startTime && activity.endTime
-    ? calculateDuration(activity.startTime, activity.endTime)
-    : '';
+  const durationLine = notesLines.find(l => l.startsWith('Duration:'));
+  const duration = durationLine?.replace('Duration: ', '') || '';
 
   const handleDelete = () => {
     if (onDelete && activity) {

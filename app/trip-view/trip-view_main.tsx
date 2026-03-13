@@ -2006,7 +2006,7 @@ export default function TripViewMain() {
         return JSON.stringify(
             activities
                 .map(a => ({ name: a.name, lat: a.lat, lng: a.lng }))
-                .sort((a, b) => a.name.localeCompare(b.name))
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
         );
     }
 
@@ -3263,7 +3263,7 @@ export default function TripViewMain() {
                         ...otherCheckins,
                     ];
                 }
-                else if (dayNumber === checkOutDay) {
+                else if (dayNumber === effectiveCheckOutDay) {
                     // New hotel checkout first, then activities, then other hotel check-ins
                     newOrder = [
                         ...otherCheckouts,
@@ -3278,7 +3278,7 @@ export default function TripViewMain() {
                         ...otherCheckouts,
                         activitiesToAdd[0],
                         ...regularActivities,
-                        activitiesToAdd[1],
+                        ...(activitiesToAdd[1] ? [activitiesToAdd[1]] : []),
                         ...otherCheckins,
                     ];
                 }
@@ -3315,14 +3315,78 @@ export default function TripViewMain() {
         }
 
         const { flightInfo } = flightData;
-        const departureTime = new Date(flightInfo.schedule.departureScheduled);
-        const arrivalTime = new Date(flightInfo.schedule.arrivalScheduled);
 
-        const formatTime = (date: Date) => {
-            const hours = date.getHours().toString().padStart(2, '0');
-            const minutes = date.getMinutes().toString().padStart(2, '0');
-            return `${hours}:${minutes}`;
+        // Extract local time from AviationStack ISO string
+        // AviationStack returns local airport times with misleading +00:00 offset,
+        // so we extract the time portion directly from the string (e.g. "T15:45:00+00:00" → "15:45")
+        const extractLocalTime = (isoString: string): string => {
+            try {
+                const timePart = isoString.split('T')[1];
+                if (timePart) {
+                    return timePart.substring(0, 5);
+                }
+                return '00:00';
+            } catch {
+                return '00:00';
+            }
         };
+
+        // Calculate flight duration using timezone-aware UTC conversion
+        // Since AviationStack returns local times with +00:00, we need to convert
+        // each time to real UTC using the airport's timezone, then compute the diff
+        const calcFlightDuration = (depISO: string, arrISO: string, depTZ?: string, arrTZ?: string): string => {
+            try {
+                // If no timezones, we can't compute duration accurately
+                if (!depTZ || !arrTZ) return '';
+
+                // Get the local time components from the ISO strings
+                const depLocal = extractLocalTime(depISO);
+                const arrLocal = extractLocalTime(arrISO);
+                const depDatePart = depISO.split('T')[0];
+                const arrDatePart = arrISO.split('T')[0];
+
+                // Create reference dates and use Intl to find UTC offset for each timezone
+                // We compare the local time the API gave us to figure out the actual UTC time
+                const getUTCFromLocal = (datePart: string, timePart: string, tz: string): number => {
+                    const [year, month, day] = datePart.split('-').map(Number);
+                    const [hour, minute] = timePart.split(':').map(Number);
+                    // Create a Date in UTC with the local time values
+                    const guessUTC = Date.UTC(year, month - 1, day, hour, minute);
+                    // Format that UTC timestamp in the target timezone to see what local time it maps to
+                    const formatted = new Intl.DateTimeFormat('en-US', {
+                        hour: '2-digit', minute: '2-digit', hour12: false,
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        timeZone: tz,
+                    }).formatToParts(new Date(guessUTC));
+                    const fHour = parseInt(formatted.find(p => p.type === 'hour')?.value || '0');
+                    const fMinute = parseInt(formatted.find(p => p.type === 'minute')?.value || '0');
+                    // The difference tells us the UTC offset
+                    const localMinutes = hour * 60 + minute;
+                    const formattedMinutes = fHour * 60 + fMinute;
+                    const offsetMinutes = formattedMinutes - localMinutes;
+                    // Adjust: actual UTC = guessUTC - offset
+                    return guessUTC - offsetMinutes * 60000;
+                };
+
+                const depUTC = getUTCFromLocal(depDatePart, depLocal, depTZ);
+                const arrUTC = getUTCFromLocal(arrDatePart, arrLocal, arrTZ);
+                const diffMs = arrUTC - depUTC;
+                if (diffMs <= 0) return '';
+                const totalMin = Math.round(diffMs / 60000);
+                const hours = Math.floor(totalMin / 60);
+                const mins = totalMin % 60;
+                if (hours === 0) return `${mins}m`;
+                return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+            } catch {
+                return '';
+            }
+        };
+
+        const depScheduled = flightInfo.schedule.departureScheduled;
+        const arrScheduled = flightInfo.schedule.arrivalScheduled;
+        const departureLocal = extractLocalTime(depScheduled);
+        const arrivalLocal = extractLocalTime(arrScheduled);
+        const flightDuration = calcFlightDuration(depScheduled, arrScheduled, flightInfo.origin.timezone, flightInfo.destination.timezone);
 
         const flightActivity: Activity = {
             instanceId: flightData.instanceId,
@@ -3330,12 +3394,13 @@ export default function TripViewMain() {
             primaryType: 'flight',
             lat: null,
             lng: null,
-            startTime: formatTime(departureTime),
-            endTime: formatTime(arrivalTime),
+            startTime: departureLocal,
+            endTime: arrivalLocal,
             notes: [
                 `${flightInfo.airline.name}`,
                 `Departs: ${flightInfo.origin.name} (${flightInfo.origin.code})`,
                 `Arrives: ${flightInfo.destination.name} (${flightInfo.destination.code})`,
+                flightDuration ? `Duration: ${flightDuration}` : null,
                 flightData.confirmationNumber ? `Confirmation: ${flightData.confirmationNumber}` : null,
                 flightData.seatNumber ? `Seat: ${flightData.seatNumber}` : null,
                 flightData.notes || null,
