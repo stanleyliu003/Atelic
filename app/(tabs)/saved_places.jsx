@@ -3,7 +3,7 @@ import { API } from 'aws-amplify';
 import { Auth } from 'aws-amplify';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import {
   ActivityIndicator,
   Dimensions,
@@ -19,10 +19,12 @@ import {
 } from 'react-native';
 import { getSavedPlacesDetailed } from '../../src/graphql/customQueries';
 import { deleteSavedCity, deleteSavedCountry } from '../../src/graphql/mutations';
-import { CitySavedPlacesModal } from '../../src/components/saved-places/CitySavedPlacesModal';
 import { CityCard } from '../../src/components/saved-places/CityCard';
 import { SavedPlacesSearchBar } from '../../src/components/saved-places/SavedPlacesSearchBar';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Feather from '@expo/vector-icons/Feather';
+import { CITY_PLACES_TEMP_KEY } from '../saved-places-city';
+import { COUNTRY_PLACES_TEMP_KEY } from '../saved-places-country';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -34,12 +36,11 @@ export default function SavedPlaces() {
   const [cities, setCities] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [error, setError] = useState(null);
-  const [selectedCity, setSelectedCity] = useState(null);
-  const [cityModalVisible, setCityModalVisible] = useState(false);
   const [allSavedPlaces, setAllSavedPlaces] = useState([]);
   const [carouselIndices, setCarouselIndices] = useState({}); // Track current index per city
   const [cityPhotoCounts, setCityPhotoCounts] = useState({}); // Track photo count per city
   const [searchQuery, setSearchQuery] = useState('');
+  const hasInitiallyLoaded = useRef(false);
   // Start at page 8 for onboarding flow, or skip to 14 if returning from IG_Demo
   const [emptyStatePage, setEmptyStatePage] = useState(
     searchParams.skipOnboarding === 'true' ? 14 : 8
@@ -69,11 +70,17 @@ export default function SavedPlaces() {
       const country = place.country?.trim();
       if (!country) continue;
       if (!countryMap[country]) {
-        countryMap[country] = { city: country, country, count: 0, isCountry: true };
+        countryMap[country] = { city: country, country, count: 0, isCountry: true, citySet: new Set() };
       }
       countryMap[country].count++;
+      if (place.city) {
+        countryMap[country].citySet.add(place.city);
+      }
     }
-    return Object.values(countryMap).sort((a, b) => b.count - a.count);
+    return Object.values(countryMap).map(({ citySet, ...rest }) => ({
+      ...rest,
+      cityCount: citySet.size,
+    })).sort((a, b) => b.count - a.count);
   }, [allSavedPlaces]);
 
   // Combine city cards and country cards for display (city cards first, then country)
@@ -176,6 +183,18 @@ export default function SavedPlaces() {
     fetchSavedPlaces();
   }, [fetchSavedPlaces]);
 
+  // Reload data whenever this tab gains focus (skips initial mount since useEffect handles that)
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasInitiallyLoaded.current) {
+        hasInitiallyLoaded.current = true;
+        return;
+      }
+      // Silently refetch to reflect any deletions made on city/country pages
+      fetchSavedPlaces();
+    }, [fetchSavedPlaces])
+  );
+
   useEffect(() => { totalCountRef.current = totalCount; }, [totalCount]);
 
   // Handle Instagram share polling when navigating from Share Extension
@@ -255,51 +274,21 @@ export default function SavedPlaces() {
     fetchSavedPlaces();
   }, [fetchSavedPlaces]);
 
-  const handleCardPress = (cardData) => {
-    setSelectedCity(cardData);
-    setCityModalVisible(true);
-  };
-
-  const handleCloseCityModal = () => {
-    setCityModalVisible(false);
-    setSelectedCity(null);
-  };
-
-  const handlePlaceDeleted = (deletedPlaceId) => {
-    // Determine context from the currently selected city card
-    const isCountryContext = selectedCity?.isCountry;
-    const isCityContext = !isCountryContext && selectedCity;
-
-    setAllSavedPlaces(prevPlaces => {
-      const updatedPlaces = prevPlaces.map(p => {
-        if (p.savedPlaceId !== deletedPlaceId) return p;
-
-        // Create a copy to modify
-        const updatedPlace = { ...p };
-
-        if (isCountryContext) {
-          delete updatedPlace.country;
-        } else if (isCityContext) {
-          delete updatedPlace.city;
-        }
-
-        // If place has neither city nor country, filter it out (return null)
-        if (!updatedPlace.city && !updatedPlace.country) return null;
-        
-        return updatedPlace;
-      }).filter(Boolean);
-
-      setTotalCount(updatedPlaces.length);
-      return updatedPlaces;
-    });
-
-    // If we deleted from a city context, update the city counts
-    if (isCityContext) {
-      setCities(prevCities =>
-        prevCities
-          .map(c => (c.city === selectedCity.city ? { ...c, count: c.count - 1 } : c))
-          .filter(c => c.count > 0)
-      );
+  const handleCardPress = async (cardData) => {
+    const places = getPlacesForCard(cardData);
+    if (cardData.isCountry) {
+      await AsyncStorage.setItem(COUNTRY_PLACES_TEMP_KEY, JSON.stringify({
+        countryName: cardData.city,
+        places,
+      }));
+      router.push('/saved-places-country');
+    } else {
+      await AsyncStorage.setItem(CITY_PLACES_TEMP_KEY, JSON.stringify({
+        cityName: cardData.city,
+        isCountry: false,
+        places,
+      }));
+      router.push('/saved-places-city');
     }
   };
 
@@ -411,6 +400,12 @@ export default function SavedPlaces() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Saved Places</Text>
+          <TouchableOpacity
+            style={styles.favoritesButton}
+            onPress={() => router.push('/saved-places-favorites')}
+          >
+            <Feather name="heart" size={24} color={Colors.GRAY} />
+          </TouchableOpacity>
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.PRIMARY} />
@@ -425,6 +420,12 @@ export default function SavedPlaces() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Saved Places</Text>
+          <TouchableOpacity
+            style={styles.favoritesButton}
+            onPress={() => router.push('/saved-places-favorites')}
+          >
+            <Feather name="heart" size={24} color={Colors.GRAY} />
+          </TouchableOpacity>
         </View>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={Colors.GRAY} />
@@ -441,6 +442,12 @@ export default function SavedPlaces() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Saved Places</Text>
+        <TouchableOpacity
+          style={styles.favoritesButton}
+          onPress={() => router.push('/saved-places-favorites')}
+        >
+          <Feather name="heart" size={24} color={Colors.GRAY} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -542,6 +549,7 @@ export default function SavedPlaces() {
                     setCarouselIndices(prev => ({ ...prev, [city]: idx }))
                   }
                   onDelete={() => handleCardDeleted(cardData)}
+                  cityCount={cardData.cityCount}
                 />
               );
             })}
@@ -561,17 +569,6 @@ export default function SavedPlaces() {
         </View>
       )}
 
-      {/* City/Country Saved Places Modal */}
-      {selectedCity && (
-        <CitySavedPlacesModal
-          visible={cityModalVisible}
-          onClose={handleCloseCityModal}
-          cityName={selectedCity.city}
-          places={getPlacesForCard(selectedCity)}
-          onPlaceDeleted={handlePlaceDeleted}
-          isCountry={selectedCity.isCountry}
-        />
-      )}
     </View>
   );
 }
@@ -592,6 +589,22 @@ const styles = StyleSheet.create({
     fontFamily: 'outfit-bold',
     fontSize: 33,
     color: '#1F2937',
+  },
+  favoritesButton: {
+    position: 'absolute',
+    right: 25,
+    bottom: 15,
+    backgroundColor: 'white',
+    borderRadius: 25,
+    width: 50,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   headerSubtitle: {
     fontFamily: 'outfit',

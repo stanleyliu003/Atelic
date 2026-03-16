@@ -166,6 +166,13 @@ type SavedPlace {
   city: String
   country: String
   savedAt: String!
+  isFavorite: Boolean
+}
+
+type ToggleFavoriteResult {
+  userID: String!
+  savedPlaceId: String!
+  isFavorite: Boolean!
 }
 
 type CityGroup {
@@ -509,6 +516,7 @@ type AppVersionConfig {
    createTrip(input: CreateTripInput!): Trip @function(name: "CreateTripStorage-${env}") @auth(rules: [{ allow: public }])
    deleteTrip(userID: String!, tripID: String!): DeleteTripResult @function(name: "deleteTrip-${env}") @auth(rules: [{ allow: public }])
    deleteSavedPlace(userID: String!, savedPlaceId: String!, deleteType: String): DeleteSavedPlaceResult @function(name: "deleteSavedPlace-${env}") @auth(rules: [{ allow: public }])
+  toggleFavorite(userID: String!, savedPlaceId: String!, isFavorite: Boolean!): ToggleFavoriteResult @function(name: "toggleFavorite-${env}") @auth(rules: [{ allow: public }])
    deleteSavedCity(userID: String!, city: String!): DeleteSavedCityResult @function(name: "deleteSavedCity-${env}") @auth(rules: [{ allow: public }])
    deleteSavedCountry(userID: String!, country: String!): DeleteSavedCityResult @function(name: "deleteSavedCity-${env}") @auth(rules: [{ allow: public }])
    deleteUserAccount(userID: String!): DeleteAccountResult @function(name: "deleteAccount-${env}") @auth(rules: [{ allow: public }])

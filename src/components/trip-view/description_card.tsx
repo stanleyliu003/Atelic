@@ -159,6 +159,13 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
   // Get live activity data from context for real-time updates
   const { activities, dayActivities, updateActivityNotes } = useCreateTrip();
 
+  // Lazy load state — declared before liveActivity so they can be merged in below
+  const [lazyLoading, setLazyLoading] = useState(false);
+  // Holds lazy-fetched data for activities not in context (e.g. opened from saved-places screens).
+  // Activities in context get updated via updateActivityNotes; activities outside context (saved places)
+  // never appear in getLiveActivity() lookups, so we merge the data here as a local fallback.
+  const [localLazyData, setLocalLazyData] = useState<Partial<Activity> | null>(null);
+
   // Find the current activity by instanceId to get live updates
   const getLiveActivity = (): Activity => {
     // First check wishlist
@@ -173,39 +180,42 @@ export function ActivityDetailView({ activity, onClose, variant = 'trip', showDr
       if (dayActivity) return dayActivity;
     }
 
-    // Fallback to prop if not found (shouldn't happen)
+    // Fallback to prop if not found (e.g. activity opened from saved-places screens)
     return activity;
   };
 
-  // Use live activity data for display
-  const liveActivity = getLiveActivity();
-
-  // Lazy load Enterprise+Atmosphere fields when description card opens
-  // Only triggers for activities created after the New Places API migration (detailsLoaded === false)
-  // Pre-migration activities have detailsLoaded as undefined/null and already have full data
-  const [lazyLoading, setLazyLoading] = useState(false);
+  // Use live activity data for display.
+  // Merge localLazyData so that activities opened from saved-places screens (which are not in
+  // CreateTripContext) also receive the Enterprise+Atmosphere fields after lazy loading.
+  const liveActivity = localLazyData
+    ? { ...getLiveActivity(), ...localLazyData }
+    : getLiveActivity();
 
   useEffect(() => {
     // Determine if lazy loading is needed
     // Case 1: New activities with detailsLoaded === false (created after migration)
-    // Case 2: Legacy activities with detailsLoaded === undefined AND missing lazy fields
+    // Case 2: Legacy activities with detailsLoaded === undefined AND missing any lazy fields
     //   Note: eager load returns reviews: [] (empty array), so check .length not just truthiness
     const hasReviews = Array.isArray(liveActivity.reviews) ? liveActivity.reviews.length > 0 : !!liveActivity.reviews;
     const hasHours = !!liveActivity.regular_opening_hours;
     const needsLazyLoad = liveActivity.place_id && !lazyLoading && (
       liveActivity.detailsLoaded === false ||
-      (liveActivity.detailsLoaded === undefined && !hasReviews && !hasHours)
+      (liveActivity.detailsLoaded === undefined && (!hasReviews || !hasHours))
     );
 
     if (needsLazyLoad) {
       setLazyLoading(true);
       fetchPlaceDetailsLazy(liveActivity.place_id)
         .then((lazyData) => {
-          if (lazyData && liveActivity.instanceId) {
-            updateActivityNotes(liveActivity.instanceId, {
-              ...lazyData,
-              detailsLoaded: true,
-            });
+          if (lazyData) {
+            const enriched = { ...lazyData, detailsLoaded: true };
+            // Update context for activities that live in the trip/wishlist
+            if (liveActivity.instanceId) {
+              updateActivityNotes(liveActivity.instanceId, enriched);
+            }
+            // Always update local state so activities opened from saved-places screens
+            // (which are not in context) also display the enriched data
+            setLocalLazyData(enriched);
           }
         })
         .catch((error) => {

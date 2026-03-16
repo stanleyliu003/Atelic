@@ -965,6 +965,22 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "toggleFavorite": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "SavedPlacesStorage"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "unfollowUser": {
       "build": true,
       "dependsOn": [

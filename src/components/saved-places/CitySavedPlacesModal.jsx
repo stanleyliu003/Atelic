@@ -10,37 +10,56 @@ import {
 } from 'react-native';
 import { Colors } from '../../../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Feather from '@expo/vector-icons/Feather';
 import { ActivityCard } from '../trip-view/activity/activity_card';
 import { ActivityDetailView } from '../trip-view/description_card';
 import { useRouter } from 'expo-router';
 import { API, Auth } from 'aws-amplify';
 import { deleteSavedPlace } from '../../graphql/mutations';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPlaceDeleted, isCountry }) {
+const ADD_TO_TRIP_STORAGE_KEY = '@atelic/add_to_trip_activities';
+
+export function CitySavedPlacesModal({ onClose, cityName, places, onPlaceDeleted, isCountry }) {
   const router = useRouter();
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [descriptionCardVisible, setDescriptionCardVisible] = useState(false);
   const [localPlaces, setLocalPlaces] = useState(places);
+  // Map of savedPlaceId -> activityWithDetails for selected activities
+  const [selectedActivitiesMap, setSelectedActivitiesMap] = useState(new Map());
 
   useEffect(() => {
-    // This effect syncs the local state when the places prop changes.
-    // This is important for when the modal is re-opened for a different city,
-    // or if the parent component refreshes the data.
     setLocalPlaces(places);
   }, [places]);
 
-  const handleCreateTrip = () => {
-    console.log('[CitySavedPlacesModal] handleCreateTrip called with cityName:', cityName);
-    onClose(); // Close the modal first
-    router.push({
-      pathname: '/(tabs)/create_new_trip',
-      params: {
-        prefilledCity: cityName,
-        fromSavedPlaces: 'true',
-        //ts: Date.now()
+  useEffect(() => {
+    setSelectedActivitiesMap(new Map());
+  }, [cityName]);
+
+  const handleToggleSelection = (activity) => {
+    setSelectedActivitiesMap(prev => {
+      const newMap = new Map(prev);
+      if (newMap.has(activity.savedPlaceId)) {
+        newMap.delete(activity.savedPlaceId);
+      } else {
+        newMap.set(activity.savedPlaceId, activity);
       }
+      return newMap;
     });
+  };
+
+  const handleAddToTrip = async () => {
+    if (selectedActivitiesMap.size === 0) return;
+    const activities = Array.from(selectedActivitiesMap.values());
+    await AsyncStorage.setItem(ADD_TO_TRIP_STORAGE_KEY, JSON.stringify(activities));
+    onClose();
+    router.push('/add-to-trip');
+  };
+
+  const handleFavoritesButtonPress = () => {
+    onClose();
+    router.push('/saved-places-favorites');
   };
 
   const handleActivityPress = (activity) => {
@@ -91,16 +110,16 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
       source: item.source,
       sourceUrl: item.sourceUrl
     });
-    
+
     // Extract the activity data from the saved place
     const activity = item.activity; // The DynamoDB field is 'activity', not 'activityData'
-    
+
     // Skip rendering if activity data is missing
     if (!activity) {
       console.warn('[CitySavedPlacesModal] Skipping item with missing activity');
       return null;
     }
-    
+
     // Copy source and sourceUrl from SavedPlace to Activity for display in description card
     // Also pass savedPlaceId so the delete function can find it
     const activityWithDetails = {
@@ -109,27 +128,27 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
       source: item.source,
       sourceUrl: item.sourceUrl,
     };
-    
+
     return (
       <ActivityCard
         activity={activityWithDetails}
+        onPress={() => handleToggleSelection(activityWithDetails)}
         onDescriptionCardPress={() => handleActivityPress(activityWithDetails)}
         onSwipeDelete={handleDeleteActivity}
+        showSelectionIndicator={true}
+        useInlineSelectionLayout={true}
+        isSelected={selectedActivitiesMap.has(activityWithDetails.savedPlaceId)}
         hideNotesButton={true}
         hideRouteInfo={true}
         deleteSavedPlace={true}
+        showFavoritesButton={true}
+        initialIsFavorite={item.isFavorite === true}
       />
     );
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
@@ -140,7 +159,12 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
             <Ionicons name="arrow-back" size={28} color={Colors.PRIMARY} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{cityName}</Text>
-          <View style={styles.placeholder} />
+          <TouchableOpacity
+            onPress={handleFavoritesButtonPress}
+            style={styles.favoritesHeaderButton}
+          >
+            <Feather name="heart" size={24} color={Colors.GRAY} />
+          </TouchableOpacity>
         </View>
 
         {/* Activity List */}
@@ -159,13 +183,21 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
           </View>
         )}
 
-        {/* Create Trip Button */}
+        {/* Action Buttons */}
         <View style={styles.createTripButtonContainer}>
           <TouchableOpacity
-            style={styles.createTripButton}
-            onPress={handleCreateTrip}
+            style={[
+              styles.createTripButton,
+              selectedActivitiesMap.size === 0 && styles.createTripButtonDisabled,
+            ]}
+            onPress={handleAddToTrip}
+            disabled={selectedActivitiesMap.size === 0}
           >
-            <Text style={styles.createTripButtonText}>Create Trip</Text>
+            <Text style={styles.createTripButtonText}>
+              {selectedActivitiesMap.size > 0
+                ? `Add Now to Trip`
+                : 'Add Now to Trip'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -191,8 +223,7 @@ export function CitySavedPlacesModal({ visible, onClose, cityName, places, onPla
           </SafeAreaView>
         </Modal>
       </SafeAreaView>
-      </GestureHandlerRootView>
-    </Modal>
+    </GestureHandlerRootView>
   );
 }
 
@@ -218,12 +249,22 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: Colors.PRIMARY,
   },
-  placeholder: {
-    width: 44, // Same width as close button to center title
+  favoritesHeaderButton: {
+    backgroundColor: 'white',
+    borderRadius: 25,
+    width: 50,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   listContent: {
     padding: 16,
-    paddingBottom: 100, // Extra padding for the fixed button at bottom
+    paddingBottom: 100,
   },
   emptyContainer: {
     flex: 1,
@@ -244,21 +285,22 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 16,
-    paddingBottom: 34, // Safe area padding
+    paddingBottom: 34,
     paddingTop: 12,
     backgroundColor: Colors.WHITE,
     borderTopWidth: 1,
     borderTopColor: '#e5e5e5',
-    flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   createTripButton: {
-    flex: 1,
     backgroundColor: '#F36406',
     borderRadius: 15,
     paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  createTripButtonDisabled: {
+    backgroundColor: '#D1D5DB',
   },
   createTripButtonText: {
     color: Colors.WHITE,

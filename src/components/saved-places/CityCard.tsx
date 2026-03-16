@@ -25,6 +25,7 @@ interface CityCardProps {
   currentCarouselIndex: number;
   onCarouselIndexChange: (city: string, index: number) => void;
   onDelete: () => void;
+  cityCount?: number;
 }
 
 export function CityCard({
@@ -37,6 +38,7 @@ export function CityCard({
   currentCarouselIndex,
   onCarouselIndexChange,
   onDelete,
+  cityCount,
 }: CityCardProps) {
   const [menuVisible, setMenuVisible] = useState(false);
 
@@ -99,7 +101,9 @@ export function CityCard({
             {cityData.city}
           </Text>
           <Text style={styles.cityCount}>
-            {cityData.count} place{cityData.count !== 1 ? 's' : ''}
+            {cityData.isCountry && cityCount
+              ? `${cityCount} cit${cityCount !== 1 ? 'ies' : 'y'} · ${cityData.count} place${cityData.count !== 1 ? 's' : ''}`
+              : `${cityData.count} place${cityData.count !== 1 ? 's' : ''}`}
           </Text>
         </View>
         <TouchableOpacity

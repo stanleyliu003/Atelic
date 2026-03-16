@@ -33,6 +33,7 @@ import * as customMutations from '../../src/graphql/customMutations';
 import { getUserProfile, getUserStatistics } from '../../src/graphql/queries';
 import { useCreateTrip } from '../../context/CreateTripContext';
 import { listUserTripsFromCloud, retrieveTripFromCloud, deleteUserAccountFromCloud } from '../../src/services/lambdaService';
+import { getCachedTrip } from '../../src/services/tripCacheService';
 import { deleteTrip } from '../../src/graphql/customMutations';
 import { removeCollaborator, createTrip } from '../../src/graphql/mutations';
 import { clearAuthData } from '../../src/services/appGroupsService';
@@ -689,6 +690,16 @@ export default function FeedScreen() {
   }, [loadUserData, username, loadPendingRequestsCount]);
 
   const handleLoadTrip = async (tripId) => {
+    // Fast path: if trip is cached, navigate immediately with no spinner
+    const cached = await getCachedTrip(tripId);
+    if (cached && currentUserID) {
+      restoreTripFromObject(cached, currentUserID);
+      setSelectedCity(cached.selectedCity);
+      router.push('/trip-view/trip-view_main');
+      return;
+    }
+
+    // Slow path: fetch from network
     try {
       setIsLoadingTrip(true);
       const user = await Auth.currentAuthenticatedUser();

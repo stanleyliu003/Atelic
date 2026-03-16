@@ -502,6 +502,7 @@ export const getUserProfile = /* GraphQL */ `
       notificationsEnabled
       devicePushToken
       snsEndpointArn
+      admin_permission
       subscriptionTier
       subscriptionStartDate
       subscriptionEndDate
@@ -552,6 +553,7 @@ export const getSavedPlaces = /* GraphQL */ `
         city
         country
         savedAt
+        isFavorite
         __typename
       }
       cities {
