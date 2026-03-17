@@ -350,7 +350,7 @@ export function ActivityCard({
         <View style={styles.hotelInfo}>
           {/* Row 1: bed icon + name */}
           <View style={styles.hotelNameRow}>
-            <MaterialIcons name="bed" size={14} color="#6366F1" />
+            <MaterialIcons name="bed" size={12} color="#6366F1" />
             <Text style={[styles.hotelName, disabled && styles.nameDisabled]} numberOfLines={1}>
               {activity.name}
             </Text>
@@ -466,7 +466,7 @@ export function ActivityCard({
         <View style={styles.hotelInfo}>
           {/* Row 1: airplane icon + flight number */}
           <View style={styles.hotelNameRow}>
-            <Ionicons name="airplane" size={14} color="#F36406" />
+            <Ionicons name="airplane" size={12} color="#F36406" />
             <Text style={[styles.hotelName, disabled && styles.nameDisabled]} numberOfLines={1}>
               {flightParsed?.flightNumber}
             </Text>
@@ -849,13 +849,13 @@ const styles = StyleSheet.create({
   // Hotel card
   hotelCard: {
     backgroundColor: '#FAFAFF',
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#EEEDFC',
     borderLeftWidth: 3,
     borderLeftColor: '#6366F1',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     shadowColor: '#6366F1',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -875,20 +875,20 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   hotelInfo: {
-    gap: 1,
+    gap: 0,
   },
   hotelNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
     paddingRight: 28,
   },
   hotelName: {
-    fontFamily: 'outfit-bold',
-    fontSize: 14,
+    fontFamily: 'outfit-medium',
+    fontSize: 12.5,
     color: '#1A1A1A',
-    lineHeight: 18,
-    letterSpacing: -0.2,
+    lineHeight: 16,
+    letterSpacing: -0.1,
     flex: 1,
   },
   nightsText: {
@@ -903,17 +903,17 @@ const styles = StyleSheet.create({
   },
   hotelRating: {
     fontFamily: 'outfit',
-    fontSize: 11,
+    fontSize: 10,
     color: '#71717A',
   },
   hotelMetaDot: {
     fontFamily: 'outfit',
-    fontSize: 11,
+    fontSize: 10,
     color: '#D4D4D8',
   },
   hotelContextText: {
     fontFamily: 'outfit-medium',
-    fontSize: 11,
+    fontSize: 10,
     color: '#7C3AED',
   },
   hotelTimeBadge: {
@@ -935,29 +935,29 @@ const styles = StyleSheet.create({
   },
   hotelNotesText: {
     fontFamily: 'outfit',
-    fontSize: 11,
+    fontSize: 10,
     color: '#7C3AED',
     flex: 1,
   },
   hotelAddNotes: {
-    marginTop: 1,
+    marginTop: 0,
   },
   hotelAddNotesLabel: {
     fontFamily: 'outfit',
-    fontSize: 11,
+    fontSize: 10,
     color: '#A78BFA',
   },
 
   // Flight card (orange theme, mirrors hotel card structure)
   flightCard: {
     backgroundColor: '#FFFAF6',
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#FEECD6',
     borderLeftWidth: 3,
     borderLeftColor: '#F36406',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     shadowColor: '#F36406',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -985,19 +985,19 @@ const styles = StyleSheet.create({
     color: '#F36406',
   },
   flightRouteText: {
-    fontFamily: 'outfit-bold',
-    fontSize: 11,
+    fontFamily: 'outfit-medium',
+    fontSize: 10,
     color: '#F36406',
   },
   flightAirlineText: {
     fontFamily: 'outfit',
-    fontSize: 11,
+    fontSize: 10,
     color: '#A1A1AA',
     flexShrink: 1,
   },
   flightAddNotesLabel: {
     fontFamily: 'outfit',
-    fontSize: 11,
+    fontSize: 10,
     color: '#FDBA74',
   },
 
